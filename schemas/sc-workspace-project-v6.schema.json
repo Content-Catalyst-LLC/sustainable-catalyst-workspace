@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-project-v6.schema.json",
+  "title": "Sustainable Catalyst Workspace Project v6.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "persistence",
+    "title",
+    "description",
+    "status",
+    "pinned",
+    "createdAt",
+    "updatedAt",
+    "archivedAt",
+    "notes",
+    "recentTools",
+    "activity",
+    "objects",
+    "activeObjectId",
+    "research",
+    "analysis",
+    "decision",
+    "canvas"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-project/6.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 600
+    },
+    "status": {
+      "enum": [
+        "active",
+        "paused",
+        "complete"
+      ]
+    },
+    "pinned": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "archivedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "recentTools": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object"
+      }
+    },
+    "activity": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object"
+      }
+    },
+    "objects": {
+      "type": "array",
+      "maxItems": 250,
+      "items": {
+        "$ref": "sc-workspace-object-v1.schema.json"
+      }
+    },
+    "activeObjectId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "research": {
+      "$ref": "sc-workspace-research-v1.schema.json"
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "deviceId",
+        "syncState",
+        "accountEligible",
+        "serverStored"
+      ],
+      "properties": {
+        "scope": {
+          "const": "device"
+        },
+        "deviceId": {
+          "type": "string",
+          "pattern": "^scwd-[A-Za-z0-9-]{8,160}$"
+        },
+        "syncState": {
+          "const": "local-only"
+        },
+        "accountEligible": {
+          "const": true
+        },
+        "serverStored": {
+          "const": false
+        }
+      }
+    },
+    "analysis": {
+      "$ref": "sc-workspace-analysis-v1.schema.json"
+    },
+    "decision": {
+      "$ref": "sc-workspace-decision-v1.schema.json"
+    },
+    "canvas": {
+      "$ref": "sc-workspace-canvas-v1.schema.json"
+    }
+  }
+}

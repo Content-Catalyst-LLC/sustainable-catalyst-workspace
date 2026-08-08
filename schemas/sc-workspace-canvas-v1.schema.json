@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-canvas-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Canvas v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "boards",
+    "nodes",
+    "edges",
+    "frames",
+    "activeBoardId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-canvas/1.0"
+    },
+    "boards": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "description",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2400
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "working",
+              "ready"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "boardId",
+          "type",
+          "title",
+          "body",
+          "objectId",
+          "x",
+          "y",
+          "tags",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "boardId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "type": {
+            "enum": [
+              "note",
+              "question",
+              "claim",
+              "evidence",
+              "data",
+              "analysis",
+              "decision",
+              "system",
+              "stakeholder",
+              "idea"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "objectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "x": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 820
+          },
+          "y": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 420
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "maxLength": 48
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "boardId",
+          "fromNodeId",
+          "toNodeId",
+          "relation",
+          "label",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "boardId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "fromNodeId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "toNodeId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "relation": {
+            "enum": [
+              "supports",
+              "contradicts",
+              "depends-on",
+              "influences",
+              "contains",
+              "causes",
+              "relates-to",
+              "sequence"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "frames": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "boardId",
+          "title",
+          "description",
+          "nodeIds",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "boardId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1600
+          },
+          "nodeIds": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "activeBoardId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

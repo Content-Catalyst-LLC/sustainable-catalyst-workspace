@@ -4,15 +4,16 @@ Sustainable Catalyst Workspace is the free personal working environment across t
 
 ## Current release
 
-**v0.6.1 — Dedicated Workspace Page & Platform Conversion**
+**v0.7.0 — Canvas & Structured Thinking**
 
-Workspace now supports the complete first operating loop inside persistent Projects:
+Workspace now supports a connected personal workflow:
 
 - Research — questions, sources, reading queues, evidence, and claims.
 - Analysis — datasets, variables, assumptions, methods, comparisons, and findings.
-- Decision — options, criteria, assessments, risks, rationale, confidence, and durable Decision objects.
+- Decision — options, criteria, assessments, risks, rationale, and confidence.
+- Canvas — boards, structured nodes, typed relationships, frames, and synthesis.
 
-v0.6.1 adds the dedicated public Platform presentation and a reversible administrator-controlled conversion of `/platform/` to Workspace.
+The dedicated `/platform/` Workspace experience and reversible administrator-controlled Platform conversion from v0.6.1 remain intact.
 
 ## WordPress shortcodes
 
@@ -22,42 +23,24 @@ v0.6.1 adds the dedicated public Platform presentation and a reversible administ
 [sc_workspace_platform]
 ```
 
-After conversion, the canonical public route is:
-
-```text
-/platform/
-```
-
-The legacy `/platform/workspace/` route redirects only after the administrator performs the conversion.
-
-## Controlled Platform conversion
-
-Open **Tools → Workspace Page** in WordPress. The conversion is not run during activation. It backs up the existing Platform page and preserves its page ID, slug, parent, publication status, and page template. Rollback is available from the same tool.
-
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects and objects are stored on the current device. Optional WordPress authentication identifies the current account session only; v0.6.1 does not upload, claim, or synchronize local project content.
+Workspace remains usable without signing in. Projects, objects, research, analysis, decisions, and Canvas boards are stored on the current device. Optional WordPress authentication identifies the account session only; v0.7.0 does not upload, claim, or synchronize local project content.
 
 ## Contracts
 
-- Project: `sc-workspace-project/5.0`
+- Project: `sc-workspace-project/6.0`
 - Object: `sc-workspace-object/1.0`
 - Research: `sc-workspace-research/1.0`
 - Analysis: `sc-workspace-analysis/1.0`
 - Decision: `sc-workspace-decision/1.0`
+- Canvas: `sc-workspace-canvas/1.0`
 - Identity: `sc-workspace-identity/1.0`
-- Platform: `sc-workspace-platform-contract/1.0`
-- Storage schema: `7`
+- Storage schema: `8`
+- Handoff: `sc-workspace-handoff/1.5`
 
 ## Product Registry
 
-- Canonical ID: `sustainable-catalyst-workspace`
-- Family: `commercial`
-- Console screen: `commercial`
-- Display order: `400`
-- Lifecycle: `experimental`
-- Access: free public
-- Canonical repository: `Content-Catalyst-LLC/sustainable-catalyst-workspace`
-- Product URL after conversion: `/platform/`
+Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`, canonical product URL `/platform/`.
 
-See `docs/DEDICATED_WORKSPACE_PAGE_PLATFORM_CONVERSION_V061.md` for the conversion contract.
+See `docs/CANVAS_STRUCTURED_THINKING_V070.md`.

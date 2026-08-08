@@ -1,7 +1,7 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.6.1.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.7.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 class AnalysisContractTests(unittest.TestCase):
     def test_analysis_schema(self):
@@ -11,8 +11,8 @@ class AnalysisContractTests(unittest.TestCase):
         self.assertEqual(s['properties']['variables']['maxItems'],120)
         self.assertEqual(s['properties']['findings']['maxItems'],150)
     def test_project_embeds_analysis(self):
-        s=json.loads((ROOT/'schemas/sc-workspace-project-v5.schema.json').read_text())
-        self.assertEqual(s['properties']['schema']['const'],'sc-workspace-project/5.0')
+        s=json.loads((ROOT/'schemas/sc-workspace-project-v6.schema.json').read_text())
+        self.assertEqual(s['properties']['schema']['const'],'sc-workspace-project/6.0')
         self.assertIn('analysis',s['required'])
         self.assertEqual(s['properties']['analysis']['$ref'],'sc-workspace-analysis-v1.schema.json')
     def test_analysis_functions_present(self):

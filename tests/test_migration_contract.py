@@ -1,15 +1,20 @@
 import unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.6.1.js'
+ROOT=Path(__file__).resolve().parents[1]
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.7.0.js'
+PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
+
 class MigrationTests(unittest.TestCase):
-    def test_storage_v6_to_v7_migration(self):
+    def test_storage_v7_to_v8_migration(self):
         js=JS.read_text()
-        for token in ('const STORAGE_VERSION = 7','function migrateV6',"if (raw.schemaVersion === 6) return migrateV6(raw)","const PROJECT_SCHEMA = 'sc-workspace-project/5.0'","const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1'","analysis: normalizeAnalysis(raw.analysis, objects)"):
+        for token in ('const STORAGE_VERSION = 8','function migrateV7',"if (raw.schemaVersion === 7) return migrateV7(raw)","const PROJECT_SCHEMA = 'sc-workspace-project/6.0'","const LEGACY_PROJECT_SCHEMA_V5 = 'sc-workspace-project/5.0'","canvas: normalizeCanvas(raw.canvas, objects)"):
             self.assertIn(token,js)
     def test_older_migrations_retained(self):
         js=JS.read_text()
-        for token in ('function migrateV4','function migrateV3','function migrateV2','function migrateLegacyV1',"const LEGACY_KEY = 'sc_workspace_v0_1'"):
+        for token in ('function migrateV6','function migrateV5','function migrateV4','function migrateV3','function migrateV2','function migrateLegacyV1'):
             self.assertIn(token,js)
-    def test_clone_remaps_cross_object_references(self):
-        js=JS.read_text(); self.assertIn('const objectMap = new Map()',js); self.assertIn('objectMap.get(link.evidenceObjectId)',js); self.assertIn('objectMap.get(method.analysisObjectId)',js); self.assertIn('objectMap.get(finding.analysisObjectId)',js)
+    def test_clone_remaps_canvas_and_object_refs(self):
+        js=JS.read_text();
+        for token in ('const objectMap = new Map()','const boardMap = new Map()','const nodeMap = new Map()','objectMap.get(node.objectId)','nodeMap.get(edge.fromNodeId)','nodeMap.get(edge.toNodeId)'):
+            self.assertIn(token,js)
 if __name__=='__main__': unittest.main()

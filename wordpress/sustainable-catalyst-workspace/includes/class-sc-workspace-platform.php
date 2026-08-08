@@ -70,7 +70,7 @@ final class SC_Workspace_Platform {
             return;
         }
         $url = admin_url('tools.php?page=' . self::ADMIN_SLUG);
-        echo '<div class="notice notice-info"><p><strong>Sustainable Catalyst Workspace v0.6.1:</strong> the dedicated Workspace page is ready. The Platform page is not changed automatically. <a href="' . esc_url($url) . '">Review the reversible Platform conversion</a>.</p></div>';
+        echo '<div class="notice notice-info"><p><strong>Sustainable Catalyst Workspace v0.7.0:</strong> the dedicated Workspace page is ready. The Platform page is not changed automatically. <a href="' . esc_url($url) . '">Review the reversible Platform conversion</a>.</p></div>';
     }
 
     public function render_admin_page() {
@@ -84,7 +84,7 @@ final class SC_Workspace_Platform {
         ?>
         <div class="wrap">
             <h1>Workspace Page Conversion</h1>
-            <p>v0.6.1 can convert the existing <code>/platform/</code> page into the dedicated Sustainable Catalyst Workspace experience while preserving the page ID, slug, parent, publication state, and page template.</p>
+            <p>v0.7.0 can convert the existing <code>/platform/</code> page into the dedicated Sustainable Catalyst Workspace experience while preserving the page ID, slug, parent, publication state, and page template.</p>
             <?php if ($result === 'converted') : ?><div class="notice notice-success inline"><p>Platform was converted to the dedicated Workspace page. A rollback snapshot was preserved.</p></div><?php endif; ?>
             <?php if ($result === 'restored') : ?><div class="notice notice-success inline"><p>The original Platform page title and content were restored.</p></div><?php endif; ?>
             <?php if ($result === 'missing') : ?><div class="notice notice-error inline"><p>No root page with slug <code>platform</code> was found. Nothing was changed.</p></div><?php endif; ?>

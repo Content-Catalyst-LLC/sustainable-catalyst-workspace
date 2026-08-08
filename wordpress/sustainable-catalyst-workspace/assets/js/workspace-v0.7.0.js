@@ -3,29 +3,32 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_6_0';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_7_0';
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v1';
-  const STORAGE_VERSION = 7;
-  const PROJECT_SCHEMA = 'sc-workspace-project/5.0';
+  const STORAGE_VERSION = 8;
+  const PROJECT_SCHEMA = 'sc-workspace-project/6.0';
+  const LEGACY_PROJECT_SCHEMA_V5 = 'sc-workspace-project/5.0';
   const LEGACY_PROJECT_SCHEMA_V4 = 'sc-workspace-project/4.0';
   const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1';
   const LEGACY_PROJECT_SCHEMA_V3 = 'sc-workspace-project/3.0';
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/5.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/6.0';
+  const LEGACY_EXPORT_SCHEMA_V5 = 'sc-workspace-project-export/5.0';
   const LEGACY_EXPORT_SCHEMA_V4 = 'sc-workspace-project-export/4.0';
   const LEGACY_EXPORT_SCHEMA_V31 = 'sc-workspace-project-export/3.1';
   const LEGACY_EXPORT_SCHEMA_V3 = 'sc-workspace-project-export/3.0';
   const LEGACY_EXPORT_SCHEMA_V2 = 'sc-workspace-project-export/2.0';
   const LEGACY_EXPORT_SCHEMA_V1 = 'sc-workspace-project-export/1.0';
   const OBJECT_EXPORT_SCHEMA = 'sc-workspace-object-export/1.0';
-  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.4';
+  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.5';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0';
   const DECISION_SCHEMA = 'sc-workspace-decision/1.0';
+  const CANVAS_SCHEMA = 'sc-workspace-canvas/1.0';
   const MAX_ACTIVITY = 60;
   const MAX_RECENT_TOOLS = 8;
   const MAX_OBJECTS = 250;
@@ -44,6 +47,10 @@
   const MAX_DECISION_CRITERIA = 180;
   const MAX_DECISION_ASSESSMENTS = 1000;
   const MAX_DECISION_RISKS = 300;
+  const MAX_CANVAS_BOARDS = 30;
+  const MAX_CANVAS_NODES = 500;
+  const MAX_CANVAS_EDGES = 1000;
+  const MAX_CANVAS_FRAMES = 100;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
   const OBJECT_TYPES = new Set(['source', 'evidence', 'dataset', 'analysis', 'decision', 'document', 'export']);
   const OBJECT_STATUS = new Set(['draft', 'working', 'ready']);
@@ -61,6 +68,9 @@
   const DECISION_OPTION_STATUS = new Set(['candidate', 'shortlisted', 'selected', 'rejected']);
   const DECISION_CONFIDENCE = new Set(['low', 'medium', 'high']);
   const DECISION_RISK_LEVEL = new Set(['low', 'medium', 'high']);
+  const CANVAS_BOARD_STATUS = new Set(['draft', 'working', 'ready']);
+  const CANVAS_NODE_TYPE = new Set(['note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea']);
+  const CANVAS_RELATION_TYPE = new Set(['supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence']);
   const OBJECT_LABELS = {
     source: 'Source', evidence: 'Evidence', dataset: 'Dataset', analysis: 'Analysis',
     decision: 'Decision', document: 'Document', export: 'Export'
@@ -339,6 +349,107 @@
   function touchDecision(project){ if(!project.decision)project.decision=decisionTemplate(); project.decision.updatedAt=nowIso(); project.updatedAt=project.decision.updatedAt; }
   function cleanDecisionReferences(project, objectId){ if(!project||!project.decision)return; project.decision.options.forEach(x=>{x.evidenceObjectIds=x.evidenceObjectIds.filter(v=>v!==objectId);x.analysisObjectIds=x.analysisObjectIds.filter(v=>v!==objectId);}); project.decision.decisions.forEach(x=>{if(x.decisionObjectId===objectId)x.decisionObjectId='';}); touchDecision(project); }
 
+  function canvasTemplate() {
+    const stamp = nowIso();
+    return { schema: CANVAS_SCHEMA, boards: [], nodes: [], edges: [], frames: [], activeBoardId: null, createdAt: stamp, updatedAt: stamp };
+  }
+
+  function normalizeCanvasBoard(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return {
+      id: String(raw.id || id('cb')).slice(0, 160),
+      title: String(raw.title || '').trim().slice(0, 200),
+      description: String(raw.description || '').slice(0, 2400),
+      status: CANVAS_BOARD_STATUS.has(raw.status) ? raw.status : 'draft',
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp,
+      updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp
+    };
+  }
+
+  function normalizeCanvasNode(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return {
+      id: String(raw.id || id('cn')).slice(0, 160),
+      boardId: String(raw.boardId || '').slice(0, 160),
+      type: CANVAS_NODE_TYPE.has(raw.type) ? raw.type : 'note',
+      title: String(raw.title || '').trim().slice(0, 240),
+      body: String(raw.body || '').slice(0, 4000),
+      objectId: String(raw.objectId || '').slice(0, 160),
+      x: Math.max(0, Math.min(820, Number(raw.x) || 24)),
+      y: Math.max(0, Math.min(420, Number(raw.y) || 24)),
+      tags: normalizeTags(raw.tags),
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp,
+      updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp
+    };
+  }
+
+  function normalizeCanvasEdge(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    return {
+      id: String(raw.id || id('ce')).slice(0, 160),
+      boardId: String(raw.boardId || '').slice(0, 160),
+      fromNodeId: String(raw.fromNodeId || '').slice(0, 160),
+      toNodeId: String(raw.toNodeId || '').slice(0, 160),
+      relation: CANVAS_RELATION_TYPE.has(raw.relation) ? raw.relation : 'relates-to',
+      label: String(raw.label || '').slice(0, 240),
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : nowIso()
+    };
+  }
+
+  function normalizeCanvasFrame(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return {
+      id: String(raw.id || id('cf')).slice(0, 160),
+      boardId: String(raw.boardId || '').slice(0, 160),
+      title: String(raw.title || '').trim().slice(0, 200),
+      description: String(raw.description || '').slice(0, 1600),
+      nodeIds: Array.isArray(raw.nodeIds) ? [...new Set(raw.nodeIds.map((value) => String(value).slice(0, 160)))].slice(0, 100) : [],
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp,
+      updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp
+    };
+  }
+
+  function normalizeCanvas(raw, objects = []) {
+    const base = canvasTemplate();
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const objectIds = new Set(objects.map((object) => object.id));
+    base.boards = Array.isArray(value.boards) ? value.boards.map(normalizeCanvasBoard).filter((board) => board && board.title).slice(0, MAX_CANVAS_BOARDS) : [];
+    const boardIds = new Set(base.boards.map((board) => board.id));
+    base.nodes = Array.isArray(value.nodes) ? value.nodes.map(normalizeCanvasNode).filter((node) => node && node.title && boardIds.has(node.boardId)).slice(0, MAX_CANVAS_NODES) : [];
+    base.nodes.forEach((node) => { if (node.objectId && !objectIds.has(node.objectId)) node.objectId = ''; });
+    const nodeIds = new Set(base.nodes.map((node) => node.id));
+    base.edges = Array.isArray(value.edges) ? value.edges.map(normalizeCanvasEdge).filter((edge) => edge && boardIds.has(edge.boardId) && nodeIds.has(edge.fromNodeId) && nodeIds.has(edge.toNodeId) && edge.fromNodeId !== edge.toNodeId).slice(0, MAX_CANVAS_EDGES) : [];
+    base.frames = Array.isArray(value.frames) ? value.frames.map(normalizeCanvasFrame).filter((frame) => frame && frame.title && boardIds.has(frame.boardId)).slice(0, MAX_CANVAS_FRAMES) : [];
+    base.frames.forEach((frame) => { frame.nodeIds = frame.nodeIds.filter((nodeId) => nodeIds.has(nodeId)); });
+    base.activeBoardId = boardIds.has(value.activeBoardId) ? value.activeBoardId : (base.boards[0] ? base.boards[0].id : null);
+    base.createdAt = validIso(value.createdAt) ? value.createdAt : base.createdAt;
+    base.updatedAt = validIso(value.updatedAt) ? value.updatedAt : base.updatedAt;
+    return base;
+  }
+
+  function touchCanvas(project) {
+    if (!project.canvas) project.canvas = canvasTemplate();
+    project.canvas.updatedAt = nowIso();
+    project.updatedAt = project.canvas.updatedAt;
+  }
+
+  function cleanCanvasReferences(project, objectId) {
+    if (!project || !project.canvas) return;
+    project.canvas.nodes.forEach((node) => { if (node.objectId === objectId) node.objectId = ''; });
+    touchCanvas(project);
+  }
+
+  function removeCanvasNode(project, nodeId) {
+    if (!project || !project.canvas) return;
+    project.canvas.nodes = project.canvas.nodes.filter((node) => node.id !== nodeId);
+    project.canvas.edges = project.canvas.edges.filter((edge) => edge.fromNodeId !== nodeId && edge.toNodeId !== nodeId);
+    project.canvas.frames.forEach((frame) => { frame.nodeIds = frame.nodeIds.filter((idValue) => idValue !== nodeId); });
+    touchCanvas(project);
+  }
+
   function objectTemplate(type, title) {
     const stamp = nowIso();
     return {
@@ -377,7 +488,8 @@
       activeObjectId: null,
       research: researchTemplate(),
       analysis: analysisTemplate(),
-      decision: decisionTemplate()
+      decision: decisionTemplate(),
+      canvas: canvasTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -475,7 +587,8 @@
       activeObjectId,
       research: normalizeResearch(raw.research, objects),
       analysis: normalizeAnalysis(raw.analysis, objects),
-      decision: normalizeDecision(raw.decision, objects)
+      decision: normalizeDecision(raw.decision, objects),
+      canvas: normalizeCanvas(raw.canvas, objects)
     };
   }
 
@@ -574,6 +687,21 @@
     return state;
   }
 
+  function migrateV7(raw) {
+    const state = defaultState();
+    state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
+      const normalized = normalizeProject(project);
+      if (normalized) addActivity(normalized, 'migrated', 'Project upgraded to Canvas & Structured Thinking');
+      return normalized;
+    }).filter(Boolean) : [];
+    state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.identity = normalizeIdentity(raw.identity);
+    state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
+    state.updatedAt = nowIso();
+    return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -582,6 +710,7 @@
     if (raw.schemaVersion === 4) return migrateV4(raw);
     if (raw.schemaVersion === 5) return migrateV5(raw);
     if (raw.schemaVersion === 6) return migrateV6(raw);
+    if (raw.schemaVersion === 7) return migrateV7(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -707,6 +836,13 @@
     copy.decision.assessments = copy.decision.assessments.map((assessment)=>({...assessment,id:id('da'),decisionId:decisionMap.get(assessment.decisionId)||'',optionId:optionMap.get(assessment.optionId)||'',criterionId:criterionMap.get(assessment.criterionId)||'',createdAt:copy.createdAt,updatedAt:copy.createdAt})).filter(x=>x.decisionId&&x.optionId&&x.criterionId);
     copy.decision.risks = copy.decision.risks.map((risk)=>({...risk,id:id('dk'),decisionId:decisionMap.get(risk.decisionId)||'',optionId:optionMap.get(risk.optionId)||'',createdAt:copy.createdAt,updatedAt:copy.createdAt})).filter(x=>x.decisionId);
     copy.decision.activeDecisionId = null; copy.decision.createdAt=copy.createdAt; copy.decision.updatedAt=copy.createdAt;
+    const boardMap = new Map();
+    copy.canvas.boards = copy.canvas.boards.map((board) => { const oldId = board.id, next = id('cb'); boardMap.set(oldId, next); return { ...board, id: next, createdAt: copy.createdAt, updatedAt: copy.createdAt }; });
+    const nodeMap = new Map();
+    copy.canvas.nodes = copy.canvas.nodes.map((node) => { const oldId = node.id, next = id('cn'); nodeMap.set(oldId, next); return { ...node, id: next, boardId: boardMap.get(node.boardId) || '', objectId: objectMap.get(node.objectId) || '', createdAt: copy.createdAt, updatedAt: copy.createdAt }; }).filter((node) => node.boardId);
+    copy.canvas.edges = copy.canvas.edges.map((edge) => ({ ...edge, id: id('ce'), boardId: boardMap.get(edge.boardId) || '', fromNodeId: nodeMap.get(edge.fromNodeId) || '', toNodeId: nodeMap.get(edge.toNodeId) || '', createdAt: copy.createdAt })).filter((edge) => edge.boardId && edge.fromNodeId && edge.toNodeId);
+    copy.canvas.frames = copy.canvas.frames.map((frame) => ({ ...frame, id: id('cf'), boardId: boardMap.get(frame.boardId) || '', nodeIds: frame.nodeIds.map((nodeId) => nodeMap.get(nodeId)).filter(Boolean), createdAt: copy.createdAt, updatedAt: copy.createdAt })).filter((frame) => frame.boardId);
+    copy.canvas.activeBoardId = null; copy.canvas.createdAt = copy.createdAt; copy.canvas.updatedAt = copy.createdAt;
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
   }
@@ -828,6 +964,27 @@
     const decisionMetricCriteria = root.querySelector('[data-scw-decision-metric-criteria]');
     const decisionMetricDecided = root.querySelector('[data-scw-decision-metric-decided]');
 
+    const canvasBoardForm = root.querySelector('[data-scw-canvas-board-form]');
+    const canvasBoardList = root.querySelector('[data-scw-canvas-board-list]');
+    const canvasActive = root.querySelector('[data-scw-canvas-active]');
+    const canvasSurface = root.querySelector('[data-scw-canvas-surface]');
+    const canvasLines = root.querySelector('[data-scw-canvas-lines]');
+    const canvasSurfaceEmpty = root.querySelector('[data-scw-canvas-surface-empty]');
+    const canvasNodeForm = root.querySelector('[data-scw-canvas-node-form]');
+    const canvasNodeObject = root.querySelector('[data-scw-canvas-node-object]');
+    const canvasEdgeForm = root.querySelector('[data-scw-canvas-edge-form]');
+    const canvasEdgeFrom = root.querySelector('[data-scw-canvas-edge-from]');
+    const canvasEdgeTo = root.querySelector('[data-scw-canvas-edge-to]');
+    const canvasEdgeList = root.querySelector('[data-scw-canvas-edge-list]');
+    const canvasFrameForm = root.querySelector('[data-scw-canvas-frame-form]');
+    const canvasFrameNodes = root.querySelector('[data-scw-canvas-frame-nodes]');
+    const canvasFrameList = root.querySelector('[data-scw-canvas-frame-list]');
+    const canvasSynthesis = root.querySelector('[data-scw-canvas-synthesis]');
+    const canvasMetricBoards = root.querySelector('[data-scw-canvas-metric-boards]');
+    const canvasMetricNodes = root.querySelector('[data-scw-canvas-metric-nodes]');
+    const canvasMetricEdges = root.querySelector('[data-scw-canvas-metric-edges]');
+    const canvasMetricFrames = root.querySelector('[data-scw-canvas-metric-frames]');
+
 
     function renderIdentity() {
       const authenticated = Boolean(IDENTITY_CONFIG.authenticated);
@@ -836,7 +993,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.6.1 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.7.0 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1192,6 +1349,64 @@
       if(!active||active.status!=='decided'){decisionSummary.innerHTML='<span>No finalized decision yet.</span>';}else{const selected=options.find(x=>x.id===active.selectedOptionId);decisionSummary.innerHTML='';const strong=document.createElement('strong');strong.textContent=selected?selected.label:'Decision finalized';const p=document.createElement('p');p.textContent=active.rationale;const meta=document.createElement('span');meta.textContent=`${active.confidence.toUpperCase()} CONFIDENCE · ${formatTime(active.decidedAt||active.updatedAt)}`;decisionSummary.append(strong,p,meta);}
     }
 
+    function renderCanvas(project) {
+      if (!canvasBoardList) return;
+      const c = project.canvas || canvasTemplate();
+      const active = c.boards.find((board) => board.id === c.activeBoardId) || null;
+      const nodes = active ? c.nodes.filter((node) => node.boardId === active.id) : [];
+      const nodeIds = new Set(nodes.map((node) => node.id));
+      const edges = active ? c.edges.filter((edge) => edge.boardId === active.id && nodeIds.has(edge.fromNodeId) && nodeIds.has(edge.toNodeId)) : [];
+      const frames = active ? c.frames.filter((frame) => frame.boardId === active.id) : [];
+      if (canvasMetricBoards) canvasMetricBoards.textContent = String(c.boards.length);
+      if (canvasMetricNodes) canvasMetricNodes.textContent = String(c.nodes.length);
+      if (canvasMetricEdges) canvasMetricEdges.textContent = String(c.edges.length);
+      if (canvasMetricFrames) canvasMetricFrames.textContent = String(c.frames.length);
+      if (canvasActive) canvasActive.textContent = active ? `${active.title} · ${active.status.toUpperCase()}` : 'No active board selected.';
+
+      canvasBoardList.innerHTML = '';
+      if (!c.boards.length) canvasBoardList.innerHTML = '<div class="scw-canvas-empty">No Canvas boards yet.</div>';
+      c.boards.forEach((board) => {
+        const row = document.createElement('article'); row.className = `scw-canvas-row${board.id === c.activeBoardId ? ' is-active' : ''}`;
+        const copy = document.createElement('div'); const strong = document.createElement('strong'); strong.textContent = board.title; const small = document.createElement('span'); small.textContent = board.description || 'No board purpose recorded.'; copy.append(strong, small);
+        const controls = document.createElement('div'); controls.className = 'scw-canvas-row-controls';
+        const status = document.createElement('select'); ['draft','working','ready'].forEach((value) => { const option=document.createElement('option'); option.value=value; option.textContent=value[0].toUpperCase()+value.slice(1); status.appendChild(option); }); status.value=board.status;
+        status.addEventListener('change', () => { board.status = CANVAS_BOARD_STATUS.has(status.value) ? status.value : 'draft'; board.updatedAt = nowIso(); touchCanvas(project); persist('Canvas board status saved'); renderCanvas(project); });
+        const activate = document.createElement('button'); activate.type='button'; activate.className='scw-card-action'; activate.textContent=board.id===c.activeBoardId?'Active':'Open'; activate.addEventListener('click',()=>{c.activeBoardId=board.id;touchCanvas(project);persist('Active Canvas board saved');renderCanvas(project);});
+        const remove = document.createElement('button'); remove.type='button'; remove.className='scw-card-action'; remove.textContent='Delete'; remove.addEventListener('click',()=>{if(!window.confirm(`Delete Canvas board “${board.title}” and its nodes, relationships, and frames?`))return;const ids=new Set(c.nodes.filter(node=>node.boardId===board.id).map(node=>node.id));c.nodes=c.nodes.filter(node=>node.boardId!==board.id);c.edges=c.edges.filter(edge=>edge.boardId!==board.id&&!ids.has(edge.fromNodeId)&&!ids.has(edge.toNodeId));c.frames=c.frames.filter(frame=>frame.boardId!==board.id);c.boards=c.boards.filter(item=>item.id!==board.id);c.activeBoardId=c.boards[0]?c.boards[0].id:null;touchCanvas(project);addActivity(project,'canvas-board-deleted',`Canvas board deleted: ${board.title}`);persist('Canvas board deleted');renderCanvas(project);});
+        controls.append(status, activate, remove); row.append(copy, controls); canvasBoardList.appendChild(row);
+      });
+
+      if (canvasNodeObject) {
+        canvasNodeObject.innerHTML = '<option value="">No linked object</option>';
+        project.objects.filter((object)=>!object.archivedAt).sort(objectSort).forEach((object)=>{const option=document.createElement('option');option.value=object.id;option.textContent=`${OBJECT_LABELS[object.type]} · ${object.title}`;canvasNodeObject.appendChild(option);});
+      }
+      const fillNodeSelect = (select, emptyLabel) => { if(!select)return; select.innerHTML=`<option value="">${emptyLabel}</option>`; nodes.forEach((node)=>{const option=document.createElement('option');option.value=node.id;option.textContent=`${node.type.toUpperCase()} · ${node.title}`;select.appendChild(option);}); };
+      fillNodeSelect(canvasEdgeFrom,'Choose node'); fillNodeSelect(canvasEdgeTo,'Choose node');
+      if (canvasFrameNodes) { canvasFrameNodes.innerHTML=''; nodes.forEach((node)=>{const option=document.createElement('option');option.value=node.id;option.textContent=`${node.type.toUpperCase()} · ${node.title}`;canvasFrameNodes.appendChild(option);}); }
+
+      if (canvasSurface) {
+        canvasSurface.querySelectorAll('.scw-canvas-node').forEach((node)=>node.remove());
+        if (canvasLines) canvasLines.innerHTML='';
+        if (canvasSurfaceEmpty) { canvasSurfaceEmpty.hidden = Boolean(active && nodes.length); canvasSurfaceEmpty.textContent = active ? 'This board is empty. Add a node below.' : 'Select or create a board to begin mapping.'; }
+        if (active) {
+          edges.forEach((edge)=>{const from=nodes.find((node)=>node.id===edge.fromNodeId),to=nodes.find((node)=>node.id===edge.toNodeId);if(!from||!to||!canvasLines)return;const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.setAttribute('x1',String(from.x+90));line.setAttribute('y1',String(from.y+40));line.setAttribute('x2',String(to.x+90));line.setAttribute('y2',String(to.y+40));line.setAttribute('data-relation',edge.relation);canvasLines.appendChild(line);});
+          nodes.forEach((node)=>{
+            const card=document.createElement('article');card.className=`scw-canvas-node scw-canvas-node-${node.type}`;card.style.left=`${node.x}px`;card.style.top=`${node.y}px`;card.dataset.nodeId=node.id;
+            const type=document.createElement('span');type.textContent=node.type.toUpperCase();const strong=document.createElement('strong');strong.textContent=node.title;const body=document.createElement('p');body.textContent=node.body||'No detail.';const actions=document.createElement('div');actions.className='scw-canvas-node-actions';
+            if(node.objectId){const open=document.createElement('button');open.type='button';open.textContent='Object';open.addEventListener('click',(event)=>{event.stopPropagation();project.activeObjectId=node.objectId;persist();render();objectEditor.scrollIntoView({behavior:'auto',block:'start'});});actions.appendChild(open);}
+            const remove=document.createElement('button');remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`Delete ${node.title}`);remove.addEventListener('click',(event)=>{event.stopPropagation();removeCanvasNode(project,node.id);addActivity(project,'canvas-node-deleted',`Canvas node deleted: ${node.title}`);persist('Canvas node deleted');renderCanvas(project);});actions.appendChild(remove);card.append(type,strong,body,actions);
+            card.addEventListener('pointerdown',(event)=>{if(event.target.closest('button'))return;const startX=event.clientX,startY=event.clientY,originX=node.x,originY=node.y;card.setPointerCapture(event.pointerId);card.classList.add('is-dragging');const move=(ev)=>{node.x=Math.max(0,Math.min(820,originX+(ev.clientX-startX)));node.y=Math.max(0,Math.min(420,originY+(ev.clientY-startY)));card.style.left=`${node.x}px`;card.style.top=`${node.y}px`;};const up=()=>{card.classList.remove('is-dragging');card.removeEventListener('pointermove',move);card.removeEventListener('pointerup',up);node.updatedAt=nowIso();touchCanvas(project);persist('Canvas layout saved');renderCanvas(project);};card.addEventListener('pointermove',move);card.addEventListener('pointerup',up);});
+            canvasSurface.appendChild(card);
+          });
+        }
+      }
+
+      canvasEdgeList.innerHTML=''; if(!edges.length)canvasEdgeList.innerHTML='<div class="scw-canvas-empty">No relationships on the active board.</div>';
+      edges.forEach((edge)=>{const from=nodes.find(node=>node.id===edge.fromNodeId),to=nodes.find(node=>node.id===edge.toNodeId);const row=document.createElement('article');row.className='scw-canvas-record';const strong=document.createElement('strong');strong.textContent=`${from?from.title:'Node'} → ${to?to.title:'Node'}`;const meta=document.createElement('span');meta.textContent=`${edge.relation}${edge.label?` · ${edge.label}`:''}`;const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action';remove.textContent='Remove';remove.addEventListener('click',()=>{c.edges=c.edges.filter(item=>item.id!==edge.id);touchCanvas(project);persist('Canvas relationship removed');renderCanvas(project);});row.append(strong,meta,remove);canvasEdgeList.appendChild(row);});
+      canvasFrameList.innerHTML=''; if(!frames.length)canvasFrameList.innerHTML='<div class="scw-canvas-empty">No frames on the active board.</div>';
+      frames.forEach((frame)=>{const row=document.createElement('article');row.className='scw-canvas-record';const strong=document.createElement('strong');strong.textContent=frame.title;const meta=document.createElement('span');meta.textContent=`${frame.nodeIds.length} nodes${frame.description?` · ${frame.description}`:''}`;const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action';remove.textContent='Remove';remove.addEventListener('click',()=>{c.frames=c.frames.filter(item=>item.id!==frame.id);touchCanvas(project);persist('Canvas frame removed');renderCanvas(project);});row.append(strong,meta,remove);canvasFrameList.appendChild(row);});
+    }
+
     function renderActive() {
       const project = activeProject();
       activePanel.hidden = !project;
@@ -1208,6 +1423,7 @@
       renderResearch(project);
       renderAnalysis(project);
       renderDecision(project);
+      renderCanvas(project);
       renderObjects(project);
       renderObjectEditor(project);
     }
@@ -1305,7 +1521,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.6.1', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.7.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1330,16 +1546,16 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.6.1, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.7.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -1442,9 +1658,19 @@
     decisionRiskForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.decision.risks.length>=MAX_DECISION_RISKS)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionRiskForm),risk=String(data.get('risk')||'').trim().slice(0,2400);if(!risk)return;const stamp=nowIso();project.decision.risks.push({id:id('dk'),decisionId:active.id,optionId:'',risk,likelihood:DECISION_RISK_LEVEL.has(String(data.get('likelihood')))?String(data.get('likelihood')):'medium',impact:DECISION_RISK_LEVEL.has(String(data.get('impact')))?String(data.get('impact')):'medium',mitigation:String(data.get('mitigation')||'').slice(0,2000),createdAt:stamp,updatedAt:stamp});touchDecision(project);addActivity(project,'decision-risk','Decision risk recorded');decisionRiskForm.reset();persist('Risk saved');renderDecision(project)});
     decisionFinalForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionFinalForm),selectedOptionId=String(data.get('selectedOptionId')||''),rationale=String(data.get('rationale')||'').trim().slice(0,6000);const selected=project.decision.options.find(x=>x.id===selectedOptionId&&x.decisionId===active.id);if(!selected||!rationale)return;const stamp=nowIso();active.selectedOptionId=selected.id;active.rationale=rationale;active.confidence=DECISION_CONFIDENCE.has(String(data.get('confidence')))?String(data.get('confidence')):'medium';active.status='decided';active.decidedAt=stamp;active.updatedAt=stamp;project.decision.options.filter(x=>x.decisionId===active.id).forEach(x=>{x.status=x.id===selected.id?'selected':(x.status==='rejected'?'rejected':'shortlisted');x.updatedAt=stamp;});const obj=objectById(project,active.decisionObjectId);if(obj){obj.status='ready';obj.summary=`Selected: ${selected.label}`.slice(0,1200);obj.content=`Decision: ${active.question}\n\nSelected option: ${selected.label}\n\nRationale:\n${rationale}\n\nConfidence: ${active.confidence}`.slice(0,50000);obj.updatedAt=stamp;}touchDecision(project);addActivity(project,'decision-finalized',`Decision finalized: ${active.title}`);persist('Decision finalized');render();});
 
+    if (canvasBoardForm) canvasBoardForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.canvas.boards.length>=MAX_CANVAS_BOARDS)return;const data=new FormData(canvasBoardForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso();const board={id:id('cb'),title,description:String(data.get('description')||'').slice(0,2400),status:'working',createdAt:stamp,updatedAt:stamp};project.canvas.boards.push(board);project.canvas.activeBoardId=board.id;touchCanvas(project);addActivity(project,'canvas-board-created',`Canvas board created: ${title}`);canvasBoardForm.reset();persist('Canvas board created');renderCanvas(project);});
+
+    if (canvasNodeForm) canvasNodeForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.canvas.nodes.length>=MAX_CANVAS_NODES)return;const board=project.canvas.boards.find(item=>item.id===project.canvas.activeBoardId);if(!board)return;const data=new FormData(canvasNodeForm),objectId=String(data.get('objectId')||''),linked=objectId?objectById(project,objectId):null;let title=String(data.get('title')||'').trim().slice(0,240);if(!title&&linked)title=linked.title;if(!title)return;const existing=project.canvas.nodes.filter(node=>node.boardId===board.id).length;const stamp=nowIso();const node={id:id('cn'),boardId:board.id,type:CANVAS_NODE_TYPE.has(String(data.get('type')))?String(data.get('type')):'note',title,body:String(data.get('body')||'').slice(0,4000),objectId:linked?linked.id:'',x:24+(existing%4)*205,y:24+(Math.floor(existing/4)%5)*95,tags:[],createdAt:stamp,updatedAt:stamp};project.canvas.nodes.push(node);board.updatedAt=stamp;touchCanvas(project);addActivity(project,'canvas-node-created',`Canvas node added: ${title}`);canvasNodeForm.reset();persist('Canvas node added');renderCanvas(project);});
+
+    if (canvasEdgeForm) canvasEdgeForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.canvas.edges.length>=MAX_CANVAS_EDGES)return;const board=project.canvas.boards.find(item=>item.id===project.canvas.activeBoardId);if(!board)return;const data=new FormData(canvasEdgeForm),fromNodeId=String(data.get('fromNodeId')||''),toNodeId=String(data.get('toNodeId')||'');if(!fromNodeId||!toNodeId||fromNodeId===toNodeId)return;const valid=project.canvas.nodes.filter(node=>node.boardId===board.id).map(node=>node.id);if(!valid.includes(fromNodeId)||!valid.includes(toNodeId))return;project.canvas.edges.push({id:id('ce'),boardId:board.id,fromNodeId,toNodeId,relation:CANVAS_RELATION_TYPE.has(String(data.get('relation')))?String(data.get('relation')):'relates-to',label:String(data.get('label')||'').slice(0,240),createdAt:nowIso()});touchCanvas(project);addActivity(project,'canvas-edge-created','Canvas relationship recorded');canvasEdgeForm.reset();persist('Canvas relationship saved');renderCanvas(project);});
+
+    if (canvasFrameForm) canvasFrameForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.canvas.frames.length>=MAX_CANVAS_FRAMES)return;const board=project.canvas.boards.find(item=>item.id===project.canvas.activeBoardId);if(!board)return;const data=new FormData(canvasFrameForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const valid=new Set(project.canvas.nodes.filter(node=>node.boardId===board.id).map(node=>node.id));const selected=canvasFrameNodes?Array.from(canvasFrameNodes.selectedOptions).map(option=>option.value).filter(value=>valid.has(value)):[];const stamp=nowIso();project.canvas.frames.push({id:id('cf'),boardId:board.id,title,description:String(data.get('description')||'').slice(0,1600),nodeIds:selected.slice(0,100),createdAt:stamp,updatedAt:stamp});touchCanvas(project);addActivity(project,'canvas-frame-created',`Canvas frame created: ${title}`);canvasFrameForm.reset();persist('Canvas frame saved');renderCanvas(project);});
+
+    if (canvasSynthesis) canvasSynthesis.addEventListener('click',()=>{const project=activeProject();if(!project||project.objects.length>=MAX_OBJECTS)return;const board=project.canvas.boards.find(item=>item.id===project.canvas.activeBoardId);if(!board)return;const nodes=project.canvas.nodes.filter(node=>node.boardId===board.id),edges=project.canvas.edges.filter(edge=>edge.boardId===board.id),frames=project.canvas.frames.filter(frame=>frame.boardId===board.id);const byId=new Map(nodes.map(node=>[node.id,node]));const lines=[`# ${board.title}`,board.description?`\n${board.description}`:'','\n## Nodes',...nodes.map(node=>`- [${node.type}] ${node.title}${node.body?`: ${node.body}`:''}`),'\n## Relationships',...edges.map(edge=>`- ${byId.get(edge.fromNodeId)?.title||'Node'} —${edge.relation}${edge.label?` (${edge.label})`:''}→ ${byId.get(edge.toNodeId)?.title||'Node'}`),'\n## Frames',...frames.map(frame=>`- ${frame.title}: ${frame.nodeIds.map(nodeId=>byId.get(nodeId)?.title).filter(Boolean).join(', ')}${frame.description?` — ${frame.description}`:''}`)];const obj=objectTemplate('document',`${board.title} — Canvas synthesis`);obj.status='ready';obj.summary=`Structured synthesis of ${nodes.length} nodes, ${edges.length} relationships, and ${frames.length} frames.`;obj.content=lines.filter(Boolean).join('\n').slice(0,50000);obj.provenance.sourceType='tool';obj.provenance.sourceTitle='Workspace Canvas';obj.provenance.capturedAt=nowIso();project.objects.push(obj);project.activeObjectId=obj.id;touchCanvas(project);addActivity(project,'canvas-synthesis',`Canvas synthesis captured: ${board.title}`);persist('Canvas synthesis captured');render();objectEditor.scrollIntoView({behavior:'auto',block:'start'});});
+
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.6.1 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.7.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1489,7 +1715,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.6.1', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.7.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -1504,7 +1730,7 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 
@@ -1527,12 +1753,15 @@
             addActivity(project, 'handoff', `Opened ${label}${object ? ` with ${OBJECT_LABELS[object.type]}` : ''}`);
             target.searchParams.set('sc_workspace_project', project.id);
             if (object) target.searchParams.set('sc_workspace_object', object.id);
+            const activeBoard = project.canvas && project.canvas.boards ? project.canvas.boards.find((board) => board.id === project.canvas.activeBoardId) : null;
+            if (activeBoard && key === 'catalyst-canvas') target.searchParams.set('sc_workspace_canvas', activeBoard.id);
             target.searchParams.set('sc_workspace_origin', 'workspace');
             target.searchParams.set('sc_workspace_return', '1');
             window.sessionStorage.setItem(HANDOFF_KEY, JSON.stringify({
               schema: HANDOFF_SCHEMA,
               projectId: project.id,
               objectId: object ? object.id : null,
+              canvasBoardId: (project.canvas && key === 'catalyst-canvas') ? project.canvas.activeBoardId : null,
               destination: key,
               createdAt: stamp,
               returnUrl: root.dataset.returnUrl || window.location.href
@@ -1548,10 +1777,12 @@
       const params = new URLSearchParams(window.location.search);
       const returnProject = params.get('sc_workspace_project');
       const returnObject = params.get('sc_workspace_object');
+      const returnCanvas = params.get('sc_workspace_canvas');
       const project = state.projects.find((item) => item.id === returnProject && !item.archivedAt);
       if (project) {
         state.activeProjectId = project.id;
         if (returnObject && project.objects.some((object) => object.id === returnObject && !object.archivedAt)) project.activeObjectId = returnObject;
+        if (returnCanvas && project.canvas && project.canvas.boards.some((board) => board.id === returnCanvas)) project.canvas.activeBoardId = returnCanvas;
         persist('Workspace context restored');
       }
     } catch (_) {}

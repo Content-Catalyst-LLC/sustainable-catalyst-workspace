@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V061, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V060, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V041, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V040, '') === '1' ||
@@ -47,7 +48,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.6.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.7.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -86,6 +87,11 @@ final class SC_Workspace {
             'callback' => array($this, 'decision_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/canvas-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'canvas_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -101,16 +107,17 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v7',
-            'project_schema' => 'sc-workspace-project/5.0',
+            'persistence' => 'browser-local-projects-v8',
+            'project_schema' => 'sc-workspace-project/6.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
+            'canvas_schema' => 'sc-workspace-canvas/1.0',
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 7,
+            'storage_schema_version' => 8,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -121,23 +128,24 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/5.0',
+            'schema' => 'sc-workspace-project-contract/6.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/5.0',
+            'project_schema' => 'sc-workspace-project/6.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
-            'export_schema' => 'sc-workspace-project-export/5.0',
-            'storage_schema_version' => 7,
+            'canvas_schema' => 'sc-workspace-canvas/1.0',
+            'export_schema' => 'sc-workspace-project-export/6.0',
+            'storage_schema_version' => 8,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
             'device_identity' => 'anonymous-pseudonymous-local-id',
             'account_sign_in_changes_storage' => false,
             'max_objects_per_project' => 250,
-            'handoff_schema' => 'sc-workspace-handoff/1.4',
-            'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_origin', 'sc_workspace_return'),
+            'handoff_schema' => 'sc-workspace-handoff/1.5',
+            'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_canvas', 'sc_workspace_origin', 'sc_workspace_return'),
         ));
     }
 
@@ -179,7 +187,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-analysis-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'project_schema' => 'sc-workspace-project/5.0',
+            'project_schema' => 'sc-workspace-project/6.0',
             'dataset_object_type' => 'dataset',
             'analysis_object_type' => 'analysis',
             'question_statuses' => array('open', 'resolved', 'deferred'),
@@ -206,7 +214,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-decision-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'decision_schema' => 'sc-workspace-decision/1.0',
-            'project_schema' => 'sc-workspace-project/5.0',
+            'project_schema' => 'sc-workspace-project/6.0',
             'decision_object_type' => 'decision',
             'decision_statuses' => array('framing', 'evaluating', 'decided', 'revisit'),
             'option_statuses' => array('candidate', 'shortlisted', 'selected', 'rejected'),
@@ -220,6 +228,26 @@ final class SC_Workspace {
             'max_risks_per_project' => 300,
             'references_workspace_object_ids' => true,
             'decision_content_in_handoff_url' => false,
+            'local_first' => true,
+        ));
+    }
+
+    public function canvas_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-canvas-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'canvas_schema' => 'sc-workspace-canvas/1.0',
+            'project_schema' => 'sc-workspace-project/6.0',
+            'board_statuses' => array('draft', 'working', 'ready'),
+            'node_types' => array('note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea'),
+            'relationship_types' => array('supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence'),
+            'max_boards_per_project' => 30,
+            'max_nodes_per_project' => 500,
+            'max_edges_per_project' => 1000,
+            'max_frames_per_project' => 100,
+            'references_workspace_object_ids' => true,
+            'synthesis_creates_document_object' => true,
+            'canvas_content_in_handoff_url' => false,
             'local_first' => true,
         ));
     }
@@ -238,8 +266,8 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 7,
-            'project_schema' => 'sc-workspace-project/5.0',
+            'storage_schema_version' => 8,
+            'project_schema' => 'sc-workspace-project/6.0',
             'state' => SC_Workspace_Platform::contract_status(),
         ));
     }
@@ -266,14 +294,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v061',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.6.1.css',
+            'sc-workspace-v070',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.7.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v061',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.6.1.js',
+            'sc-workspace-v070',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.7.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -282,7 +310,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v061', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v070', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -315,7 +343,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="7" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="8" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / PLATFORM</div>
                 <div class="scw-hero-grid">
@@ -334,7 +362,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.6.1 presents the complete Research → Evidence → Analysis → Decision loop as the dedicated Platform experience while projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. v0.7.0 extends the Research → Evidence → Analysis → Decision loop with native Canvas boards and structured thinking as the dedicated Platform experience while projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
             </div>
 
             <section class="scw-identity" aria-labelledby="scw-identity-title">
@@ -351,7 +379,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.6.1.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.7.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -690,6 +718,81 @@ final class SC_Workspace {
                     </div>
                 </section>
 
+                <section class="scw-canvas" aria-labelledby="scw-canvas-title">
+                    <div class="scw-canvas-head">
+                        <div>
+                            <div class="scw-kicker">CANVAS &amp; STRUCTURED THINKING</div>
+                            <h3 id="scw-canvas-title">Make relationships visible without flattening the reasoning.</h3>
+                            <p>Create project boards that connect questions, claims, evidence, data, analyses, decisions, systems, stakeholders, and ideas. Canvas nodes can reference existing Workspace Objects while relationships and frames preserve how the pieces fit together.</p>
+                        </div>
+                        <div class="scw-canvas-launchers" aria-label="Canvas tools">
+                            <a class="scw-button" data-scw-tool="catalyst-canvas" data-scw-canvas-handoff href="<?php echo esc_url(home_url('/platform/catalyst-canvas/')); ?>"><strong>Open Catalyst Canvas</strong></a>
+                            <button class="scw-button scw-button-primary" type="button" data-scw-canvas-synthesis>Capture synthesis</button>
+                        </div>
+                    </div>
+
+                    <div class="scw-canvas-metrics" aria-label="Canvas project metrics">
+                        <div><strong data-scw-canvas-metric-boards>0</strong><span>boards</span></div>
+                        <div><strong data-scw-canvas-metric-nodes>0</strong><span>nodes</span></div>
+                        <div><strong data-scw-canvas-metric-edges>0</strong><span>relationships</span></div>
+                        <div><strong data-scw-canvas-metric-frames>0</strong><span>frames</span></div>
+                    </div>
+
+                    <div class="scw-canvas-layout">
+                        <aside class="scw-canvas-sidebar" aria-labelledby="scw-canvas-board-heading">
+                            <div class="scw-canvas-panel-head"><span>01 / BOARDS</span><h4 id="scw-canvas-board-heading">Thinking boards</h4></div>
+                            <div class="scw-canvas-active"><span>ACTIVE BOARD</span><strong data-scw-canvas-active>No active board selected.</strong></div>
+                            <form class="scw-canvas-form" data-scw-canvas-board-form>
+                                <label><span>Board title</span><input type="text" name="title" maxlength="200" required placeholder="System map, argument map, stakeholder landscape…"></label>
+                                <label><span>Purpose</span><textarea name="description" rows="3" maxlength="2400" placeholder="What are you trying to understand or structure?"></textarea></label>
+                                <button class="scw-button" type="submit">Create board</button>
+                            </form>
+                            <div class="scw-canvas-list" data-scw-canvas-board-list></div>
+                        </aside>
+
+                        <section class="scw-canvas-main" aria-labelledby="scw-canvas-surface-heading">
+                            <div class="scw-canvas-panel-head"><span>02 / MAP</span><h4 id="scw-canvas-surface-heading">Structured canvas</h4></div>
+                            <div class="scw-canvas-surface" data-scw-canvas-surface>
+                                <svg class="scw-canvas-lines" data-scw-canvas-lines aria-hidden="true"></svg>
+                                <div class="scw-canvas-surface-empty" data-scw-canvas-surface-empty>Select or create a board to begin mapping.</div>
+                            </div>
+
+                            <form class="scw-canvas-form scw-canvas-node-form" data-scw-canvas-node-form>
+                                <div class="scw-canvas-form-row">
+                                    <label><span>Node type</span><select name="type"><option value="note">Note</option><option value="question">Question</option><option value="claim">Claim</option><option value="evidence">Evidence</option><option value="data">Data</option><option value="analysis">Analysis</option><option value="decision">Decision</option><option value="system">System</option><option value="stakeholder">Stakeholder</option><option value="idea">Idea</option></select></label>
+                                    <label><span>Link Workspace Object</span><select name="objectId" data-scw-canvas-node-object><option value="">No linked object</option></select></label>
+                                </div>
+                                <label><span>Node title</span><input type="text" name="title" maxlength="240" placeholder="A concise proposition, actor, finding, or concept"></label>
+                                <label><span>Detail</span><textarea name="body" rows="3" maxlength="4000" placeholder="Context, explanation, or working note."></textarea></label>
+                                <button class="scw-button" type="submit">Add node</button>
+                            </form>
+                        </section>
+                    </div>
+
+                    <div class="scw-canvas-structure-grid">
+                        <section class="scw-canvas-panel" aria-labelledby="scw-canvas-rel-heading">
+                            <div class="scw-canvas-panel-head"><span>03 / RELATIONSHIPS</span><h4 id="scw-canvas-rel-heading">Typed relationships</h4></div>
+                            <form class="scw-canvas-form" data-scw-canvas-edge-form>
+                                <div class="scw-canvas-form-row"><label><span>From</span><select name="fromNodeId" data-scw-canvas-edge-from><option value="">Choose node</option></select></label><label><span>Relationship</span><select name="relation"><option value="supports">Supports</option><option value="contradicts">Contradicts</option><option value="depends-on">Depends on</option><option value="influences">Influences</option><option value="contains">Contains</option><option value="causes">Causes</option><option value="relates-to">Relates to</option><option value="sequence">Sequence</option></select></label></div>
+                                <div class="scw-canvas-form-row"><label><span>To</span><select name="toNodeId" data-scw-canvas-edge-to><option value="">Choose node</option></select></label><label><span>Label</span><input type="text" name="label" maxlength="240" placeholder="Optional nuance"></label></div>
+                                <button class="scw-button" type="submit">Connect nodes</button>
+                            </form>
+                            <div class="scw-canvas-list" data-scw-canvas-edge-list></div>
+                        </section>
+
+                        <section class="scw-canvas-panel" aria-labelledby="scw-canvas-frame-heading">
+                            <div class="scw-canvas-panel-head"><span>04 / FRAMES</span><h4 id="scw-canvas-frame-heading">Group meaning</h4></div>
+                            <form class="scw-canvas-form" data-scw-canvas-frame-form>
+                                <label><span>Frame title</span><input type="text" name="title" maxlength="200" required placeholder="Key uncertainty, stakeholder cluster, causal chain…"></label>
+                                <label><span>Description</span><textarea name="description" rows="3" maxlength="1600"></textarea></label>
+                                <label><span>Nodes</span><select name="nodeIds" multiple size="6" data-scw-canvas-frame-nodes></select></label>
+                                <button class="scw-button" type="submit">Create frame</button>
+                            </form>
+                            <div class="scw-canvas-list" data-scw-canvas-frame-list></div>
+                        </section>
+                    </div>
+                </section>
+
                 <section class="scw-objects" aria-labelledby="scw-objects-title">
                     <div class="scw-object-head">
                         <div>
@@ -811,7 +914,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.6.1. Sign-in does not upload project content.</div>
+                <div>Guest and signed-in sessions use device-local project storage in v0.7.0. Sign-in does not upload project content.</div>
             </footer>
         </section>
         <?php
@@ -828,8 +931,8 @@ final class SC_Workspace {
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
                 <div class="scw-platform-hero-grid">
                     <div>
-                        <h1>Research. Analyze. Decide. Carry the work forward.</h1>
-                        <p>Workspace is the free personal operating environment across Sustainable Catalyst—one place to organize projects, preserve evidence, structure analysis, record decisions, and move deliberately between public tools without losing the thread of the work.</p>
+                        <h1>Research. Analyze. Decide. Map the reasoning.</h1>
+                        <p>Workspace is the free personal operating environment across Sustainable Catalyst—one place to organize projects, preserve evidence, structure analysis, record decisions, structure complex thinking, and move deliberately between public tools without losing the thread of the work.</p>
                         <div class="scw-platform-actions">
                             <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
                             <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
@@ -838,7 +941,7 @@ final class SC_Workspace {
                     <aside class="scw-platform-state" aria-label="Workspace access and persistence">
                         <span>FREE PUBLIC ACCESS</span>
                         <strong>No login wall.</strong>
-                        <p>Projects remain on this device in v0.6.1. Optional sign-in establishes identity only; it does not upload or synchronize project content.</p>
+                        <p>Projects remain on this device in v0.7.0. Optional sign-in establishes identity only; it does not upload or synchronize project content.</p>
                     </aside>
                 </div>
             </header>
@@ -848,6 +951,7 @@ final class SC_Workspace {
                 <article><span>02 / EVIDENCE</span><strong>Preserve what supports the work.</strong><p>Sources and evidence become reusable Workspace Objects with provenance rather than disposable browser context.</p></article>
                 <article><span>03 / ANALYSIS</span><strong>Make assumptions visible.</strong><p>Register datasets, variables, methods, comparisons, findings, and links back to evidence.</p></article>
                 <article><span>04 / DECISION</span><strong>Record the reasoning.</strong><p>Compare options, weight criteria, assess risks, and preserve the selected course with rationale and confidence.</p></article>
+                <article><span>05 / CANVAS</span><strong>Map the system around the decision.</strong><p>Arrange questions, claims, evidence, data, analyses, decisions, systems, stakeholders, and ideas into reusable structured-thinking boards.</p></article>
             </section>
 
             <section class="scw-platform-principles" aria-label="Workspace principles">
