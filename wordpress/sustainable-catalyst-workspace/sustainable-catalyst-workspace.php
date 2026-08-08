@@ -3,7 +3,7 @@
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/workspace/
  * Description: Free public project workspace connecting Sustainable Catalyst research, analysis, decision, and creation tools.
- * Version: 0.4.0
+ * Version: 0.4.1
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '0.4.0');
+define('SC_WORKSPACE_VERSION', '0.4.1');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));

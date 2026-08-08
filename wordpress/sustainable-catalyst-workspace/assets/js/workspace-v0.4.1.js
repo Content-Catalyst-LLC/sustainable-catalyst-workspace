@@ -3,19 +3,23 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_4';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_4_1';
+  const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v1';
-  const STORAGE_VERSION = 4;
-  const PROJECT_SCHEMA = 'sc-workspace-project/3.0';
+  const STORAGE_VERSION = 5;
+  const PROJECT_SCHEMA = 'sc-workspace-project/3.1';
+  const LEGACY_PROJECT_SCHEMA_V3 = 'sc-workspace-project/3.0';
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/3.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/3.1';
+  const LEGACY_EXPORT_SCHEMA_V3 = 'sc-workspace-project-export/3.0';
   const LEGACY_EXPORT_SCHEMA_V2 = 'sc-workspace-project-export/2.0';
   const LEGACY_EXPORT_SCHEMA_V1 = 'sc-workspace-project-export/1.0';
   const OBJECT_EXPORT_SCHEMA = 'sc-workspace-object-export/1.0';
   const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.2';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
+  const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const MAX_ACTIVITY = 60;
   const MAX_RECENT_TOOLS = 8;
   const MAX_OBJECTS = 250;
@@ -37,6 +41,50 @@
   };
 
   let recoveryNotice = '';
+  let memoryDeviceId = null;
+  const IDENTITY_CONFIG = (window.SCWorkspaceIdentity && typeof window.SCWorkspaceIdentity === 'object') ? window.SCWorkspaceIdentity : {};
+
+  function accountSession() { return IDENTITY_CONFIG.authenticated ? 'authenticated' : 'anonymous'; }
+
+  function deviceId() {
+    if (memoryDeviceId) return memoryDeviceId;
+    try {
+      const existing = window.localStorage.getItem(DEVICE_KEY);
+      if (existing && /^scwd-[a-zA-Z0-9-]{8,160}$/.test(existing)) { memoryDeviceId = existing; return memoryDeviceId; }
+      memoryDeviceId = id('scwd');
+      window.localStorage.setItem(DEVICE_KEY, memoryDeviceId);
+      return memoryDeviceId;
+    } catch (_) {
+      memoryDeviceId = memoryDeviceId || id('scwd');
+      return memoryDeviceId;
+    }
+  }
+
+  function identityTemplate() {
+    return {
+      schema: IDENTITY_SCHEMA,
+      deviceId: deviceId(),
+      session: accountSession(),
+      persistenceMode: 'device-local',
+      cloudSync: false,
+      serverProjectStorage: false,
+      updatedAt: nowIso()
+    };
+  }
+
+  function normalizeIdentity() { return identityTemplate(); }
+
+  function projectPersistenceTemplate() {
+    return {
+      scope: 'device',
+      deviceId: deviceId(),
+      syncState: 'local-only',
+      accountEligible: true,
+      serverStored: false
+    };
+  }
+
+  function normalizeProjectPersistence() { return projectPersistenceTemplate(); }
 
   function nowIso() { return new Date().toISOString(); }
 
@@ -51,7 +99,7 @@
 
   function defaultState() {
     const stamp = nowIso();
-    return { schemaVersion: STORAGE_VERSION, activeProjectId: null, projects: [], recentTools: [], createdAt: stamp, updatedAt: stamp };
+    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], createdAt: stamp, updatedAt: stamp };
   }
 
   function provenanceTemplate() {
@@ -176,6 +224,7 @@
     const project = {
       schema: PROJECT_SCHEMA,
       id: id('scwp'),
+      persistence: projectPersistenceTemplate(),
       title: String(title || 'Untitled project').trim().slice(0, 120) || 'Untitled project',
       description: String(description || '').trim().slice(0, 600),
       status: 'active',
@@ -271,6 +320,7 @@
     return {
       schema: PROJECT_SCHEMA,
       id: String(raw.id || id('scwp')).slice(0, 160),
+      persistence: normalizeProjectPersistence(raw.persistence),
       title: String(raw.title || 'Untitled project').trim().slice(0, 120) || 'Untitled project',
       description: String(raw.description || '').slice(0, 600),
       status: ALLOWED_STATUS.has(raw.status) ? raw.status : 'active',
@@ -333,12 +383,29 @@
     return state;
   }
 
+  function migrateV4(raw) {
+    const state = defaultState();
+    state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
+      const normalized = normalizeProject(project);
+      if (normalized) addActivity(normalized, 'migrated', 'Identity and persistence boundary added; project remains saved on this device');
+      return normalized;
+    }).filter(Boolean) : [];
+    state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.identity = normalizeIdentity(raw.identity);
+    state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
+    state.updatedAt = nowIso();
+    return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
     if (raw.schemaVersion === 2) return migrateV2(raw);
     if (raw.schemaVersion === 3) return migrateV3(raw);
+    if (raw.schemaVersion === 4) return migrateV4(raw);
     const state = defaultState();
+    state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
     state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
@@ -383,6 +450,8 @@
 
   function writeState(state) {
     state.schemaVersion = STORAGE_VERSION;
+    state.identity = normalizeIdentity(state.identity);
+    state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); });
     state.updatedAt = nowIso();
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -423,6 +492,7 @@
   function cloneProject(project) {
     const copy = normalizeProject(JSON.parse(JSON.stringify(project)));
     copy.id = id('scwp');
+    copy.persistence = projectPersistenceTemplate();
     copy.title = `${project.title} (Copy)`.slice(0, 120);
     copy.pinned = false;
     copy.createdAt = nowIso();
@@ -476,6 +546,15 @@
     const importFile = root.querySelector('[data-scw-import-file]');
     const recovery = root.querySelector('[data-scw-recovery]');
     const recoveryMessage = root.querySelector('[data-scw-recovery-message]');
+    const identityBadge = root.querySelector('[data-scw-identity-badge]');
+    const identityHeading = root.querySelector('[data-scw-identity-heading]');
+    const identityDetail = root.querySelector('[data-scw-identity-detail]');
+    const identityAccess = root.querySelector('[data-scw-identity-access]');
+    const identityNote = root.querySelector('[data-scw-identity-note]');
+    const deviceIdEl = root.querySelector('[data-scw-device-id]');
+    const loginLink = root.querySelector('[data-scw-login]');
+    const registerLink = root.querySelector('[data-scw-register]');
+    const logoutLink = root.querySelector('[data-scw-logout]');
 
     const objectCreateForm = root.querySelector('[data-scw-object-create-form]');
     const objectList = root.querySelector('[data-scw-object-list]');
@@ -513,6 +592,23 @@
     const researchMetricEvidence = root.querySelector('[data-scw-research-metric-evidence]');
     const researchMetricClaims = root.querySelector('[data-scw-research-metric-claims]');
 
+
+    function renderIdentity() {
+      const authenticated = Boolean(IDENTITY_CONFIG.authenticated);
+      state.identity = normalizeIdentity(state.identity);
+      if (identityBadge) identityBadge.textContent = authenticated ? 'SIGNED IN' : 'GUEST';
+      if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
+      if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
+      if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.4.1 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
+      if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
+      if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
+      if (registerLink) {
+        registerLink.hidden = authenticated || !IDENTITY_CONFIG.registrationEnabled;
+        registerLink.href = String(IDENTITY_CONFIG.registrationUrl || '#');
+      }
+    }
 
     function activeProject() {
       return state.projects.find((project) => project.id === state.activeProjectId && !project.archivedAt) || null;
@@ -829,6 +925,7 @@
     }
 
     function render() {
+      renderIdentity();
       renderFilters();
       renderList();
       renderActive();
@@ -909,7 +1006,8 @@
 
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.0', exportedAt: nowIso(), project: JSON.parse(JSON.stringify(project)) };
+      const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.1', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -934,7 +1032,7 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
           if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
@@ -1016,7 +1114,7 @@
 
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.4.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.4.1 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1061,7 +1159,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.1', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });

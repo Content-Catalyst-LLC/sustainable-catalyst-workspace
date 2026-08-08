@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-identity-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Identity Boundary v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "deviceId",
+    "session",
+    "persistenceMode",
+    "cloudSync",
+    "serverProjectStorage",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-identity/1.0"
+    },
+    "deviceId": {
+      "type": "string",
+      "pattern": "^scwd-[A-Za-z0-9-]{8,160}$"
+    },
+    "session": {
+      "enum": [
+        "anonymous",
+        "authenticated"
+      ]
+    },
+    "persistenceMode": {
+      "const": "device-local"
+    },
+    "cloudSync": {
+      "const": false
+    },
+    "serverProjectStorage": {
+      "const": false
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

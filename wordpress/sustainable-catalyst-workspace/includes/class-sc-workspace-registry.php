@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v040';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v040';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v041';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v041';
+    const LEGACY_PENDING_KEY_V040 = 'sc_workspace_registry_pending_v040';
     const LEGACY_PENDING_KEY_V030 = 'sc_workspace_registry_pending_v030';
     const LEGACY_PENDING_KEY_V020 = 'sc_workspace_registry_pending_v020';
     const LEGACY_PENDING_KEY_V010 = 'sc_workspace_registry_pending_v010';
@@ -74,6 +75,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V040);
         delete_option(self::LEGACY_PENDING_KEY_V030);
         delete_option(self::LEGACY_PENDING_KEY_V020);
         delete_option(self::LEGACY_PENDING_KEY_V010);
@@ -128,11 +130,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.3.0',
+            'previous_version' => '0.4.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Research Workspace: research questions, source capture, reading queue, evidence extraction, claims, evidence-to-source and evidence-to-claim links, research metrics, Research Librarian and Knowledge Library handoffs, and v0.3 project migration.',
+            'change_summary' => 'Identity, Accounts & Persistence Boundary: optional WordPress account recognition, anonymous-first access, stable device identity, project persistence metadata, explicit local-only sync state, sign-in/sign-out return flow, and storage migration to schema 5.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.4.0 adds a project-scoped Research Workspace that references local Workspace Object IDs. Research content remains in the current browser; no account, cloud project store, collaboration layer, or server-side synchronization is introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.4.1 introduces an account-aware identity boundary while preserving anonymous access. WordPress authentication may identify the current account, but projects remain device-local; no project content is uploaded, cloud synchronization remains disabled, and signing in does not change storage ownership.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
