@@ -1,4 +1,4 @@
-# Workspace v0.8.3.1 — Advisory Visual Integration & Workspace Editorial Shell
+# Workspace v0.9.0 — Advisory Visual Integration & Workspace Editorial Shell
 
 v0.8.3 is a visual/editorial integration release. It does not change storage schema 9, project schema `sc-workspace-project/7.0`, the canonical object model, identity boundary, handoff/return contracts, or the stable `/platform/` route.
 

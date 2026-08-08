@@ -2,8 +2,8 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.8.3.1.css'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.3.1.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.9.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.9.0.js'
 PLATFORM=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-platform.php'
 class PublicExperienceTests(unittest.TestCase):
     def test_advisory_aligned_editorial_hero(self):
@@ -27,7 +27,7 @@ class PublicExperienceTests(unittest.TestCase):
             self.assertIn(token,c)
     def test_project_mode_navigation_still_present(self):
         p=PHP.read_text(); j=JS.read_text()
-        for mode in ('overview','research','analysis','decision','canvas','objects'):
+        for mode in ('overview','research','analysis','decision','canvas','traceability','objects'):
             self.assertIn(f'data-scw-project-mode="{mode}"',p)
             self.assertIn(f'data-scw-project-panel="{mode}"',p)
         self.assertIn('function setProjectMode(mode)',j)
@@ -53,12 +53,12 @@ class PublicExperienceTests(unittest.TestCase):
         self.assertIn("const NAV_BACKUP_KEY = 'sc_workspace_navigation_backup_v082'",a)
         self.assertIn('relabel_navigation_items',a)
         self.assertIn("post_title' => 'Workspace'",a)
-    def test_no_data_schema_change(self):
-        m=json.loads((ROOT/'release-manifest-v0.8.3.1.json').read_text())
-        self.assertEqual(m['storage_schema_version'],9)
-        self.assertEqual(m['project_schema'],'sc-workspace-project/7.0')
-        self.assertEqual(m['version'],'0.8.3.1')
-        self.assertEqual(m['previous_version'],'0.8.3')
+    def test_traceability_schema_migration_preserves_platform_boundary(self):
+        m=json.loads((ROOT/'release-manifest-v0.9.0.json').read_text())
+        self.assertEqual(m['storage_schema_version'],10)
+        self.assertEqual(m['project_schema'],'sc-workspace-project/8.0')
+        self.assertEqual(m['version'],'0.9.0')
+        self.assertEqual(m['previous_version'],'0.8.3.1')
         self.assertFalse(m['cloud_sync'])
         self.assertFalse(m['server_project_storage'])
 if __name__=='__main__': unittest.main()

@@ -1,4 +1,4 @@
-# Sustainable Catalyst Workspace v0.8.3.1
+# Sustainable Catalyst Workspace v0.9.0
 
 ## Editorial Header Bar & Page Alignment
 

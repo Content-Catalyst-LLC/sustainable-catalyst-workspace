@@ -1,19 +1,19 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.3.1.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.9.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 
 class HandoffContractTests(unittest.TestCase):
     def test_schemas(self):
         ledger=json.loads((ROOT/'schemas/sc-workspace-handoff-ledger-v1.schema.json').read_text())
         ret=json.loads((ROOT/'schemas/sc-workspace-handoff-return-v1.schema.json').read_text())
-        project=json.loads((ROOT/'schemas/sc-workspace-project-v7.schema.json').read_text())
+        project=json.loads((ROOT/'schemas/sc-workspace-project-v8.schema.json').read_text())
         self.assertEqual(ledger['properties']['schema']['const'],'sc-workspace-handoff-ledger/1.0')
         self.assertEqual(ledger['properties']['entries']['maxItems'],150)
         self.assertEqual(ret['properties']['schema']['const'],'sc-workspace-handoff-return/1.0')
         self.assertEqual(ret['properties']['artifacts']['maxItems'],20)
-        self.assertEqual(project['properties']['schema']['const'],'sc-workspace-project/7.0')
+        self.assertEqual(project['properties']['schema']['const'],'sc-workspace-project/8.0')
         self.assertEqual(project['properties']['handoffs']['$ref'],'sc-workspace-handoff-ledger-v1.schema.json')
     def test_js_handoff_runtime(self):
         t=JS.read_text()

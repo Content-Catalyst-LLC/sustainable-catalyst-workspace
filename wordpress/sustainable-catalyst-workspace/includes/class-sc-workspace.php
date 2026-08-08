@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0831, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V082, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V081, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V080, '') === '1' ||
@@ -52,7 +53,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.3 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.9.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -106,6 +107,11 @@ final class SC_Workspace {
             'callback' => array($this, 'adapter_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/traceability-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'traceability_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -121,8 +127,8 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v9',
-            'project_schema' => 'sc-workspace-project/7.0',
+            'persistence' => 'browser-local-projects-v10',
+            'project_schema' => 'sc-workspace-project/8.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
@@ -133,10 +139,12 @@ final class SC_Workspace {
             'handoff_ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
             'handoff_return_schema' => 'sc-workspace-handoff-return/1.0',
             'return_adapter_schema' => 'sc-workspace-return-adapter/1.0',
+            'traceability_schema' => 'sc-workspace-traceability/1.0',
+            'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 9,
+            'storage_schema_version' => 10,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -147,16 +155,16 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/7.0',
+            'schema' => 'sc-workspace-project-contract/8.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/7.0',
+            'project_schema' => 'sc-workspace-project/8.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'export_schema' => 'sc-workspace-project-export/7.0',
-            'storage_schema_version' => 9,
+            'export_schema' => 'sc-workspace-project-export/8.0',
+            'storage_schema_version' => 10,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -171,6 +179,9 @@ final class SC_Workspace {
             'structured_return_supported' => true,
             'return_adapter_schema' => 'sc-workspace-return-adapter/1.0',
             'automatic_return_requires_local_handoff_match' => true,
+            'traceability_schema' => 'sc-workspace-traceability/1.0',
+            'content_fingerprint_algorithm' => 'SHA-256',
+            'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
         ));
     }
 
@@ -212,7 +223,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-analysis-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'project_schema' => 'sc-workspace-project/7.0',
+            'project_schema' => 'sc-workspace-project/8.0',
             'dataset_object_type' => 'dataset',
             'analysis_object_type' => 'analysis',
             'question_statuses' => array('open', 'resolved', 'deferred'),
@@ -239,7 +250,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-decision-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'decision_schema' => 'sc-workspace-decision/1.0',
-            'project_schema' => 'sc-workspace-project/7.0',
+            'project_schema' => 'sc-workspace-project/8.0',
             'decision_object_type' => 'decision',
             'decision_statuses' => array('framing', 'evaluating', 'decided', 'revisit'),
             'option_statuses' => array('candidate', 'shortlisted', 'selected', 'rejected'),
@@ -262,7 +273,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-canvas-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'project_schema' => 'sc-workspace-project/7.0',
+            'project_schema' => 'sc-workspace-project/8.0',
             'board_statuses' => array('draft', 'working', 'ready'),
             'node_types' => array('note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea'),
             'relationship_types' => array('supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence'),
@@ -281,7 +292,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-handoff-contract/2.1',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/7.0',
+            'project_schema' => 'sc-workspace-project/8.0',
             'handoff_schema' => 'sc-workspace-handoff/2.0',
             'ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
             'return_schema' => 'sc-workspace-handoff-return/1.0',
@@ -337,6 +348,28 @@ final class SC_Workspace {
         ));
     }
 
+    public function traceability_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-traceability-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'project_schema' => 'sc-workspace-project/8.0',
+            'traceability_schema' => 'sc-workspace-traceability/1.0',
+            'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
+            'evidence_assessment_dimensions' => array('relevance', 'source-quality', 'independence', 'recency'),
+            'assessment_scale' => array('minimum' => 0, 'maximum' => 4, 'zero_means' => 'unrated'),
+            'lineage_relations' => array('derived-from', 'supports', 'contradicts', 'uses', 'produced-by', 'informs', 'supersedes', 'cites'),
+            'reproducibility_statuses' => array('draft', 'ready', 'verified', 'stale'),
+            'content_fingerprint_algorithm' => 'SHA-256',
+            'max_evidence_assessments' => 250,
+            'max_lineage_relations' => 1000,
+            'max_reproducibility_records' => 100,
+            'references_workspace_object_ids' => true,
+            'portable_reproduction_packages' => true,
+            'server_execution' => false,
+            'local_first' => true,
+        ));
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -351,11 +384,12 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 9,
-            'project_schema' => 'sc-workspace-project/7.0',
+            'storage_schema_version' => 10,
+            'project_schema' => 'sc-workspace-project/8.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
             'public_experience' => 'advisory-aligned-editorial',
+            'traceability_workspace_mode' => true,
                 'editorial_header_bar' => true,
             'editorial_shell' => true,
             'illustrative_software_preview' => true,
@@ -391,13 +425,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.3.1.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.9.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.3.1.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.9.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -422,7 +456,7 @@ final class SC_Workspace {
     private function tools() {
         return array(
             array('key' => 'research-librarian', 'eyebrow' => 'DISCOVER', 'name' => 'Research Librarian', 'description' => 'Frame questions, route inquiry, and move into evidence-backed research.', 'url' => home_url('/research-librarian/')),
-            array('key' => 'knowledge-library', 'eyebrow' => 'LEARN', 'name' => 'Knowledge Library', 'description' => 'Explore structured articles, fields, pathways, and open knowledge resources.', 'url' => home_url('/library/')),
+            array('key' => 'knowledge-library', 'eyebrow' => 'LEARN', 'name' => 'Knowledge Library', 'description' => 'Explore structured articles, fields, pathways, and open knowledge resources.', 'url' => home_url('/knowledge-libraries/')),
             array('key' => 'site-intelligence', 'eyebrow' => 'OBSERVE', 'name' => 'Site Intelligence', 'description' => 'Investigate public signals, countries, systems, evidence, and live intelligence.', 'url' => home_url('/platform/site-intelligence/')),
             array('key' => 'workbench', 'eyebrow' => 'COMPUTE', 'name' => 'Workbench', 'description' => 'Run calculations, models, engineering analysis, and scientific workflows.', 'url' => home_url('/platform/workbench/')),
             array('key' => 'analytics-r', 'eyebrow' => 'ANALYZE', 'name' => 'Analytics R', 'description' => 'Explore statistical, comparative, uncertainty, and analytical workflows.', 'url' => home_url('/platform/catalyst-analytics-r/')),
@@ -546,6 +580,7 @@ final class SC_Workspace {
                     <button type="button" data-scw-project-mode="analysis" aria-pressed="false">Analysis</button>
                     <button type="button" data-scw-project-mode="decision" aria-pressed="false">Decisions</button>
                     <button type="button" data-scw-project-mode="canvas" aria-pressed="false">Canvas</button>
+                    <button type="button" data-scw-project-mode="traceability" aria-pressed="false">Traceability</button>
                     <button type="button" data-scw-project-mode="objects" aria-pressed="false">Objects</button>
                 </nav>
 
@@ -588,7 +623,7 @@ final class SC_Workspace {
                         </div>
                         <div class="scw-research-launchers" aria-label="Research tools">
                             <a class="scw-button" data-scw-tool="research-librarian" href="<?php echo esc_url(home_url('/research-librarian/')); ?>"><strong>Research Librarian</strong></a>
-                            <a class="scw-button" data-scw-tool="knowledge-library" href="<?php echo esc_url(home_url('/library/')); ?>"><strong>Knowledge Library</strong></a>
+                            <a class="scw-button" data-scw-tool="knowledge-library" href="<?php echo esc_url(home_url('/knowledge-libraries/')); ?>"><strong>Knowledge Library</strong></a>
                         </div>
                     </div>
 
@@ -901,6 +936,64 @@ final class SC_Workspace {
                     </div>
                 </section>
 
+                <section class="scw-traceability" data-scw-project-panel="traceability" aria-labelledby="scw-traceability-title">
+                    <div class="scw-traceability-head">
+                        <div>
+                            <div class="scw-kicker">EVIDENCE · PROVENANCE · REPRODUCIBILITY</div>
+                            <h3 id="scw-traceability-title">Keep the basis of the work inspectable.</h3>
+                            <p>Assess evidence, connect object lineage, fingerprint important artifacts, and record enough analytical context for another person—or your future self—to understand what produced a result.</p>
+                        </div>
+                        <button class="scw-button" type="button" data-scw-traceability-export>Export traceability package</button>
+                    </div>
+                    <div class="scw-traceability-metrics">
+                        <div><strong data-scw-trace-metric-assessments>0</strong><span>assessed evidence</span></div>
+                        <div><strong data-scw-trace-metric-lineage>0</strong><span>lineage links</span></div>
+                        <div><strong data-scw-trace-metric-repro>0</strong><span>reproduction records</span></div>
+                        <div><strong data-scw-trace-metric-verified>0</strong><span>verified records</span></div>
+                    </div>
+                    <div class="scw-traceability-grid">
+                        <section class="scw-trace-panel" aria-labelledby="scw-trace-evidence-heading">
+                            <div class="scw-trace-panel-head"><span>01 / EVIDENCE QUALITY</span><h4 id="scw-trace-evidence-heading">Assess the evidence explicitly.</h4></div>
+                            <p class="scw-trace-note">The four ratings are a transparent working heuristic, not an automated truth score.</p>
+                            <form class="scw-trace-form" data-scw-evidence-assessment-form>
+                                <label><span>Source or evidence object</span><select name="objectId" data-scw-trace-evidence-object required><option value="">Choose an object</option></select></label>
+                                <div class="scw-trace-score-grid">
+                                    <label><span>Relevance</span><select name="relevance"><option value="0">Unrated</option><option value="1">Low</option><option value="2">Moderate</option><option value="3">Strong</option><option value="4">High</option></select></label>
+                                    <label><span>Source quality</span><select name="sourceQuality"><option value="0">Unrated</option><option value="1">Low</option><option value="2">Moderate</option><option value="3">Strong</option><option value="4">High</option></select></label>
+                                    <label><span>Independence</span><select name="independence"><option value="0">Unrated</option><option value="1">Low</option><option value="2">Moderate</option><option value="3">Strong</option><option value="4">High</option></select></label>
+                                    <label><span>Recency</span><select name="recency"><option value="0">Unrated</option><option value="1">Low</option><option value="2">Moderate</option><option value="3">Strong</option><option value="4">High</option></select></label>
+                                </div>
+                                <label><span>Assessment note</span><textarea name="note" rows="3" maxlength="2000" placeholder="Why do these ratings make sense for this use? What limitations matter?"></textarea></label>
+                                <button class="scw-button" type="submit">Save assessment & fingerprint</button>
+                            </form>
+                            <div class="scw-trace-list" data-scw-evidence-assessment-list></div>
+                        </section>
+                        <section class="scw-trace-panel" aria-labelledby="scw-trace-lineage-heading">
+                            <div class="scw-trace-panel-head"><span>02 / LINEAGE</span><h4 id="scw-trace-lineage-heading">Connect how artifacts relate.</h4></div>
+                            <form class="scw-trace-form" data-scw-lineage-form>
+                                <label><span>From object</span><select name="fromObjectId" data-scw-lineage-from required><option value="">Choose an object</option></select></label>
+                                <label><span>Relationship</span><select name="relation"><option value="derived-from">Derived from</option><option value="supports">Supports</option><option value="contradicts">Contradicts</option><option value="uses">Uses</option><option value="produced-by">Produced by</option><option value="informs">Informs</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
+                                <label><span>To object</span><select name="toObjectId" data-scw-lineage-to required><option value="">Choose an object</option></select></label>
+                                <label><span>Note</span><input type="text" name="note" maxlength="500" placeholder="Optional relationship context"></label>
+                                <button class="scw-button" type="submit">Add lineage link</button>
+                            </form>
+                            <div class="scw-trace-list" data-scw-lineage-list></div>
+                        </section>
+                        <section class="scw-trace-panel scw-trace-panel-wide" aria-labelledby="scw-trace-repro-heading">
+                            <div class="scw-trace-panel-head"><span>03 / REPRODUCIBILITY</span><h4 id="scw-trace-repro-heading">Record what would be needed to reproduce an analysis.</h4></div>
+                            <form class="scw-trace-form" data-scw-repro-form>
+                                <div class="scw-trace-form-row"><label><span>Record title</span><input type="text" name="title" maxlength="200" required placeholder="Grid reliability sensitivity run"></label><label><span>Analysis object</span><select name="analysisObjectId" data-scw-repro-analysis><option value="">No linked analysis object</option></select></label></div>
+                                <div class="scw-trace-form-row"><label><span>Dataset inputs</span><select name="datasetObjectIds" data-scw-repro-datasets multiple size="4"></select></label><label><span>Evidence inputs</span><select name="evidenceObjectIds" data-scw-repro-evidence multiple size="4"></select></label></div>
+                                <label><span>Method / procedure</span><textarea name="method" rows="3" maxlength="4000" placeholder="Describe the analytical method or link it to the registered Analysis method."></textarea></label>
+                                <div class="scw-trace-form-row"><label><span>Parameters / assumptions</span><textarea name="parameters" rows="4" maxlength="5000" placeholder="Parameter values, assumptions, thresholds, filters."></textarea></label><label><span>Environment</span><textarea name="environment" rows="4" maxlength="3000" placeholder="Tool/version, runtime, packages, data vintage, or other execution context."></textarea></label></div>
+                                <label><span>Reproduction steps</span><textarea name="steps" rows="5" maxlength="8000" placeholder="Ordered steps another person could follow."></textarea></label>
+                                <button class="scw-button" type="submit">Create reproduction record</button>
+                            </form>
+                            <div class="scw-trace-list" data-scw-repro-list></div>
+                        </section>
+                    </div>
+                </section>
+
                 <section class="scw-objects" data-scw-project-panel="objects" aria-labelledby="scw-objects-title">
                     <div class="scw-object-head">
                         <div>
@@ -1057,7 +1150,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.8.3.1. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.9.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1079,7 +1172,7 @@ final class SC_Workspace {
                         <p class="scw-platform-lede">A free personal workspace for keeping questions, evidence, analysis, decisions, and structured thinking connected from the beginning of an inquiry through its outcome.</p>
                         <div class="scw-platform-actions">
                             <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
-                            <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
+                            <a class="scw-button" href="<?php echo esc_url(home_url('/knowledge-libraries/')); ?>">Explore the Library</a>
                         </div>
                         <div class="scw-platform-access-grid" aria-label="Workspace access summary">
                             <div><span>ACCESS</span><strong>Free public use</strong></div>
@@ -1134,11 +1227,11 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.8.3.1.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.9.0.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.8.3.1.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.9.0.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">
@@ -1152,7 +1245,7 @@ final class SC_Workspace {
 
             <section class="scw-editorial-closing" aria-label="Workspace closing action">
                 <div><span>FREE PERSONAL WORKSPACE</span><h2>Keep the evidence, analysis, and decisions connected.</h2><p>Start without an account, preserve the reasoning, and use the wider Sustainable Catalyst system when the work calls for it.</p></div>
-                <div class="scw-editorial-closing-actions"><a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a><a class="scw-button scw-button-dark-outline" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a></div>
+                <div class="scw-editorial-closing-actions"><a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a><a class="scw-button scw-button-dark-outline" href="<?php echo esc_url(home_url('/knowledge-libraries/')); ?>">Explore the Library</a></div>
             </section>
         </section>
         <?php

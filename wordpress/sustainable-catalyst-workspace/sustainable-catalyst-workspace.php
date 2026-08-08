@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Description: Free public research, analysis, decision, and structured-thinking workspace with Advisory-aligned editorial framing, header alignment, and local-first persistence.
- * Version: 0.8.3.1
+ * Description: Free public research, evidence, analysis, decision, and structured-thinking workspace with traceable provenance, reproducibility records, and local-first persistence.
+ * Version: 0.9.0
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '0.8.3.1');
+define('SC_WORKSPACE_VERSION', '0.9.0');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
