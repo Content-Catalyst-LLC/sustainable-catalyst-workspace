@@ -3,26 +3,29 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_5_0';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_6_0';
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v1';
-  const STORAGE_VERSION = 6;
-  const PROJECT_SCHEMA = 'sc-workspace-project/4.0';
+  const STORAGE_VERSION = 7;
+  const PROJECT_SCHEMA = 'sc-workspace-project/5.0';
+  const LEGACY_PROJECT_SCHEMA_V4 = 'sc-workspace-project/4.0';
   const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1';
   const LEGACY_PROJECT_SCHEMA_V3 = 'sc-workspace-project/3.0';
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/4.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/5.0';
+  const LEGACY_EXPORT_SCHEMA_V4 = 'sc-workspace-project-export/4.0';
   const LEGACY_EXPORT_SCHEMA_V31 = 'sc-workspace-project-export/3.1';
   const LEGACY_EXPORT_SCHEMA_V3 = 'sc-workspace-project-export/3.0';
   const LEGACY_EXPORT_SCHEMA_V2 = 'sc-workspace-project-export/2.0';
   const LEGACY_EXPORT_SCHEMA_V1 = 'sc-workspace-project-export/1.0';
   const OBJECT_EXPORT_SCHEMA = 'sc-workspace-object-export/1.0';
-  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.3';
+  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.4';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0';
+  const DECISION_SCHEMA = 'sc-workspace-decision/1.0';
   const MAX_ACTIVITY = 60;
   const MAX_RECENT_TOOLS = 8;
   const MAX_OBJECTS = 250;
@@ -36,6 +39,11 @@
   const MAX_ANALYSIS_METHODS = 100;
   const MAX_ANALYSIS_COMPARISONS = 100;
   const MAX_ANALYSIS_FINDINGS = 150;
+  const MAX_DECISIONS = 60;
+  const MAX_DECISION_OPTIONS = 240;
+  const MAX_DECISION_CRITERIA = 180;
+  const MAX_DECISION_ASSESSMENTS = 1000;
+  const MAX_DECISION_RISKS = 300;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
   const OBJECT_TYPES = new Set(['source', 'evidence', 'dataset', 'analysis', 'decision', 'document', 'export']);
   const OBJECT_STATUS = new Set(['draft', 'working', 'ready']);
@@ -49,6 +57,10 @@
   const ANALYSIS_ASSUMPTION_STATUS = new Set(['untested', 'supported', 'challenged']);
   const ANALYSIS_METHOD_TYPE = new Set(['descriptive', 'comparative', 'statistical', 'modeling', 'scenario', 'sensitivity', 'other']);
   const ANALYSIS_FINDING_STATUS = new Set(['preliminary', 'supported', 'contested']);
+  const DECISION_STATUS = new Set(['framing', 'evaluating', 'decided', 'revisit']);
+  const DECISION_OPTION_STATUS = new Set(['candidate', 'shortlisted', 'selected', 'rejected']);
+  const DECISION_CONFIDENCE = new Set(['low', 'medium', 'high']);
+  const DECISION_RISK_LEVEL = new Set(['low', 'medium', 'high']);
   const OBJECT_LABELS = {
     source: 'Source', evidence: 'Evidence', dataset: 'Dataset', analysis: 'Analysis',
     decision: 'Decision', document: 'Document', export: 'Export'
@@ -300,6 +312,33 @@
     touchAnalysis(project);
   }
 
+
+  function decisionTemplate() {
+    const stamp = nowIso();
+    return { schema: DECISION_SCHEMA, decisions: [], options: [], criteria: [], assessments: [], risks: [], activeDecisionId: null, createdAt: stamp, updatedAt: stamp };
+  }
+
+  function normalizeDecisionRecord(raw) {
+    if (!raw || typeof raw !== 'object') return null; const stamp=nowIso();
+    return { id:String(raw.id||id('dr')).slice(0,160), title:String(raw.title||'').trim().slice(0,200), question:String(raw.question||'').trim().slice(0,2000), status:DECISION_STATUS.has(raw.status)?raw.status:'framing', decisionObjectId:String(raw.decisionObjectId||'').slice(0,160), selectedOptionId:String(raw.selectedOptionId||'').slice(0,160), rationale:String(raw.rationale||'').slice(0,6000), confidence:DECISION_CONFIDENCE.has(raw.confidence)?raw.confidence:'medium', createdAt:validIso(raw.createdAt)?raw.createdAt:stamp, updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp, decidedAt:validIso(raw.decidedAt)?raw.decidedAt:null };
+  }
+  function normalizeDecisionOption(raw) { if(!raw||typeof raw!=='object')return null; const stamp=nowIso(); return {id:String(raw.id||id('do')).slice(0,160),decisionId:String(raw.decisionId||'').slice(0,160),label:String(raw.label||'').trim().slice(0,200),description:String(raw.description||'').slice(0,2400),status:DECISION_OPTION_STATUS.has(raw.status)?raw.status:'candidate',evidenceObjectIds:Array.isArray(raw.evidenceObjectIds)?[...new Set(raw.evidenceObjectIds.map(v=>String(v).slice(0,160)))].slice(0,50):[],analysisObjectIds:Array.isArray(raw.analysisObjectIds)?[...new Set(raw.analysisObjectIds.map(v=>String(v).slice(0,160)))].slice(0,50):[],createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp}; }
+  function normalizeDecisionCriterion(raw) { if(!raw||typeof raw!=='object')return null; const stamp=nowIso(); return {id:String(raw.id||id('dc')).slice(0,160),decisionId:String(raw.decisionId||'').slice(0,160),label:String(raw.label||'').trim().slice(0,200),weight:Math.max(0,Math.min(100,Number(raw.weight)||0)),description:String(raw.description||'').slice(0,1200),createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp}; }
+  function normalizeDecisionAssessment(raw) { if(!raw||typeof raw!=='object')return null; const stamp=nowIso(); return {id:String(raw.id||id('da')).slice(0,160),decisionId:String(raw.decisionId||'').slice(0,160),optionId:String(raw.optionId||'').slice(0,160),criterionId:String(raw.criterionId||'').slice(0,160),score:Math.max(-5,Math.min(5,Number(raw.score)||0)),note:String(raw.note||'').slice(0,1200),createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp}; }
+  function normalizeDecisionRisk(raw) { if(!raw||typeof raw!=='object')return null; const stamp=nowIso(); return {id:String(raw.id||id('dk')).slice(0,160),decisionId:String(raw.decisionId||'').slice(0,160),optionId:String(raw.optionId||'').slice(0,160),risk:String(raw.risk||'').trim().slice(0,2400),likelihood:DECISION_RISK_LEVEL.has(raw.likelihood)?raw.likelihood:'medium',impact:DECISION_RISK_LEVEL.has(raw.impact)?raw.impact:'medium',mitigation:String(raw.mitigation||'').slice(0,2000),createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp}; }
+  function normalizeDecision(raw, objects=[]) {
+    const base=decisionTemplate(), value=raw&&typeof raw==='object'?raw:{}; const objectIds=new Set(objects.map(o=>o.id)); const evidenceIds=new Set(objects.filter(o=>o.type==='evidence').map(o=>o.id)); const analysisIds=new Set(objects.filter(o=>o.type==='analysis').map(o=>o.id)); const decisionObjectIds=new Set(objects.filter(o=>o.type==='decision').map(o=>o.id));
+    base.decisions=Array.isArray(value.decisions)?value.decisions.map(normalizeDecisionRecord).filter(x=>x&&x.title&&x.question).slice(0,MAX_DECISIONS):[]; const decisionIds=new Set(base.decisions.map(x=>x.id));
+    base.options=Array.isArray(value.options)?value.options.map(normalizeDecisionOption).filter(x=>x&&decisionIds.has(x.decisionId)&&x.label).slice(0,MAX_DECISION_OPTIONS):[]; const optionIds=new Set(base.options.map(x=>x.id)); base.options.forEach(x=>{x.evidenceObjectIds=x.evidenceObjectIds.filter(v=>evidenceIds.has(v));x.analysisObjectIds=x.analysisObjectIds.filter(v=>analysisIds.has(v));});
+    base.criteria=Array.isArray(value.criteria)?value.criteria.map(normalizeDecisionCriterion).filter(x=>x&&decisionIds.has(x.decisionId)&&x.label).slice(0,MAX_DECISION_CRITERIA):[]; const criterionIds=new Set(base.criteria.map(x=>x.id));
+    base.assessments=Array.isArray(value.assessments)?value.assessments.map(normalizeDecisionAssessment).filter(x=>x&&decisionIds.has(x.decisionId)&&optionIds.has(x.optionId)&&criterionIds.has(x.criterionId)).slice(0,MAX_DECISION_ASSESSMENTS):[];
+    base.risks=Array.isArray(value.risks)?value.risks.map(normalizeDecisionRisk).filter(x=>x&&decisionIds.has(x.decisionId)&&x.risk&&(!x.optionId||optionIds.has(x.optionId))).slice(0,MAX_DECISION_RISKS):[];
+    base.decisions.forEach(x=>{x.decisionObjectId=decisionObjectIds.has(x.decisionObjectId)?x.decisionObjectId:'';x.selectedOptionId=optionIds.has(x.selectedOptionId)?x.selectedOptionId:'';});
+    base.activeDecisionId=decisionIds.has(value.activeDecisionId)?value.activeDecisionId:null; base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt; base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt; return base;
+  }
+  function touchDecision(project){ if(!project.decision)project.decision=decisionTemplate(); project.decision.updatedAt=nowIso(); project.updatedAt=project.decision.updatedAt; }
+  function cleanDecisionReferences(project, objectId){ if(!project||!project.decision)return; project.decision.options.forEach(x=>{x.evidenceObjectIds=x.evidenceObjectIds.filter(v=>v!==objectId);x.analysisObjectIds=x.analysisObjectIds.filter(v=>v!==objectId);}); project.decision.decisions.forEach(x=>{if(x.decisionObjectId===objectId)x.decisionObjectId='';}); touchDecision(project); }
+
   function objectTemplate(type, title) {
     const stamp = nowIso();
     return {
@@ -337,7 +376,8 @@
       objects: [],
       activeObjectId: null,
       research: researchTemplate(),
-      analysis: analysisTemplate()
+      analysis: analysisTemplate(),
+      decision: decisionTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -434,7 +474,8 @@
       objects,
       activeObjectId,
       research: normalizeResearch(raw.research, objects),
-      analysis: normalizeAnalysis(raw.analysis, objects)
+      analysis: normalizeAnalysis(raw.analysis, objects),
+      decision: normalizeDecision(raw.decision, objects)
     };
   }
 
@@ -516,6 +557,23 @@
     return state;
   }
 
+
+
+  function migrateV6(raw) {
+    const state = defaultState();
+    state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
+      const normalized = normalizeProject(project);
+      if (normalized) addActivity(normalized, 'migrated', 'Project upgraded to Decision Workspace');
+      return normalized;
+    }).filter(Boolean) : [];
+    state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.identity = normalizeIdentity(raw.identity);
+    state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
+    state.updatedAt = nowIso();
+    return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -523,6 +581,7 @@
     if (raw.schemaVersion === 3) return migrateV3(raw);
     if (raw.schemaVersion === 4) return migrateV4(raw);
     if (raw.schemaVersion === 5) return migrateV5(raw);
+    if (raw.schemaVersion === 6) return migrateV6(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -642,6 +701,12 @@
     copy.analysis.comparisons = copy.analysis.comparisons.map((comparison) => ({ ...comparison, id: id('ac'), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
     copy.analysis.findings = copy.analysis.findings.map((finding) => ({ ...finding, id: id('af'), evidenceObjectIds: finding.evidenceObjectIds.map((objectId)=>objectMap.get(objectId)).filter(Boolean), analysisObjectId: objectMap.get(finding.analysisObjectId) || '', createdAt: copy.createdAt, updatedAt: copy.createdAt }));
     copy.analysis.activeQuestionId = null; copy.analysis.activeMethodId = null; copy.analysis.createdAt = copy.createdAt; copy.analysis.updatedAt = copy.createdAt;
+    const decisionMap = new Map(); copy.decision.decisions = copy.decision.decisions.map((record) => { const old=record.id, next=id('dr'); decisionMap.set(old,next); return {...record,id:next,decisionObjectId:objectMap.get(record.decisionObjectId)||'',selectedOptionId:'',status:record.status==='decided'?'revisit':record.status,decidedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt}; });
+    const optionMap = new Map(); copy.decision.options = copy.decision.options.map((option)=>{const old=option.id,next=id('do');optionMap.set(old,next);return {...option,id:next,decisionId:decisionMap.get(option.decisionId)||'',evidenceObjectIds:option.evidenceObjectIds.map(v=>objectMap.get(v)).filter(Boolean),analysisObjectIds:option.analysisObjectIds.map(v=>objectMap.get(v)).filter(Boolean),createdAt:copy.createdAt,updatedAt:copy.createdAt};}).filter(x=>x.decisionId);
+    const criterionMap = new Map(); copy.decision.criteria = copy.decision.criteria.map((criterion)=>{const old=criterion.id,next=id('dc');criterionMap.set(old,next);return {...criterion,id:next,decisionId:decisionMap.get(criterion.decisionId)||'',createdAt:copy.createdAt,updatedAt:copy.createdAt};}).filter(x=>x.decisionId);
+    copy.decision.assessments = copy.decision.assessments.map((assessment)=>({...assessment,id:id('da'),decisionId:decisionMap.get(assessment.decisionId)||'',optionId:optionMap.get(assessment.optionId)||'',criterionId:criterionMap.get(assessment.criterionId)||'',createdAt:copy.createdAt,updatedAt:copy.createdAt})).filter(x=>x.decisionId&&x.optionId&&x.criterionId);
+    copy.decision.risks = copy.decision.risks.map((risk)=>({...risk,id:id('dk'),decisionId:decisionMap.get(risk.decisionId)||'',optionId:optionMap.get(risk.optionId)||'',createdAt:copy.createdAt,updatedAt:copy.createdAt})).filter(x=>x.decisionId);
+    copy.decision.activeDecisionId = null; copy.decision.createdAt=copy.createdAt; copy.decision.updatedAt=copy.createdAt;
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
   }
@@ -742,6 +807,27 @@
     const analysisMetricAnalyses = root.querySelector('[data-scw-analysis-metric-analyses]');
     const analysisMetricFindings = root.querySelector('[data-scw-analysis-metric-findings]');
 
+    const decisionForm = root.querySelector('[data-scw-decision-form]');
+    const decisionList = root.querySelector('[data-scw-decision-list]');
+    const decisionActive = root.querySelector('[data-scw-decision-active]');
+    const decisionOptionForm = root.querySelector('[data-scw-decision-option-form]');
+    const decisionOptionList = root.querySelector('[data-scw-decision-option-list]');
+    const decisionCriterionForm = root.querySelector('[data-scw-decision-criterion-form]');
+    const decisionCriterionList = root.querySelector('[data-scw-decision-criterion-list]');
+    const decisionAssessmentForm = root.querySelector('[data-scw-decision-assessment-form]');
+    const decisionAssessmentOption = root.querySelector('[data-scw-decision-assessment-option]');
+    const decisionAssessmentCriterion = root.querySelector('[data-scw-decision-assessment-criterion]');
+    const decisionAssessmentList = root.querySelector('[data-scw-decision-assessment-list]');
+    const decisionRiskForm = root.querySelector('[data-scw-decision-risk-form]');
+    const decisionRiskList = root.querySelector('[data-scw-decision-risk-list]');
+    const decisionFinalForm = root.querySelector('[data-scw-decision-final-form]');
+    const decisionFinalOption = root.querySelector('[data-scw-decision-final-option]');
+    const decisionSummary = root.querySelector('[data-scw-decision-summary]');
+    const decisionMetricOpen = root.querySelector('[data-scw-decision-metric-open]');
+    const decisionMetricOptions = root.querySelector('[data-scw-decision-metric-options]');
+    const decisionMetricCriteria = root.querySelector('[data-scw-decision-metric-criteria]');
+    const decisionMetricDecided = root.querySelector('[data-scw-decision-metric-decided]');
+
 
     function renderIdentity() {
       const authenticated = Boolean(IDENTITY_CONFIG.authenticated);
@@ -750,7 +836,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.5.0 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.6.0 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1088,6 +1174,24 @@
       objectUpdated.textContent = formatTime(object.updatedAt);
     }
 
+
+    function renderDecision(project) {
+      if (!decisionList) return;
+      const d=project.decision||decisionTemplate(); const active=d.decisions.find(x=>x.id===d.activeDecisionId)||null;
+      const options=active?d.options.filter(x=>x.decisionId===active.id):[]; const criteria=active?d.criteria.filter(x=>x.decisionId===active.id):[]; const assessments=active?d.assessments.filter(x=>x.decisionId===active.id):[]; const risks=active?d.risks.filter(x=>x.decisionId===active.id):[];
+      decisionMetricOpen.textContent=String(d.decisions.filter(x=>x.status!=='decided').length); decisionMetricOptions.textContent=String(d.options.length); decisionMetricCriteria.textContent=String(d.criteria.length); decisionMetricDecided.textContent=String(d.decisions.filter(x=>x.status==='decided').length);
+      decisionActive.textContent=active?`${active.title} — ${active.question}`:'No active decision selected.';
+      decisionList.innerHTML=''; if(!d.decisions.length)decisionList.innerHTML='<div class="scw-decision-empty">No decision records yet.</div>';
+      d.decisions.forEach(record=>{const row=document.createElement('article');row.className=`scw-decision-row${record.id===d.activeDecisionId?' is-active':''}`;const strong=document.createElement('strong');strong.textContent=record.title;const meta=document.createElement('span');meta.textContent=record.status.toUpperCase();const controls=document.createElement('div');controls.className='scw-decision-row-controls';const status=document.createElement('select');['framing','evaluating','decided','revisit'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=record.status;status.addEventListener('change',()=>{record.status=DECISION_STATUS.has(status.value)?status.value:'framing';record.updatedAt=nowIso();touchDecision(project);persist('Decision status saved');renderDecision(project)});const activate=document.createElement('button');activate.type='button';activate.className='scw-card-action';activate.textContent=record.id===d.activeDecisionId?'Active decision':'Set active';activate.addEventListener('click',()=>{d.activeDecisionId=record.id;touchDecision(project);persist('Active decision saved');renderDecision(project)});const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open object';open.disabled=!record.decisionObjectId;open.addEventListener('click',()=>{if(!record.decisionObjectId)return;project.activeObjectId=record.decisionObjectId;persist();render();objectEditor.scrollIntoView({behavior:'auto',block:'start'})});controls.append(status,activate,open);row.append(strong,meta,controls);decisionList.appendChild(row)});
+      const list=(el,items,empty,fn)=>{el.innerHTML='';if(!items.length){el.innerHTML=`<div class="scw-decision-empty">${empty}</div>`;return;}items.forEach(fn)};
+      list(decisionOptionList,options,'No options for the active decision.',option=>{const row=document.createElement('article');row.className='scw-decision-row';const strong=document.createElement('strong');strong.textContent=option.label;const meta=document.createElement('span');meta.textContent=option.status.toUpperCase();const controls=document.createElement('div');controls.className='scw-decision-row-controls';const status=document.createElement('select');['candidate','shortlisted','selected','rejected'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=option.status;status.addEventListener('change',()=>{option.status=DECISION_OPTION_STATUS.has(status.value)?status.value:'candidate';option.updatedAt=nowIso();touchDecision(project);persist('Option status saved');renderDecision(project)});controls.append(status);row.append(strong,meta,controls);decisionOptionList.appendChild(row)});
+      list(decisionCriterionList,criteria,'No criteria for the active decision.',criterion=>{const row=document.createElement('article');row.className='scw-decision-record';const strong=document.createElement('strong');strong.textContent=criterion.label;const body=document.createElement('p');body.textContent=`Weight ${criterion.weight}/100${criterion.description?` · ${criterion.description}`:''}`;row.append(strong,body);decisionCriterionList.appendChild(row)});
+      decisionAssessmentOption.innerHTML='<option value="">Choose option</option>'; decisionFinalOption.innerHTML='<option value="">Choose option</option>'; options.forEach(x=>{[decisionAssessmentOption,decisionFinalOption].forEach(el=>{const o=document.createElement('option');o.value=x.id;o.textContent=x.label;el.appendChild(o)})}); decisionAssessmentCriterion.innerHTML='<option value="">Choose criterion</option>';criteria.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=x.label;decisionAssessmentCriterion.appendChild(o)});
+      list(decisionAssessmentList,assessments,'No assessments recorded.',assessment=>{const row=document.createElement('article');row.className='scw-decision-record';const option=options.find(x=>x.id===assessment.optionId),criterion=criteria.find(x=>x.id===assessment.criterionId);const strong=document.createElement('strong');strong.textContent=`${option?option.label:'Option'} × ${criterion?criterion.label:'Criterion'}: ${assessment.score>0?'+':''}${assessment.score}`;const body=document.createElement('p');body.textContent=assessment.note||'No assessment note.';row.append(strong,body);decisionAssessmentList.appendChild(row)});
+      list(decisionRiskList,risks,'No risks recorded.',risk=>{const row=document.createElement('article');row.className='scw-decision-record';const strong=document.createElement('strong');strong.textContent=risk.risk;const body=document.createElement('p');body.textContent=`${risk.likelihood.toUpperCase()} likelihood · ${risk.impact.toUpperCase()} impact${risk.mitigation?` · Mitigation: ${risk.mitigation}`:''}`;row.append(strong,body);decisionRiskList.appendChild(row)});
+      if(!active||active.status!=='decided'){decisionSummary.innerHTML='<span>No finalized decision yet.</span>';}else{const selected=options.find(x=>x.id===active.selectedOptionId);decisionSummary.innerHTML='';const strong=document.createElement('strong');strong.textContent=selected?selected.label:'Decision finalized';const p=document.createElement('p');p.textContent=active.rationale;const meta=document.createElement('span');meta.textContent=`${active.confidence.toUpperCase()} CONFIDENCE · ${formatTime(active.decidedAt||active.updatedAt)}`;decisionSummary.append(strong,p,meta);}
+    }
+
     function renderActive() {
       const project = activeProject();
       activePanel.hidden = !project;
@@ -1103,6 +1207,7 @@
       renderActivity(project);
       renderResearch(project);
       renderAnalysis(project);
+      renderDecision(project);
       renderObjects(project);
       renderObjectEditor(project);
     }
@@ -1200,7 +1305,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.5.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.6.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1225,7 +1330,7 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
           if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
@@ -1234,7 +1339,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.5.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.6.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -1329,9 +1434,17 @@
 
     analysisFindingForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.analysis.findings.length>=MAX_ANALYSIS_FINDINGS)return;const data=new FormData(analysisFindingForm);const text=String(data.get('finding')||'').trim().slice(0,3000);if(!text)return;const stamp=nowIso();const evidenceId=String(data.get('evidenceObjectId')||'');const evidence=objectById(project,evidenceId);const activeMethod=project.analysis.methods.find((x)=>x.id===project.analysis.activeMethodId);project.analysis.findings.push({id:id('af'),text,status:ANALYSIS_FINDING_STATUS.has(String(data.get('status')))?String(data.get('status')):'preliminary',evidenceObjectIds:evidence&&evidence.type==='evidence'?[evidence.id]:[],analysisObjectId:activeMethod?activeMethod.analysisObjectId:'',createdAt:stamp,updatedAt:stamp});touchAnalysis(project);addActivity(project,'analysis-finding','Finding recorded');analysisFindingForm.reset();persist('Finding saved');renderAnalysis(project)});
 
+
+    decisionForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.decision.decisions.length>=MAX_DECISIONS||project.objects.length>=MAX_OBJECTS)return;const data=new FormData(decisionForm);const title=String(data.get('title')||'').trim().slice(0,200),question=String(data.get('question')||'').trim().slice(0,2000);if(!title||!question)return;const stamp=nowIso();const obj=objectTemplate('decision',title);obj.status='working';obj.summary=question.slice(0,1200);obj.provenance.sourceType='tool';obj.provenance.sourceTitle='Workspace Decision';obj.provenance.capturedAt=stamp;project.objects.push(obj);const record={id:id('dr'),title,question,status:'framing',decisionObjectId:obj.id,selectedOptionId:'',rationale:'',confidence:'medium',createdAt:stamp,updatedAt:stamp,decidedAt:null};project.decision.decisions.push(record);project.decision.activeDecisionId=record.id;project.activeObjectId=obj.id;touchDecision(project);addActivity(project,'decision-created',`Decision framed: ${title}`);decisionForm.reset();persist('Decision created');render();});
+    decisionOptionForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.decision.options.length>=MAX_DECISION_OPTIONS)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionOptionForm),label=String(data.get('label')||'').trim().slice(0,200);if(!label)return;const stamp=nowIso();project.decision.options.push({id:id('do'),decisionId:active.id,label,description:String(data.get('description')||'').slice(0,2400),status:'candidate',evidenceObjectIds:[],analysisObjectIds:[],createdAt:stamp,updatedAt:stamp});if(active.status==='framing')active.status='evaluating';touchDecision(project);addActivity(project,'decision-option',`Option added: ${label}`);decisionOptionForm.reset();persist('Decision option saved');renderDecision(project)});
+    decisionCriterionForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.decision.criteria.length>=MAX_DECISION_CRITERIA)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionCriterionForm),label=String(data.get('label')||'').trim().slice(0,200);if(!label)return;const stamp=nowIso();project.decision.criteria.push({id:id('dc'),decisionId:active.id,label,weight:Math.max(0,Math.min(100,Number(data.get('weight'))||0)),description:String(data.get('description')||'').slice(0,1200),createdAt:stamp,updatedAt:stamp});touchDecision(project);addActivity(project,'decision-criterion',`Criterion added: ${label}`);decisionCriterionForm.reset();persist('Decision criterion saved');renderDecision(project)});
+    decisionAssessmentForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.decision.assessments.length>=MAX_DECISION_ASSESSMENTS)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionAssessmentForm),optionId=String(data.get('optionId')||''),criterionId=String(data.get('criterionId')||'');if(!project.decision.options.some(x=>x.id===optionId&&x.decisionId===active.id)||!project.decision.criteria.some(x=>x.id===criterionId&&x.decisionId===active.id))return;const stamp=nowIso();project.decision.assessments.push({id:id('da'),decisionId:active.id,optionId,criterionId,score:Math.max(-5,Math.min(5,Number(data.get('score'))||0)),note:String(data.get('note')||'').slice(0,1200),createdAt:stamp,updatedAt:stamp});touchDecision(project);addActivity(project,'decision-assessment','Decision assessment recorded');decisionAssessmentForm.reset();persist('Assessment saved');renderDecision(project)});
+    decisionRiskForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.decision.risks.length>=MAX_DECISION_RISKS)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionRiskForm),risk=String(data.get('risk')||'').trim().slice(0,2400);if(!risk)return;const stamp=nowIso();project.decision.risks.push({id:id('dk'),decisionId:active.id,optionId:'',risk,likelihood:DECISION_RISK_LEVEL.has(String(data.get('likelihood')))?String(data.get('likelihood')):'medium',impact:DECISION_RISK_LEVEL.has(String(data.get('impact')))?String(data.get('impact')):'medium',mitigation:String(data.get('mitigation')||'').slice(0,2000),createdAt:stamp,updatedAt:stamp});touchDecision(project);addActivity(project,'decision-risk','Decision risk recorded');decisionRiskForm.reset();persist('Risk saved');renderDecision(project)});
+    decisionFinalForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project)return;const active=project.decision.decisions.find(x=>x.id===project.decision.activeDecisionId);if(!active)return;const data=new FormData(decisionFinalForm),selectedOptionId=String(data.get('selectedOptionId')||''),rationale=String(data.get('rationale')||'').trim().slice(0,6000);const selected=project.decision.options.find(x=>x.id===selectedOptionId&&x.decisionId===active.id);if(!selected||!rationale)return;const stamp=nowIso();active.selectedOptionId=selected.id;active.rationale=rationale;active.confidence=DECISION_CONFIDENCE.has(String(data.get('confidence')))?String(data.get('confidence')):'medium';active.status='decided';active.decidedAt=stamp;active.updatedAt=stamp;project.decision.options.filter(x=>x.decisionId===active.id).forEach(x=>{x.status=x.id===selected.id?'selected':(x.status==='rejected'?'rejected':'shortlisted');x.updatedAt=stamp;});const obj=objectById(project,active.decisionObjectId);if(obj){obj.status='ready';obj.summary=`Selected: ${selected.label}`.slice(0,1200);obj.content=`Decision: ${active.question}\n\nSelected option: ${selected.label}\n\nRationale:\n${rationale}\n\nConfidence: ${active.confidence}`.slice(0,50000);obj.updatedAt=stamp;}touchDecision(project);addActivity(project,'decision-finalized',`Decision finalized: ${active.title}`);persist('Decision finalized');render();});
+
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.5.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.6.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1376,7 +1489,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.5.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.6.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -1391,7 +1504,7 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 

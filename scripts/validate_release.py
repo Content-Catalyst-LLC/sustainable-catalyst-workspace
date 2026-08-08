@@ -4,33 +4,25 @@ import json,sys
 ROOT=Path(__file__).resolve().parents[1]; errors=[]
 def check(c,m):
     if not c: errors.append(m)
-main=ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php'
-php=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-js=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.5.0.js'
-css=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.5.0.css'
-required=(main,php,js,css,ROOT/'schemas/sc-workspace-project-v4.schema.json',ROOT/'schemas/sc-workspace-analysis-v1.schema.json',ROOT/'schemas/sc-workspace-identity-v1.schema.json',ROOT/'schemas/sc-workspace-research-v1.schema.json',ROOT/'schemas/sc-workspace-object-v1.schema.json',ROOT/'release-manifest-v0.5.0.json',ROOT/'registry/workspace-product-record-v0.5.0.json')
+main=ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php'; php=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'; js=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.6.0.js'; css=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.6.0.css'
+required=(main,php,js,css,ROOT/'schemas/sc-workspace-project-v5.schema.json',ROOT/'schemas/sc-workspace-decision-v1.schema.json',ROOT/'schemas/sc-workspace-analysis-v1.schema.json',ROOT/'schemas/sc-workspace-identity-v1.schema.json',ROOT/'schemas/sc-workspace-research-v1.schema.json',ROOT/'schemas/sc-workspace-object-v1.schema.json',ROOT/'release-manifest-v0.6.0.json',ROOT/'registry/workspace-product-record-v0.6.0.json')
 for p in required: check(p.exists(),f'missing required file: {p.relative_to(ROOT)}')
-if main.exists(): check('Version: 0.5.0' in main.read_text(),'plugin header version mismatch')
+if main.exists(): check('Version: 0.6.0' in main.read_text(),'plugin header version mismatch')
 if js.exists():
-    t=js.read_text()
-    for token in ("const STORAGE_VERSION = 6","const PROJECT_SCHEMA = 'sc-workspace-project/4.0'","const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0'","const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0'",'function migrateV5(raw)','function analysisTemplate()','function normalizeAnalysis','function renderAnalysis','function cleanAnalysisReferences','cloudSync: false','serverProjectStorage: false'):
-        check(token in t,f'JS contract missing: {token}')
+ t=js.read_text()
+ for token in ("const STORAGE_VERSION = 7","const PROJECT_SCHEMA = 'sc-workspace-project/5.0'","const DECISION_SCHEMA = 'sc-workspace-decision/1.0'",'function migrateV6(raw)','function decisionTemplate()','function normalizeDecision','function renderDecision','function cleanDecisionReferences','cloudSync: false','serverProjectStorage: false'): check(token in t,f'JS contract missing: {token}')
 if php.exists():
-    t=php.read_text()
-    for token in ("'/identity-contract'","'/analysis-contract'",'IDENTITY &amp; PERSISTENCE','ANALYSIS WORKSPACE','Datasets &amp; variables','Assumptions &amp; methods','Comparisons &amp; findings',"'analysis_schema' => 'sc-workspace-analysis/1.0'","'server_project_storage' => false","'cloud_sync' => false"):
-        check(token in t,f'PHP/UI contract missing: {token}')
+ t=php.read_text()
+ for token in ("'/identity-contract'","'/analysis-contract'","'/decision-contract'",'DECISION WORKSPACE','Options &amp; criteria','Option assessments','Risks &amp; decision record',"'decision_schema' => 'sc-workspace-decision/1.0'","'server_project_storage' => false","'cloud_sync' => false"): check(token in t,f'PHP/UI contract missing: {token}')
 try:
-    m=json.loads((ROOT/'release-manifest-v0.5.0.json').read_text())
-    check(m['version']=='0.5.0','manifest version'); check(m['previous_version']=='0.4.1','previous version'); check(m['storage_schema_version']==6,'storage schema'); check(m['project_schema']=='sc-workspace-project/4.0','project schema'); check(m['analysis_schema']=='sc-workspace-analysis/1.0','analysis schema'); check(m['identity_schema']=='sc-workspace-identity/1.0','identity schema'); check(m['account_required'] is False,'account required'); check(m['anonymous_access'] is True,'anonymous access'); check(m['server_project_storage'] is False,'server storage'); check(m['cloud_sync'] is False,'cloud sync')
+ m=json.loads((ROOT/'release-manifest-v0.6.0.json').read_text()); check(m['version']=='0.6.0','manifest version'); check(m['previous_version']=='0.5.0','previous version'); check(m['storage_schema_version']==7,'storage schema'); check(m['project_schema']=='sc-workspace-project/5.0','project schema'); check(m['decision_schema']=='sc-workspace-decision/1.0','decision schema'); check(m['account_required'] is False,'account required'); check(m['anonymous_access'] is True,'anonymous access'); check(m['server_project_storage'] is False,'server storage'); check(m['cloud_sync'] is False,'cloud sync')
 except Exception as e: errors.append(f'manifest parse failed: {e}')
 try:
-    s=json.loads((ROOT/'schemas/sc-workspace-project-v4.schema.json').read_text()); check(s['properties']['schema']['const']=='sc-workspace-project/4.0','project schema const'); check('persistence' in s['required'],'project persistence required'); check('analysis' in s['required'],'analysis required'); check(s['properties']['persistence']['properties']['scope']['const']=='device','device scope')
-    a=json.loads((ROOT/'schemas/sc-workspace-analysis-v1.schema.json').read_text()); check(a['properties']['schema']['const']=='sc-workspace-analysis/1.0','analysis schema const'); check(a['properties']['methods']['maxItems']==100,'method cap'); check(a['properties']['findings']['maxItems']==150,'finding cap')
-    i=json.loads((ROOT/'schemas/sc-workspace-identity-v1.schema.json').read_text()); check(i['properties']['cloudSync']['const'] is False,'identity cloud sync false'); check(i['properties']['serverProjectStorage']['const'] is False,'identity server storage false')
+ s=json.loads((ROOT/'schemas/sc-workspace-project-v5.schema.json').read_text()); check(s['properties']['schema']['const']=='sc-workspace-project/5.0','project schema const'); check('decision' in s['required'],'decision required'); d=json.loads((ROOT/'schemas/sc-workspace-decision-v1.schema.json').read_text()); check(d['properties']['schema']['const']=='sc-workspace-decision/1.0','decision schema const'); check(d['properties']['assessments']['maxItems']==1000,'assessment cap')
 except Exception as e: errors.append(f'schema parse failed: {e}')
 try:
-    r=json.loads((ROOT/'registry/workspace-product-record-v0.5.0.json').read_text()); check(r['public_version']=='0.5.0','registry version'); check(r['previous_version']=='0.4.1','registry previous'); check(r['family']=='commercial','registry family')
+ r=json.loads((ROOT/'registry/workspace-product-record-v0.6.0.json').read_text()); check(r['public_version']=='0.6.0','registry version'); check(r['previous_version']=='0.5.0','registry previous'); check(r['family']=='commercial','registry family')
 except Exception as e: errors.append(f'registry parse failed: {e}')
 if errors:
-    print('VALIDATION FAILED'); [print(' - '+e) for e in errors]; sys.exit(1)
-print('VALIDATION PASSED: Sustainable Catalyst Workspace v0.5.0 — Analysis Workspace')
+ print('VALIDATION FAILED'); [print(' - '+e) for e in errors]; sys.exit(1)
+print('VALIDATION PASSED: Sustainable Catalyst Workspace v0.6.0 — Decision Workspace')

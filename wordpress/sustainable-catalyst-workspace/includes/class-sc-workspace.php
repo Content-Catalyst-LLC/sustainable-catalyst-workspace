@@ -45,7 +45,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.5.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.6.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -79,6 +79,11 @@ final class SC_Workspace {
             'callback' => array($this, 'analysis_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/decision-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'decision_contract'),
+            'permission_callback' => '__return_true',
+        ));
     }
 
     public function health() {
@@ -89,15 +94,16 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v6',
-            'project_schema' => 'sc-workspace-project/4.0',
+            'persistence' => 'browser-local-projects-v7',
+            'project_schema' => 'sc-workspace-project/5.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
+            'decision_schema' => 'sc-workspace-decision/1.0',
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 6,
+            'storage_schema_version' => 7,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -108,21 +114,22 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/4.0',
+            'schema' => 'sc-workspace-project-contract/5.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/4.0',
+            'project_schema' => 'sc-workspace-project/5.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'export_schema' => 'sc-workspace-project-export/4.0',
-            'storage_schema_version' => 6,
+            'decision_schema' => 'sc-workspace-decision/1.0',
+            'export_schema' => 'sc-workspace-project-export/5.0',
+            'storage_schema_version' => 7,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
             'device_identity' => 'anonymous-pseudonymous-local-id',
             'account_sign_in_changes_storage' => false,
             'max_objects_per_project' => 250,
-            'handoff_schema' => 'sc-workspace-handoff/1.3',
+            'handoff_schema' => 'sc-workspace-handoff/1.4',
             'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_origin', 'sc_workspace_return'),
         ));
     }
@@ -165,7 +172,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-analysis-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'project_schema' => 'sc-workspace-project/4.0',
+            'project_schema' => 'sc-workspace-project/5.0',
             'dataset_object_type' => 'dataset',
             'analysis_object_type' => 'analysis',
             'question_statuses' => array('open', 'resolved', 'deferred'),
@@ -182,6 +189,30 @@ final class SC_Workspace {
             'references_workspace_object_ids' => true,
             'analysis_content_in_handoff_url' => false,
             'server_compute' => false,
+            'local_first' => true,
+        ));
+    }
+
+
+    public function decision_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-decision-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'decision_schema' => 'sc-workspace-decision/1.0',
+            'project_schema' => 'sc-workspace-project/5.0',
+            'decision_object_type' => 'decision',
+            'decision_statuses' => array('framing', 'evaluating', 'decided', 'revisit'),
+            'option_statuses' => array('candidate', 'shortlisted', 'selected', 'rejected'),
+            'confidence_levels' => array('low', 'medium', 'high'),
+            'risk_levels' => array('low', 'medium', 'high'),
+            'score_range' => array('minimum' => -5, 'maximum' => 5),
+            'max_decisions_per_project' => 60,
+            'max_options_per_project' => 240,
+            'max_criteria_per_project' => 180,
+            'max_assessments_per_project' => 1000,
+            'max_risks_per_project' => 300,
+            'references_workspace_object_ids' => true,
+            'decision_content_in_handoff_url' => false,
             'local_first' => true,
         ));
     }
@@ -208,14 +239,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v050',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.5.0.css',
+            'sc-workspace-v060',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.6.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v050',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.5.0.js',
+            'sc-workspace-v060',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.6.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -224,7 +255,7 @@ final class SC_Workspace {
         $return_url = home_url('/platform/workspace/');
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v050', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v060', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -257,7 +288,7 @@ final class SC_Workspace {
         $return_url = home_url('/platform/workspace/');
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="6" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="7" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / PLATFORM</div>
                 <div class="scw-hero-grid">
@@ -276,7 +307,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.5.0 can recognize an optional Sustainable Catalyst site account, but projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. v0.6.0 adds structured decision work while projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
             </div>
 
             <section class="scw-identity" aria-labelledby="scw-identity-title">
@@ -293,7 +324,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.5.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.6.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -547,6 +578,91 @@ final class SC_Workspace {
                     </div>
                 </section>
 
+
+                <section class="scw-decision" aria-labelledby="scw-decision-title">
+                    <div class="scw-decision-head">
+                        <div>
+                            <div class="scw-kicker">DECISION WORKSPACE</div>
+                            <h3 id="scw-decision-title">From analysis to accountable decision.</h3>
+                            <p>Frame decisions, compare options against explicit criteria, record assessments and risks, and preserve the selected course, rationale, confidence, and supporting evidence as a durable Workspace Decision object.</p>
+                        </div>
+                        <div class="scw-decision-launchers" aria-label="Decision tools">
+                            <a class="scw-button" data-scw-tool="decision-studio" href="<?php echo esc_url(home_url('/platform/decision-studio/')); ?>"><strong>Decision Studio</strong></a>
+                            <a class="scw-button" data-scw-tool="catalyst-canvas" href="<?php echo esc_url(home_url('/platform/catalyst-canvas/')); ?>"><strong>Catalyst Canvas</strong></a>
+                        </div>
+                    </div>
+
+                    <div class="scw-decision-metrics" aria-label="Decision project metrics">
+                        <div><strong data-scw-decision-metric-open>0</strong><span>open decisions</span></div>
+                        <div><strong data-scw-decision-metric-options>0</strong><span>options</span></div>
+                        <div><strong data-scw-decision-metric-criteria>0</strong><span>criteria</span></div>
+                        <div><strong data-scw-decision-metric-decided>0</strong><span>decided</span></div>
+                    </div>
+
+                    <div class="scw-decision-grid">
+                        <section class="scw-decision-panel scw-decision-panel-wide" aria-labelledby="scw-decision-frame-heading">
+                            <div class="scw-decision-panel-head"><span>01 / FRAME</span><h4 id="scw-decision-frame-heading">Decision records</h4></div>
+                            <div class="scw-decision-active"><span>ACTIVE DECISION</span><strong data-scw-decision-active>No active decision selected.</strong></div>
+                            <form class="scw-decision-form scw-decision-form-frame" data-scw-decision-form>
+                                <label><span>Decision title</span><input type="text" name="title" maxlength="200" required placeholder="Choose an implementation pathway"></label>
+                                <label><span>Decision question</span><input type="text" name="question" maxlength="2000" required placeholder="What exactly must be decided?"></label>
+                                <button class="scw-button" type="submit">Create decision</button>
+                            </form>
+                            <div class="scw-decision-list" data-scw-decision-list></div>
+                        </section>
+
+                        <section class="scw-decision-panel" aria-labelledby="scw-decision-options-heading">
+                            <div class="scw-decision-panel-head"><span>02 / OPTIONS</span><h4 id="scw-decision-options-heading">Options &amp; criteria</h4></div>
+                            <form class="scw-decision-form" data-scw-decision-option-form>
+                                <label><span>Option</span><input type="text" name="label" maxlength="200" required></label>
+                                <label><span>Description</span><textarea name="description" rows="3" maxlength="2400"></textarea></label>
+                                <button class="scw-button" type="submit">Add option</button>
+                            </form>
+                            <div class="scw-decision-list" data-scw-decision-option-list></div>
+                            <form class="scw-decision-form scw-decision-subform" data-scw-decision-criterion-form>
+                                <div class="scw-decision-form-row"><label><span>Criterion</span><input type="text" name="label" maxlength="200" required></label><label><span>Weight</span><input type="number" name="weight" min="0" max="100" value="50"></label></div>
+                                <label><span>Description</span><input type="text" name="description" maxlength="1200"></label>
+                                <button class="scw-button" type="submit">Add criterion</button>
+                            </form>
+                            <div class="scw-decision-list" data-scw-decision-criterion-list></div>
+                        </section>
+
+                        <section class="scw-decision-panel" aria-labelledby="scw-decision-assess-heading">
+                            <div class="scw-decision-panel-head"><span>03 / ASSESS</span><h4 id="scw-decision-assess-heading">Option assessments</h4></div>
+                            <form class="scw-decision-form" data-scw-decision-assessment-form>
+                                <div class="scw-decision-form-row"><label><span>Option</span><select name="optionId" data-scw-decision-assessment-option><option value="">Choose option</option></select></label><label><span>Criterion</span><select name="criterionId" data-scw-decision-assessment-criterion><option value="">Choose criterion</option></select></label></div>
+                                <div class="scw-decision-form-row"><label><span>Score (-5 to +5)</span><input type="number" name="score" min="-5" max="5" value="0"></label><label><span>Note</span><input type="text" name="note" maxlength="1200"></label></div>
+                                <button class="scw-button" type="submit">Record assessment</button>
+                            </form>
+                            <div class="scw-decision-list" data-scw-decision-assessment-list></div>
+                        </section>
+
+                        <section class="scw-decision-panel scw-decision-panel-wide" aria-labelledby="scw-decision-record-heading">
+                            <div class="scw-decision-panel-head"><span>04 / DECIDE</span><h4 id="scw-decision-record-heading">Risks &amp; decision record</h4></div>
+                            <div class="scw-decision-two-col">
+                                <div>
+                                    <form class="scw-decision-form" data-scw-decision-risk-form>
+                                        <label><span>Risk</span><textarea name="risk" rows="3" maxlength="2400" required></textarea></label>
+                                        <div class="scw-decision-form-row"><label><span>Likelihood</span><select name="likelihood"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label><label><span>Impact</span><select name="impact"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label></div>
+                                        <label><span>Mitigation</span><textarea name="mitigation" rows="2" maxlength="2000"></textarea></label>
+                                        <button class="scw-button" type="submit">Add risk</button>
+                                    </form>
+                                    <div class="scw-decision-list" data-scw-decision-risk-list></div>
+                                </div>
+                                <div>
+                                    <form class="scw-decision-form" data-scw-decision-final-form>
+                                        <label><span>Selected option</span><select name="selectedOptionId" data-scw-decision-final-option><option value="">Choose option</option></select></label>
+                                        <label><span>Rationale</span><textarea name="rationale" rows="5" maxlength="6000" required placeholder="Why is this the preferred course given the evidence, analysis, criteria, tradeoffs, and risks?"></textarea></label>
+                                        <label><span>Confidence</span><select name="confidence"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label>
+                                        <button class="scw-button scw-button-primary" type="submit">Finalize decision</button>
+                                    </form>
+                                    <div class="scw-decision-summary" data-scw-decision-summary><span>No finalized decision yet.</span></div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+
                 <section class="scw-objects" aria-labelledby="scw-objects-title">
                     <div class="scw-object-head">
                         <div>
@@ -668,7 +784,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.5.0. Sign-in does not upload project content.</div>
+                <div>Guest and signed-in sessions use device-local project storage in v0.6.0. Sign-in does not upload project content.</div>
             </footer>
         </section>
         <?php

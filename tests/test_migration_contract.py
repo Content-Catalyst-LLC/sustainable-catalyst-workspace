@@ -1,10 +1,10 @@
 import unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.5.0.js'
+ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.6.0.js'
 class MigrationTests(unittest.TestCase):
-    def test_storage_v5_to_v6_migration(self):
+    def test_storage_v6_to_v7_migration(self):
         js=JS.read_text()
-        for token in ('const STORAGE_VERSION = 6','function migrateV5',"if (raw.schemaVersion === 5) return migrateV5(raw)","const PROJECT_SCHEMA = 'sc-workspace-project/4.0'","const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1'","analysis: normalizeAnalysis(raw.analysis, objects)"):
+        for token in ('const STORAGE_VERSION = 7','function migrateV6',"if (raw.schemaVersion === 6) return migrateV6(raw)","const PROJECT_SCHEMA = 'sc-workspace-project/5.0'","const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1'","analysis: normalizeAnalysis(raw.analysis, objects)"):
             self.assertIn(token,js)
     def test_older_migrations_retained(self):
         js=JS.read_text()

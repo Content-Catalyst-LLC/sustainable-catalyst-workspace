@@ -5,8 +5,8 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v050';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v050';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v060';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v060';
     const LEGACY_PENDING_KEY_V041 = 'sc_workspace_registry_pending_v041';
     const LEGACY_PENDING_KEY_V040 = 'sc_workspace_registry_pending_v040';
     const LEGACY_PENDING_KEY_V030 = 'sc_workspace_registry_pending_v030';
@@ -132,11 +132,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.4.1',
+            'previous_version' => '0.5.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Analysis Workspace: analytical questions, Dataset and Analysis object workflows, variables, assumptions, methods, comparisons, findings, evidence links, analysis tool handoffs, and storage migration to schema 6.',
+            'change_summary' => 'Decision Workspace: structured decisions, options, criteria, assessments, risks, rationale, confidence, canonical Decision objects, and storage migration to schema 7.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.5.0 adds a first-class Analysis Workspace while preserving anonymous use, the v0.4.1 account/persistence boundary, device-local project storage, and no automatic cloud upload. Institutional compute, shared governance, and organization-scale intelligence remain outside this personal Workspace release.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.6.0 adds a first-class Decision Workspace while preserving anonymous use, the v0.4.1 account/persistence boundary, device-local project storage, and no automatic cloud upload. Institutional compute, shared governance, and organization-scale intelligence remain outside this personal Workspace release.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
