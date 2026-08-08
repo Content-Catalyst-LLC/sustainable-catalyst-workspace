@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V082, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V081, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V080, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V070, '') === '1' ||
@@ -51,7 +52,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.2 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.3 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -338,7 +339,7 @@ final class SC_Workspace {
 
     public function platform_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-platform-contract/1.1',
+            'schema' => 'sc-workspace-platform-contract/1.2',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'dedicated_shortcode' => 'sc_workspace_platform',
             'canonical_path_after_conversion' => '/platform/',
@@ -354,7 +355,10 @@ final class SC_Workspace {
             'project_schema' => 'sc-workspace-project/7.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
-            'public_experience' => 'institutional-light',
+            'public_experience' => 'advisory-aligned-editorial',
+            'editorial_shell' => true,
+            'illustrative_software_preview' => true,
+            'alternating_surface_rhythm' => true,
             'technical_controls_progressively_disclosed' => true,
             'project_mode_navigation' => true,
             'navigation_relabel_available' => true,
@@ -386,13 +390,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.2.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.3.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.2.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.3.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -1052,7 +1056,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.8.2. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.8.3. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1064,37 +1068,90 @@ final class SC_Workspace {
         $workspace = $this->render_workspace();
         ob_start();
         ?>
-        <section class="scw-platform-page scw-public-experience" data-sc-workspace-platform data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>">
-            <header class="scw-platform-hero">
-                <div class="scw-platform-hero-inner">
-                    <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
-                    <h1>Research. Analyze. Decide.</h1>
-                    <p>Workspace is a free personal environment for structured inquiry, evidence, analysis, decisions, and visual reasoning across Sustainable Catalyst.</p>
-                    <div class="scw-platform-actions">
-                        <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
-                        <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
+        <section class="scw-platform-page scw-public-experience scw-editorial-shell" data-sc-workspace-platform data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>">
+            <header class="scw-platform-hero scw-platform-hero-editorial">
+                <div class="scw-platform-hero-grid">
+                    <div class="scw-platform-hero-copy">
+                        <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
+                        <h1>Research. Analyze. Decide.</h1>
+                        <p class="scw-platform-lede">A free personal workspace for keeping questions, evidence, analysis, decisions, and structured thinking connected from the beginning of an inquiry through its outcome.</p>
+                        <div class="scw-platform-actions">
+                            <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
+                            <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
+                        </div>
+                        <div class="scw-platform-access-grid" aria-label="Workspace access summary">
+                            <div><span>ACCESS</span><strong>Free public use</strong></div>
+                            <div><span>ACCOUNT</span><strong>Optional</strong></div>
+                            <div><span>PERSISTENCE</span><strong>Saved on this device</strong></div>
+                        </div>
                     </div>
-                    <div class="scw-platform-access-note"><strong>No login required.</strong><span>Projects are saved on this device. Sign-in is optional and does not upload project content.</span></div>
+                    <aside class="scw-platform-preview" aria-label="Illustrative Workspace project preview">
+                        <div class="scw-preview-topline"><span>ILLUSTRATIVE WORKSPACE</span><b>LOCAL</b></div>
+                        <div class="scw-preview-title">Energy Systems Research</div>
+                        <div class="scw-preview-status">Active project · Updated today</div>
+                        <div class="scw-preview-grid">
+                            <div><span>Research</span><strong>12 sources</strong><small>2 open questions</small></div>
+                            <div><span>Evidence</span><strong>8 items</strong><small>Provenance retained</small></div>
+                            <div><span>Analysis</span><strong>3 methods</strong><small>2 assumptions visible</small></div>
+                            <div><span>Decision</span><strong>1 open</strong><small>Criteria in review</small></div>
+                        </div>
+                        <div class="scw-preview-track"><span class="is-complete">Research</span><span class="is-complete">Evidence</span><span>Analysis</span><span>Decision</span><span>Canvas</span></div>
+                    </aside>
                 </div>
             </header>
 
-            <section class="scw-platform-flow" aria-label="Workspace workflow">
-                <article><span>01</span><strong>Research</strong><p>Frame questions and organize sources.</p></article>
-                <article><span>02</span><strong>Evidence</strong><p>Preserve support and provenance.</p></article>
-                <article><span>03</span><strong>Analysis</strong><p>Make methods and assumptions visible.</p></article>
-                <article><span>04</span><strong>Decision</strong><p>Compare options and record rationale.</p></article>
-                <article><span>05</span><strong>Canvas</strong><p>Map systems, relationships, and ideas.</p></article>
+            <section class="scw-editorial-section scw-editorial-section-white scw-platform-story" aria-labelledby="scw-story-title">
+                <div class="scw-editorial-kicker">ONE PERSONAL WORKSPACE</div>
+                <h2 id="scw-story-title">From difficult question to a decision you can trace.</h2>
+                <p class="scw-editorial-deck">Workspace keeps the basis of the work visible as it develops. Sources remain connected to evidence, evidence to analysis, analysis to choices, and choices to the reasoning that supports them.</p>
+                <div class="scw-platform-flow scw-platform-flow-editorial" aria-label="Workspace workflow">
+                    <article><span>01</span><strong>Research</strong><p>Frame questions, collect sources, and keep the inquiry organized.</p></article>
+                    <article><span>02</span><strong>Evidence</strong><p>Preserve support, provenance, and links back to the source.</p></article>
+                    <article><span>03</span><strong>Analysis</strong><p>Make datasets, methods, assumptions, comparisons, and findings visible.</p></article>
+                    <article><span>04</span><strong>Decision</strong><p>Compare options, weigh criteria, assess risk, and record rationale.</p></article>
+                    <article><span>05</span><strong>Canvas</strong><p>Map systems, relationships, stakeholders, claims, and ideas.</p></article>
+                </div>
+                <div class="scw-editorial-band"><strong>Connected reasoning across every stage</strong><span>Questions</span><span>Sources</span><span>Provenance</span><span>Assumptions</span><span>Methods</span><span>Trade-offs</span><span>Decisions</span></div>
             </section>
 
-            <section class="scw-platform-bridge" aria-label="Workspace design principles">
-                <div><strong>Free personal capability</strong><span>A serious working environment, not a limited demo.</span></div>
-                <div><strong>Local first</strong><span>Your projects remain on this device unless you explicitly export them.</span></div>
-                <div><strong>Connected when useful</strong><span>Move context between Sustainable Catalyst tools without putting project content in URLs.</span></div>
+            <section class="scw-editorial-section scw-editorial-section-neutral scw-platform-pathways" aria-labelledby="scw-pathways-title">
+                <div class="scw-editorial-kicker">WORKSPACE PATHWAYS</div>
+                <h2 id="scw-pathways-title">Begin with the work in front of you.</h2>
+                <p class="scw-editorial-deck">These are connected ways to use one personal environment, not separate products or locked tiers. A project can move between them as the work develops.</p>
+                <div class="scw-pathway-list">
+                    <article><b>01</b><div><strong>Research and evidence</strong><p>Investigate a question, organize sources, extract evidence, map claims, and preserve provenance.</p></div><span>Sources + evidence</span></article>
+                    <article><b>02</b><div><strong>Analysis and modeling</strong><p>Register datasets, variables, assumptions, methods, comparisons, and findings.</p></div><span>Analytical record</span></article>
+                    <article><b>03</b><div><strong>Decision and trade-offs</strong><p>Compare alternatives, criteria, uncertainty, risks, mitigations, and rationale.</p></div><span>Decision record</span></article>
+                    <article><b>04</b><div><strong>Systems and structured thinking</strong><p>Use Canvas boards to arrange relationships among evidence, analysis, decisions, systems, and stakeholders.</p></div><span>Structured synthesis</span></article>
+                    <article><b>05</b><div><strong>Connected tools and reusable artifacts</strong><p>Move stable project context into Sustainable Catalyst tools and return structured artifacts to the originating project.</p></div><span>Portable project context</span></article>
+                </div>
             </section>
 
-            <div class="scw-platform-application" id="workspace-application">
+            <section class="scw-editorial-section scw-editorial-section-white scw-platform-capability" aria-labelledby="scw-capability-title">
+                <div class="scw-editorial-kicker">PERSONAL CAPABILITY</div>
+                <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
+                <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
+                <div class="scw-capability-grid">
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.8.3.</p></article>
+                    <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
+                    <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
+                </div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.8.3.</p></div>
+            </section>
+
+            <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">
+                <div><div class="scw-editorial-kicker">WORKSPACE APPLICATION</div><h2 id="scw-app-title">Open the working environment.</h2><p>Projects are where research, analysis, decisions, Canvas boards, reusable objects, and connected-tool handoffs stay together.</p></div>
+                <a class="scw-button scw-button-primary" href="#workspace-application">Go to projects</a>
+            </section>
+
+            <div class="scw-platform-application scw-platform-application-editorial" id="workspace-application">
                 <?php echo $workspace; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- generated shortcode HTML ?>
             </div>
+
+            <section class="scw-editorial-closing" aria-label="Workspace closing action">
+                <div><span>FREE PERSONAL WORKSPACE</span><h2>Keep the evidence, analysis, and decisions connected.</h2><p>Start without an account, preserve the reasoning, and use the wider Sustainable Catalyst system when the work calls for it.</p></div>
+                <div class="scw-editorial-closing-actions"><a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a><a class="scw-button scw-button-dark-outline" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a></div>
+            </section>
         </section>
         <?php
         return ob_get_clean();

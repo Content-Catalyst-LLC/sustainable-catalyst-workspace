@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v082';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v082';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v083';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v083';
+    const LEGACY_PENDING_KEY_V082 = 'sc_workspace_registry_pending_v082';
     const LEGACY_PENDING_KEY_V081 = 'sc_workspace_registry_pending_v081';
     const LEGACY_PENDING_KEY_V080 = 'sc_workspace_registry_pending_v080';
     const LEGACY_PENDING_KEY_V070 = 'sc_workspace_registry_pending_v070';
@@ -81,6 +82,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V082);
         delete_option(self::LEGACY_PENDING_KEY_V081);
         delete_option(self::LEGACY_PENDING_KEY_V080);
         delete_option(self::LEGACY_PENDING_KEY_V070);
@@ -142,11 +144,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.8.1',
+            'previous_version' => '0.8.2',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Workspace Interface Refinement & Public Experience: simplified public page, light institutional application shell, project-mode navigation, progressive disclosure of technical controls, and guarded Workspace navigation relabeling.',
+            'change_summary' => 'Advisory Visual Integration & Workspace Editorial Shell: Advisory-aligned hero composition, editorial section rhythm, institutional black/red emphasis, software preview, and refined full-width application presentation.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.8.2 is a presentation and usability release: it preserves the v0.8.1 storage, project, object, handoff, and identity contracts while making Workspace the visitor-facing product name. Technical identity and return diagnostics move behind secondary disclosures, project work gains mode navigation, and administrators can explicitly relabel matching Platform navigation items to Workspace with rollback. No cloud sync or server project storage is introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.8.3 is a visual/editorial integration release that brings Workspace into the same institutional design grammar as Advisory while preserving the v0.8.2 storage, project, object, handoff, identity, route, and navigation contracts. The public shell uses editorial hero composition, alternating white/warm-neutral/black surfaces, sharp rules, restrained red accents, a software preview, and a stronger application frame. No cloud sync or server project storage is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
