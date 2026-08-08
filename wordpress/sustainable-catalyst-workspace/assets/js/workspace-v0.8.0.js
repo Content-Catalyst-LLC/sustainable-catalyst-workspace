@@ -3,11 +3,13 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_7_0';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_8_0';
   const DEVICE_KEY = 'sc_workspace_device_v1';
-  const HANDOFF_KEY = 'sc_workspace_handoff_v1';
-  const STORAGE_VERSION = 8;
-  const PROJECT_SCHEMA = 'sc-workspace-project/6.0';
+  const HANDOFF_KEY = 'sc_workspace_handoff_v2';
+  const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
+  const STORAGE_VERSION = 9;
+  const PROJECT_SCHEMA = 'sc-workspace-project/7.0';
+  const LEGACY_PROJECT_SCHEMA_V6 = 'sc-workspace-project/6.0';
   const LEGACY_PROJECT_SCHEMA_V5 = 'sc-workspace-project/5.0';
   const LEGACY_PROJECT_SCHEMA_V4 = 'sc-workspace-project/4.0';
   const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1';
@@ -15,7 +17,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/6.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/7.0';
+  const LEGACY_EXPORT_SCHEMA_V6 = 'sc-workspace-project-export/6.0';
   const LEGACY_EXPORT_SCHEMA_V5 = 'sc-workspace-project-export/5.0';
   const LEGACY_EXPORT_SCHEMA_V4 = 'sc-workspace-project-export/4.0';
   const LEGACY_EXPORT_SCHEMA_V31 = 'sc-workspace-project-export/3.1';
@@ -23,7 +26,9 @@
   const LEGACY_EXPORT_SCHEMA_V2 = 'sc-workspace-project-export/2.0';
   const LEGACY_EXPORT_SCHEMA_V1 = 'sc-workspace-project-export/1.0';
   const OBJECT_EXPORT_SCHEMA = 'sc-workspace-object-export/1.0';
-  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.5';
+  const HANDOFF_SCHEMA = 'sc-workspace-handoff/2.0';
+  const HANDOFF_LEDGER_SCHEMA = 'sc-workspace-handoff-ledger/1.0';
+  const HANDOFF_RETURN_SCHEMA = 'sc-workspace-handoff-return/1.0';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0';
@@ -51,6 +56,9 @@
   const MAX_CANVAS_NODES = 500;
   const MAX_CANVAS_EDGES = 1000;
   const MAX_CANVAS_FRAMES = 100;
+  const MAX_HANDOFFS = 150;
+  const MAX_HANDOFF_OBJECT_REFS = 12;
+  const MAX_RETURN_ARTIFACTS = 20;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
   const OBJECT_TYPES = new Set(['source', 'evidence', 'dataset', 'analysis', 'decision', 'document', 'export']);
   const OBJECT_STATUS = new Set(['draft', 'working', 'ready']);
@@ -71,6 +79,10 @@
   const CANVAS_BOARD_STATUS = new Set(['draft', 'working', 'ready']);
   const CANVAS_NODE_TYPE = new Set(['note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea']);
   const CANVAS_RELATION_TYPE = new Set(['supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence']);
+  const HANDOFF_STATUS = new Set(['prepared', 'launched', 'returned', 'closed']);
+  const HANDOFF_INTENT = new Set(['research', 'analysis', 'decision', 'canvas', 'data', 'compute', 'publish', 'general']);
+  const HANDOFF_DESTINATIONS = new Set(['research-librarian', 'knowledge-library', 'site-intelligence', 'workbench', 'analytics-r', 'decision-studio', 'catalyst-canvas', 'catalyst-data', 'lab']);
+  const HANDOFF_INTENT_BY_TOOL = { 'research-librarian':'research','knowledge-library':'research','site-intelligence':'data','workbench':'compute','analytics-r':'analysis','decision-studio':'decision','catalyst-canvas':'canvas','catalyst-data':'data','lab':'compute' };
   const OBJECT_LABELS = {
     source: 'Source', evidence: 'Evidence', dataset: 'Dataset', analysis: 'Analysis',
     decision: 'Decision', document: 'Document', export: 'Export'
@@ -450,6 +462,112 @@
     touchCanvas(project);
   }
 
+  function handoffLedgerTemplate() {
+    const stamp = nowIso();
+    return { schema: HANDOFF_LEDGER_SCHEMA, entries: [], activeHandoffId: null, createdAt: stamp, updatedAt: stamp };
+  }
+
+  function normalizeHandoffEntry(raw, projectObjectIds = new Set(), canvasBoardIds = new Set()) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    const status = HANDOFF_STATUS.has(raw.status) ? raw.status : 'launched';
+    const objectIds = Array.isArray(raw.objectIds) ? [...new Set(raw.objectIds.map((value) => String(value).slice(0,160)).filter((value) => projectObjectIds.has(value)))].slice(0,MAX_HANDOFF_OBJECT_REFS) : [];
+    const returned = Array.isArray(raw.returnObjectIds) ? [...new Set(raw.returnObjectIds.map((value) => String(value).slice(0,160)).filter((value) => projectObjectIds.has(value)))].slice(0,MAX_RETURN_ARTIFACTS) : [];
+    return {
+      id: String(raw.id || id('sch')).slice(0,160),
+      destination: HANDOFF_DESTINATIONS.has(raw.destination) ? raw.destination : 'lab',
+      destinationLabel: String(raw.destinationLabel || raw.destination || 'Tool').slice(0,120),
+      intent: HANDOFF_INTENT.has(raw.intent) ? raw.intent : 'general',
+      objectIds,
+      canvasBoardId: canvasBoardIds.has(String(raw.canvasBoardId || '')) ? String(raw.canvasBoardId) : '',
+      status,
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp,
+      launchedAt: validIso(raw.launchedAt) ? raw.launchedAt : (status === 'prepared' ? null : stamp),
+      returnedAt: validIso(raw.returnedAt) ? raw.returnedAt : null,
+      closedAt: validIso(raw.closedAt) ? raw.closedAt : null,
+      returnObjectIds: returned,
+      note: String(raw.note || '').slice(0,1000)
+    };
+  }
+
+  function normalizeHandoffs(raw, objects = [], canvas = null) {
+    const base = handoffLedgerTemplate();
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const objectIds = new Set(objects.map((object) => object.id));
+    const boardIds = new Set(canvas && Array.isArray(canvas.boards) ? canvas.boards.map((board) => board.id) : []);
+    base.entries = Array.isArray(value.entries) ? value.entries.map((entry) => normalizeHandoffEntry(entry, objectIds, boardIds)).filter(Boolean).slice(0,MAX_HANDOFFS) : [];
+    base.activeHandoffId = base.entries.some((entry) => entry.id === value.activeHandoffId) ? value.activeHandoffId : null;
+    base.createdAt = validIso(value.createdAt) ? value.createdAt : base.createdAt;
+    base.updatedAt = validIso(value.updatedAt) ? value.updatedAt : base.updatedAt;
+    return base;
+  }
+
+  function touchHandoffs(project) {
+    if (!project.handoffs) project.handoffs = handoffLedgerTemplate();
+    project.handoffs.updatedAt = nowIso();
+    project.updatedAt = project.handoffs.updatedAt;
+  }
+
+  function cleanHandoffReferences(project, objectId) {
+    if (!project || !project.handoffs) return;
+    project.handoffs.entries.forEach((entry) => {
+      entry.objectIds = entry.objectIds.filter((idValue) => idValue !== objectId);
+      entry.returnObjectIds = entry.returnObjectIds.filter((idValue) => idValue !== objectId);
+    });
+    touchHandoffs(project);
+  }
+
+  function handoffIntent(toolKey) { return HANDOFF_INTENT_BY_TOOL[toolKey] || 'general'; }
+
+  function createHandoff(project, destination, destinationLabel, object, canvasBoardId = '') {
+    if (!project.handoffs) project.handoffs = handoffLedgerTemplate();
+    const stamp = nowIso();
+    const entry = {
+      id: id('sch'), destination, destinationLabel: String(destinationLabel || destination).slice(0,120), intent: handoffIntent(destination),
+      objectIds: object ? [object.id] : [], canvasBoardId: String(canvasBoardId || '').slice(0,160), status: 'launched',
+      createdAt: stamp, launchedAt: stamp, returnedAt: null, closedAt: null, returnObjectIds: [], note: ''
+    };
+    project.handoffs.entries.unshift(entry);
+    project.handoffs.entries = project.handoffs.entries.slice(0,MAX_HANDOFFS);
+    project.handoffs.activeHandoffId = entry.id;
+    touchHandoffs(project);
+    return entry;
+  }
+
+  function normalizeReturnArtifact(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const type = OBJECT_TYPES.has(raw.type) ? raw.type : 'document';
+    const title = String(raw.title || 'Returned artifact').trim().slice(0,160) || 'Returned artifact';
+    return { type, title, summary: String(raw.summary || '').slice(0,1200), content: String(raw.content || '').slice(0,50000), tags: normalizeTags(raw.tags), status: OBJECT_STATUS.has(raw.status) ? raw.status : 'ready', sourceTitle: String(raw.sourceTitle || '').slice(0,240), sourceUrl: String(raw.sourceUrl || '').slice(0,2000) };
+  }
+
+  function ingestReturnPacket(state, payload) {
+    if (!payload || payload.schema !== HANDOFF_RETURN_SCHEMA) return { ok:false, message:'Unsupported handoff return schema.' };
+    const project = state.projects.find((item) => item.id === String(payload.projectId || '') && !item.archivedAt);
+    if (!project) return { ok:false, message:'The return package does not match an available Workspace Project on this device.' };
+    if (!project.handoffs) project.handoffs = handoffLedgerTemplate();
+    let entry = project.handoffs.entries.find((item) => item.id === String(payload.handoffId || ''));
+    if (!entry) {
+      entry = { id:String(payload.handoffId || id('sch')).slice(0,160), destination:HANDOFF_DESTINATIONS.has(payload.destination)?payload.destination:'lab', destinationLabel:String(payload.destinationLabel || payload.destination || 'Returned tool').slice(0,120), intent:HANDOFF_INTENT.has(payload.intent)?payload.intent:'general', objectIds:[], canvasBoardId:'', status:'returned', createdAt:validIso(payload.createdAt)?payload.createdAt:nowIso(), launchedAt:validIso(payload.createdAt)?payload.createdAt:null, returnedAt:validIso(payload.returnedAt)?payload.returnedAt:nowIso(), closedAt:null, returnObjectIds:[], note:'Return package received without a matching local launch record.' };
+      project.handoffs.entries.unshift(entry);
+    }
+    const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts.map(normalizeReturnArtifact).filter(Boolean).slice(0,MAX_RETURN_ARTIFACTS) : [];
+    const createdIds = [];
+    artifacts.forEach((artifact) => {
+      if (project.objects.length >= MAX_OBJECTS) return;
+      const obj = objectTemplate(artifact.type, artifact.title);
+      obj.summary = artifact.summary; obj.content = artifact.content; obj.tags = artifact.tags; obj.status = artifact.status;
+      obj.provenance.sourceType = 'tool'; obj.provenance.sourceTitle = artifact.sourceTitle || entry.destinationLabel; obj.provenance.sourceUrl = artifact.sourceUrl; obj.provenance.capturedAt = validIso(payload.returnedAt) ? payload.returnedAt : nowIso();
+      project.objects.push(obj); createdIds.push(obj.id);
+    });
+    entry.status = 'returned'; entry.returnedAt = validIso(payload.returnedAt) ? payload.returnedAt : nowIso(); entry.returnObjectIds = [...new Set([...(entry.returnObjectIds || []), ...createdIds])].slice(0,MAX_RETURN_ARTIFACTS);
+    project.handoffs.activeHandoffId = entry.id;
+    if (createdIds[0]) project.activeObjectId = createdIds[0];
+    touchHandoffs(project); addActivity(project,'handoff-return',`${entry.destinationLabel} returned ${createdIds.length} artifact${createdIds.length===1?'':'s'}`);
+    state.activeProjectId = project.id;
+    return { ok:true, project, entry, createdIds, message: createdIds.length ? `${createdIds.length} returned artifact${createdIds.length===1?'':'s'} added to ${project.title}.` : `Return received from ${entry.destinationLabel}.` };
+  }
+
   function objectTemplate(type, title) {
     const stamp = nowIso();
     return {
@@ -489,7 +607,8 @@
       research: researchTemplate(),
       analysis: analysisTemplate(),
       decision: decisionTemplate(),
-      canvas: canvasTemplate()
+      canvas: canvasTemplate(),
+      handoffs: handoffLedgerTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -569,6 +688,7 @@
     const stamp = nowIso();
     const objects = Array.isArray(raw.objects) ? raw.objects.map(normalizeObject).filter(Boolean).slice(0, MAX_OBJECTS) : [];
     const activeObjectId = objects.some((object) => object.id === raw.activeObjectId && !object.archivedAt) ? raw.activeObjectId : null;
+    const canvas = normalizeCanvas(raw.canvas, objects);
     return {
       schema: PROJECT_SCHEMA,
       id: String(raw.id || id('scwp')).slice(0, 160),
@@ -588,7 +708,8 @@
       research: normalizeResearch(raw.research, objects),
       analysis: normalizeAnalysis(raw.analysis, objects),
       decision: normalizeDecision(raw.decision, objects),
-      canvas: normalizeCanvas(raw.canvas, objects)
+      canvas,
+      handoffs: normalizeHandoffs(raw.handoffs, objects, canvas)
     };
   }
 
@@ -702,6 +823,21 @@
     return state;
   }
 
+  function migrateV8(raw) {
+    const state = defaultState();
+    state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
+      const normalized = normalizeProject(project);
+      if (normalized) addActivity(normalized, 'migrated', 'Project upgraded to Cross-Product Handoffs');
+      return normalized;
+    }).filter(Boolean) : [];
+    state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.identity = normalizeIdentity(raw.identity);
+    state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
+    state.updatedAt = nowIso();
+    return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -711,6 +847,7 @@
     if (raw.schemaVersion === 5) return migrateV5(raw);
     if (raw.schemaVersion === 6) return migrateV6(raw);
     if (raw.schemaVersion === 7) return migrateV7(raw);
+    if (raw.schemaVersion === 8) return migrateV8(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -843,6 +980,7 @@
     copy.canvas.edges = copy.canvas.edges.map((edge) => ({ ...edge, id: id('ce'), boardId: boardMap.get(edge.boardId) || '', fromNodeId: nodeMap.get(edge.fromNodeId) || '', toNodeId: nodeMap.get(edge.toNodeId) || '', createdAt: copy.createdAt })).filter((edge) => edge.boardId && edge.fromNodeId && edge.toNodeId);
     copy.canvas.frames = copy.canvas.frames.map((frame) => ({ ...frame, id: id('cf'), boardId: boardMap.get(frame.boardId) || '', nodeIds: frame.nodeIds.map((nodeId) => nodeMap.get(nodeId)).filter(Boolean), createdAt: copy.createdAt, updatedAt: copy.createdAt })).filter((frame) => frame.boardId);
     copy.canvas.activeBoardId = null; copy.canvas.createdAt = copy.createdAt; copy.canvas.updatedAt = copy.createdAt;
+    copy.handoffs = handoffLedgerTemplate();
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
   }
@@ -984,6 +1122,13 @@
     const canvasMetricNodes = root.querySelector('[data-scw-canvas-metric-nodes]');
     const canvasMetricEdges = root.querySelector('[data-scw-canvas-metric-edges]');
     const canvasMetricFrames = root.querySelector('[data-scw-canvas-metric-frames]');
+    const handoffList = root.querySelector('[data-scw-handoff-list]');
+    const handoffEmpty = root.querySelector('[data-scw-handoff-empty]');
+    const handoffImportFile = root.querySelector('[data-scw-handoff-import-file]');
+    const handoffMetricLaunched = root.querySelector('[data-scw-handoff-metric-launched]');
+    const handoffMetricReturned = root.querySelector('[data-scw-handoff-metric-returned]');
+    const handoffMetricObjects = root.querySelector('[data-scw-handoff-metric-objects]');
+    const handoffMetricClosed = root.querySelector('[data-scw-handoff-metric-closed]');
 
 
     function renderIdentity() {
@@ -993,7 +1138,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.7.0 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.8.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1407,6 +1552,52 @@
       frames.forEach((frame)=>{const row=document.createElement('article');row.className='scw-canvas-record';const strong=document.createElement('strong');strong.textContent=frame.title;const meta=document.createElement('span');meta.textContent=`${frame.nodeIds.length} nodes${frame.description?` · ${frame.description}`:''}`;const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action';remove.textContent='Remove';remove.addEventListener('click',()=>{c.frames=c.frames.filter(item=>item.id!==frame.id);touchCanvas(project);persist('Canvas frame removed');renderCanvas(project);});row.append(strong,meta,remove);canvasFrameList.appendChild(row);});
     }
 
+    function renderHandoffs(project) {
+      if (!handoffList || !handoffEmpty) return;
+      const ledger = project.handoffs || handoffLedgerTemplate();
+      const entries = ledger.entries || [];
+      const awaiting = entries.filter((entry) => entry.status === 'launched' || entry.status === 'prepared').length;
+      const returned = entries.filter((entry) => entry.status === 'returned').length;
+      const closed = entries.filter((entry) => entry.status === 'closed').length;
+      const returnedObjects = entries.reduce((total, entry) => total + (Array.isArray(entry.returnObjectIds) ? entry.returnObjectIds.length : 0), 0);
+      if (handoffMetricLaunched) handoffMetricLaunched.textContent = String(awaiting);
+      if (handoffMetricReturned) handoffMetricReturned.textContent = String(returned);
+      if (handoffMetricObjects) handoffMetricObjects.textContent = String(returnedObjects);
+      if (handoffMetricClosed) handoffMetricClosed.textContent = String(closed);
+      handoffList.innerHTML = '';
+      handoffEmpty.hidden = entries.length > 0;
+      entries.slice(0,40).forEach((entry) => {
+        const row = document.createElement('article'); row.className = `scw-handoff-row is-${entry.status}`;
+        const main = document.createElement('div');
+        const meta = document.createElement('span'); meta.className='scw-handoff-meta'; meta.textContent = `${entry.intent.toUpperCase()} · ${entry.status.toUpperCase()} · ${formatTime(entry.launchedAt || entry.createdAt)}`;
+        const title = document.createElement('strong'); title.textContent = entry.destinationLabel;
+        const detail = document.createElement('p'); detail.textContent = `${entry.id} · ${entry.objectIds.length} outbound object ref${entry.objectIds.length===1?'':'s'} · ${entry.returnObjectIds.length} returned artifact${entry.returnObjectIds.length===1?'':'s'}`;
+        main.append(meta,title,detail);
+        const actions=document.createElement('div'); actions.className='scw-handoff-row-actions';
+        if (entry.returnObjectIds && entry.returnObjectIds.length) { const open=document.createElement('button'); open.type='button'; open.className='scw-card-action'; open.textContent='Open return'; open.addEventListener('click',()=>{const objectId=entry.returnObjectIds.find((oid)=>project.objects.some((object)=>object.id===oid&&!object.archivedAt));if(objectId){project.activeObjectId=objectId;persist();renderObjectEditor(project);objectEditor.scrollIntoView({behavior:'auto',block:'start'});}});actions.appendChild(open); }
+        if (entry.status !== 'closed') { const close=document.createElement('button'); close.type='button'; close.className='scw-card-action'; close.textContent='Close'; close.addEventListener('click',()=>{entry.status='closed';entry.closedAt=nowIso();touchHandoffs(project);addActivity(project,'handoff-closed',`Handoff closed: ${entry.destinationLabel}`);persist('Handoff closed');renderHandoffs(project);});actions.appendChild(close); }
+        const template=document.createElement('button'); template.type='button'; template.className='scw-card-action'; template.textContent='Return template'; template.addEventListener('click',()=>downloadReturnTemplate(project,entry)); actions.appendChild(template);
+        row.append(main,actions); handoffList.appendChild(row);
+      });
+    }
+
+    function downloadReturnTemplate(project, entry) {
+      if (!project || !entry) return;
+      downloadJson(`${safeFileName(project.title)}-${entry.id}.sc-handoff-return.json`, { schema: HANDOFF_RETURN_SCHEMA, handoffId: entry.id, projectId: project.id, destination: entry.destination, destinationLabel: entry.destinationLabel, intent: entry.intent, returnedAt: nowIso(), artifacts: [{ type:'document', title:'Returned artifact', summary:'Replace this example with the artifact summary.', content:'', tags:[], status:'ready', sourceTitle:entry.destinationLabel, sourceUrl:'' }] });
+    }
+
+    function checkReturnInbox(showEmptyNotice = true) {
+      let raw = null;
+      try { raw = window.sessionStorage.getItem(HANDOFF_RETURN_KEY); } catch (_) {}
+      if (!raw) { if (showEmptyNotice) window.alert('No structured handoff return is waiting in this browser session.'); return false; }
+      try {
+        const result = ingestReturnPacket(state, JSON.parse(raw));
+        if (!result.ok) { window.alert(result.message); return false; }
+        try { window.sessionStorage.removeItem(HANDOFF_RETURN_KEY); } catch (_) {}
+        persist(result.message); render(); return true;
+      } catch (_) { window.alert('Workspace could not read the structured return packet.'); return false; }
+    }
+
     function renderActive() {
       const project = activeProject();
       activePanel.hidden = !project;
@@ -1424,6 +1615,7 @@
       renderAnalysis(project);
       renderDecision(project);
       renderCanvas(project);
+      renderHandoffs(project);
       renderObjects(project);
       renderObjectEditor(project);
     }
@@ -1521,7 +1713,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.7.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1546,7 +1738,7 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
           if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
@@ -1555,7 +1747,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.7.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.8.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -1670,7 +1862,7 @@
 
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.7.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.8.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1715,7 +1907,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.7.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -1730,11 +1922,19 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 
     root.querySelector('[data-scw-dismiss-recovery]').addEventListener('click', () => { recovery.hidden = true; recoveryNotice = ''; });
+
+    const handoffImportButton = root.querySelector('[data-scw-handoff-import]');
+    const handoffCheckButton = root.querySelector('[data-scw-handoff-check]');
+    const handoffTemplateButton = root.querySelector('[data-scw-handoff-template]');
+    if (handoffImportButton && handoffImportFile) handoffImportButton.addEventListener('click',()=>handoffImportFile.click());
+    if (handoffImportFile) handoffImportFile.addEventListener('change',()=>{const file=handoffImportFile.files&&handoffImportFile.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const result=ingestReturnPacket(state,JSON.parse(String(reader.result||'')));if(!result.ok)throw new Error(result.message);persist(result.message);render();}catch(err){window.alert(err&&err.message?err.message:'Workspace could not import this handoff return package.');}finally{handoffImportFile.value='';}};reader.readAsText(file);});
+    if (handoffCheckButton) handoffCheckButton.addEventListener('click',()=>checkReturnInbox(true));
+    if (handoffTemplateButton) handoffTemplateButton.addEventListener('click',()=>{const project=activeProject();if(!project||!project.handoffs)return;const entry=project.handoffs.entries.find((item)=>item.id===project.handoffs.activeHandoffId)||project.handoffs.entries[0];if(!entry){window.alert('Open a connected tool first so Workspace has a handoff to receive back.');return;}downloadReturnTemplate(project,entry);});
 
     root.querySelectorAll('[data-scw-tool]').forEach((link) => {
       link.dataset.scwBaseHref = link.href;
@@ -1750,21 +1950,20 @@
           if (project) {
             project.recentTools = [{ key, label, openedAt: stamp }, ...project.recentTools.filter((item) => item.key !== key)].slice(0, MAX_RECENT_TOOLS);
             project.updatedAt = stamp;
-            addActivity(project, 'handoff', `Opened ${label}${object ? ` with ${OBJECT_LABELS[object.type]}` : ''}`);
-            target.searchParams.set('sc_workspace_project', project.id);
-            if (object) target.searchParams.set('sc_workspace_object', object.id);
             const activeBoard = project.canvas && project.canvas.boards ? project.canvas.boards.find((board) => board.id === project.canvas.activeBoardId) : null;
+            const handoff = createHandoff(project, key, label, object, (activeBoard && key === 'catalyst-canvas') ? activeBoard.id : '');
+            addActivity(project, 'handoff', `Opened ${label}${object ? ` with ${OBJECT_LABELS[object.type]}` : ''} · ${handoff.id}`);
+            target.searchParams.set('sc_workspace_project', project.id);
+            target.searchParams.set('sc_workspace_handoff', handoff.id);
+            target.searchParams.set('sc_workspace_intent', handoff.intent);
+            if (object) target.searchParams.set('sc_workspace_object', object.id);
             if (activeBoard && key === 'catalyst-canvas') target.searchParams.set('sc_workspace_canvas', activeBoard.id);
             target.searchParams.set('sc_workspace_origin', 'workspace');
             target.searchParams.set('sc_workspace_return', '1');
             window.sessionStorage.setItem(HANDOFF_KEY, JSON.stringify({
-              schema: HANDOFF_SCHEMA,
-              projectId: project.id,
-              objectId: object ? object.id : null,
-              canvasBoardId: (project.canvas && key === 'catalyst-canvas') ? project.canvas.activeBoardId : null,
-              destination: key,
-              createdAt: stamp,
-              returnUrl: root.dataset.returnUrl || window.location.href
+              schema: HANDOFF_SCHEMA, handoffId: handoff.id, projectId: project.id, objectIds: handoff.objectIds,
+              canvasBoardId: handoff.canvasBoardId || null, destination: key, intent: handoff.intent, createdAt: stamp,
+              returnUrl: root.dataset.returnUrl || window.location.href, returnSchema: HANDOFF_RETURN_SCHEMA, returnStorageKey: HANDOFF_RETURN_KEY
             }));
           }
           link.href = target.toString();
@@ -1778,15 +1977,18 @@
       const returnProject = params.get('sc_workspace_project');
       const returnObject = params.get('sc_workspace_object');
       const returnCanvas = params.get('sc_workspace_canvas');
+      const returnHandoff = params.get('sc_workspace_handoff');
       const project = state.projects.find((item) => item.id === returnProject && !item.archivedAt);
       if (project) {
         state.activeProjectId = project.id;
         if (returnObject && project.objects.some((object) => object.id === returnObject && !object.archivedAt)) project.activeObjectId = returnObject;
         if (returnCanvas && project.canvas && project.canvas.boards.some((board) => board.id === returnCanvas)) project.canvas.activeBoardId = returnCanvas;
+        if (returnHandoff && project.handoffs) project.handoffs.activeHandoffId = project.handoffs.entries.some((entry)=>entry.id===returnHandoff) ? returnHandoff : project.handoffs.activeHandoffId;
         persist('Workspace context restored');
       }
     } catch (_) {}
 
+    checkReturnInbox(false);
     persist();
     render();
   }

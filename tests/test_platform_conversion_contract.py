@@ -3,11 +3,11 @@ import json, unittest
 ROOT=Path(__file__).resolve().parents[1]
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 PLATFORM=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-platform.php').read_text()
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.7.0.json').read_text())
-MAN=json.loads((ROOT/'release-manifest-v0.7.0.json').read_text())
+REG=json.loads((ROOT/'release-history/v0.7.0/workspace-product-record-v0.7.0.json').read_text())
+MAN=json.loads((ROOT/'release-history/v0.7.0/release-manifest-v0.7.0.json').read_text())
 class PlatformConversionTests(unittest.TestCase):
  def test_dedicated_shortcode_and_contract(self):
-  self.assertIn("add_shortcode('sc_workspace_platform'",PHP); self.assertIn("'/platform-contract'",PHP); self.assertIn('Research. Analyze. Decide. Map the reasoning.',PHP)
+  self.assertIn("add_shortcode('sc_workspace_platform'",PHP); self.assertIn("'/platform-contract'",PHP); self.assertIn('Research. Analyze. Decide. Move the work.',PHP)
  def test_conversion_remains_explicit_and_reversible(self):
   self.assertFalse(MAN['platform_conversion']['automatic']); self.assertTrue(MAN['platform_conversion']['administrator_action_required']); self.assertTrue(MAN['platform_conversion']['rollback_snapshot']); self.assertIn('perform_conversion',PLATFORM); self.assertIn('perform_restore',PLATFORM)
  def test_page_identity_preserved(self):

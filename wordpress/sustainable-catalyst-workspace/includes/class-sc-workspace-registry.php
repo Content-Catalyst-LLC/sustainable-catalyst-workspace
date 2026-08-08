@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v070';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v070';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v080';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v080';
+    const LEGACY_PENDING_KEY_V070 = 'sc_workspace_registry_pending_v070';
     const LEGACY_PENDING_KEY_V061 = 'sc_workspace_registry_pending_v061';
     const LEGACY_PENDING_KEY_V060 = 'sc_workspace_registry_pending_v060';
     const LEGACY_PENDING_KEY_V041 = 'sc_workspace_registry_pending_v041';
@@ -78,6 +79,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V070);
         delete_option(self::LEGACY_PENDING_KEY_V061);
         delete_option(self::LEGACY_PENDING_KEY_V060);
         delete_option(self::LEGACY_PENDING_KEY_V041);
@@ -136,11 +138,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.6.1',
+            'previous_version' => '0.7.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Canvas & Structured Thinking: native boards, typed nodes, relationships, frames, synthesis documents, object-linked thinking, and privacy-minimized Canvas handoffs.',
+            'change_summary' => 'Cross-Product Handoffs: durable handoff ledger, stable handoff IDs, return inbox, portable return packages, and structured artifact returns across Sustainable Catalyst tools.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.7.0 adds a native structured-thinking Canvas inside each personal Workspace project while preserving anonymous-capable, device-local use and the reversible Platform conversion. Catalyst Intelligence remains the institutional governance and organization-scale intelligence layer.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.8.0 makes Workspace the shared personal context layer across Sustainable Catalyst tools through durable handoff records and structured returns while preserving anonymous-capable, device-local use. No project content is placed into handoff URLs and no cloud sync is introduced. Catalyst Intelligence remains the institutional governance and organization-scale intelligence layer.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

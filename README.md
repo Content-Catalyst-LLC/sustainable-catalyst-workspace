@@ -4,7 +4,7 @@ Sustainable Catalyst Workspace is the free personal working environment across t
 
 ## Current release
 
-**v0.7.0 — Canvas & Structured Thinking**
+**v0.8.0 — Canvas & Structured Thinking**
 
 Workspace now supports a connected personal workflow:
 
@@ -25,7 +25,7 @@ The dedicated `/platform/` Workspace experience and reversible administrator-con
 
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects, objects, research, analysis, decisions, and Canvas boards are stored on the current device. Optional WordPress authentication identifies the account session only; v0.7.0 does not upload, claim, or synchronize local project content.
+Workspace remains usable without signing in. Projects, objects, research, analysis, decisions, and Canvas boards are stored on the current device. Optional WordPress authentication identifies the account session only; v0.8.0 does not upload, claim, or synchronize local project content; cross-product handoffs remain local-first and privacy-minimized.
 
 ## Contracts
 
@@ -44,3 +44,7 @@ Workspace remains usable without signing in. Projects, objects, research, analys
 Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`, canonical product URL `/platform/`.
 
 See `docs/CANVAS_STRUCTURED_THINKING_V070.md`.
+
+
+## v0.8.0 — Cross-Product Handoffs
+Workspace now records outbound tool handoffs, exposes a stable return contract, and can materialize structured return artifacts into the originating project without introducing cloud storage.

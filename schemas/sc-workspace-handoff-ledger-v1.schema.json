@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-handoff-ledger-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Handoff Ledger v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "entries",
+    "activeHandoffId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-handoff-ledger/1.0"
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 150,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "destination",
+          "destinationLabel",
+          "intent",
+          "objectIds",
+          "canvasBoardId",
+          "status",
+          "createdAt",
+          "launchedAt",
+          "returnedAt",
+          "closedAt",
+          "returnObjectIds",
+          "note"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "destination": {
+            "enum": [
+              "research-librarian",
+              "knowledge-library",
+              "site-intelligence",
+              "workbench",
+              "analytics-r",
+              "decision-studio",
+              "catalyst-canvas",
+              "catalyst-data",
+              "lab"
+            ]
+          },
+          "destinationLabel": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "intent": {
+            "enum": [
+              "research",
+              "analysis",
+              "decision",
+              "canvas",
+              "data",
+              "compute",
+              "publish",
+              "general"
+            ]
+          },
+          "objectIds": {
+            "type": "array",
+            "maxItems": 12,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            },
+            "uniqueItems": true
+          },
+          "canvasBoardId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "status": {
+            "enum": [
+              "prepared",
+              "launched",
+              "returned",
+              "closed"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "launchedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "returnedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "closedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "returnObjectIds": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            },
+            "uniqueItems": true
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      }
+    },
+    "activeHandoffId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

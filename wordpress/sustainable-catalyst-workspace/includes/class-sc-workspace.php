@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V070, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V061, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V060, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V041, '') === '1' ||
@@ -48,7 +49,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.7.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -92,6 +93,11 @@ final class SC_Workspace {
             'callback' => array($this, 'canvas_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/handoff-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'handoff_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -107,17 +113,20 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v8',
-            'project_schema' => 'sc-workspace-project/6.0',
+            'persistence' => 'browser-local-projects-v9',
+            'project_schema' => 'sc-workspace-project/7.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
+            'handoff_schema' => 'sc-workspace-handoff/2.0',
+            'handoff_ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
+            'handoff_return_schema' => 'sc-workspace-handoff-return/1.0',
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 8,
+            'storage_schema_version' => 9,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -128,24 +137,28 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/6.0',
+            'schema' => 'sc-workspace-project-contract/7.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/6.0',
+            'project_schema' => 'sc-workspace-project/7.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'export_schema' => 'sc-workspace-project-export/6.0',
-            'storage_schema_version' => 8,
+            'export_schema' => 'sc-workspace-project-export/7.0',
+            'storage_schema_version' => 9,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
             'device_identity' => 'anonymous-pseudonymous-local-id',
             'account_sign_in_changes_storage' => false,
             'max_objects_per_project' => 250,
-            'handoff_schema' => 'sc-workspace-handoff/1.5',
-            'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_canvas', 'sc_workspace_origin', 'sc_workspace_return'),
+            'handoff_schema' => 'sc-workspace-handoff/2.0',
+            'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_canvas', 'sc_workspace_handoff', 'sc_workspace_intent', 'sc_workspace_origin', 'sc_workspace_return'),
+            'handoff_ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
+            'handoff_return_schema' => 'sc-workspace-handoff-return/1.0',
+            'handoff_content_in_url' => false,
+            'structured_return_supported' => true,
         ));
     }
 
@@ -187,7 +200,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-analysis-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'project_schema' => 'sc-workspace-project/6.0',
+            'project_schema' => 'sc-workspace-project/7.0',
             'dataset_object_type' => 'dataset',
             'analysis_object_type' => 'analysis',
             'question_statuses' => array('open', 'resolved', 'deferred'),
@@ -214,7 +227,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-decision-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'decision_schema' => 'sc-workspace-decision/1.0',
-            'project_schema' => 'sc-workspace-project/6.0',
+            'project_schema' => 'sc-workspace-project/7.0',
             'decision_object_type' => 'decision',
             'decision_statuses' => array('framing', 'evaluating', 'decided', 'revisit'),
             'option_statuses' => array('candidate', 'shortlisted', 'selected', 'rejected'),
@@ -237,7 +250,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-canvas-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'project_schema' => 'sc-workspace-project/6.0',
+            'project_schema' => 'sc-workspace-project/7.0',
             'board_statuses' => array('draft', 'working', 'ready'),
             'node_types' => array('note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea'),
             'relationship_types' => array('supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence'),
@@ -248,6 +261,32 @@ final class SC_Workspace {
             'references_workspace_object_ids' => true,
             'synthesis_creates_document_object' => true,
             'canvas_content_in_handoff_url' => false,
+            'local_first' => true,
+        ));
+    }
+
+    public function handoff_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-handoff-contract/2.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'project_schema' => 'sc-workspace-project/7.0',
+            'handoff_schema' => 'sc-workspace-handoff/2.0',
+            'ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
+            'return_schema' => 'sc-workspace-handoff-return/1.0',
+            'statuses' => array('prepared', 'launched', 'returned', 'closed'),
+            'intents' => array('research', 'analysis', 'decision', 'canvas', 'data', 'compute', 'publish', 'general'),
+            'destinations' => array('research-librarian', 'knowledge-library', 'site-intelligence', 'workbench', 'analytics-r', 'decision-studio', 'catalyst-canvas', 'catalyst-data', 'lab'),
+            'max_handoffs_per_project' => 150,
+            'max_object_refs_per_handoff' => 12,
+            'max_return_artifacts' => 20,
+            'query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_canvas', 'sc_workspace_handoff', 'sc_workspace_intent', 'sc_workspace_origin', 'sc_workspace_return'),
+            'content_in_query_string' => false,
+            'same_origin_session_return' => true,
+            'outbound_session_storage_key' => 'sc_workspace_handoff_v2',
+            'return_session_storage_key' => 'sc_workspace_handoff_return_v1',
+            'portable_json_return' => true,
+            'return_materializes_workspace_objects' => true,
+            'server_broker' => false,
             'local_first' => true,
         ));
     }
@@ -266,8 +305,8 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 8,
-            'project_schema' => 'sc-workspace-project/6.0',
+            'storage_schema_version' => 9,
+            'project_schema' => 'sc-workspace-project/7.0',
             'state' => SC_Workspace_Platform::contract_status(),
         ));
     }
@@ -294,14 +333,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v070',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.7.0.css',
+            'sc-workspace-v080',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v070',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.7.0.js',
+            'sc-workspace-v080',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -310,7 +349,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v070', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v080', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -343,7 +382,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="8" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="9" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / PLATFORM</div>
                 <div class="scw-hero-grid">
@@ -362,7 +401,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.7.0 extends the Research → Evidence → Analysis → Decision loop with native Canvas boards and structured thinking as the dedicated Platform experience while projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. v0.8.0 makes Workspace the shared context layer across Sustainable Catalyst: projects can launch into specialized tools with a durable handoff record and receive structured artifacts back into the originating project, while project content still remains on this device. Signing in does not upload, claim, or synchronize local work.</span>
             </div>
 
             <section class="scw-identity" aria-labelledby="scw-identity-title">
@@ -379,7 +418,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.7.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.8.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -890,12 +929,40 @@ final class SC_Workspace {
                 </section>
             </section>
 
+            <section class="scw-handoffs" aria-labelledby="scw-handoffs-title">
+                <div class="scw-handoff-head">
+                    <div>
+                        <div class="scw-kicker">CROSS-PRODUCT HANDOFFS</div>
+                        <h3 id="scw-handoffs-title">Move the work without losing the thread.</h3>
+                        <p>Every connected-tool launch receives a stable handoff ID and is recorded inside the active project. Compatible Sustainable Catalyst tools can return structured artifacts to the same project without placing project content in the URL.</p>
+                    </div>
+                    <div class="scw-handoff-actions">
+                        <button class="scw-button" type="button" data-scw-handoff-check>Check return inbox</button>
+                        <button class="scw-button" type="button" data-scw-handoff-import>Import return JSON</button>
+                        <button class="scw-button" type="button" data-scw-handoff-template>Export return template</button>
+                        <input type="file" accept="application/json,.json" data-scw-handoff-import-file hidden>
+                    </div>
+                </div>
+                <div class="scw-handoff-metrics">
+                    <div><strong data-scw-handoff-metric-launched>0</strong><span>Awaiting return</span></div>
+                    <div><strong data-scw-handoff-metric-returned>0</strong><span>Returned</span></div>
+                    <div><strong data-scw-handoff-metric-objects>0</strong><span>Returned artifacts</span></div>
+                    <div><strong data-scw-handoff-metric-closed>0</strong><span>Closed</span></div>
+                </div>
+                <div class="scw-handoff-boundary" role="note">
+                    <strong>Context, not content</strong>
+                    <span>Outbound URLs carry only stable IDs, destination intent, and a return signal. Structured returned content is accepted locally through the return inbox and becomes ordinary Workspace Objects with tool provenance.</span>
+                </div>
+                <div class="scw-handoff-list" data-scw-handoff-list></div>
+                <div class="scw-handoff-empty" data-scw-handoff-empty>No handoffs recorded for this project yet. Open a connected tool below to create the first handoff.</div>
+            </section>
+
             <section class="scw-tools" aria-labelledby="scw-tools-title">
                 <div class="scw-section-head">
                     <div>
                         <div class="scw-kicker">CONNECTED TOOLS</div>
-                        <h2 id="scw-tools-title">Carry the active project and object into the platform.</h2>
-                        <p class="scw-section-note">Workspace sends only stable project/object IDs through the handoff contract. Titles, notes, content, tags, and provenance remain out of the URL.</p>
+                        <h2 id="scw-tools-title">Launch a specialized tool with a durable return path.</h2>
+                        <p class="scw-section-note">Workspace records each launch as a handoff, passes only stable context IDs and intent in the URL, and can receive structured return artifacts into the originating project.</p>
                     </div>
                     <a class="scw-text-link" href="<?php echo esc_url(home_url('/platform/')); ?>">Platform overview <span aria-hidden="true">→</span></a>
                 </div>
@@ -914,7 +981,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.7.0. Sign-in does not upload project content.</div>
+                <div>Guest and signed-in sessions use device-local project storage in v0.8.0. Cross-product handoffs do not upload project content.</div>
             </footer>
         </section>
         <?php
@@ -931,8 +998,8 @@ final class SC_Workspace {
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
                 <div class="scw-platform-hero-grid">
                     <div>
-                        <h1>Research. Analyze. Decide. Map the reasoning.</h1>
-                        <p>Workspace is the free personal operating environment across Sustainable Catalyst—one place to organize projects, preserve evidence, structure analysis, record decisions, structure complex thinking, and move deliberately between public tools without losing the thread of the work.</p>
+                        <h1>Research. Analyze. Decide. Move the work.</h1>
+                        <p>Workspace is the free personal operating environment across Sustainable Catalyst—one place to organize projects, preserve evidence, structure analysis, record decisions, map complex thinking, and move work between Sustainable Catalyst tools without losing project context.</p>
                         <div class="scw-platform-actions">
                             <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
                             <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
@@ -941,7 +1008,7 @@ final class SC_Workspace {
                     <aside class="scw-platform-state" aria-label="Workspace access and persistence">
                         <span>FREE PUBLIC ACCESS</span>
                         <strong>No login wall.</strong>
-                        <p>Projects remain on this device in v0.7.0. Optional sign-in establishes identity only; it does not upload or synchronize project content.</p>
+                        <p>Projects remain on this device in v0.8.0. Optional sign-in establishes identity only; cross-product handoffs do not upload or synchronize project content.</p>
                     </aside>
                 </div>
             </header>
@@ -957,7 +1024,7 @@ final class SC_Workspace {
             <section class="scw-platform-principles" aria-label="Workspace principles">
                 <div><span>PERSONAL CAPABILITY</span><strong>A serious free working environment.</strong><p>Workspace is useful on its own. Institutional features belong in Catalyst Intelligence because the operating context changes—not because the personal product is intentionally weakened.</p></div>
                 <div><span>LOCAL FIRST</span><strong>Your work stays on this device.</strong><p>Guest and signed-in sessions use the same explicit persistence boundary. Export/import remains available for manual portability.</p></div>
-                <div><span>CONNECTED BY DESIGN</span><strong>Use the wider Sustainable Catalyst system.</strong><p>Research Librarian, Library, Site Intelligence, Workbench, Analytics R, Decision Studio, Canvas, Data, and Lab can receive privacy-minimized project context.</p></div>
+                <div><span>CONNECTED BY DESIGN</span><strong>Use the wider Sustainable Catalyst system.</strong><p>Research Librarian, Library, Site Intelligence, Workbench, Analytics R, Decision Studio, Canvas, Data, and Lab can receive privacy-minimized project context and return structured artifacts to the originating project.</p></div>
             </section>
 
             <div class="scw-platform-application" id="workspace-application">

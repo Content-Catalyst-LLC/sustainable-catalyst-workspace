@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-handoff-return-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Handoff Return v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "handoffId",
+    "projectId",
+    "destination",
+    "returnedAt",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-handoff-return/1.0"
+    },
+    "handoffId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "projectId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "destination": {
+      "enum": [
+        "research-librarian",
+        "knowledge-library",
+        "site-intelligence",
+        "workbench",
+        "analytics-r",
+        "decision-studio",
+        "catalyst-canvas",
+        "catalyst-data",
+        "lab"
+      ]
+    },
+    "destinationLabel": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "intent": {
+      "enum": [
+        "research",
+        "analysis",
+        "decision",
+        "canvas",
+        "data",
+        "compute",
+        "publish",
+        "general"
+      ]
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "returnedAt": {
+      "type": "string"
+    },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "source",
+              "evidence",
+              "dataset",
+              "analysis",
+              "decision",
+              "document",
+              "export"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 50000
+          },
+          "tags": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "maxLength": 48
+            }
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "working",
+              "ready"
+            ]
+          },
+          "sourceTitle": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    }
+  }
+}
