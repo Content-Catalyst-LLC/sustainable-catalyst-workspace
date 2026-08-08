@@ -23,11 +23,13 @@ final class SC_Workspace {
     public function register_shortcodes() {
         add_shortcode('sc_workspace', array($this, 'render_workspace'));
         add_shortcode('sc_workspace_entry', array($this, 'render_entry'));
+        add_shortcode('sc_workspace_platform', array($this, 'render_platform'));
     }
 
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V060, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V041, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V040, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V030, '') === '1' ||
@@ -45,7 +47,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.6.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.6.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -82,6 +84,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/decision-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'decision_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/platform-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'platform_contract'),
             'permission_callback' => '__return_true',
         ));
     }
@@ -217,6 +224,26 @@ final class SC_Workspace {
         ));
     }
 
+    public function platform_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-platform-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'dedicated_shortcode' => 'sc_workspace_platform',
+            'canonical_path_after_conversion' => '/platform/',
+            'legacy_workspace_path' => '/platform/workspace/',
+            'automatic_activation_conversion' => false,
+            'conversion_requires_administrator_action' => true,
+            'conversion_reversible' => true,
+            'page_id_preserved' => true,
+            'slug_preserved' => true,
+            'page_template_preserved' => true,
+            'data_schema_change' => false,
+            'storage_schema_version' => 7,
+            'project_schema' => 'sc-workspace-project/5.0',
+            'state' => SC_Workspace_Platform::contract_status(),
+        ));
+    }
+
     public function identity_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-identity-contract/1.0',
@@ -239,23 +266,23 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v060',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.6.0.css',
+            'sc-workspace-v061',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.6.1.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v060',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.6.0.js',
+            'sc-workspace-v061',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.6.1.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        $return_url = home_url('/platform/workspace/');
+        $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v060', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v061', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -285,7 +312,7 @@ final class SC_Workspace {
     public function render_workspace($atts = array()) {
         $this->enqueue_assets();
         $tools = $this->tools();
-        $return_url = home_url('/platform/workspace/');
+        $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
         <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="7" data-return-url="<?php echo esc_url($return_url); ?>">
@@ -307,7 +334,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.6.0 adds structured decision work while projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. v0.6.1 presents the complete Research → Evidence → Analysis → Decision loop as the dedicated Platform experience while projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
             </div>
 
             <section class="scw-identity" aria-labelledby="scw-identity-title">
@@ -324,7 +351,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.6.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.6.1.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -784,8 +811,54 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.6.0. Sign-in does not upload project content.</div>
+                <div>Guest and signed-in sessions use device-local project storage in v0.6.1. Sign-in does not upload project content.</div>
             </footer>
+        </section>
+        <?php
+        return ob_get_clean();
+    }
+
+    public function render_platform($atts = array()) {
+        $this->enqueue_assets();
+        $workspace = $this->render_workspace();
+        ob_start();
+        ?>
+        <section class="scw-platform-page" data-sc-workspace-platform data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>">
+            <header class="scw-platform-hero">
+                <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
+                <div class="scw-platform-hero-grid">
+                    <div>
+                        <h1>Research. Analyze. Decide. Carry the work forward.</h1>
+                        <p>Workspace is the free personal operating environment across Sustainable Catalyst—one place to organize projects, preserve evidence, structure analysis, record decisions, and move deliberately between public tools without losing the thread of the work.</p>
+                        <div class="scw-platform-actions">
+                            <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
+                            <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
+                        </div>
+                    </div>
+                    <aside class="scw-platform-state" aria-label="Workspace access and persistence">
+                        <span>FREE PUBLIC ACCESS</span>
+                        <strong>No login wall.</strong>
+                        <p>Projects remain on this device in v0.6.1. Optional sign-in establishes identity only; it does not upload or synchronize project content.</p>
+                    </aside>
+                </div>
+            </header>
+
+            <section class="scw-platform-flow" aria-label="Workspace workflow">
+                <article><span>01 / RESEARCH</span><strong>Frame the inquiry.</strong><p>Questions, sources, reading queues, evidence, and claims remain attached to the project.</p></article>
+                <article><span>02 / EVIDENCE</span><strong>Preserve what supports the work.</strong><p>Sources and evidence become reusable Workspace Objects with provenance rather than disposable browser context.</p></article>
+                <article><span>03 / ANALYSIS</span><strong>Make assumptions visible.</strong><p>Register datasets, variables, methods, comparisons, findings, and links back to evidence.</p></article>
+                <article><span>04 / DECISION</span><strong>Record the reasoning.</strong><p>Compare options, weight criteria, assess risks, and preserve the selected course with rationale and confidence.</p></article>
+            </section>
+
+            <section class="scw-platform-principles" aria-label="Workspace principles">
+                <div><span>PERSONAL CAPABILITY</span><strong>A serious free working environment.</strong><p>Workspace is useful on its own. Institutional features belong in Catalyst Intelligence because the operating context changes—not because the personal product is intentionally weakened.</p></div>
+                <div><span>LOCAL FIRST</span><strong>Your work stays on this device.</strong><p>Guest and signed-in sessions use the same explicit persistence boundary. Export/import remains available for manual portability.</p></div>
+                <div><span>CONNECTED BY DESIGN</span><strong>Use the wider Sustainable Catalyst system.</strong><p>Research Librarian, Library, Site Intelligence, Workbench, Analytics R, Decision Studio, Canvas, Data, and Lab can receive privacy-minimized project context.</p></div>
+            </section>
+
+            <div class="scw-platform-application" id="workspace-application">
+                <?php echo $workspace; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- generated shortcode HTML ?>
+            </div>
         </section>
         <?php
         return ob_get_clean();
@@ -793,7 +866,7 @@ final class SC_Workspace {
 
     public function render_entry($atts = array()) {
         $this->enqueue_assets();
-        $url = home_url('/platform/workspace/');
+        $url = SC_Workspace_Platform::canonical_url();
         return '<a class="scw-entry" href="' . esc_url($url) . '"><span><small>FREE PUBLIC WORKSPACE</small><strong>Workspace</strong><em>Create local-first projects, reusable research objects, and optional account-aware sessions without a login wall.</em></span><b aria-hidden="true">→</b></a>';
     }
 }

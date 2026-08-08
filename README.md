@@ -1,41 +1,42 @@
 # Sustainable Catalyst Workspace
 
-Sustainable Catalyst Workspace is the free public working environment across the Sustainable Catalyst platform.
+Sustainable Catalyst Workspace is the free personal working environment across the Sustainable Catalyst platform.
 
 ## Current release
 
-**v0.6.0 — Decision Workspace**
+**v0.6.1 — Dedicated Workspace Page & Platform Conversion**
 
-Workspace now supports two first-class working modes inside a persistent Project:
+Workspace now supports the complete first operating loop inside persistent Projects:
 
-- Research Workspace — questions, sources, reading queues, evidence, and claims.
-- Decision Workspace — analytical questions, datasets, variables, assumptions, methods, comparisons, and findings.
+- Research — questions, sources, reading queues, evidence, and claims.
+- Analysis — datasets, variables, assumptions, methods, comparisons, and findings.
+- Decision — options, criteria, assessments, risks, rationale, confidence, and durable Decision objects.
 
-Both modes operate on the same portable Workspace Object model rather than creating isolated product-specific artifacts.
+v0.6.1 adds the dedicated public Platform presentation and a reversible administrator-controlled conversion of `/platform/` to Workspace.
 
-## WordPress
-
-Primary shortcode:
+## WordPress shortcodes
 
 ```text
 [sc_workspace]
-```
-
-Compact Platform entry:
-
-```text
 [sc_workspace_entry]
+[sc_workspace_platform]
 ```
 
-Canonical route:
+After conversion, the canonical public route is:
 
 ```text
-/platform/workspace/
+/platform/
 ```
+
+The legacy `/platform/workspace/` route redirects only after the administrator performs the conversion.
+
+## Controlled Platform conversion
+
+Open **Tools → Workspace Page** in WordPress. The conversion is not run during activation. It backs up the existing Platform page and preserves its page ID, slug, parent, publication status, and page template. Rollback is available from the same tool.
 
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects and objects are stored on the current device. Optional WordPress authentication identifies the current account session only; v0.6.0 does not upload, claim, or synchronize local project content.
+Workspace remains usable without signing in. Projects and objects are stored on the current device. Optional WordPress authentication identifies the current account session only; v0.6.1 does not upload, claim, or synchronize local project content.
 
 ## Contracts
 
@@ -43,12 +44,10 @@ Workspace remains usable without signing in. Projects and objects are stored on 
 - Object: `sc-workspace-object/1.0`
 - Research: `sc-workspace-research/1.0`
 - Analysis: `sc-workspace-analysis/1.0`
+- Decision: `sc-workspace-decision/1.0`
 - Identity: `sc-workspace-identity/1.0`
-- Storage schema: `6`
-
-## Object model
-
-Supported object types: Source, Evidence, Dataset, Analysis, Decision, Document, and Export.
+- Platform: `sc-workspace-platform-contract/1.0`
+- Storage schema: `7`
 
 ## Product Registry
 
@@ -59,9 +58,6 @@ Supported object types: Source, Evidence, Dataset, Analysis, Decision, Document,
 - Lifecycle: `experimental`
 - Access: free public
 - Canonical repository: `Content-Catalyst-LLC/sustainable-catalyst-workspace`
+- Product URL after conversion: `/platform/`
 
-See `docs/ANALYSIS_WORKSPACE_V050.md` for the v0.6.0 analytical contract.
-
-
-## v0.6.0
-Decision Workspace adds structured decisions, options, criteria, assessments, risks, final rationale, confidence, and canonical Decision objects.
+See `docs/DEDICATED_WORKSPACE_PAGE_PLATFORM_CONVERSION_V061.md` for the conversion contract.

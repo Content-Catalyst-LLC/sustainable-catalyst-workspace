@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.6.0.js'
+ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.6.1.js'
 class MigrationTests(unittest.TestCase):
     def test_storage_v6_to_v7_migration(self):
         js=JS.read_text()
