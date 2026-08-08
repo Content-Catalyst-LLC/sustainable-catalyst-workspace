@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v010';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v010';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v020';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v020';
+    const LEGACY_PENDING_KEY = 'sc_workspace_registry_pending_v010';
     const CANONICAL_ID = 'sustainable-catalyst-workspace';
 
     public static function activate() {
@@ -71,6 +72,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY);
         do_action('scfs_product_registry_updated', self::CANONICAL_ID, $record);
         return true;
     }
@@ -122,11 +124,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '',
+            'previous_version' => '0.1.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Workspace Foundation and Product Registry: free public workspace shell, browser-local session state, governed cross-product launch points, and Commercial Release registration.',
+            'change_summary' => 'Projects and Persistent Work: device-local project creation, autosave, archive and recovery, project import/export, activity history, and active-project handoffs across Sustainable Catalyst.',
             'superseded_by' => '',
-            'manual_notes' => 'Governed as a Commercial Release while remaining free for public use. No paid entitlement or account is required in v0.1.0. Workspace state is browser-local only.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.2.0 persists Workspace Projects on the current device only; there is no account, cloud project store, collaboration layer, or server-side project synchronization.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -1,22 +1,46 @@
-from pathlib import Path
 import json
-ROOT=Path(__file__).resolve().parents[1]
+import unittest
+from pathlib import Path
 
-def test_manifest():
-    m=json.loads((ROOT/"release-manifest-v0.1.0.json").read_text())
-    assert m["version"]=="0.1.0"
-    assert m["access_model"]=="free-public"
-    assert m["registry"]["family"]=="commercial"
+ROOT = Path(__file__).resolve().parents[1]
 
-def test_registry_record():
-    r=json.loads((ROOT/"registry/workspace-product-record-v0.1.0.json").read_text())
-    assert r["canonical_id"]=="sustainable-catalyst-workspace"
-    assert r["console_screen"]=="commercial"
-    assert r["commercial"]=="1"
-    assert r["public_interest"]=="1"
 
-def test_persistence_boundary():
-    js=(ROOT/"wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.1.0.js").read_text()
-    assert "localStorage" in js
-    php=(ROOT/"wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php").read_text()
-    assert "server_project_storage' => false" in php
+class WorkspaceContractTests(unittest.TestCase):
+    def test_manifest(self):
+        manifest = json.loads((ROOT / "release-manifest-v0.2.0.json").read_text())
+        self.assertEqual(manifest["version"], "0.2.0")
+        self.assertEqual(manifest["previous_version"], "0.1.0")
+        self.assertEqual(manifest["access_model"], "free-public")
+        self.assertFalse(manifest["account_required"])
+        self.assertFalse(manifest["server_project_storage"])
+        self.assertEqual(manifest["storage_schema_version"], 2)
+        self.assertEqual(manifest["registry"]["family"], "commercial")
+
+    def test_registry_record(self):
+        record = json.loads((ROOT / "registry/workspace-product-record-v0.2.0.json").read_text())
+        self.assertEqual(record["canonical_id"], "sustainable-catalyst-workspace")
+        self.assertEqual(record["console_screen"], "commercial")
+        self.assertEqual(record["display_order"], 400)
+        self.assertEqual(record["public_version"], "0.2.0")
+        self.assertEqual(record["previous_version"], "0.1.0")
+        self.assertEqual(record["commercial"], "1")
+        self.assertEqual(record["public_interest"], "1")
+
+    def test_health_and_shortcode_contract(self):
+        php = (ROOT / "wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php").read_text()
+        for token in (
+            "add_shortcode('sc_workspace'",
+            "add_shortcode('sc_workspace_entry'",
+            "sc-workspace/v1",
+            "project-contract",
+            "browser-local-projects-v2",
+            "storage_schema_version' => 2",
+            "server_project_storage' => false",
+            "cloud_sync' => false",
+            "collaboration' => false",
+        ):
+            self.assertIn(token, php)
+
+
+if __name__ == "__main__":
+    unittest.main()

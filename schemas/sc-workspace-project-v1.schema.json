@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-project-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "title", "description", "status", "pinned", "createdAt", "updatedAt", "archivedAt", "notes", "recentTools", "activity"],
+  "properties": {
+    "schema": {"const": "sc-workspace-project/1.0"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "title": {"type": "string", "minLength": 1, "maxLength": 120},
+    "description": {"type": "string", "maxLength": 600},
+    "status": {"enum": ["active", "paused", "complete"]},
+    "pinned": {"type": "boolean"},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"},
+    "archivedAt": {"oneOf": [{"type": "null"}, {"type": "string", "format": "date-time"}]},
+    "notes": {"type": "string", "maxLength": 20000},
+    "recentTools": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "label", "openedAt"],
+        "properties": {
+          "key": {"type": "string", "maxLength": 80},
+          "label": {"type": "string", "maxLength": 120},
+          "openedAt": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "activity": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "summary", "at"],
+        "properties": {
+          "id": {"type": "string", "maxLength": 160},
+          "type": {"type": "string", "maxLength": 40},
+          "summary": {"type": "string", "maxLength": 240},
+          "at": {"type": "string", "format": "date-time"}
+        }
+      }
+    }
+  }
+}
