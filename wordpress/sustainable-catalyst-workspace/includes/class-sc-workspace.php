@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V080, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V070, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V061, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V060, '') === '1' ||
@@ -49,7 +50,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -98,6 +99,11 @@ final class SC_Workspace {
             'callback' => array($this, 'handoff_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/adapter-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'adapter_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -124,6 +130,8 @@ final class SC_Workspace {
             'handoff_schema' => 'sc-workspace-handoff/2.0',
             'handoff_ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
             'handoff_return_schema' => 'sc-workspace-handoff-return/1.0',
+            'return_adapter_schema' => 'sc-workspace-return-adapter/1.0',
+            'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
             'storage_schema_version' => 9,
@@ -159,6 +167,8 @@ final class SC_Workspace {
             'handoff_return_schema' => 'sc-workspace-handoff-return/1.0',
             'handoff_content_in_url' => false,
             'structured_return_supported' => true,
+            'return_adapter_schema' => 'sc-workspace-return-adapter/1.0',
+            'automatic_return_requires_local_handoff_match' => true,
         ));
     }
 
@@ -267,12 +277,13 @@ final class SC_Workspace {
 
     public function handoff_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-handoff-contract/2.0',
+            'schema' => 'sc-workspace-handoff-contract/2.1',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'project_schema' => 'sc-workspace-project/7.0',
             'handoff_schema' => 'sc-workspace-handoff/2.0',
             'ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
             'return_schema' => 'sc-workspace-handoff-return/1.0',
+            'return_adapter_schema' => 'sc-workspace-return-adapter/1.0',
             'statuses' => array('prepared', 'launched', 'returned', 'closed'),
             'intents' => array('research', 'analysis', 'decision', 'canvas', 'data', 'compute', 'publish', 'general'),
             'destinations' => array('research-librarian', 'knowledge-library', 'site-intelligence', 'workbench', 'analytics-r', 'decision-studio', 'catalyst-canvas', 'catalyst-data', 'lab'),
@@ -282,12 +293,45 @@ final class SC_Workspace {
             'query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_canvas', 'sc_workspace_handoff', 'sc_workspace_intent', 'sc_workspace_origin', 'sc_workspace_return'),
             'content_in_query_string' => false,
             'same_origin_session_return' => true,
+            'same_origin_postmessage_return' => true,
+            'automatic_return_requires_local_handoff_match' => true,
             'outbound_session_storage_key' => 'sc_workspace_handoff_v2',
             'return_session_storage_key' => 'sc_workspace_handoff_return_v1',
             'portable_json_return' => true,
             'return_materializes_workspace_objects' => true,
+            'producer_helper' => sc_workspace_return_adapter_script_url(),
             'server_broker' => false,
             'local_first' => true,
+        ));
+    }
+
+    public function adapter_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-return-adapter-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'adapter_schema' => 'sc-workspace-return-adapter/1.0',
+            'canonical_return_schema' => 'sc-workspace-handoff-return/1.0',
+            'producer_helper' => sc_workspace_return_adapter_script_url(),
+            'transports' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
+            'outbound_session_storage_key' => 'sc_workspace_handoff_v2',
+            'return_session_storage_key' => 'sc_workspace_handoff_return_v1',
+            'automatic_return_requires_local_project' => true,
+            'automatic_return_requires_local_handoff' => true,
+            'automatic_return_requires_destination_match' => true,
+            'manual_unmatched_import_supported' => true,
+            'content_in_query_string' => false,
+            'server_broker' => false,
+            'destinations' => array(
+                'research-librarian' => array('preferred_types' => array('source','evidence','document')),
+                'knowledge-library' => array('preferred_types' => array('source','document')),
+                'site-intelligence' => array('preferred_types' => array('dataset','evidence','analysis','export')),
+                'workbench' => array('preferred_types' => array('dataset','analysis','export','document')),
+                'analytics-r' => array('preferred_types' => array('dataset','analysis','export','document')),
+                'decision-studio' => array('preferred_types' => array('decision','document','export')),
+                'catalyst-canvas' => array('preferred_types' => array('document','decision','export')),
+                'catalyst-data' => array('preferred_types' => array('dataset','analysis','export','document')),
+                'lab' => array('preferred_types' => array('dataset','analysis','evidence','export','document')),
+            ),
         ));
     }
 
@@ -333,14 +377,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v080',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.0.css',
+            'sc-workspace-v081',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.1.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v080',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.0.js',
+            'sc-workspace-v081',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.1.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -349,7 +393,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v080', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v081', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -401,7 +445,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.8.0 makes Workspace the shared context layer across Sustainable Catalyst: projects can launch into specialized tools with a durable handoff record and receive structured artifacts back into the originating project, while project content still remains on this device. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. v0.8.1 adds interoperable return adapters to the shared context layer: compatible tools can use one producer helper and canonical return contract while Workspace strictly matches automatic returns to the originating local handoff. Signing in does not upload, claim, or synchronize local work.</span>
             </div>
 
             <section class="scw-identity" aria-labelledby="scw-identity-title">
@@ -418,7 +462,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.8.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.8.1.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -953,6 +997,10 @@ final class SC_Workspace {
                     <strong>Context, not content</strong>
                     <span>Outbound URLs carry only stable IDs, destination intent, and a return signal. Structured returned content is accepted locally through the return inbox and becomes ordinary Workspace Objects with tool provenance.</span>
                 </div>
+                <div class="scw-adapter-boundary" data-scw-return-adapters role="note">
+                    <strong>RETURN ADAPTERS / v1</strong>
+                    <span>Workspace now normalizes canonical returns from Research Librarian, Knowledge Library, Site Intelligence, Workbench, Analytics R, Decision Studio, Catalyst Canvas, Catalyst Data, and Lab. Automatic returns must match the locally recorded project, handoff ID, and destination.</span>
+                </div>
                 <div class="scw-handoff-list" data-scw-handoff-list></div>
                 <div class="scw-handoff-empty" data-scw-handoff-empty>No handoffs recorded for this project yet. Open a connected tool below to create the first handoff.</div>
             </section>
@@ -981,7 +1029,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.8.0. Cross-product handoffs do not upload project content.</div>
+                <div>Guest and signed-in sessions use device-local project storage in v0.8.1. Return adapters preserve the local-first boundary; no project content is uploaded by Workspace.</div>
             </footer>
         </section>
         <?php
@@ -1008,7 +1056,7 @@ final class SC_Workspace {
                     <aside class="scw-platform-state" aria-label="Workspace access and persistence">
                         <span>FREE PUBLIC ACCESS</span>
                         <strong>No login wall.</strong>
-                        <p>Projects remain on this device in v0.8.0. Optional sign-in establishes identity only; cross-product handoffs do not upload or synchronize project content.</p>
+                        <p>Projects remain on this device in v0.8.1. Optional sign-in establishes identity only; cross-product handoffs do not upload or synchronize project content.</p>
                     </aside>
                 </div>
             </header>

@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('fs'); const vm=require('vm');
+const store=new Map();
+const sessionStorage={getItem:(k)=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:(k)=>store.delete(k)};
+let assigned=''; let posted=null;
+const window={sessionStorage,crypto:{randomUUID:()=> '00000000-0000-4000-8000-000000000001'},location:{origin:'https://sustainablecatalyst.com',assign:(u)=>{assigned=u;}},opener:{closed:false,postMessage:(p,o)=>{posted={p,o};}}};
+const context={window,console}; vm.createContext(context);
+sessionStorage.setItem('sc_workspace_handoff_v2',JSON.stringify({schema:'sc-workspace-handoff/2.0',handoffId:'sch-test',projectId:'scwp-test',destination:'workbench',intent:'compute',returnUrl:'https://sustainablecatalyst.com/platform/'}));
+const code=fs.readFileSync(process.argv[2],'utf8'); vm.runInContext(code,context);
+if(!window.SCWorkspaceToolReturnAdapter) throw new Error('adapter not exported');
+const packet=window.SCWorkspaceToolReturnAdapter.submit({destination:'workbench',artifacts:[{type:'analysis',title:'Runtime result',summary:'ok'}]});
+if(packet.schema!=='sc-workspace-return-adapter/1.0') throw new Error('schema');
+if(packet.handoffId!=='sch-test'||packet.projectId!=='scwp-test') throw new Error('context binding');
+if(packet.artifacts.length!==1||packet.artifacts[0].type!=='analysis') throw new Error('artifacts');
+if(!sessionStorage.getItem('sc_workspace_handoff_return_v1')) throw new Error('return not stored');
+if(!posted||posted.o!=='https://sustainablecatalyst.com') throw new Error('postMessage target');
+if(assigned!=='https://sustainablecatalyst.com/platform/') throw new Error('return redirect');
+console.log('PASS - v0.8.1 return adapter producer runtime');

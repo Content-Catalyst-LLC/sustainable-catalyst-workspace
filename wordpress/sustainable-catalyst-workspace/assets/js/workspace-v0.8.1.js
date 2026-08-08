@@ -3,7 +3,7 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_8_0';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_8_1';
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
@@ -29,6 +29,8 @@
   const HANDOFF_SCHEMA = 'sc-workspace-handoff/2.0';
   const HANDOFF_LEDGER_SCHEMA = 'sc-workspace-handoff-ledger/1.0';
   const HANDOFF_RETURN_SCHEMA = 'sc-workspace-handoff-return/1.0';
+  const RETURN_ADAPTER_SCHEMA = 'sc-workspace-return-adapter/1.0';
+  const PROCESSED_RETURN_KEY = 'sc_workspace_processed_returns_v1';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0';
@@ -83,6 +85,18 @@
   const HANDOFF_INTENT = new Set(['research', 'analysis', 'decision', 'canvas', 'data', 'compute', 'publish', 'general']);
   const HANDOFF_DESTINATIONS = new Set(['research-librarian', 'knowledge-library', 'site-intelligence', 'workbench', 'analytics-r', 'decision-studio', 'catalyst-canvas', 'catalyst-data', 'lab']);
   const HANDOFF_INTENT_BY_TOOL = { 'research-librarian':'research','knowledge-library':'research','site-intelligence':'data','workbench':'compute','analytics-r':'analysis','decision-studio':'decision','catalyst-canvas':'canvas','catalyst-data':'data','lab':'compute' };
+  const RETURN_ADAPTERS = {
+    'research-librarian': { label:'Research Librarian', preferredTypes:['source','evidence','document'], aliases:['research-librarian','research_librarian','researchlibrarian','sc-research-librarian'] },
+    'knowledge-library': { label:'Knowledge Library', preferredTypes:['source','document'], aliases:['knowledge-library','knowledge_library','library','sc-knowledge-library'] },
+    'site-intelligence': { label:'Site Intelligence', preferredTypes:['dataset','evidence','analysis','export'], aliases:['site-intelligence','site_intelligence','siteintelligence','sc-site-intelligence'] },
+    'workbench': { label:'Workbench', preferredTypes:['dataset','analysis','export','document'], aliases:['workbench','sc-workbench'] },
+    'analytics-r': { label:'Analytics R', preferredTypes:['dataset','analysis','export','document'], aliases:['analytics-r','analytics_r','analyticsr','catalyst-analytics-r'] },
+    'decision-studio': { label:'Decision Studio', preferredTypes:['decision','document','export'], aliases:['decision-studio','decision_studio','decisionstudio','sc-decision-studio'] },
+    'catalyst-canvas': { label:'Catalyst Canvas', preferredTypes:['document','decision','export'], aliases:['catalyst-canvas','catalyst_canvas','canvas','sc-catalyst-canvas'] },
+    'catalyst-data': { label:'Catalyst Data', preferredTypes:['dataset','analysis','export','document'], aliases:['catalyst-data','catalyst_data','data','sc-catalyst-data'] },
+    'lab': { label:'Lab', preferredTypes:['dataset','analysis','evidence','export','document'], aliases:['lab','sustainable-catalyst-lab','sc-lab'] }
+  };
+  const RETURN_ADAPTER_ALIASES = (() => { const out={}; Object.entries(RETURN_ADAPTERS).forEach(([key,cfg])=>cfg.aliases.forEach((alias)=>{out[String(alias).toLowerCase()]=key;})); return out; })();
   const OBJECT_LABELS = {
     source: 'Source', evidence: 'Evidence', dataset: 'Dataset', analysis: 'Analysis',
     decision: 'Decision', document: 'Document', export: 'Export'
@@ -462,6 +476,46 @@
     touchCanvas(project);
   }
 
+  function normalizeDestinationKey(value) {
+    const key=String(value || '').trim().toLowerCase();
+    return RETURN_ADAPTER_ALIASES[key] || (HANDOFF_DESTINATIONS.has(key) ? key : '');
+  }
+
+  function processedReturnIds() {
+    try { const raw=JSON.parse(window.sessionStorage.getItem(PROCESSED_RETURN_KEY) || '[]'); return Array.isArray(raw) ? raw.map(String).slice(0,100) : []; } catch (_) { return []; }
+  }
+
+  function returnAlreadyProcessed(returnId) { return Boolean(returnId && processedReturnIds().includes(String(returnId))); }
+
+  function markReturnProcessed(returnId) {
+    if (!returnId) return;
+    try { const ids=[String(returnId), ...processedReturnIds().filter((item)=>item!==String(returnId))].slice(0,100); window.sessionStorage.setItem(PROCESSED_RETURN_KEY, JSON.stringify(ids)); } catch (_) {}
+  }
+
+  function adaptReturnPacket(payload) {
+    if (!payload || typeof payload !== 'object') return { ok:false, message:'Return payload is not an object.' };
+    let source=payload;
+    if (payload.type === 'sc-workspace-return' && payload.payload && typeof payload.payload === 'object') source=payload.payload;
+    const isCanonical=source.schema === HANDOFF_RETURN_SCHEMA;
+    const isAdapter=source.schema === RETURN_ADAPTER_SCHEMA;
+    if (!isCanonical && !isAdapter) return { ok:false, message:'Unsupported handoff return or adapter schema.' };
+    const destination=normalizeDestinationKey(source.destination || source.source || source.tool || '');
+    const artifactsRaw=Array.isArray(source.artifacts) ? source.artifacts : (Array.isArray(source.outputs) ? source.outputs : (Array.isArray(source.results) ? source.results : (source.artifact ? [source.artifact] : [])));
+    const packet={
+      schema: HANDOFF_RETURN_SCHEMA,
+      returnId: String(source.returnId || source.receiptId || '').slice(0,160),
+      handoffId: String(source.handoffId || source.handoff_id || '').slice(0,160),
+      projectId: String(source.projectId || source.project_id || '').slice(0,160),
+      destination,
+      destinationLabel: String(source.destinationLabel || (destination && RETURN_ADAPTERS[destination] ? RETURN_ADAPTERS[destination].label : source.source || source.tool || '')).slice(0,120),
+      intent: HANDOFF_INTENT.has(source.intent) ? source.intent : (destination ? handoffIntent(destination) : 'general'),
+      createdAt: validIso(source.createdAt) ? source.createdAt : null,
+      returnedAt: validIso(source.returnedAt) ? source.returnedAt : nowIso(),
+      artifacts: artifactsRaw.map(normalizeReturnArtifact).filter(Boolean).slice(0,MAX_RETURN_ARTIFACTS)
+    };
+    return { ok:true, packet, adapter:isAdapter, sourceSchema:source.schema };
+  }
+
   function handoffLedgerTemplate() {
     const stamp = nowIso();
     return { schema: HANDOFF_LEDGER_SCHEMA, entries: [], activeHandoffId: null, createdAt: stamp, updatedAt: stamp };
@@ -475,7 +529,7 @@
     const returned = Array.isArray(raw.returnObjectIds) ? [...new Set(raw.returnObjectIds.map((value) => String(value).slice(0,160)).filter((value) => projectObjectIds.has(value)))].slice(0,MAX_RETURN_ARTIFACTS) : [];
     return {
       id: String(raw.id || id('sch')).slice(0,160),
-      destination: HANDOFF_DESTINATIONS.has(raw.destination) ? raw.destination : 'lab',
+      destination: normalizeDestinationKey(raw.destination) || 'lab',
       destinationLabel: String(raw.destinationLabel || raw.destination || 'Tool').slice(0,120),
       intent: HANDOFF_INTENT.has(raw.intent) ? raw.intent : 'general',
       objectIds,
@@ -520,6 +574,7 @@
   function handoffIntent(toolKey) { return HANDOFF_INTENT_BY_TOOL[toolKey] || 'general'; }
 
   function createHandoff(project, destination, destinationLabel, object, canvasBoardId = '') {
+    destination = normalizeDestinationKey(destination) || 'lab';
     if (!project.handoffs) project.handoffs = handoffLedgerTemplate();
     const stamp = nowIso();
     const entry = {
@@ -541,31 +596,40 @@
     return { type, title, summary: String(raw.summary || '').slice(0,1200), content: String(raw.content || '').slice(0,50000), tags: normalizeTags(raw.tags), status: OBJECT_STATUS.has(raw.status) ? raw.status : 'ready', sourceTitle: String(raw.sourceTitle || '').slice(0,240), sourceUrl: String(raw.sourceUrl || '').slice(0,2000) };
   }
 
-  function ingestReturnPacket(state, payload) {
-    if (!payload || payload.schema !== HANDOFF_RETURN_SCHEMA) return { ok:false, message:'Unsupported handoff return schema.' };
-    const project = state.projects.find((item) => item.id === String(payload.projectId || '') && !item.archivedAt);
+  function ingestReturnPacket(state, payload, options = {}) {
+    const adapted=adaptReturnPacket(payload);
+    if (!adapted.ok) return adapted;
+    const packet=adapted.packet;
+    const automatic=options.mode === 'automatic';
+    const allowUnmatched=Boolean(options.allowUnmatched) && !automatic;
+    if (packet.returnId && returnAlreadyProcessed(packet.returnId)) return { ok:false, duplicate:true, message:'This handoff return was already processed in this browser session.' };
+    const project = state.projects.find((item) => item.id === packet.projectId && !item.archivedAt);
     if (!project) return { ok:false, message:'The return package does not match an available Workspace Project on this device.' };
     if (!project.handoffs) project.handoffs = handoffLedgerTemplate();
-    let entry = project.handoffs.entries.find((item) => item.id === String(payload.handoffId || ''));
+    let entry = project.handoffs.entries.find((item) => item.id === packet.handoffId);
+    if (automatic && !entry) return { ok:false, message:'Automatic return rejected because the handoff ID is not recorded in this local project.' };
+    if (entry && packet.destination && entry.destination !== packet.destination) return { ok:false, message:'Return destination does not match the originating Workspace handoff.' };
+    if (!entry && !allowUnmatched) return { ok:false, message:'The return package does not match a recorded Workspace handoff.' };
     if (!entry) {
-      entry = { id:String(payload.handoffId || id('sch')).slice(0,160), destination:HANDOFF_DESTINATIONS.has(payload.destination)?payload.destination:'lab', destinationLabel:String(payload.destinationLabel || payload.destination || 'Returned tool').slice(0,120), intent:HANDOFF_INTENT.has(payload.intent)?payload.intent:'general', objectIds:[], canvasBoardId:'', status:'returned', createdAt:validIso(payload.createdAt)?payload.createdAt:nowIso(), launchedAt:validIso(payload.createdAt)?payload.createdAt:null, returnedAt:validIso(payload.returnedAt)?payload.returnedAt:nowIso(), closedAt:null, returnObjectIds:[], note:'Return package received without a matching local launch record.' };
+      const destination=packet.destination || 'lab';
+      entry = { id:packet.handoffId || id('sch'), destination, destinationLabel:packet.destinationLabel || (RETURN_ADAPTERS[destination] ? RETURN_ADAPTERS[destination].label : 'Returned tool'), intent:HANDOFF_INTENT.has(packet.intent)?packet.intent:handoffIntent(destination), objectIds:[], canvasBoardId:'', status:'returned', createdAt:packet.createdAt || nowIso(), launchedAt:packet.createdAt || null, returnedAt:packet.returnedAt || nowIso(), closedAt:null, returnObjectIds:[], note:'Manual return package received without a matching local launch record.' };
       project.handoffs.entries.unshift(entry);
     }
-    const artifacts = Array.isArray(payload.artifacts) ? payload.artifacts.map(normalizeReturnArtifact).filter(Boolean).slice(0,MAX_RETURN_ARTIFACTS) : [];
     const createdIds = [];
-    artifacts.forEach((artifact) => {
+    packet.artifacts.forEach((artifact) => {
       if (project.objects.length >= MAX_OBJECTS) return;
       const obj = objectTemplate(artifact.type, artifact.title);
       obj.summary = artifact.summary; obj.content = artifact.content; obj.tags = artifact.tags; obj.status = artifact.status;
-      obj.provenance.sourceType = 'tool'; obj.provenance.sourceTitle = artifact.sourceTitle || entry.destinationLabel; obj.provenance.sourceUrl = artifact.sourceUrl; obj.provenance.capturedAt = validIso(payload.returnedAt) ? payload.returnedAt : nowIso();
+      obj.provenance.sourceType = 'tool'; obj.provenance.sourceTitle = artifact.sourceTitle || entry.destinationLabel; obj.provenance.sourceUrl = artifact.sourceUrl; obj.provenance.capturedAt = packet.returnedAt || nowIso();
       project.objects.push(obj); createdIds.push(obj.id);
     });
-    entry.status = 'returned'; entry.returnedAt = validIso(payload.returnedAt) ? payload.returnedAt : nowIso(); entry.returnObjectIds = [...new Set([...(entry.returnObjectIds || []), ...createdIds])].slice(0,MAX_RETURN_ARTIFACTS);
+    entry.status = 'returned'; entry.returnedAt = packet.returnedAt || nowIso(); entry.returnObjectIds = [...new Set([...(entry.returnObjectIds || []), ...createdIds])].slice(0,MAX_RETURN_ARTIFACTS);
     project.handoffs.activeHandoffId = entry.id;
     if (createdIds[0]) project.activeObjectId = createdIds[0];
     touchHandoffs(project); addActivity(project,'handoff-return',`${entry.destinationLabel} returned ${createdIds.length} artifact${createdIds.length===1?'':'s'}`);
     state.activeProjectId = project.id;
-    return { ok:true, project, entry, createdIds, message: createdIds.length ? `${createdIds.length} returned artifact${createdIds.length===1?'':'s'} added to ${project.title}.` : `Return received from ${entry.destinationLabel}.` };
+    markReturnProcessed(packet.returnId);
+    return { ok:true, project, entry, createdIds, adapted:adapted.adapter, message: createdIds.length ? `${createdIds.length} returned artifact${createdIds.length===1?'':'s'} added to ${project.title}.` : `Return received from ${entry.destinationLabel}.` };
   }
 
   function objectTemplate(type, title) {
@@ -1138,7 +1202,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.8.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.8.1 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1591,12 +1655,34 @@
       try { raw = window.sessionStorage.getItem(HANDOFF_RETURN_KEY); } catch (_) {}
       if (!raw) { if (showEmptyNotice) window.alert('No structured handoff return is waiting in this browser session.'); return false; }
       try {
-        const result = ingestReturnPacket(state, JSON.parse(raw));
+        const result = ingestReturnPacket(state, JSON.parse(raw), {mode:'automatic'});
         if (!result.ok) { window.alert(result.message); return false; }
         try { window.sessionStorage.removeItem(HANDOFF_RETURN_KEY); } catch (_) {}
         persist(result.message); render(); return true;
       } catch (_) { window.alert('Workspace could not read the structured return packet.'); return false; }
     }
+
+    function receiveAdapterReturn(payload, source = 'adapter') {
+      const result=ingestReturnPacket(state,payload,{mode:'automatic'});
+      if (!result.ok) { if (!result.duplicate) console.warn(`Workspace ${source} return rejected: ${result.message}`); return result; }
+      try { window.sessionStorage.removeItem(HANDOFF_RETURN_KEY); } catch (_) {}
+      persist(result.message); render(); return result;
+    }
+
+    window.SCWorkspaceReturnAdapter = {
+      schema: RETURN_ADAPTER_SCHEMA,
+      receive(payload) { return receiveAdapterReturn(payload,'direct'); },
+      destinations: Object.keys(RETURN_ADAPTERS),
+      returnStorageKey: HANDOFF_RETURN_KEY
+    };
+    window.addEventListener('message',(event)=>{
+      if (event.origin !== window.location.origin) return;
+      const envelope=event.data;
+      if (!envelope || typeof envelope !== 'object') return;
+      const candidate=envelope.type === 'sc-workspace-return' ? envelope.payload : envelope;
+      if (!candidate || (candidate.schema !== RETURN_ADAPTER_SCHEMA && candidate.schema !== HANDOFF_RETURN_SCHEMA)) return;
+      receiveAdapterReturn(candidate,'postMessage');
+    });
 
     function renderActive() {
       const project = activeProject();
@@ -1713,7 +1799,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.1', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1747,7 +1833,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.8.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.8.1, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -1862,7 +1948,7 @@
 
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.8.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.8.1 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1907,7 +1993,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.1', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -1932,7 +2018,7 @@
     const handoffCheckButton = root.querySelector('[data-scw-handoff-check]');
     const handoffTemplateButton = root.querySelector('[data-scw-handoff-template]');
     if (handoffImportButton && handoffImportFile) handoffImportButton.addEventListener('click',()=>handoffImportFile.click());
-    if (handoffImportFile) handoffImportFile.addEventListener('change',()=>{const file=handoffImportFile.files&&handoffImportFile.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const result=ingestReturnPacket(state,JSON.parse(String(reader.result||'')));if(!result.ok)throw new Error(result.message);persist(result.message);render();}catch(err){window.alert(err&&err.message?err.message:'Workspace could not import this handoff return package.');}finally{handoffImportFile.value='';}};reader.readAsText(file);});
+    if (handoffImportFile) handoffImportFile.addEventListener('change',()=>{const file=handoffImportFile.files&&handoffImportFile.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const result=ingestReturnPacket(state,JSON.parse(String(reader.result||'')),{mode:'manual',allowUnmatched:true});if(!result.ok)throw new Error(result.message);persist(result.message);render();}catch(err){window.alert(err&&err.message?err.message:'Workspace could not import this handoff return package.');}finally{handoffImportFile.value='';}};reader.readAsText(file);});
     if (handoffCheckButton) handoffCheckButton.addEventListener('click',()=>checkReturnInbox(true));
     if (handoffTemplateButton) handoffTemplateButton.addEventListener('click',()=>{const project=activeProject();if(!project||!project.handoffs)return;const entry=project.handoffs.entries.find((item)=>item.id===project.handoffs.activeHandoffId)||project.handoffs.entries[0];if(!entry){window.alert('Open a connected tool first so Workspace has a handoff to receive back.');return;}downloadReturnTemplate(project,entry);});
 

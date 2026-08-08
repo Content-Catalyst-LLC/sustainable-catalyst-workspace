@@ -1,7 +1,7 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.1.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 
 class HandoffContractTests(unittest.TestCase):
@@ -26,6 +26,6 @@ class HandoffContractTests(unittest.TestCase):
             self.assertNotIn(forbidden,click)
     def test_php_contract(self):
         t=PHP.read_text()
-        for token in ("'/handoff-contract'","'schema' => 'sc-workspace-handoff-contract/2.0'","'ledger_schema' => 'sc-workspace-handoff-ledger/1.0'","'return_schema' => 'sc-workspace-handoff-return/1.0'","'content_in_query_string' => false","'server_broker' => false",'CROSS-PRODUCT HANDOFFS','data-scw-handoff-list'):
+        for token in ("'/handoff-contract'","'schema' => 'sc-workspace-handoff-contract/2.1'","'ledger_schema' => 'sc-workspace-handoff-ledger/1.0'","'return_schema' => 'sc-workspace-handoff-return/1.0'","'content_in_query_string' => false","'server_broker' => false",'CROSS-PRODUCT HANDOFFS','data-scw-handoff-list'):
             self.assertIn(token,t)
 if __name__=='__main__': unittest.main()
