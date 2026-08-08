@@ -4,7 +4,7 @@ Sustainable Catalyst Workspace is the free public working environment across the
 
 ## Current release
 
-**v0.3.0 — Workspace Objects & Artifact Model**
+**v0.4.0 — Research Workspace
 
 Workspace Projects can now contain typed, reusable objects: sources, evidence, datasets, analyses, decisions, documents, and exports. Each object has a stable ID, lifecycle state, tags, provenance fields, timestamps, and local export support.
 
@@ -30,7 +30,7 @@ Canonical route:
 
 ## Persistence boundary
 
-Projects and their objects are stored in the current browser only. v0.3.0 does not create an account, upload project/object content to Sustainable Catalyst, synchronize between devices, or introduce collaboration.
+Projects and their objects are stored in the current browser only. v0.4.0 does not create an account, upload project/object content to Sustainable Catalyst, synchronize between devices, or introduce collaboration.
 
 ## Object model
 
@@ -57,3 +57,7 @@ Storage schema: `3`
 - Lifecycle: `experimental`
 - Access: free public
 - Canonical repository: `Content-Catalyst-LLC/sustainable-catalyst-workspace`
+
+
+## v0.4.0 Research Workspace
+Research questions, source capture, reading queues, evidence extraction, claims, and evidence links now operate directly on the local Workspace Object model. See `docs/RESEARCH_WORKSPACE_V040.md`.

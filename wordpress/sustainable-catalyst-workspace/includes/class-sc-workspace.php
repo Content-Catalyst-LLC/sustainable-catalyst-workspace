@@ -28,6 +28,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V030, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V020, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V010, '') === '1'
         ) {
@@ -42,7 +43,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.3.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.4.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -61,6 +62,11 @@ final class SC_Workspace {
             'callback' => array($this, 'object_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/research-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'research_contract'),
+            'permission_callback' => '__return_true',
+        ));
     }
 
     public function health() {
@@ -71,10 +77,11 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v3',
-            'project_schema' => 'sc-workspace-project/2.0',
+            'persistence' => 'browser-local-projects-v4',
+            'project_schema' => 'sc-workspace-project/3.0',
             'object_schema' => 'sc-workspace-object/1.0',
-            'storage_schema_version' => 3,
+            'research_schema' => 'sc-workspace-research/1.0',
+            'storage_schema_version' => 4,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -85,16 +92,17 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/2.0',
+            'schema' => 'sc-workspace-project-contract/3.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/2.0',
+            'project_schema' => 'sc-workspace-project/3.0',
             'object_schema' => 'sc-workspace-object/1.0',
-            'export_schema' => 'sc-workspace-project-export/2.0',
-            'storage_schema_version' => 3,
+            'research_schema' => 'sc-workspace-research/1.0',
+            'export_schema' => 'sc-workspace-project-export/3.0',
+            'storage_schema_version' => 4,
             'persistence' => 'device-local',
             'server_storage' => false,
             'max_objects_per_project' => 250,
-            'handoff_schema' => 'sc-workspace-handoff/1.1',
+            'handoff_schema' => 'sc-workspace-handoff/1.2',
             'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_origin', 'sc_workspace_return'),
         ));
     }
@@ -113,16 +121,34 @@ final class SC_Workspace {
         ));
     }
 
+    public function research_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-research-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'research_schema' => 'sc-workspace-research/1.0',
+            'question_statuses' => array('open', 'answered', 'deferred'),
+            'question_priorities' => array('low', 'normal', 'high'),
+            'claim_statuses' => array('exploratory', 'supported', 'contested', 'rejected'),
+            'reading_statuses' => array('unread', 'reading', 'read'),
+            'max_questions_per_project' => 100,
+            'max_claims_per_project' => 100,
+            'max_reading_queue_items' => 250,
+            'max_evidence_links' => 500,
+            'references_workspace_object_ids' => true,
+            'research_content_in_handoff_url' => false,
+        ));
+    }
+
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v030',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.3.0.css',
+            'sc-workspace-v040',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.4.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v030',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.3.0.js',
+            'sc-workspace-v040',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.4.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -149,7 +175,7 @@ final class SC_Workspace {
         $return_url = home_url('/platform/workspace/');
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="3" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="4" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / PLATFORM</div>
                 <div class="scw-hero-grid">
@@ -160,7 +186,7 @@ final class SC_Workspace {
                     <div class="scw-state" aria-label="Workspace release state">
                         <span>FREE ACCESS</span>
                         <span>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></span>
-                        <span>OBJECT MODEL</span>
+                        <span>RESEARCH WORKSPACE</span>
                         <span>EXPERIMENTAL</span>
                     </div>
                 </div>
@@ -168,7 +194,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Saved on this device</strong>
-                <span>Projects and Workspace Objects persist in this browser using local storage. v0.3.0 does not create an account, upload project content to Sustainable Catalyst, or synchronize work between devices.</span>
+                <span>Projects, Workspace Objects, research questions, reading queues, claims, and evidence links persist in this browser using local storage. v0.4.0 does not create an account, upload project content to Sustainable Catalyst, or synchronize work between devices.</span>
             </div>
 
             <div class="scw-recovery" data-scw-recovery hidden role="status" aria-live="polite">
@@ -249,6 +275,75 @@ final class SC_Workspace {
                         </div>
                     </aside>
                 </div>
+
+
+
+                <section class="scw-research" aria-labelledby="scw-research-title">
+                    <div class="scw-research-head">
+                        <div>
+                            <div class="scw-kicker">RESEARCH WORKSPACE</div>
+                            <h3 id="scw-research-title">From question to evidence-backed claim.</h3>
+                            <p>Frame inquiry, capture sources, manage a reading queue, extract evidence, and test claims while retaining stable links to Workspace Objects.</p>
+                        </div>
+                        <div class="scw-research-launchers" aria-label="Research tools">
+                            <a class="scw-button" data-scw-tool="research-librarian" href="<?php echo esc_url(home_url('/research-librarian/')); ?>"><strong>Research Librarian</strong></a>
+                            <a class="scw-button" data-scw-tool="knowledge-library" href="<?php echo esc_url(home_url('/library/')); ?>"><strong>Knowledge Library</strong></a>
+                        </div>
+                    </div>
+
+                    <div class="scw-research-metrics" aria-label="Research project metrics">
+                        <div><strong data-scw-research-metric-questions>0</strong><span>open questions</span></div>
+                        <div><strong data-scw-research-metric-sources>0</strong><span>sources</span></div>
+                        <div><strong data-scw-research-metric-evidence>0</strong><span>evidence objects</span></div>
+                        <div><strong data-scw-research-metric-claims>0</strong><span>supported claims</span></div>
+                    </div>
+
+                    <div class="scw-research-grid">
+                        <section class="scw-research-panel scw-research-panel-wide" aria-labelledby="scw-research-question-heading">
+                            <div class="scw-research-panel-head"><span>01 / QUESTIONS</span><h4 id="scw-research-question-heading">Research questions</h4></div>
+                            <div class="scw-research-active"><span>ACTIVE QUESTION</span><strong data-scw-research-active-question>No active research question selected.</strong></div>
+                            <form class="scw-research-form scw-research-form-question" data-scw-research-question-form>
+                                <label><span>Question</span><input type="text" name="question" maxlength="1000" required placeholder="What are we trying to establish?"></label>
+                                <label><span>Priority</span><select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label>
+                                <button class="scw-button" type="submit">Add question</button>
+                            </form>
+                            <div class="scw-research-list" data-scw-research-question-list></div>
+                        </section>
+
+                        <section class="scw-research-panel" aria-labelledby="scw-research-source-heading">
+                            <div class="scw-research-panel-head"><span>02 / SOURCES</span><h4 id="scw-research-source-heading">Capture & reading queue</h4></div>
+                            <form class="scw-research-form" data-scw-research-source-form>
+                                <label><span>Source title</span><input type="text" name="title" maxlength="160" required></label>
+                                <div class="scw-research-form-row"><label><span>Source type</span><select name="sourceType"><option value="web">Web</option><option value="library">Library</option><option value="manual">Manual</option><option value="dataset">Dataset</option><option value="tool">Tool</option></select></label><label><span>URL</span><input type="url" name="url" maxlength="2000" placeholder="https://"></label></div>
+                                <label><span>Summary</span><textarea name="summary" rows="3" maxlength="1200" placeholder="Why is this source relevant?"></textarea></label>
+                                <label><span>Tags</span><input type="text" name="tags" placeholder="policy, grid, evidence"></label>
+                                <button class="scw-button" type="submit">Capture source</button>
+                            </form>
+                            <div class="scw-research-list" data-scw-research-reading-list></div>
+                        </section>
+
+                        <section class="scw-research-panel" aria-labelledby="scw-research-evidence-heading">
+                            <div class="scw-research-panel-head"><span>03 / EVIDENCE</span><h4 id="scw-research-evidence-heading">Extract evidence</h4></div>
+                            <form class="scw-research-form" data-scw-research-evidence-form>
+                                <label><span>Evidence title</span><input type="text" name="title" maxlength="160" required></label>
+                                <label><span>Linked source</span><select name="sourceObjectId" data-scw-research-evidence-source><option value="">No linked source</option></select></label>
+                                <label><span>Summary</span><textarea name="summary" rows="2" maxlength="1200"></textarea></label>
+                                <label><span>Evidence</span><textarea name="content" rows="6" maxlength="50000" required placeholder="Capture the observation, passage, finding, or result—not an unsupported conclusion."></textarea></label>
+                                <button class="scw-button" type="submit">Create evidence object</button>
+                            </form>
+                        </section>
+
+                        <section class="scw-research-panel scw-research-panel-wide" aria-labelledby="scw-research-claim-heading">
+                            <div class="scw-research-panel-head"><span>04 / CLAIMS</span><h4 id="scw-research-claim-heading">Claims & evidence</h4></div>
+                            <form class="scw-research-form scw-research-form-claim" data-scw-research-claim-form>
+                                <label><span>Claim</span><input type="text" name="claim" maxlength="2000" required placeholder="What does the current evidence support or challenge?"></label>
+                                <button class="scw-button" type="submit">Add claim</button>
+                            </form>
+                            <div class="scw-research-linker"><label><span>LINK EVIDENCE TO ACTIVE CLAIM</span><select data-scw-research-claim-evidence><option value="">Choose evidence</option></select></label><button class="scw-button" type="button" data-scw-research-link-evidence>Link evidence</button></div>
+                            <div class="scw-research-list scw-research-claims" data-scw-research-claim-list></div>
+                        </section>
+                    </div>
+                </section>
 
                 <section class="scw-objects" aria-labelledby="scw-objects-title">
                     <div class="scw-object-head">

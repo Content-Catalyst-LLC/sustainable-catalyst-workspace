@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-research-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Research Workflow v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "questions",
+    "claims",
+    "readingQueue",
+    "evidenceLinks",
+    "activeQuestionId",
+    "activeClaimId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research/1.0"
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "text",
+          "status",
+          "priority",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "status": {
+            "enum": [
+              "open",
+              "answered",
+              "deferred"
+            ]
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "text",
+          "status",
+          "evidenceObjectIds",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "status": {
+            "enum": [
+              "exploratory",
+              "supported",
+              "contested",
+              "rejected"
+            ]
+          },
+          "evidenceObjectIds": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "readingQueue": {
+      "type": "array",
+      "maxItems": 250,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "objectId",
+          "status",
+          "note",
+          "addedAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "objectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "status": {
+            "enum": [
+              "unread",
+              "reading",
+              "read"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "addedAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidenceLinks": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "evidenceObjectId",
+          "sourceObjectId",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "evidenceObjectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "sourceObjectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "activeQuestionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "activeClaimId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

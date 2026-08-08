@@ -3,23 +3,34 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_3';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_4';
   const HANDOFF_KEY = 'sc_workspace_handoff_v1';
-  const STORAGE_VERSION = 3;
-  const PROJECT_SCHEMA = 'sc-workspace-project/2.0';
-  const LEGACY_PROJECT_SCHEMA = 'sc-workspace-project/1.0';
+  const STORAGE_VERSION = 4;
+  const PROJECT_SCHEMA = 'sc-workspace-project/3.0';
+  const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
+  const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/2.0';
-  const LEGACY_EXPORT_SCHEMA = 'sc-workspace-project-export/1.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/3.0';
+  const LEGACY_EXPORT_SCHEMA_V2 = 'sc-workspace-project-export/2.0';
+  const LEGACY_EXPORT_SCHEMA_V1 = 'sc-workspace-project-export/1.0';
   const OBJECT_EXPORT_SCHEMA = 'sc-workspace-object-export/1.0';
-  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.1';
+  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.2';
+  const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
   const MAX_ACTIVITY = 60;
   const MAX_RECENT_TOOLS = 8;
   const MAX_OBJECTS = 250;
+  const MAX_RESEARCH_QUESTIONS = 100;
+  const MAX_RESEARCH_CLAIMS = 100;
+  const MAX_READING_QUEUE = 250;
+  const MAX_EVIDENCE_LINKS = 500;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
   const OBJECT_TYPES = new Set(['source', 'evidence', 'dataset', 'analysis', 'decision', 'document', 'export']);
   const OBJECT_STATUS = new Set(['draft', 'working', 'ready']);
   const PROVENANCE_TYPES = new Set(['manual', 'web', 'library', 'dataset', 'tool', 'imported']);
+  const QUESTION_STATUS = new Set(['open', 'answered', 'deferred']);
+  const QUESTION_PRIORITY = new Set(['low', 'normal', 'high']);
+  const CLAIM_STATUS = new Set(['exploratory', 'supported', 'contested', 'rejected']);
+  const READING_STATUS = new Set(['unread', 'reading', 'read']);
   const OBJECT_LABELS = {
     source: 'Source', evidence: 'Evidence', dataset: 'Dataset', analysis: 'Analysis',
     decision: 'Decision', document: 'Document', export: 'Export'
@@ -46,6 +57,101 @@
   function provenanceTemplate() {
     return { sourceType: 'manual', sourceTitle: '', sourceUrl: '', capturedAt: null };
   }
+
+  function researchTemplate() {
+    const stamp = nowIso();
+    return {
+      schema: RESEARCH_SCHEMA,
+      questions: [],
+      claims: [],
+      readingQueue: [],
+      evidenceLinks: [],
+      activeQuestionId: null,
+      activeClaimId: null,
+      createdAt: stamp,
+      updatedAt: stamp
+    };
+  }
+
+  function normalizeResearchQuestion(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return {
+      id: String(raw.id || id('rq')).slice(0, 160),
+      text: String(raw.text || '').trim().slice(0, 1000),
+      status: QUESTION_STATUS.has(raw.status) ? raw.status : 'open',
+      priority: QUESTION_PRIORITY.has(raw.priority) ? raw.priority : 'normal',
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp,
+      updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp
+    };
+  }
+
+  function normalizeResearchClaim(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return {
+      id: String(raw.id || id('rc')).slice(0, 160),
+      text: String(raw.text || '').trim().slice(0, 2000),
+      status: CLAIM_STATUS.has(raw.status) ? raw.status : 'exploratory',
+      evidenceObjectIds: Array.isArray(raw.evidenceObjectIds) ? [...new Set(raw.evidenceObjectIds.map((value) => String(value).slice(0, 160)))].slice(0, 50) : [],
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp,
+      updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp
+    };
+  }
+
+  function normalizeReadingItem(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return {
+      id: String(raw.id || id('rr')).slice(0, 160),
+      objectId: String(raw.objectId || '').slice(0, 160),
+      status: READING_STATUS.has(raw.status) ? raw.status : 'unread',
+      note: String(raw.note || '').slice(0, 1000),
+      addedAt: validIso(raw.addedAt) ? raw.addedAt : stamp,
+      updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp
+    };
+  }
+
+  function normalizeEvidenceLink(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    return {
+      id: String(raw.id || id('rel')).slice(0, 160),
+      evidenceObjectId: String(raw.evidenceObjectId || '').slice(0, 160),
+      sourceObjectId: String(raw.sourceObjectId || '').slice(0, 160),
+      createdAt: validIso(raw.createdAt) ? raw.createdAt : nowIso()
+    };
+  }
+
+  function normalizeResearch(raw, objects = []) {
+    const base = researchTemplate();
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const objectIds = new Set(objects.map((object) => object.id));
+    base.questions = Array.isArray(value.questions) ? value.questions.map(normalizeResearchQuestion).filter((item) => item && item.text).slice(0, MAX_RESEARCH_QUESTIONS) : [];
+    base.claims = Array.isArray(value.claims) ? value.claims.map(normalizeResearchClaim).filter((item) => item && item.text).slice(0, MAX_RESEARCH_CLAIMS) : [];
+    base.claims.forEach((claim) => { claim.evidenceObjectIds = claim.evidenceObjectIds.filter((objectId) => objectIds.has(objectId)); });
+    base.readingQueue = Array.isArray(value.readingQueue) ? value.readingQueue.map(normalizeReadingItem).filter((item) => item && objectIds.has(item.objectId)).slice(0, MAX_READING_QUEUE) : [];
+    base.evidenceLinks = Array.isArray(value.evidenceLinks) ? value.evidenceLinks.map(normalizeEvidenceLink).filter((link) => link && objectIds.has(link.evidenceObjectId) && objectIds.has(link.sourceObjectId)).slice(0, MAX_EVIDENCE_LINKS) : [];
+    base.activeQuestionId = base.questions.some((item) => item.id === value.activeQuestionId) ? value.activeQuestionId : null;
+    base.activeClaimId = base.claims.some((item) => item.id === value.activeClaimId) ? value.activeClaimId : null;
+    base.createdAt = validIso(value.createdAt) ? value.createdAt : base.createdAt;
+    base.updatedAt = validIso(value.updatedAt) ? value.updatedAt : base.updatedAt;
+    return base;
+  }
+
+  function touchResearch(project) {
+    if (!project.research) project.research = researchTemplate();
+    project.research.updatedAt = nowIso();
+    project.updatedAt = project.research.updatedAt;
+  }
+
+  function cleanResearchReferences(project, objectId) {
+    if (!project || !project.research) return;
+    project.research.readingQueue = project.research.readingQueue.filter((item) => item.objectId !== objectId);
+    project.research.evidenceLinks = project.research.evidenceLinks.filter((link) => link.evidenceObjectId !== objectId && link.sourceObjectId !== objectId);
+    project.research.claims.forEach((claim) => { claim.evidenceObjectIds = claim.evidenceObjectIds.filter((idValue) => idValue !== objectId); });
+    touchResearch(project);
+  }
+
 
   function objectTemplate(type, title) {
     const stamp = nowIso();
@@ -81,7 +187,8 @@
       recentTools: [],
       activity: [],
       objects: [],
-      activeObjectId: null
+      activeObjectId: null,
+      research: researchTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -175,7 +282,8 @@
       recentTools: Array.isArray(raw.recentTools) ? raw.recentTools.slice(0, MAX_RECENT_TOOLS).map(normalizeRecentTool).filter(Boolean) : [],
       activity: Array.isArray(raw.activity) ? raw.activity.slice(0, MAX_ACTIVITY).map(normalizeActivity).filter(Boolean) : [],
       objects,
-      activeObjectId
+      activeObjectId,
+      research: normalizeResearch(raw.research, objects)
     };
   }
 
@@ -201,7 +309,21 @@
     const state = defaultState();
     state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
       const normalized = normalizeProject(project);
-      if (normalized && project.schema === LEGACY_PROJECT_SCHEMA) addActivity(normalized, 'migrated', 'Project upgraded to Workspace object model');
+      if (normalized && project.schema === LEGACY_PROJECT_SCHEMA_V1) addActivity(normalized, 'migrated', 'Project upgraded from v0.2.0 to Workspace object model');
+      return normalized;
+    }).filter(Boolean) : [];
+    state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
+    state.updatedAt = nowIso();
+    return state;
+  }
+
+  function migrateV3(raw) {
+    const state = defaultState();
+    state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
+      const normalized = normalizeProject(project);
+      if (normalized) addActivity(normalized, 'migrated', 'Project upgraded to Research Workspace');
       return normalized;
     }).filter(Boolean) : [];
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
@@ -215,6 +337,7 @@
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
     if (raw.schemaVersion === 2) return migrateV2(raw);
+    if (raw.schemaVersion === 3) return migrateV3(raw);
     const state = defaultState();
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
@@ -307,7 +430,21 @@
     copy.archivedAt = null;
     copy.activity = [];
     copy.activeObjectId = null;
-    copy.objects = copy.objects.map((object) => ({ ...object, id: id('scwo'), createdAt: copy.createdAt, updatedAt: copy.createdAt, archivedAt: null }));
+    const objectMap = new Map();
+    copy.objects = copy.objects.map((object) => {
+      const oldId = object.id;
+      const newId = id('scwo');
+      objectMap.set(oldId, newId);
+      return { ...object, id: newId, createdAt: copy.createdAt, updatedAt: copy.createdAt, archivedAt: null };
+    });
+    copy.research.questions = copy.research.questions.map((question) => ({ ...question, id: id('rq'), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.research.claims = copy.research.claims.map((claim) => ({ ...claim, id: id('rc'), evidenceObjectIds: claim.evidenceObjectIds.map((objectId) => objectMap.get(objectId)).filter(Boolean), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.research.readingQueue = copy.research.readingQueue.map((item) => ({ ...item, id: id('rr'), objectId: objectMap.get(item.objectId) || '', addedAt: copy.createdAt, updatedAt: copy.createdAt })).filter((item) => item.objectId);
+    copy.research.evidenceLinks = copy.research.evidenceLinks.map((link) => ({ ...link, id: id('rel'), evidenceObjectId: objectMap.get(link.evidenceObjectId) || '', sourceObjectId: objectMap.get(link.sourceObjectId) || '', createdAt: copy.createdAt })).filter((link) => link.evidenceObjectId && link.sourceObjectId);
+    copy.research.activeQuestionId = null;
+    copy.research.activeClaimId = null;
+    copy.research.createdAt = copy.createdAt;
+    copy.research.updatedAt = copy.createdAt;
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
   }
@@ -360,6 +497,22 @@
     const objectSourceUrl = root.querySelector('[data-scw-object-source-url]');
     const objectCreated = root.querySelector('[data-scw-object-created]');
     const objectUpdated = root.querySelector('[data-scw-object-updated]');
+
+    const researchQuestionForm = root.querySelector('[data-scw-research-question-form]');
+    const researchQuestionList = root.querySelector('[data-scw-research-question-list]');
+    const researchActiveQuestion = root.querySelector('[data-scw-research-active-question]');
+    const researchSourceForm = root.querySelector('[data-scw-research-source-form]');
+    const researchReadingList = root.querySelector('[data-scw-research-reading-list]');
+    const researchEvidenceForm = root.querySelector('[data-scw-research-evidence-form]');
+    const researchEvidenceSource = root.querySelector('[data-scw-research-evidence-source]');
+    const researchClaimForm = root.querySelector('[data-scw-research-claim-form]');
+    const researchClaimList = root.querySelector('[data-scw-research-claim-list]');
+    const researchClaimEvidence = root.querySelector('[data-scw-research-claim-evidence]');
+    const researchMetricQuestions = root.querySelector('[data-scw-research-metric-questions]');
+    const researchMetricSources = root.querySelector('[data-scw-research-metric-sources]');
+    const researchMetricEvidence = root.querySelector('[data-scw-research-metric-evidence]');
+    const researchMetricClaims = root.querySelector('[data-scw-research-metric-claims]');
+
 
     function activeProject() {
       return state.projects.find((project) => project.id === state.activeProjectId && !project.archivedAt) || null;
@@ -476,6 +629,100 @@
       });
     }
 
+
+
+    function objectById(project, objectId) {
+      return project.objects.find((object) => object.id === objectId && !object.archivedAt) || null;
+    }
+
+    function renderResearch(project) {
+      const research = project.research || researchTemplate();
+      const sources = project.objects.filter((object) => object.type === 'source' && !object.archivedAt).sort(objectSort);
+      const evidence = project.objects.filter((object) => object.type === 'evidence' && !object.archivedAt).sort(objectSort);
+      const openQuestions = research.questions.filter((question) => question.status === 'open').length;
+      const supportedClaims = research.claims.filter((claim) => claim.status === 'supported').length;
+      researchMetricQuestions.textContent = String(openQuestions);
+      researchMetricSources.textContent = String(sources.length);
+      researchMetricEvidence.textContent = String(evidence.length);
+      researchMetricClaims.textContent = String(supportedClaims);
+
+      const activeQuestion = research.questions.find((question) => question.id === research.activeQuestionId) || null;
+      researchActiveQuestion.textContent = activeQuestion ? activeQuestion.text : 'No active research question selected.';
+
+      researchQuestionList.innerHTML = '';
+      if (!research.questions.length) {
+        const emptyItem = document.createElement('div'); emptyItem.className = 'scw-research-empty'; emptyItem.textContent = 'No research questions yet.'; researchQuestionList.appendChild(emptyItem);
+      } else {
+        [...research.questions].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).forEach((question) => {
+          const row = document.createElement('article'); row.className = `scw-research-row${question.id === research.activeQuestionId ? ' is-active' : ''}`;
+          const text = document.createElement('strong'); text.textContent = question.text;
+          const meta = document.createElement('span'); meta.textContent = `${question.priority.toUpperCase()} · ${question.status.toUpperCase()}`;
+          const controls = document.createElement('div'); controls.className = 'scw-research-row-controls';
+          const status = document.createElement('select');
+          ['open','answered','deferred'].forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value[0].toUpperCase() + value.slice(1); status.appendChild(option); });
+          status.value = question.status;
+          status.addEventListener('change', () => { question.status = QUESTION_STATUS.has(status.value) ? status.value : 'open'; question.updatedAt = nowIso(); touchResearch(project); addActivity(project, 'research-question', `Research question marked ${question.status}`); persist('Research question saved'); renderResearch(project); });
+          const activate = document.createElement('button'); activate.type = 'button'; activate.className = 'scw-card-action'; activate.textContent = question.id === research.activeQuestionId ? 'Active question' : 'Set active';
+          activate.addEventListener('click', () => { research.activeQuestionId = question.id; question.updatedAt = nowIso(); touchResearch(project); persist('Active research question saved'); renderResearch(project); });
+          const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'scw-card-action scw-card-action-muted'; remove.textContent = 'Remove';
+          remove.addEventListener('click', () => { research.questions = research.questions.filter((item) => item.id !== question.id); if (research.activeQuestionId === question.id) research.activeQuestionId = null; touchResearch(project); addActivity(project, 'research-question', 'Research question removed'); persist('Research question removed'); renderResearch(project); });
+          controls.append(status, activate, remove); row.append(text, meta, controls); researchQuestionList.appendChild(row);
+        });
+      }
+
+      researchEvidenceSource.innerHTML = '<option value="">No linked source</option>';
+      sources.forEach((source) => { const option = document.createElement('option'); option.value = source.id; option.textContent = source.title; researchEvidenceSource.appendChild(option); });
+      researchClaimEvidence.innerHTML = '<option value="">Choose evidence</option>';
+      evidence.forEach((item) => { const option = document.createElement('option'); option.value = item.id; option.textContent = item.title; researchClaimEvidence.appendChild(option); });
+
+      researchReadingList.innerHTML = '';
+      const queue = research.readingQueue.map((item) => ({ item, object: objectById(project, item.objectId) })).filter((entry) => entry.object);
+      if (!queue.length) {
+        const emptyItem = document.createElement('div'); emptyItem.className = 'scw-research-empty'; emptyItem.textContent = 'No sources in the reading queue.'; researchReadingList.appendChild(emptyItem);
+      } else {
+        queue.forEach(({ item, object }) => {
+          const row = document.createElement('article'); row.className = 'scw-research-row';
+          const text = document.createElement('strong'); text.textContent = object.title;
+          const meta = document.createElement('span'); meta.textContent = object.provenance.sourceType.toUpperCase();
+          const controls = document.createElement('div'); controls.className = 'scw-research-row-controls';
+          const status = document.createElement('select');
+          ['unread','reading','read'].forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value[0].toUpperCase() + value.slice(1); status.appendChild(option); });
+          status.value = item.status;
+          status.addEventListener('change', () => { item.status = READING_STATUS.has(status.value) ? status.value : 'unread'; item.updatedAt = nowIso(); touchResearch(project); addActivity(project, 'reading-queue', `${object.title} marked ${item.status}`); persist('Reading queue saved'); renderResearch(project); });
+          const open = document.createElement('button'); open.type = 'button'; open.className = 'scw-card-action'; open.textContent = 'Open source';
+          open.addEventListener('click', () => { project.activeObjectId = object.id; project.updatedAt = nowIso(); persist(); render(); objectEditor.scrollIntoView({ behavior: 'auto', block: 'start' }); });
+          const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'scw-card-action scw-card-action-muted'; remove.textContent = 'Remove';
+          remove.addEventListener('click', () => { research.readingQueue = research.readingQueue.filter((queueItem) => queueItem.id !== item.id); touchResearch(project); persist('Reading queue updated'); renderResearch(project); });
+          controls.append(status, open, remove); row.append(text, meta, controls); researchReadingList.appendChild(row);
+        });
+      }
+
+      researchClaimList.innerHTML = '';
+      if (!research.claims.length) {
+        const emptyItem = document.createElement('div'); emptyItem.className = 'scw-research-empty'; emptyItem.textContent = 'No research claims yet.'; researchClaimList.appendChild(emptyItem);
+      } else {
+        [...research.claims].sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))).forEach((claim) => {
+          const row = document.createElement('article'); row.className = `scw-research-claim${claim.id === research.activeClaimId ? ' is-active' : ''}`;
+          const top = document.createElement('div'); top.className = 'scw-research-claim-top';
+          const text = document.createElement('strong'); text.textContent = claim.text;
+          const status = document.createElement('select');
+          ['exploratory','supported','contested','rejected'].forEach((value) => { const option = document.createElement('option'); option.value = value; option.textContent = value[0].toUpperCase() + value.slice(1); status.appendChild(option); });
+          status.value = claim.status;
+          status.addEventListener('change', () => { claim.status = CLAIM_STATUS.has(status.value) ? status.value : 'exploratory'; claim.updatedAt = nowIso(); touchResearch(project); addActivity(project, 'research-claim', `Claim marked ${claim.status}`); persist('Research claim saved'); renderResearch(project); });
+          top.append(text, status);
+          const linked = document.createElement('div'); linked.className = 'scw-research-evidence-links';
+          const linkedObjects = claim.evidenceObjectIds.map((objectId) => objectById(project, objectId)).filter(Boolean);
+          linked.textContent = linkedObjects.length ? `EVIDENCE · ${linkedObjects.map((item) => item.title).join(' · ')}` : 'NO EVIDENCE LINKED';
+          const controls = document.createElement('div'); controls.className = 'scw-research-row-controls';
+          const activate = document.createElement('button'); activate.type = 'button'; activate.className = 'scw-card-action'; activate.textContent = claim.id === research.activeClaimId ? 'Active claim' : 'Set active';
+          activate.addEventListener('click', () => { research.activeClaimId = claim.id; claim.updatedAt = nowIso(); touchResearch(project); persist('Active claim saved'); renderResearch(project); });
+          const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'scw-card-action scw-card-action-muted'; remove.textContent = 'Remove';
+          remove.addEventListener('click', () => { research.claims = research.claims.filter((item) => item.id !== claim.id); if (research.activeClaimId === claim.id) research.activeClaimId = null; touchResearch(project); addActivity(project, 'research-claim', 'Research claim removed'); persist('Research claim removed'); renderResearch(project); });
+          controls.append(activate, remove); row.append(top, linked, controls); researchClaimList.appendChild(row);
+        });
+      }
+    }
+
     function objectCard(object, project) {
       const card = document.createElement('article');
       card.className = `scw-object-card${object.id === project.activeObjectId ? ' is-active' : ''}`;
@@ -566,6 +813,7 @@
       objectTotal.textContent = project.objects.filter((object) => !object.archivedAt).length;
       root.querySelector('[data-scw-pin]').textContent = project.pinned ? 'Unpin project' : 'Pin project';
       renderActivity(project);
+      renderResearch(project);
       renderObjects(project);
       renderObjectEditor(project);
     }
@@ -661,7 +909,7 @@
 
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.3.0', exportedAt: nowIso(), project: JSON.parse(JSON.stringify(project)) };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.0', exportedAt: nowIso(), project: JSON.parse(JSON.stringify(project)) };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -686,24 +934,89 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0, v0.3.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0, v0.3.0, v0.4.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
     });
 
+
+
+    researchQuestionForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const project = activeProject(); if (!project) return;
+      if (project.research.questions.length >= MAX_RESEARCH_QUESTIONS) { window.alert(`This project has reached the ${MAX_RESEARCH_QUESTIONS}-question research limit.`); return; }
+      const data = new FormData(researchQuestionForm);
+      const text = String(data.get('question') || '').trim().slice(0, 1000); if (!text) return;
+      const stamp = nowIso();
+      const question = { id: id('rq'), text, status: 'open', priority: QUESTION_PRIORITY.has(String(data.get('priority'))) ? String(data.get('priority')) : 'normal', createdAt: stamp, updatedAt: stamp };
+      project.research.questions.push(question); project.research.activeQuestionId = question.id; touchResearch(project);
+      addActivity(project, 'research-question', 'Research question added'); researchQuestionForm.reset(); persist('Research question saved'); renderResearch(project); renderList();
+    });
+
+    researchSourceForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const project = activeProject(); if (!project) return;
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      const data = new FormData(researchSourceForm);
+      const title = String(data.get('title') || '').trim().slice(0, 160); if (!title) return;
+      const source = objectTemplate('source', title);
+      source.summary = String(data.get('summary') || '').slice(0, 1200);
+      source.status = 'working';
+      source.tags = normalizeTags(data.get('tags'));
+      source.provenance.sourceType = PROVENANCE_TYPES.has(String(data.get('sourceType'))) ? String(data.get('sourceType')) : 'web';
+      source.provenance.sourceTitle = title.slice(0, 240);
+      source.provenance.sourceUrl = String(data.get('url') || '').slice(0, 2000);
+      source.provenance.capturedAt = nowIso();
+      project.objects.push(source); project.activeObjectId = source.id;
+      if (project.research.readingQueue.length < MAX_READING_QUEUE) project.research.readingQueue.push({ id: id('rr'), objectId: source.id, status: 'unread', note: '', addedAt: nowIso(), updatedAt: nowIso() });
+      touchResearch(project); addActivity(project, 'source-captured', `Source captured: ${source.title}`); researchSourceForm.reset(); persist('Source captured and queued'); render();
+    });
+
+    researchEvidenceForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const project = activeProject(); if (!project) return;
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      const data = new FormData(researchEvidenceForm);
+      const title = String(data.get('title') || '').trim().slice(0, 160); const content = String(data.get('content') || '').slice(0, 50000); if (!title || !content.trim()) return;
+      const evidence = objectTemplate('evidence', title); evidence.content = content; evidence.summary = String(data.get('summary') || '').slice(0, 1200); evidence.status = 'working';
+      const sourceId = String(data.get('sourceObjectId') || ''); const source = objectById(project, sourceId);
+      if (source) { evidence.provenance = { ...source.provenance, sourceTitle: source.title, capturedAt: nowIso() }; }
+      project.objects.push(evidence); project.activeObjectId = evidence.id;
+      if (source && project.research.evidenceLinks.length < MAX_EVIDENCE_LINKS) project.research.evidenceLinks.push({ id: id('rel'), evidenceObjectId: evidence.id, sourceObjectId: source.id, createdAt: nowIso() });
+      touchResearch(project); addActivity(project, 'evidence-captured', `Evidence captured: ${evidence.title}`); researchEvidenceForm.reset(); persist('Evidence captured'); render();
+    });
+
+    researchClaimForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const project = activeProject(); if (!project) return;
+      if (project.research.claims.length >= MAX_RESEARCH_CLAIMS) { window.alert(`This project has reached the ${MAX_RESEARCH_CLAIMS}-claim research limit.`); return; }
+      const data = new FormData(researchClaimForm); const text = String(data.get('claim') || '').trim().slice(0, 2000); if (!text) return;
+      const stamp = nowIso(); const claim = { id: id('rc'), text, status: 'exploratory', evidenceObjectIds: [], createdAt: stamp, updatedAt: stamp };
+      project.research.claims.push(claim); project.research.activeClaimId = claim.id; touchResearch(project); addActivity(project, 'research-claim', 'Research claim added'); researchClaimForm.reset(); persist('Research claim saved'); renderResearch(project);
+    });
+
+    root.querySelector('[data-scw-research-link-evidence]').addEventListener('click', () => {
+      const project = activeProject(); if (!project) return;
+      const claim = project.research.claims.find((item) => item.id === project.research.activeClaimId); const evidenceId = researchClaimEvidence.value;
+      if (!claim) { window.alert('Set an active claim first.'); return; }
+      const evidence = objectById(project, evidenceId); if (!evidence || evidence.type !== 'evidence') return;
+      if (!claim.evidenceObjectIds.includes(evidence.id)) claim.evidenceObjectIds.push(evidence.id);
+      claim.updatedAt = nowIso(); touchResearch(project); addActivity(project, 'evidence-linked', `Evidence linked to active claim: ${evidence.title}`); persist('Evidence link saved'); renderResearch(project);
+    });
+
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.3.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.4.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -748,7 +1061,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.3.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -763,7 +1076,7 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 

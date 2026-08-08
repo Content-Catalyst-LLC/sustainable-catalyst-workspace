@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v030';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v030';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v040';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v040';
+    const LEGACY_PENDING_KEY_V030 = 'sc_workspace_registry_pending_v030';
     const LEGACY_PENDING_KEY_V020 = 'sc_workspace_registry_pending_v020';
     const LEGACY_PENDING_KEY_V010 = 'sc_workspace_registry_pending_v010';
     const CANONICAL_ID = 'sustainable-catalyst-workspace';
@@ -73,6 +74,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V030);
         delete_option(self::LEGACY_PENDING_KEY_V020);
         delete_option(self::LEGACY_PENDING_KEY_V010);
         do_action('scfs_product_registry_updated', self::CANONICAL_ID, $record);
@@ -126,11 +128,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.2.0',
+            'previous_version' => '0.3.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Workspace Objects & Artifact Model: typed reusable project objects for sources, evidence, datasets, analyses, decisions, documents, and exports; object provenance, lifecycle, export, filtering, migration, and active-object handoffs.',
+            'change_summary' => 'Research Workspace: research questions, source capture, reading queue, evidence extraction, claims, evidence-to-source and evidence-to-claim links, research metrics, Research Librarian and Knowledge Library handoffs, and v0.3 project migration.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.3.0 adds typed project objects stored only in the current browser. No account, cloud project store, collaboration layer, or server-side synchronization is introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.4.0 adds a project-scoped Research Workspace that references local Workspace Object IDs. Research content remains in the current browser; no account, cloud project store, collaboration layer, or server-side synchronization is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
