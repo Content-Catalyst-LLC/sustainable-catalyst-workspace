@@ -4,9 +4,14 @@ Sustainable Catalyst Workspace is the free public working environment across the
 
 ## Current release
 
-**v0.4.1 — Research Workspace
+**v0.5.0 — Analysis Workspace**
 
-Workspace Projects can now contain typed, reusable objects: sources, evidence, datasets, analyses, decisions, documents, and exports. Each object has a stable ID, lifecycle state, tags, provenance fields, timestamps, and local export support.
+Workspace now supports two first-class working modes inside a persistent Project:
+
+- Research Workspace — questions, sources, reading queues, evidence, and claims.
+- Analysis Workspace — analytical questions, datasets, variables, assumptions, methods, comparisons, and findings.
+
+Both modes operate on the same portable Workspace Object model rather than creating isolated product-specific artifacts.
 
 ## WordPress
 
@@ -30,23 +35,20 @@ Canonical route:
 
 ## Persistence boundary
 
-Projects and their objects are stored in the current browser only. v0.4.1 does not create an account, upload project/object content to Sustainable Catalyst, synchronize between devices, or introduce collaboration.
+Workspace remains usable without signing in. Projects and objects are stored on the current device. Optional WordPress authentication identifies the current account session only; v0.5.0 does not upload, claim, or synchronize local project content.
+
+## Contracts
+
+- Project: `sc-workspace-project/4.0`
+- Object: `sc-workspace-object/1.0`
+- Research: `sc-workspace-research/1.0`
+- Analysis: `sc-workspace-analysis/1.0`
+- Identity: `sc-workspace-identity/1.0`
+- Storage schema: `6`
 
 ## Object model
 
-Supported object types:
-
-- Source
-- Evidence
-- Dataset
-- Analysis
-- Decision
-- Document
-- Export
-
-Project schema: `sc-workspace-project/2.0`  
-Object schema: `sc-workspace-object/1.0`  
-Storage schema: `3`
+Supported object types: Source, Evidence, Dataset, Analysis, Decision, Document, and Export.
 
 ## Product Registry
 
@@ -58,10 +60,4 @@ Storage schema: `3`
 - Access: free public
 - Canonical repository: `Content-Catalyst-LLC/sustainable-catalyst-workspace`
 
-
-## v0.4.1 Research Workspace
-Research questions, source capture, reading queues, evidence extraction, claims, and evidence links now operate directly on the local Workspace Object model. See `docs/RESEARCH_WORKSPACE_V040.md`.
-
-
-## v0.4.1 identity boundary
-Workspace remains guest-accessible and device-local. Existing WordPress accounts may be recognized for session identity, but signing in does not upload or synchronize projects. See `docs/IDENTITY_ACCOUNTS_PERSISTENCE_BOUNDARY_V041.md`.
+See `docs/ANALYSIS_WORKSPACE_V050.md` for the v0.5.0 analytical contract.

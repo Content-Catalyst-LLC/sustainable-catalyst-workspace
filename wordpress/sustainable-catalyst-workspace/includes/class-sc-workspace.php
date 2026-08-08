@@ -28,6 +28,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V041, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V040, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V030, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V020, '') === '1' ||
@@ -44,7 +45,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.4.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.5.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -73,6 +74,11 @@ final class SC_Workspace {
             'callback' => array($this, 'identity_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/analysis-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'analysis_contract'),
+            'permission_callback' => '__return_true',
+        ));
     }
 
     public function health() {
@@ -83,14 +89,15 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v5',
-            'project_schema' => 'sc-workspace-project/3.1',
+            'persistence' => 'browser-local-projects-v6',
+            'project_schema' => 'sc-workspace-project/4.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
+            'analysis_schema' => 'sc-workspace-analysis/1.0',
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 5,
+            'storage_schema_version' => 6,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -101,20 +108,21 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/3.1',
+            'schema' => 'sc-workspace-project-contract/4.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/3.1',
+            'project_schema' => 'sc-workspace-project/4.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
-            'export_schema' => 'sc-workspace-project-export/3.1',
-            'storage_schema_version' => 5,
+            'analysis_schema' => 'sc-workspace-analysis/1.0',
+            'export_schema' => 'sc-workspace-project-export/4.0',
+            'storage_schema_version' => 6,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
             'device_identity' => 'anonymous-pseudonymous-local-id',
             'account_sign_in_changes_storage' => false,
             'max_objects_per_project' => 250,
-            'handoff_schema' => 'sc-workspace-handoff/1.2',
+            'handoff_schema' => 'sc-workspace-handoff/1.3',
             'handoff_query_fields' => array('sc_workspace_project', 'sc_workspace_object', 'sc_workspace_origin', 'sc_workspace_return'),
         ));
     }
@@ -151,6 +159,33 @@ final class SC_Workspace {
         ));
     }
 
+
+    public function analysis_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-analysis-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'analysis_schema' => 'sc-workspace-analysis/1.0',
+            'project_schema' => 'sc-workspace-project/4.0',
+            'dataset_object_type' => 'dataset',
+            'analysis_object_type' => 'analysis',
+            'question_statuses' => array('open', 'resolved', 'deferred'),
+            'variable_roles' => array('outcome', 'input', 'control', 'parameter', 'indicator'),
+            'assumption_statuses' => array('untested', 'supported', 'challenged'),
+            'method_types' => array('descriptive', 'comparative', 'statistical', 'modeling', 'scenario', 'sensitivity', 'other'),
+            'finding_statuses' => array('preliminary', 'supported', 'contested'),
+            'max_questions_per_project' => 100,
+            'max_variables_per_project' => 120,
+            'max_assumptions_per_project' => 120,
+            'max_methods_per_project' => 100,
+            'max_comparisons_per_project' => 100,
+            'max_findings_per_project' => 150,
+            'references_workspace_object_ids' => true,
+            'analysis_content_in_handoff_url' => false,
+            'server_compute' => false,
+            'local_first' => true,
+        ));
+    }
+
     public function identity_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-identity-contract/1.0',
@@ -173,14 +208,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v041',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.4.1.css',
+            'sc-workspace-v050',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.5.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v041',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.4.1.js',
+            'sc-workspace-v050',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.5.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -189,7 +224,7 @@ final class SC_Workspace {
         $return_url = home_url('/platform/workspace/');
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v041', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v050', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -222,7 +257,7 @@ final class SC_Workspace {
         $return_url = home_url('/platform/workspace/');
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="5" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="6" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / PLATFORM</div>
                 <div class="scw-hero-grid">
@@ -241,7 +276,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.4.1 can recognize an optional Sustainable Catalyst site account, but projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. v0.5.0 can recognize an optional Sustainable Catalyst site account, but projects and project content still remain on this device. Signing in does not upload, claim, or synchronize local work.</span>
             </div>
 
             <section class="scw-identity" aria-labelledby="scw-identity-title">
@@ -258,7 +293,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.4.1.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.5.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -417,6 +452,101 @@ final class SC_Workspace {
                     </div>
                 </section>
 
+
+                <section class="scw-analysis" aria-labelledby="scw-analysis-title">
+                    <div class="scw-analysis-head">
+                        <div>
+                            <div class="scw-kicker">ANALYSIS WORKSPACE</div>
+                            <h3 id="scw-analysis-title">From evidence to structured analytical finding.</h3>
+                            <p>Frame analytical questions, register datasets and variables, surface assumptions, record methods and comparisons, and connect findings back to Workspace evidence and analysis objects.</p>
+                        </div>
+                        <div class="scw-analysis-launchers" aria-label="Analysis tools">
+                            <a class="scw-button" data-scw-tool="analytics-r" href="<?php echo esc_url(home_url('/platform/catalyst-analytics-r/')); ?>"><strong>Analytics R</strong></a>
+                            <a class="scw-button" data-scw-tool="workbench" href="<?php echo esc_url(home_url('/platform/workbench/')); ?>"><strong>Workbench</strong></a>
+                            <a class="scw-button" data-scw-tool="catalyst-data" href="<?php echo esc_url(home_url('/platform/catalyst-data/')); ?>"><strong>Catalyst Data</strong></a>
+                            <a class="scw-button" data-scw-tool="site-intelligence" href="<?php echo esc_url(home_url('/platform/site-intelligence/')); ?>"><strong>Site Intelligence</strong></a>
+                        </div>
+                    </div>
+
+                    <div class="scw-analysis-metrics" aria-label="Analysis project metrics">
+                        <div><strong data-scw-analysis-metric-questions>0</strong><span>open questions</span></div>
+                        <div><strong data-scw-analysis-metric-datasets>0</strong><span>datasets</span></div>
+                        <div><strong data-scw-analysis-metric-analyses>0</strong><span>analysis objects</span></div>
+                        <div><strong data-scw-analysis-metric-findings>0</strong><span>supported findings</span></div>
+                    </div>
+
+                    <div class="scw-analysis-grid">
+                        <section class="scw-analysis-panel scw-analysis-panel-wide" aria-labelledby="scw-analysis-question-heading">
+                            <div class="scw-analysis-panel-head"><span>01 / QUESTIONS</span><h4 id="scw-analysis-question-heading">Analysis questions</h4></div>
+                            <div class="scw-analysis-active"><span>ACTIVE QUESTION</span><strong data-scw-analysis-active-question>No active analysis question selected.</strong></div>
+                            <form class="scw-analysis-form scw-analysis-form-question" data-scw-analysis-question-form>
+                                <label><span>Question</span><input type="text" name="question" maxlength="1200" required placeholder="What relationship, difference, pattern, or outcome are we testing?"></label>
+                                <label><span>Priority</span><select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></label>
+                                <button class="scw-button" type="submit">Add question</button>
+                            </form>
+                            <div class="scw-analysis-list" data-scw-analysis-question-list></div>
+                        </section>
+
+                        <section class="scw-analysis-panel" aria-labelledby="scw-analysis-data-heading">
+                            <div class="scw-analysis-panel-head"><span>02 / DATA</span><h4 id="scw-analysis-data-heading">Datasets &amp; variables</h4></div>
+                            <form class="scw-analysis-form" data-scw-analysis-dataset-form>
+                                <label><span>Dataset title</span><input type="text" name="title" maxlength="160" required></label>
+                                <label><span>Source URL</span><input type="url" name="url" maxlength="2000" placeholder="https://"></label>
+                                <label><span>Summary</span><textarea name="summary" rows="3" maxlength="1200" placeholder="Scope, coverage, grain, or analytical relevance."></textarea></label>
+                                <label><span>Tags</span><input type="text" name="tags" placeholder="energy, country, panel"></label>
+                                <button class="scw-button" type="submit">Register dataset</button>
+                            </form>
+                            <div class="scw-analysis-list" data-scw-analysis-dataset-list></div>
+                            <form class="scw-analysis-form scw-analysis-subform" data-scw-analysis-variable-form>
+                                <div class="scw-analysis-form-row"><label><span>Variable</span><input type="text" name="name" maxlength="160" required></label><label><span>Role</span><select name="role"><option value="outcome">Outcome</option><option value="input">Input</option><option value="control">Control</option><option value="parameter">Parameter</option><option value="indicator">Indicator</option></select></label></div>
+                                <div class="scw-analysis-form-row"><label><span>Unit</span><input type="text" name="unit" maxlength="80"></label><label><span>Definition</span><input type="text" name="definition" maxlength="1200"></label></div>
+                                <button class="scw-button" type="submit">Add variable</button>
+                            </form>
+                            <div class="scw-analysis-list" data-scw-analysis-variable-list></div>
+                        </section>
+
+                        <section class="scw-analysis-panel" aria-labelledby="scw-analysis-method-heading">
+                            <div class="scw-analysis-panel-head"><span>03 / METHOD</span><h4 id="scw-analysis-method-heading">Assumptions &amp; methods</h4></div>
+                            <form class="scw-analysis-form" data-scw-analysis-assumption-form>
+                                <label><span>Assumption</span><textarea name="assumption" rows="3" maxlength="2000" required placeholder="What must be true, held constant, or accepted for this analysis?"></textarea></label>
+                                <button class="scw-button" type="submit">Add assumption</button>
+                            </form>
+                            <div class="scw-analysis-list" data-scw-analysis-assumption-list></div>
+                            <form class="scw-analysis-form scw-analysis-subform" data-scw-analysis-method-form>
+                                <label><span>Method name</span><input type="text" name="name" maxlength="200" required placeholder="Comparative trend analysis"></label>
+                                <div class="scw-analysis-form-row"><label><span>Method type</span><select name="type"><option value="descriptive">Descriptive</option><option value="comparative">Comparative</option><option value="statistical">Statistical</option><option value="modeling">Modeling</option><option value="scenario">Scenario</option><option value="sensitivity">Sensitivity</option><option value="other">Other</option></select></label><label><span>Dataset</span><select name="datasetObjectId" data-scw-analysis-method-dataset><option value="">No linked dataset</option></select></label></div>
+                                <label><span>Description</span><textarea name="description" rows="4" maxlength="3000" placeholder="Method, transformations, tests, model form, or calculation logic."></textarea></label>
+                                <button class="scw-button" type="submit">Register method &amp; analysis object</button>
+                            </form>
+                            <div class="scw-analysis-list" data-scw-analysis-method-list></div>
+                        </section>
+
+                        <section class="scw-analysis-panel scw-analysis-panel-wide" aria-labelledby="scw-analysis-findings-heading">
+                            <div class="scw-analysis-panel-head"><span>04 / INTERPRETATION</span><h4 id="scw-analysis-findings-heading">Comparisons &amp; findings</h4></div>
+                            <div class="scw-analysis-two-col">
+                                <div>
+                                    <form class="scw-analysis-form" data-scw-analysis-comparison-form>
+                                        <label><span>Comparison label</span><input type="text" name="label" maxlength="200" required placeholder="Baseline vs intervention"></label>
+                                        <div class="scw-analysis-form-row"><label><span>Baseline</span><input type="text" name="baseline" maxlength="800"></label><label><span>Alternative</span><input type="text" name="alternative" maxlength="800"></label></div>
+                                        <div class="scw-analysis-form-row"><label><span>Metric</span><input type="text" name="metric" maxlength="240"></label><label><span>Result</span><input type="text" name="result" maxlength="1200"></label></div>
+                                        <label><span>Interpretation</span><textarea name="interpretation" rows="3" maxlength="2000"></textarea></label>
+                                        <button class="scw-button" type="submit">Add comparison</button>
+                                    </form>
+                                    <div class="scw-analysis-list" data-scw-analysis-comparison-list></div>
+                                </div>
+                                <div>
+                                    <form class="scw-analysis-form" data-scw-analysis-finding-form>
+                                        <label><span>Finding</span><textarea name="finding" rows="4" maxlength="3000" required placeholder="What does the analysis currently show?"></textarea></label>
+                                        <div class="scw-analysis-form-row"><label><span>Status</span><select name="status"><option value="preliminary">Preliminary</option><option value="supported">Supported</option><option value="contested">Contested</option></select></label><label><span>Evidence</span><select name="evidenceObjectId" data-scw-analysis-finding-evidence><option value="">No linked evidence</option></select></label></div>
+                                        <button class="scw-button" type="submit">Record finding</button>
+                                    </form>
+                                    <div class="scw-analysis-list" data-scw-analysis-finding-list></div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+
                 <section class="scw-objects" aria-labelledby="scw-objects-title">
                     <div class="scw-object-head">
                         <div>
@@ -538,7 +668,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.4.1. Sign-in does not upload project content.</div>
+                <div>Guest and signed-in sessions use device-local project storage in v0.5.0. Sign-in does not upload project content.</div>
             </footer>
         </section>
         <?php

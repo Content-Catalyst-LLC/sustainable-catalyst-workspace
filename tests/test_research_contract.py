@@ -1,7 +1,7 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.4.1.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.5.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 class ResearchContractTests(unittest.TestCase):
     def test_schema_vocabularies(self):
@@ -10,8 +10,8 @@ class ResearchContractTests(unittest.TestCase):
         self.assertEqual(s['properties']['questions']['maxItems'],100); self.assertEqual(s['properties']['claims']['maxItems'],100)
         self.assertEqual(s['properties']['readingQueue']['maxItems'],250); self.assertEqual(s['properties']['evidenceLinks']['maxItems'],500)
     def test_project_embeds_research(self):
-        s=json.loads((ROOT/'schemas/sc-workspace-project-v3-1.schema.json').read_text())
-        self.assertEqual(s['properties']['schema']['const'],'sc-workspace-project/3.1'); self.assertIn('research',s['required'])
+        s=json.loads((ROOT/'schemas/sc-workspace-project-v4.schema.json').read_text())
+        self.assertEqual(s['properties']['schema']['const'],'sc-workspace-project/4.0'); self.assertIn('research',s['required'])
         self.assertEqual(s['properties']['research']['$ref'],'sc-workspace-research-v1.schema.json')
     def test_research_functions_present(self):
         js=JS.read_text()

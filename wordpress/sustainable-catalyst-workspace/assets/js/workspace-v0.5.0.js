@@ -3,23 +3,26 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_4_1';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_5_0';
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v1';
-  const STORAGE_VERSION = 5;
-  const PROJECT_SCHEMA = 'sc-workspace-project/3.1';
+  const STORAGE_VERSION = 6;
+  const PROJECT_SCHEMA = 'sc-workspace-project/4.0';
+  const LEGACY_PROJECT_SCHEMA_V31 = 'sc-workspace-project/3.1';
   const LEGACY_PROJECT_SCHEMA_V3 = 'sc-workspace-project/3.0';
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/3.1';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/4.0';
+  const LEGACY_EXPORT_SCHEMA_V31 = 'sc-workspace-project-export/3.1';
   const LEGACY_EXPORT_SCHEMA_V3 = 'sc-workspace-project-export/3.0';
   const LEGACY_EXPORT_SCHEMA_V2 = 'sc-workspace-project-export/2.0';
   const LEGACY_EXPORT_SCHEMA_V1 = 'sc-workspace-project-export/1.0';
   const OBJECT_EXPORT_SCHEMA = 'sc-workspace-object-export/1.0';
-  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.2';
+  const HANDOFF_SCHEMA = 'sc-workspace-handoff/1.3';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
+  const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0';
   const MAX_ACTIVITY = 60;
   const MAX_RECENT_TOOLS = 8;
   const MAX_OBJECTS = 250;
@@ -27,6 +30,12 @@
   const MAX_RESEARCH_CLAIMS = 100;
   const MAX_READING_QUEUE = 250;
   const MAX_EVIDENCE_LINKS = 500;
+  const MAX_ANALYSIS_QUESTIONS = 100;
+  const MAX_ANALYSIS_VARIABLES = 120;
+  const MAX_ANALYSIS_ASSUMPTIONS = 120;
+  const MAX_ANALYSIS_METHODS = 100;
+  const MAX_ANALYSIS_COMPARISONS = 100;
+  const MAX_ANALYSIS_FINDINGS = 150;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
   const OBJECT_TYPES = new Set(['source', 'evidence', 'dataset', 'analysis', 'decision', 'document', 'export']);
   const OBJECT_STATUS = new Set(['draft', 'working', 'ready']);
@@ -35,6 +44,11 @@
   const QUESTION_PRIORITY = new Set(['low', 'normal', 'high']);
   const CLAIM_STATUS = new Set(['exploratory', 'supported', 'contested', 'rejected']);
   const READING_STATUS = new Set(['unread', 'reading', 'read']);
+  const ANALYSIS_QUESTION_STATUS = new Set(['open', 'resolved', 'deferred']);
+  const ANALYSIS_VARIABLE_ROLE = new Set(['outcome', 'input', 'control', 'parameter', 'indicator']);
+  const ANALYSIS_ASSUMPTION_STATUS = new Set(['untested', 'supported', 'challenged']);
+  const ANALYSIS_METHOD_TYPE = new Set(['descriptive', 'comparative', 'statistical', 'modeling', 'scenario', 'sensitivity', 'other']);
+  const ANALYSIS_FINDING_STATUS = new Set(['preliminary', 'supported', 'contested']);
   const OBJECT_LABELS = {
     source: 'Source', evidence: 'Evidence', dataset: 'Dataset', analysis: 'Analysis',
     decision: 'Decision', document: 'Document', export: 'Export'
@@ -201,6 +215,91 @@
   }
 
 
+
+
+  function analysisTemplate() {
+    const stamp = nowIso();
+    return {
+      schema: ANALYSIS_SCHEMA,
+      questions: [], variables: [], assumptions: [], methods: [], comparisons: [], findings: [],
+      activeQuestionId: null, activeMethodId: null,
+      createdAt: stamp, updatedAt: stamp
+    };
+  }
+
+  function normalizeAnalysisQuestion(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return { id: String(raw.id || id('aq')).slice(0,160), text: String(raw.text || '').trim().slice(0,1200), status: ANALYSIS_QUESTION_STATUS.has(raw.status) ? raw.status : 'open', priority: QUESTION_PRIORITY.has(raw.priority) ? raw.priority : 'normal', createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp, updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp };
+  }
+
+  function normalizeAnalysisVariable(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return { id: String(raw.id || id('av')).slice(0,160), name: String(raw.name || '').trim().slice(0,160), role: ANALYSIS_VARIABLE_ROLE.has(raw.role) ? raw.role : 'indicator', unit: String(raw.unit || '').slice(0,80), definition: String(raw.definition || '').slice(0,1200), createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp, updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp };
+  }
+
+  function normalizeAnalysisAssumption(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return { id: String(raw.id || id('aa')).slice(0,160), text: String(raw.text || '').trim().slice(0,2000), status: ANALYSIS_ASSUMPTION_STATUS.has(raw.status) ? raw.status : 'untested', evidenceObjectIds: Array.isArray(raw.evidenceObjectIds) ? [...new Set(raw.evidenceObjectIds.map((v)=>String(v).slice(0,160)))].slice(0,50) : [], createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp, updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp };
+  }
+
+  function normalizeAnalysisMethod(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return { id: String(raw.id || id('am')).slice(0,160), name: String(raw.name || '').trim().slice(0,200), type: ANALYSIS_METHOD_TYPE.has(raw.type) ? raw.type : 'descriptive', description: String(raw.description || '').slice(0,3000), datasetObjectIds: Array.isArray(raw.datasetObjectIds) ? [...new Set(raw.datasetObjectIds.map((v)=>String(v).slice(0,160)))].slice(0,25) : [], analysisObjectId: String(raw.analysisObjectId || '').slice(0,160), createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp, updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp };
+  }
+
+  function normalizeAnalysisComparison(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return { id: String(raw.id || id('ac')).slice(0,160), label: String(raw.label || '').trim().slice(0,200), baseline: String(raw.baseline || '').slice(0,800), alternative: String(raw.alternative || '').slice(0,800), metric: String(raw.metric || '').slice(0,240), result: String(raw.result || '').slice(0,1200), interpretation: String(raw.interpretation || '').slice(0,2000), createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp, updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp };
+  }
+
+  function normalizeAnalysisFinding(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    return { id: String(raw.id || id('af')).slice(0,160), text: String(raw.text || '').trim().slice(0,3000), status: ANALYSIS_FINDING_STATUS.has(raw.status) ? raw.status : 'preliminary', evidenceObjectIds: Array.isArray(raw.evidenceObjectIds) ? [...new Set(raw.evidenceObjectIds.map((v)=>String(v).slice(0,160)))].slice(0,50) : [], analysisObjectId: String(raw.analysisObjectId || '').slice(0,160), createdAt: validIso(raw.createdAt) ? raw.createdAt : stamp, updatedAt: validIso(raw.updatedAt) ? raw.updatedAt : stamp };
+  }
+
+  function normalizeAnalysis(raw, objects = []) {
+    const base = analysisTemplate();
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const objectIds = new Set(objects.map((object)=>object.id));
+    const datasetIds = new Set(objects.filter((object)=>object.type === 'dataset').map((object)=>object.id));
+    const evidenceIds = new Set(objects.filter((object)=>object.type === 'evidence').map((object)=>object.id));
+    const analysisIds = new Set(objects.filter((object)=>object.type === 'analysis').map((object)=>object.id));
+    base.questions = Array.isArray(value.questions) ? value.questions.map(normalizeAnalysisQuestion).filter((x)=>x && x.text).slice(0,MAX_ANALYSIS_QUESTIONS) : [];
+    base.variables = Array.isArray(value.variables) ? value.variables.map(normalizeAnalysisVariable).filter((x)=>x && x.name).slice(0,MAX_ANALYSIS_VARIABLES) : [];
+    base.assumptions = Array.isArray(value.assumptions) ? value.assumptions.map(normalizeAnalysisAssumption).filter((x)=>x && x.text).slice(0,MAX_ANALYSIS_ASSUMPTIONS) : [];
+    base.assumptions.forEach((x)=>{ x.evidenceObjectIds = x.evidenceObjectIds.filter((v)=>evidenceIds.has(v)); });
+    base.methods = Array.isArray(value.methods) ? value.methods.map(normalizeAnalysisMethod).filter((x)=>x && x.name).slice(0,MAX_ANALYSIS_METHODS) : [];
+    base.methods.forEach((x)=>{ x.datasetObjectIds = x.datasetObjectIds.filter((v)=>datasetIds.has(v)); x.analysisObjectId = analysisIds.has(x.analysisObjectId) ? x.analysisObjectId : ''; });
+    base.comparisons = Array.isArray(value.comparisons) ? value.comparisons.map(normalizeAnalysisComparison).filter((x)=>x && x.label).slice(0,MAX_ANALYSIS_COMPARISONS) : [];
+    base.findings = Array.isArray(value.findings) ? value.findings.map(normalizeAnalysisFinding).filter((x)=>x && x.text).slice(0,MAX_ANALYSIS_FINDINGS) : [];
+    base.findings.forEach((x)=>{ x.evidenceObjectIds = x.evidenceObjectIds.filter((v)=>evidenceIds.has(v)); x.analysisObjectId = analysisIds.has(x.analysisObjectId) ? x.analysisObjectId : ''; });
+    base.activeQuestionId = base.questions.some((x)=>x.id===value.activeQuestionId) ? value.activeQuestionId : null;
+    base.activeMethodId = base.methods.some((x)=>x.id===value.activeMethodId) ? value.activeMethodId : null;
+    base.createdAt = validIso(value.createdAt) ? value.createdAt : base.createdAt;
+    base.updatedAt = validIso(value.updatedAt) ? value.updatedAt : base.updatedAt;
+    return base;
+  }
+
+  function touchAnalysis(project) {
+    if (!project.analysis) project.analysis = analysisTemplate();
+    project.analysis.updatedAt = nowIso();
+    project.updatedAt = project.analysis.updatedAt;
+  }
+
+  function cleanAnalysisReferences(project, objectId) {
+    if (!project || !project.analysis) return;
+    project.analysis.assumptions.forEach((x)=>{ x.evidenceObjectIds = x.evidenceObjectIds.filter((v)=>v!==objectId); });
+    project.analysis.methods.forEach((x)=>{ x.datasetObjectIds = x.datasetObjectIds.filter((v)=>v!==objectId); if (x.analysisObjectId===objectId) x.analysisObjectId=''; });
+    project.analysis.findings.forEach((x)=>{ x.evidenceObjectIds = x.evidenceObjectIds.filter((v)=>v!==objectId); if (x.analysisObjectId===objectId) x.analysisObjectId=''; });
+    touchAnalysis(project);
+  }
+
   function objectTemplate(type, title) {
     const stamp = nowIso();
     return {
@@ -237,7 +336,8 @@
       activity: [],
       objects: [],
       activeObjectId: null,
-      research: researchTemplate()
+      research: researchTemplate(),
+      analysis: analysisTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -333,7 +433,8 @@
       activity: Array.isArray(raw.activity) ? raw.activity.slice(0, MAX_ACTIVITY).map(normalizeActivity).filter(Boolean) : [],
       objects,
       activeObjectId,
-      research: normalizeResearch(raw.research, objects)
+      research: normalizeResearch(raw.research, objects),
+      analysis: normalizeAnalysis(raw.analysis, objects)
     };
   }
 
@@ -398,12 +499,30 @@
     return state;
   }
 
+
+
+  function migrateV5(raw) {
+    const state = defaultState();
+    state.projects = Array.isArray(raw.projects) ? raw.projects.map((project) => {
+      const normalized = normalizeProject(project);
+      if (normalized) addActivity(normalized, 'migrated', 'Project upgraded to Analysis Workspace');
+      return normalized;
+    }).filter(Boolean) : [];
+    state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.identity = normalizeIdentity(raw.identity);
+    state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
+    state.updatedAt = nowIso();
+    return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
     if (raw.schemaVersion === 2) return migrateV2(raw);
     if (raw.schemaVersion === 3) return migrateV3(raw);
     if (raw.schemaVersion === 4) return migrateV4(raw);
+    if (raw.schemaVersion === 5) return migrateV5(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -515,6 +634,14 @@
     copy.research.activeClaimId = null;
     copy.research.createdAt = copy.createdAt;
     copy.research.updatedAt = copy.createdAt;
+
+    copy.analysis.questions = copy.analysis.questions.map((question) => ({ ...question, id: id('aq'), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.analysis.variables = copy.analysis.variables.map((variable) => ({ ...variable, id: id('av'), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.analysis.assumptions = copy.analysis.assumptions.map((assumption) => ({ ...assumption, id: id('aa'), evidenceObjectIds: assumption.evidenceObjectIds.map((objectId)=>objectMap.get(objectId)).filter(Boolean), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.analysis.methods = copy.analysis.methods.map((method) => ({ ...method, id: id('am'), datasetObjectIds: method.datasetObjectIds.map((objectId)=>objectMap.get(objectId)).filter(Boolean), analysisObjectId: objectMap.get(method.analysisObjectId) || '', createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.analysis.comparisons = copy.analysis.comparisons.map((comparison) => ({ ...comparison, id: id('ac'), createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.analysis.findings = copy.analysis.findings.map((finding) => ({ ...finding, id: id('af'), evidenceObjectIds: finding.evidenceObjectIds.map((objectId)=>objectMap.get(objectId)).filter(Boolean), analysisObjectId: objectMap.get(finding.analysisObjectId) || '', createdAt: copy.createdAt, updatedAt: copy.createdAt }));
+    copy.analysis.activeQuestionId = null; copy.analysis.activeMethodId = null; copy.analysis.createdAt = copy.createdAt; copy.analysis.updatedAt = copy.createdAt;
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
   }
@@ -593,6 +720,29 @@
     const researchMetricClaims = root.querySelector('[data-scw-research-metric-claims]');
 
 
+    const analysisQuestionForm = root.querySelector('[data-scw-analysis-question-form]');
+    const analysisQuestionList = root.querySelector('[data-scw-analysis-question-list]');
+    const analysisActiveQuestion = root.querySelector('[data-scw-analysis-active-question]');
+    const analysisDatasetForm = root.querySelector('[data-scw-analysis-dataset-form]');
+    const analysisDatasetList = root.querySelector('[data-scw-analysis-dataset-list]');
+    const analysisVariableForm = root.querySelector('[data-scw-analysis-variable-form]');
+    const analysisVariableList = root.querySelector('[data-scw-analysis-variable-list]');
+    const analysisAssumptionForm = root.querySelector('[data-scw-analysis-assumption-form]');
+    const analysisAssumptionList = root.querySelector('[data-scw-analysis-assumption-list]');
+    const analysisMethodForm = root.querySelector('[data-scw-analysis-method-form]');
+    const analysisMethodDataset = root.querySelector('[data-scw-analysis-method-dataset]');
+    const analysisMethodList = root.querySelector('[data-scw-analysis-method-list]');
+    const analysisComparisonForm = root.querySelector('[data-scw-analysis-comparison-form]');
+    const analysisComparisonList = root.querySelector('[data-scw-analysis-comparison-list]');
+    const analysisFindingForm = root.querySelector('[data-scw-analysis-finding-form]');
+    const analysisFindingEvidence = root.querySelector('[data-scw-analysis-finding-evidence]');
+    const analysisFindingList = root.querySelector('[data-scw-analysis-finding-list]');
+    const analysisMetricQuestions = root.querySelector('[data-scw-analysis-metric-questions]');
+    const analysisMetricDatasets = root.querySelector('[data-scw-analysis-metric-datasets]');
+    const analysisMetricAnalyses = root.querySelector('[data-scw-analysis-metric-analyses]');
+    const analysisMetricFindings = root.querySelector('[data-scw-analysis-metric-findings]');
+
+
     function renderIdentity() {
       const authenticated = Boolean(IDENTITY_CONFIG.authenticated);
       state.identity = normalizeIdentity(state.identity);
@@ -600,7 +750,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.4.1 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.5.0 does not upload or synchronize Workspace Projects. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -819,6 +969,48 @@
       }
     }
 
+
+
+    function renderAnalysis(project) {
+      const analysis = project.analysis || analysisTemplate();
+      const datasets = project.objects.filter((object)=>object.type==='dataset' && !object.archivedAt).sort(objectSort);
+      const analyses = project.objects.filter((object)=>object.type==='analysis' && !object.archivedAt).sort(objectSort);
+      const evidence = project.objects.filter((object)=>object.type==='evidence' && !object.archivedAt).sort(objectSort);
+      if (analysisMetricQuestions) analysisMetricQuestions.textContent = String(analysis.questions.filter((x)=>x.status==='open').length);
+      if (analysisMetricDatasets) analysisMetricDatasets.textContent = String(datasets.length);
+      if (analysisMetricAnalyses) analysisMetricAnalyses.textContent = String(analyses.length);
+      if (analysisMetricFindings) analysisMetricFindings.textContent = String(analysis.findings.filter((x)=>x.status==='supported').length);
+      const activeQuestion = analysis.questions.find((x)=>x.id===analysis.activeQuestionId) || null;
+      if (analysisActiveQuestion) analysisActiveQuestion.textContent = activeQuestion ? activeQuestion.text : 'No active analysis question selected.';
+
+      analysisQuestionList.innerHTML='';
+      if (!analysis.questions.length) analysisQuestionList.innerHTML='<div class="scw-analysis-empty">No analysis questions yet.</div>';
+      [...analysis.questions].sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).forEach((question)=>{
+        const row=document.createElement('article'); row.className=`scw-analysis-row${question.id===analysis.activeQuestionId?' is-active':''}`;
+        const strong=document.createElement('strong'); strong.textContent=question.text;
+        const meta=document.createElement('span'); meta.textContent=`${question.priority.toUpperCase()} · ${question.status.toUpperCase()}`;
+        const controls=document.createElement('div'); controls.className='scw-analysis-row-controls';
+        const status=document.createElement('select'); ['open','resolved','deferred'].forEach((v)=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)}); status.value=question.status;
+        status.addEventListener('change',()=>{question.status=ANALYSIS_QUESTION_STATUS.has(status.value)?status.value:'open';question.updatedAt=nowIso();touchAnalysis(project);persist('Analysis question saved');renderAnalysis(project)});
+        const active=document.createElement('button');active.type='button';active.className='scw-card-action';active.textContent=question.id===analysis.activeQuestionId?'Active question':'Set active';active.addEventListener('click',()=>{analysis.activeQuestionId=question.id;question.updatedAt=nowIso();touchAnalysis(project);persist('Active analysis question saved');renderAnalysis(project)});
+        const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{analysis.questions=analysis.questions.filter((x)=>x.id!==question.id);if(analysis.activeQuestionId===question.id)analysis.activeQuestionId=null;touchAnalysis(project);persist('Analysis question removed');renderAnalysis(project)});
+        controls.append(status,active,remove); row.append(strong,meta,controls); analysisQuestionList.appendChild(row);
+      });
+
+      analysisDatasetList.innerHTML='';
+      if (!datasets.length) analysisDatasetList.innerHTML='<div class="scw-analysis-empty">No Dataset objects yet.</div>';
+      datasets.forEach((dataset)=>{const row=document.createElement('article');row.className='scw-analysis-row';const strong=document.createElement('strong');strong.textContent=dataset.title;const meta=document.createElement('span');meta.textContent=dataset.status.toUpperCase();const controls=document.createElement('div');controls.className='scw-analysis-row-controls';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open dataset';open.addEventListener('click',()=>{project.activeObjectId=dataset.id;persist();render();objectEditor.scrollIntoView({behavior:'auto',block:'start'})});controls.append(open);row.append(strong,meta,controls);analysisDatasetList.appendChild(row)});
+      analysisMethodDataset.innerHTML='<option value="">No linked dataset</option>'; datasets.forEach((dataset)=>{const o=document.createElement('option');o.value=dataset.id;o.textContent=dataset.title;analysisMethodDataset.appendChild(o)});
+      analysisFindingEvidence.innerHTML='<option value="">No linked evidence</option>'; evidence.forEach((item)=>{const o=document.createElement('option');o.value=item.id;o.textContent=item.title;analysisFindingEvidence.appendChild(o)});
+
+      function simpleList(el, items, render) { el.innerHTML=''; if (!items.length) { const e=document.createElement('div');e.className='scw-analysis-empty';e.textContent='Nothing recorded yet.';el.appendChild(e);return; } items.forEach(render); }
+      simpleList(analysisVariableList, analysis.variables, (variable)=>{const row=document.createElement('article');row.className='scw-analysis-row';const strong=document.createElement('strong');strong.textContent=variable.name;const meta=document.createElement('span');meta.textContent=`${variable.role.toUpperCase()}${variable.unit?` · ${variable.unit}`:''}`;const controls=document.createElement('div');controls.className='scw-analysis-row-controls';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{analysis.variables=analysis.variables.filter((x)=>x.id!==variable.id);touchAnalysis(project);persist('Variable removed');renderAnalysis(project)});controls.append(remove);row.append(strong,meta,controls);analysisVariableList.appendChild(row)});
+      simpleList(analysisAssumptionList, analysis.assumptions, (assumption)=>{const row=document.createElement('article');row.className='scw-analysis-row';const strong=document.createElement('strong');strong.textContent=assumption.text;const controls=document.createElement('div');controls.className='scw-analysis-row-controls';const status=document.createElement('select');['untested','supported','challenged'].forEach((v)=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=assumption.status;status.addEventListener('change',()=>{assumption.status=ANALYSIS_ASSUMPTION_STATUS.has(status.value)?status.value:'untested';assumption.updatedAt=nowIso();touchAnalysis(project);persist('Assumption saved');renderAnalysis(project)});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{analysis.assumptions=analysis.assumptions.filter((x)=>x.id!==assumption.id);touchAnalysis(project);persist('Assumption removed');renderAnalysis(project)});controls.append(status,remove);row.append(strong,controls);analysisAssumptionList.appendChild(row)});
+      simpleList(analysisMethodList, analysis.methods, (method)=>{const row=document.createElement('article');row.className=`scw-analysis-row${method.id===analysis.activeMethodId?' is-active':''}`;const strong=document.createElement('strong');strong.textContent=method.name;const meta=document.createElement('span');meta.textContent=method.type.toUpperCase();const controls=document.createElement('div');controls.className='scw-analysis-row-controls';const active=document.createElement('button');active.type='button';active.className='scw-card-action';active.textContent=method.id===analysis.activeMethodId?'Active method':'Set active';active.addEventListener('click',()=>{analysis.activeMethodId=method.id;touchAnalysis(project);persist('Active method saved');renderAnalysis(project)});const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open analysis';open.disabled=!method.analysisObjectId;open.addEventListener('click',()=>{if(!method.analysisObjectId)return;project.activeObjectId=method.analysisObjectId;persist();render();objectEditor.scrollIntoView({behavior:'auto',block:'start'})});controls.append(active,open);row.append(strong,meta,controls);analysisMethodList.appendChild(row)});
+      simpleList(analysisComparisonList, analysis.comparisons, (comparison)=>{const row=document.createElement('article');row.className='scw-analysis-record';const strong=document.createElement('strong');strong.textContent=comparison.label;const body=document.createElement('p');body.textContent=`${comparison.baseline || 'Baseline'} → ${comparison.alternative || 'Alternative'}${comparison.metric?` · ${comparison.metric}`:''}${comparison.result?` · ${comparison.result}`:''}`;const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{analysis.comparisons=analysis.comparisons.filter((x)=>x.id!==comparison.id);touchAnalysis(project);persist('Comparison removed');renderAnalysis(project)});row.append(strong,body,remove);analysisComparisonList.appendChild(row)});
+      simpleList(analysisFindingList, analysis.findings, (finding)=>{const row=document.createElement('article');row.className='scw-analysis-row';const strong=document.createElement('strong');strong.textContent=finding.text;const meta=document.createElement('span');meta.textContent=`${finding.status.toUpperCase()}${finding.evidenceObjectIds.length?` · ${finding.evidenceObjectIds.length} evidence link(s)`:''}`;const controls=document.createElement('div');controls.className='scw-analysis-row-controls';const status=document.createElement('select');['preliminary','supported','contested'].forEach((v)=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=finding.status;status.addEventListener('change',()=>{finding.status=ANALYSIS_FINDING_STATUS.has(status.value)?status.value:'preliminary';finding.updatedAt=nowIso();touchAnalysis(project);persist('Finding saved');renderAnalysis(project)});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{analysis.findings=analysis.findings.filter((x)=>x.id!==finding.id);touchAnalysis(project);persist('Finding removed');renderAnalysis(project)});controls.append(status,remove);row.append(strong,meta,controls);analysisFindingList.appendChild(row)});
+    }
+
     function objectCard(object, project) {
       const card = document.createElement('article');
       card.className = `scw-object-card${object.id === project.activeObjectId ? ' is-active' : ''}`;
@@ -910,6 +1102,7 @@
       root.querySelector('[data-scw-pin]').textContent = project.pinned ? 'Unpin project' : 'Pin project';
       renderActivity(project);
       renderResearch(project);
+      renderAnalysis(project);
       renderObjects(project);
       renderObjectEditor(project);
     }
@@ -1007,7 +1200,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.1', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.5.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1032,16 +1225,16 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0, v0.3.0, v0.4.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.5.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -1112,9 +1305,33 @@
       claim.updatedAt = nowIso(); touchResearch(project); addActivity(project, 'evidence-linked', `Evidence linked to active claim: ${evidence.title}`); persist('Evidence link saved'); renderResearch(project);
     });
 
+
+
+    analysisQuestionForm.addEventListener('submit', (event) => {
+      event.preventDefault(); const project=activeProject(); if(!project) return; if(project.analysis.questions.length>=MAX_ANALYSIS_QUESTIONS)return;
+      const data=new FormData(analysisQuestionForm); const text=String(data.get('question')||'').trim().slice(0,1200); if(!text)return; const stamp=nowIso();
+      const question={id:id('aq'),text,status:'open',priority:QUESTION_PRIORITY.has(String(data.get('priority')))?String(data.get('priority')):'normal',createdAt:stamp,updatedAt:stamp};
+      project.analysis.questions.push(question);project.analysis.activeQuestionId=question.id;touchAnalysis(project);addActivity(project,'analysis-question','Analysis question added');analysisQuestionForm.reset();persist('Analysis question saved');renderAnalysis(project);renderList();
+    });
+
+    analysisDatasetForm.addEventListener('submit', (event)=>{
+      event.preventDefault();const project=activeProject();if(!project||project.objects.length>=MAX_OBJECTS)return;const data=new FormData(analysisDatasetForm);const title=String(data.get('title')||'').trim().slice(0,160);if(!title)return;
+      const dataset=objectTemplate('dataset',title);dataset.summary=String(data.get('summary')||'').slice(0,1200);dataset.status='working';dataset.tags=normalizeTags(data.get('tags'));dataset.provenance.sourceType='dataset';dataset.provenance.sourceTitle=title;dataset.provenance.sourceUrl=String(data.get('url')||'').slice(0,2000);dataset.provenance.capturedAt=nowIso();project.objects.push(dataset);project.activeObjectId=dataset.id;touchAnalysis(project);addActivity(project,'dataset-registered',`Dataset registered: ${dataset.title}`);analysisDatasetForm.reset();persist('Dataset registered');render();
+    });
+
+    analysisVariableForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.analysis.variables.length>=MAX_ANALYSIS_VARIABLES)return;const data=new FormData(analysisVariableForm);const name=String(data.get('name')||'').trim().slice(0,160);if(!name)return;const stamp=nowIso();project.analysis.variables.push({id:id('av'),name,role:ANALYSIS_VARIABLE_ROLE.has(String(data.get('role')))?String(data.get('role')):'indicator',unit:String(data.get('unit')||'').slice(0,80),definition:String(data.get('definition')||'').slice(0,1200),createdAt:stamp,updatedAt:stamp});touchAnalysis(project);addActivity(project,'analysis-variable',`Variable registered: ${name}`);analysisVariableForm.reset();persist('Variable saved');renderAnalysis(project)});
+
+    analysisAssumptionForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.analysis.assumptions.length>=MAX_ANALYSIS_ASSUMPTIONS)return;const data=new FormData(analysisAssumptionForm);const text=String(data.get('assumption')||'').trim().slice(0,2000);if(!text)return;const stamp=nowIso();project.analysis.assumptions.push({id:id('aa'),text,status:'untested',evidenceObjectIds:[],createdAt:stamp,updatedAt:stamp});touchAnalysis(project);addActivity(project,'analysis-assumption','Assumption added');analysisAssumptionForm.reset();persist('Assumption saved');renderAnalysis(project)});
+
+    analysisMethodForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.analysis.methods.length>=MAX_ANALYSIS_METHODS||project.objects.length>=MAX_OBJECTS)return;const data=new FormData(analysisMethodForm);const name=String(data.get('name')||'').trim().slice(0,200);if(!name)return;const stamp=nowIso();const analysisObject=objectTemplate('analysis',name);analysisObject.status='working';analysisObject.summary=String(data.get('description')||'').slice(0,1200);analysisObject.provenance.sourceType='tool';analysisObject.provenance.sourceTitle='Workspace Analysis';analysisObject.provenance.capturedAt=stamp;project.objects.push(analysisObject);const datasetId=String(data.get('datasetObjectId')||'');const method={id:id('am'),name,type:ANALYSIS_METHOD_TYPE.has(String(data.get('type')))?String(data.get('type')):'descriptive',description:String(data.get('description')||'').slice(0,3000),datasetObjectIds:objectById(project,datasetId)&&objectById(project,datasetId).type==='dataset'?[datasetId]:[],analysisObjectId:analysisObject.id,createdAt:stamp,updatedAt:stamp};project.analysis.methods.push(method);project.analysis.activeMethodId=method.id;project.activeObjectId=analysisObject.id;touchAnalysis(project);addActivity(project,'analysis-method',`Analysis method registered: ${name}`);analysisMethodForm.reset();persist('Analysis method saved');render();});
+
+    analysisComparisonForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.analysis.comparisons.length>=MAX_ANALYSIS_COMPARISONS)return;const data=new FormData(analysisComparisonForm);const label=String(data.get('label')||'').trim().slice(0,200);if(!label)return;const stamp=nowIso();project.analysis.comparisons.push({id:id('ac'),label,baseline:String(data.get('baseline')||'').slice(0,800),alternative:String(data.get('alternative')||'').slice(0,800),metric:String(data.get('metric')||'').slice(0,240),result:String(data.get('result')||'').slice(0,1200),interpretation:String(data.get('interpretation')||'').slice(0,2000),createdAt:stamp,updatedAt:stamp});touchAnalysis(project);addActivity(project,'analysis-comparison',`Comparison added: ${label}`);analysisComparisonForm.reset();persist('Comparison saved');renderAnalysis(project)});
+
+    analysisFindingForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.analysis.findings.length>=MAX_ANALYSIS_FINDINGS)return;const data=new FormData(analysisFindingForm);const text=String(data.get('finding')||'').trim().slice(0,3000);if(!text)return;const stamp=nowIso();const evidenceId=String(data.get('evidenceObjectId')||'');const evidence=objectById(project,evidenceId);const activeMethod=project.analysis.methods.find((x)=>x.id===project.analysis.activeMethodId);project.analysis.findings.push({id:id('af'),text,status:ANALYSIS_FINDING_STATUS.has(String(data.get('status')))?String(data.get('status')):'preliminary',evidenceObjectIds:evidence&&evidence.type==='evidence'?[evidence.id]:[],analysisObjectId:activeMethod?activeMethod.analysisObjectId:'',createdAt:stamp,updatedAt:stamp});touchAnalysis(project);addActivity(project,'analysis-finding','Finding recorded');analysisFindingForm.reset();persist('Finding saved');renderAnalysis(project)});
+
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.4.1 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.5.0 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1159,7 +1376,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.4.1', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.5.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -1174,7 +1391,7 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-analysis-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Analysis v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema","questions","variables","assumptions","methods","comparisons","findings","activeQuestionId","activeMethodId","createdAt","updatedAt"],
+  "properties": {
+    "schema": {"const": "sc-workspace-analysis/1.0"},
+    "questions": {"type":"array","maxItems":100,"items":{"type":"object","required":["id","text","status","priority","createdAt","updatedAt"],"properties":{"id":{"type":"string","maxLength":160},"text":{"type":"string","maxLength":1200},"status":{"enum":["open","resolved","deferred"]},"priority":{"enum":["low","normal","high"]},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}},"additionalProperties":false}},
+    "variables": {"type":"array","maxItems":120,"items":{"type":"object","required":["id","name","role","unit","definition","createdAt","updatedAt"],"properties":{"id":{"type":"string","maxLength":160},"name":{"type":"string","maxLength":160},"role":{"enum":["outcome","input","control","parameter","indicator"]},"unit":{"type":"string","maxLength":80},"definition":{"type":"string","maxLength":1200},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}},"additionalProperties":false}},
+    "assumptions": {"type":"array","maxItems":120,"items":{"type":"object","required":["id","text","status","evidenceObjectIds","createdAt","updatedAt"],"properties":{"id":{"type":"string","maxLength":160},"text":{"type":"string","maxLength":2000},"status":{"enum":["untested","supported","challenged"]},"evidenceObjectIds":{"type":"array","maxItems":50,"items":{"type":"string","maxLength":160}},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}},"additionalProperties":false}},
+    "methods": {"type":"array","maxItems":100,"items":{"type":"object","required":["id","name","type","description","datasetObjectIds","analysisObjectId","createdAt","updatedAt"],"properties":{"id":{"type":"string","maxLength":160},"name":{"type":"string","maxLength":200},"type":{"enum":["descriptive","comparative","statistical","modeling","scenario","sensitivity","other"]},"description":{"type":"string","maxLength":3000},"datasetObjectIds":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":160}},"analysisObjectId":{"type":"string","maxLength":160},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}},"additionalProperties":false}},
+    "comparisons": {"type":"array","maxItems":100,"items":{"type":"object","required":["id","label","baseline","alternative","metric","result","interpretation","createdAt","updatedAt"],"properties":{"id":{"type":"string","maxLength":160},"label":{"type":"string","maxLength":200},"baseline":{"type":"string","maxLength":800},"alternative":{"type":"string","maxLength":800},"metric":{"type":"string","maxLength":240},"result":{"type":"string","maxLength":1200},"interpretation":{"type":"string","maxLength":2000},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}},"additionalProperties":false}},
+    "findings": {"type":"array","maxItems":150,"items":{"type":"object","required":["id","text","status","evidenceObjectIds","analysisObjectId","createdAt","updatedAt"],"properties":{"id":{"type":"string","maxLength":160},"text":{"type":"string","maxLength":3000},"status":{"enum":["preliminary","supported","contested"]},"evidenceObjectIds":{"type":"array","maxItems":50,"items":{"type":"string","maxLength":160}},"analysisObjectId":{"type":"string","maxLength":160},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}},"additionalProperties":false}},
+    "activeQuestionId": {"type":["string","null"],"maxLength":160},
+    "activeMethodId": {"type":["string","null"],"maxLength":160},
+    "createdAt": {"type":"string"},
+    "updatedAt": {"type":"string"}
+  }
+}
