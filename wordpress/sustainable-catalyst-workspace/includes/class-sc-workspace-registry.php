@@ -5,9 +5,10 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v020';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v020';
-    const LEGACY_PENDING_KEY = 'sc_workspace_registry_pending_v010';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v030';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v030';
+    const LEGACY_PENDING_KEY_V020 = 'sc_workspace_registry_pending_v020';
+    const LEGACY_PENDING_KEY_V010 = 'sc_workspace_registry_pending_v010';
     const CANONICAL_ID = 'sustainable-catalyst-workspace';
 
     public static function activate() {
@@ -72,7 +73,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
-        delete_option(self::LEGACY_PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V020);
+        delete_option(self::LEGACY_PENDING_KEY_V010);
         do_action('scfs_product_registry_updated', self::CANONICAL_ID, $record);
         return true;
     }
@@ -124,11 +126,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.1.0',
+            'previous_version' => '0.2.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Projects and Persistent Work: device-local project creation, autosave, archive and recovery, project import/export, activity history, and active-project handoffs across Sustainable Catalyst.',
+            'change_summary' => 'Workspace Objects & Artifact Model: typed reusable project objects for sources, evidence, datasets, analyses, decisions, documents, and exports; object provenance, lifecycle, export, filtering, migration, and active-object handoffs.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.2.0 persists Workspace Projects on the current device only; there is no account, cloud project store, collaboration layer, or server-side project synchronization.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.3.0 adds typed project objects stored only in the current browser. No account, cloud project store, collaboration layer, or server-side synchronization is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

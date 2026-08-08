@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-object-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Object",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "type",
+    "title",
+    "summary",
+    "content",
+    "status",
+    "tags",
+    "provenance",
+    "createdAt",
+    "updatedAt",
+    "archivedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-object/1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "type": {
+      "enum": [
+        "source",
+        "evidence",
+        "dataset",
+        "analysis",
+        "decision",
+        "document",
+        "export"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 50000
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "working",
+        "ready"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 48
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceType",
+        "sourceTitle",
+        "sourceUrl",
+        "capturedAt"
+      ],
+      "properties": {
+        "sourceType": {
+          "enum": [
+            "manual",
+            "web",
+            "library",
+            "dataset",
+            "tool",
+            "imported"
+          ]
+        },
+        "sourceTitle": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "sourceUrl": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "capturedAt": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "date-time"
+            }
+          ]
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "archivedAt": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date-time"
+        }
+      ]
+    }
+  }
+}

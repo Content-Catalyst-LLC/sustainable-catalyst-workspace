@@ -4,9 +4,9 @@ Sustainable Catalyst Workspace is the free public working environment across the
 
 ## Current release
 
-**v0.2.0 — Projects & Persistent Work**
+**v0.3.0 — Workspace Objects & Artifact Model**
 
-Workspace now provides device-local projects with autosave, notes, status, archive/recovery, import/export, activity history, and active-project handoffs into other Sustainable Catalyst tools.
+Workspace Projects can now contain typed, reusable objects: sources, evidence, datasets, analyses, decisions, documents, and exports. Each object has a stable ID, lifecycle state, tags, provenance fields, timestamps, and local export support.
 
 ## WordPress
 
@@ -30,7 +30,23 @@ Canonical route:
 
 ## Persistence boundary
 
-Projects are stored in the current browser only. No account, cloud project store, cross-device synchronization, or collaboration layer is included in v0.2.0.
+Projects and their objects are stored in the current browser only. v0.3.0 does not create an account, upload project/object content to Sustainable Catalyst, synchronize between devices, or introduce collaboration.
+
+## Object model
+
+Supported object types:
+
+- Source
+- Evidence
+- Dataset
+- Analysis
+- Decision
+- Document
+- Export
+
+Project schema: `sc-workspace-project/2.0`  
+Object schema: `sc-workspace-object/1.0`  
+Storage schema: `3`
 
 ## Product Registry
 
