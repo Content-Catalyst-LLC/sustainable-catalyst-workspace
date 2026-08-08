@@ -7,6 +7,7 @@ final class SC_Workspace_Platform {
     const STATE_KEY = 'sc_workspace_platform_conversion_v061';
     const BACKUP_PREFIX = 'sc_workspace_platform_backup_v061_';
     const ADMIN_SLUG = 'sc-workspace-platform';
+    const NAV_BACKUP_KEY = 'sc_workspace_navigation_backup_v082';
 
     private static $instance = null;
 
@@ -22,6 +23,8 @@ final class SC_Workspace_Platform {
         add_action('admin_notices', array($this, 'admin_notice'));
         add_action('admin_post_sc_workspace_convert_platform', array($this, 'handle_convert'));
         add_action('admin_post_sc_workspace_restore_platform', array($this, 'handle_restore'));
+        add_action('admin_post_sc_workspace_relabel_navigation', array($this, 'handle_relabel_navigation'));
+        add_action('admin_post_sc_workspace_restore_navigation', array($this, 'handle_restore_navigation'));
         add_action('template_redirect', array($this, 'maybe_redirect_legacy_workspace_route'));
     }
 
@@ -48,6 +51,8 @@ final class SC_Workspace_Platform {
             'canonical_url' => self::canonical_url(),
             'legacy_url' => home_url('/platform/workspace/'),
             'rollback_available' => !empty($state['backup_key']) && get_option($state['backup_key'], null) !== null,
+            'navigation_label' => 'Workspace',
+            'navigation_label_backup_available' => get_option(self::NAV_BACKUP_KEY, null) !== null,
         );
     }
 
@@ -70,7 +75,7 @@ final class SC_Workspace_Platform {
             return;
         }
         $url = admin_url('tools.php?page=' . self::ADMIN_SLUG);
-        echo '<div class="notice notice-info"><p><strong>Sustainable Catalyst Workspace v0.8.1:</strong> the dedicated Workspace page is ready. The Platform page is not changed automatically. <a href="' . esc_url($url) . '">Review the reversible Platform conversion</a>.</p></div>';
+        echo '<div class="notice notice-info"><p><strong>Sustainable Catalyst Workspace v0.8.2:</strong> the dedicated Workspace page is ready. The Platform page is not changed automatically. <a href="' . esc_url($url) . '">Review the reversible Platform conversion</a>.</p></div>';
     }
 
     public function render_admin_page() {
@@ -84,11 +89,14 @@ final class SC_Workspace_Platform {
         ?>
         <div class="wrap">
             <h1>Workspace Page Conversion</h1>
-            <p>v0.8.1 can preserve and manage the existing <code>/platform/</code> page into the dedicated Sustainable Catalyst Workspace experience while preserving the page ID, slug, parent, publication state, and page template.</p>
+            <p>v0.8.2 keeps <code>/platform/</code> as the stable route while presenting the product publicly as <strong>Workspace</strong>. Page conversion and navigation relabeling remain explicit administrator actions with rollback.</p>
             <?php if ($result === 'converted') : ?><div class="notice notice-success inline"><p>Platform was converted to the dedicated Workspace page. A rollback snapshot was preserved.</p></div><?php endif; ?>
             <?php if ($result === 'restored') : ?><div class="notice notice-success inline"><p>The original Platform page title and content were restored.</p></div><?php endif; ?>
             <?php if ($result === 'missing') : ?><div class="notice notice-error inline"><p>No root page with slug <code>platform</code> was found. Nothing was changed.</p></div><?php endif; ?>
             <?php if ($result === 'failed') : ?><div class="notice notice-error inline"><p>The requested page change failed. Nothing further was changed.</p></div><?php endif; ?>
+            <?php if ($result === 'nav-updated') : ?><div class="notice notice-success inline"><p>Matching Platform navigation labels now display as Workspace. A navigation-label snapshot was preserved.</p></div><?php endif; ?>
+            <?php if ($result === 'nav-restored') : ?><div class="notice notice-success inline"><p>The previous navigation labels were restored.</p></div><?php endif; ?>
+            <?php if ($result === 'nav-none') : ?><div class="notice notice-info inline"><p>No matching Platform navigation labels required changing.</p></div><?php endif; ?>
             <table class="widefat striped" style="max-width:900px;margin:20px 0">
                 <tbody>
                     <tr><th style="width:220px">Conversion state</th><td><?php echo $converted ? '<strong>Converted</strong>' : 'Not converted'; ?></td></tr>
@@ -99,6 +107,7 @@ final class SC_Workspace_Platform {
                     <tr><th>Page ID / slug / template</th><td>Preserved</td></tr>
                     <tr><th>Rollback</th><td><?php echo (!empty($state['backup_key']) && get_option($state['backup_key'], null) !== null) ? 'Available' : 'No snapshot yet'; ?></td></tr>
                     <tr><th>Legacy Workspace route</th><td><?php echo $converted ? '<code>/platform/workspace/</code> redirects to <code>/platform/</code>' : 'Unchanged until conversion'; ?></td></tr>
+                    <tr><th>Recommended navigation label</th><td><strong>Workspace</strong> (route remains <code>/platform/</code>)</td></tr>
                 </tbody>
             </table>
             <?php if (!$converted) : ?>
@@ -115,7 +124,21 @@ final class SC_Workspace_Platform {
                     <?php submit_button('Restore original Platform page', 'secondary', 'submit', false); ?>
                 </form>
             <?php endif; ?>
-            <p style="max-width:900px;margin-top:24px"><strong>Navigation note:</strong> this conversion deliberately does not rewrite custom WordPress menu labels. If your menu item has a manually entered label of “Platform,” change that label to “Workspace” after verifying the converted page.</p>
+            <hr style="max-width:900px;margin:32px 0 24px">
+            <h2>Public navigation label</h2>
+            <p style="max-width:900px">The public product name is <strong>Workspace</strong>. This action changes only matching WordPress navigation-item labels that point to the root Platform page or <code>/platform/</code>. It does not change the route or unrelated menu items.</p>
+            <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline-block;margin-right:8px">
+                <input type="hidden" name="action" value="sc_workspace_relabel_navigation">
+                <?php wp_nonce_field('sc_workspace_relabel_navigation_v082'); ?>
+                <?php submit_button('Relabel Platform navigation to Workspace', 'primary', 'submit', false); ?>
+            </form>
+            <?php if (get_option(self::NAV_BACKUP_KEY, null) !== null) : ?>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline-block">
+                    <input type="hidden" name="action" value="sc_workspace_restore_navigation">
+                    <?php wp_nonce_field('sc_workspace_restore_navigation_v082'); ?>
+                    <?php submit_button('Restore previous navigation labels', 'secondary', 'submit', false); ?>
+                </form>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -219,6 +242,78 @@ final class SC_Workspace_Platform {
         check_admin_referer('sc_workspace_restore_platform_v061');
         $result = self::perform_restore();
         $this->redirect_result(is_wp_error($result) ? 'failed' : 'restored');
+    }
+
+    public static function relabel_navigation_items() {
+        $page = get_page_by_path('platform', OBJECT, 'page');
+        $page_id = $page && !empty($page->ID) ? (int) $page->ID : 0;
+        $items = get_posts(array(
+            'post_type' => 'nav_menu_item',
+            'post_status' => 'any',
+            'numberposts' => -1,
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        ));
+        $changes = array();
+        foreach ($items as $item) {
+            $title = trim((string) $item->post_title);
+            $url = (string) get_post_meta($item->ID, '_menu_item_url', true);
+            $object_id = (int) get_post_meta($item->ID, '_menu_item_object_id', true);
+            $object = (string) get_post_meta($item->ID, '_menu_item_object', true);
+            $matches_page = $page_id && $object === 'page' && $object_id === $page_id;
+            $path = $url ? wp_parse_url($url, PHP_URL_PATH) : '';
+            $matches_url = $path && untrailingslashit($path) === untrailingslashit(wp_parse_url(home_url('/platform/'), PHP_URL_PATH));
+            if (strcasecmp($title, 'Platform') !== 0 || (!$matches_page && !$matches_url)) {
+                continue;
+            }
+            $changes[] = array('id' => (int) $item->ID, 'title' => $title);
+        }
+        if (!$changes) {
+            return array('changed' => 0, 'items' => array());
+        }
+        if (get_option(self::NAV_BACKUP_KEY, null) === null) {
+            add_option(self::NAV_BACKUP_KEY, array('captured_at' => gmdate('c'), 'items' => $changes), '', 'no');
+        }
+        $changed = 0;
+        foreach ($changes as $change) {
+            $result = wp_update_post(array('ID' => $change['id'], 'post_title' => 'Workspace'), true);
+            if (!is_wp_error($result)) {
+                $changed++;
+            }
+        }
+        return array('changed' => $changed, 'items' => $changes);
+    }
+
+    public static function restore_navigation_items() {
+        $backup = get_option(self::NAV_BACKUP_KEY, null);
+        if (!is_array($backup) || empty($backup['items']) || !is_array($backup['items'])) {
+            return new WP_Error('sc_workspace_nav_backup_missing', 'No navigation-label snapshot is available.');
+        }
+        foreach ($backup['items'] as $item) {
+            if (empty($item['id'])) {
+                continue;
+            }
+            wp_update_post(array('ID' => (int) $item['id'], 'post_title' => isset($item['title']) ? (string) $item['title'] : 'Platform'), true);
+        }
+        return true;
+    }
+
+    public function handle_relabel_navigation() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions.');
+        }
+        check_admin_referer('sc_workspace_relabel_navigation_v082');
+        $result = self::relabel_navigation_items();
+        $this->redirect_result(!empty($result['changed']) ? 'nav-updated' : 'nav-none');
+    }
+
+    public function handle_restore_navigation() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions.');
+        }
+        check_admin_referer('sc_workspace_restore_navigation_v082');
+        $result = self::restore_navigation_items();
+        $this->redirect_result(is_wp_error($result) ? 'failed' : 'nav-restored');
     }
 
     private function redirect_result($result) {

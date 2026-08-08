@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V081, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V080, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V070, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V061, '') === '1' ||
@@ -50,7 +51,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.8.2 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -337,7 +338,7 @@ final class SC_Workspace {
 
     public function platform_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-platform-contract/1.0',
+            'schema' => 'sc-workspace-platform-contract/1.1',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'dedicated_shortcode' => 'sc_workspace_platform',
             'canonical_path_after_conversion' => '/platform/',
@@ -351,6 +352,13 @@ final class SC_Workspace {
             'data_schema_change' => false,
             'storage_schema_version' => 9,
             'project_schema' => 'sc-workspace-project/7.0',
+            'public_product_name' => 'Workspace',
+            'recommended_navigation_label' => 'Workspace',
+            'public_experience' => 'institutional-light',
+            'technical_controls_progressively_disclosed' => true,
+            'project_mode_navigation' => true,
+            'navigation_relabel_available' => true,
+            'navigation_relabel_requires_administrator_action' => true,
             'state' => SC_Workspace_Platform::contract_status(),
         ));
     }
@@ -377,14 +385,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v081',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.1.css',
+            'sc-workspace-v082',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.2.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v081',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.1.js',
+            'sc-workspace-v082',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.2.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -393,7 +401,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v081', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v082', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -428,7 +436,7 @@ final class SC_Workspace {
         ?>
         <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="9" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
-                <div class="scw-kicker">SUSTAINABLE CATALYST / PLATFORM</div>
+                <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
                 <div class="scw-hero-grid">
                     <div>
                         <h1>Workspace</h1>
@@ -445,14 +453,16 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. v0.8.1 adds interoperable return adapters to the shared context layer: compatible tools can use one producer helper and canonical return contract while Workspace strictly matches automatic returns to the originating local handoff. Signing in does not upload, claim, or synchronize local work.</span>
+                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional and does not upload or synchronize project content. Connected tools can return structured work to the originating project through the established local-first handoff contract.</span>
             </div>
 
-            <section class="scw-identity" aria-labelledby="scw-identity-title">
+            <details class="scw-settings-drawer">
+                <summary><span><small>Storage &amp; identity</small><strong>Saved on this device</strong></span><em>Manage</em></summary>
+                <section class="scw-identity" aria-labelledby="scw-identity-title">
                 <div class="scw-identity-main">
                     <div>
                         <div class="scw-kicker">IDENTITY &amp; PERSISTENCE</div>
-                        <h2 id="scw-identity-title">Use Workspace immediately. Add identity when it helps.</h2>
+                        <h2 id="scw-identity-title">Identity is optional. Your project storage boundary stays explicit.</h2>
                     </div>
                     <div class="scw-identity-session">
                         <span class="scw-identity-badge" data-scw-identity-badge>GUEST</span>
@@ -462,7 +472,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.8.1.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.8.2.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -471,7 +481,8 @@ final class SC_Workspace {
                     </div>
                 </div>
                 <p class="scw-identity-note" data-scw-identity-note>Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.</p>
-            </section>
+                </section>
+            </details>
 
             <div class="scw-recovery" data-scw-recovery hidden role="status" aria-live="polite">
                 <div><strong>Workspace recovery mode</strong><span data-scw-recovery-message>A damaged local state was isolated and a clean workspace was opened.</span></div>
@@ -524,7 +535,16 @@ final class SC_Workspace {
                     <div class="scw-save-state" data-scw-save-state>Saved on this device</div>
                 </div>
 
-                <div class="scw-project-editor">
+                <nav class="scw-project-mode-nav" aria-label="Project workspace modes" data-scw-project-mode-nav>
+                    <button type="button" class="is-active" data-scw-project-mode="overview" aria-pressed="true">Overview</button>
+                    <button type="button" data-scw-project-mode="research" aria-pressed="false">Research</button>
+                    <button type="button" data-scw-project-mode="analysis" aria-pressed="false">Analysis</button>
+                    <button type="button" data-scw-project-mode="decision" aria-pressed="false">Decisions</button>
+                    <button type="button" data-scw-project-mode="canvas" aria-pressed="false">Canvas</button>
+                    <button type="button" data-scw-project-mode="objects" aria-pressed="false">Objects</button>
+                </nav>
+
+                <div class="scw-project-editor" data-scw-project-panel="overview">
                     <div class="scw-project-fields">
                         <label><span>Project name</span><input type="text" maxlength="120" data-scw-project-title></label>
                         <label><span>Description</span><textarea rows="3" maxlength="600" data-scw-project-description></textarea></label>
@@ -554,7 +574,7 @@ final class SC_Workspace {
 
 
 
-                <section class="scw-research" aria-labelledby="scw-research-title">
+                <section class="scw-research" data-scw-project-panel="research" aria-labelledby="scw-research-title">
                     <div class="scw-research-head">
                         <div>
                             <div class="scw-kicker">RESEARCH WORKSPACE</div>
@@ -622,7 +642,7 @@ final class SC_Workspace {
                 </section>
 
 
-                <section class="scw-analysis" aria-labelledby="scw-analysis-title">
+                <section class="scw-analysis" data-scw-project-panel="analysis" aria-labelledby="scw-analysis-title">
                     <div class="scw-analysis-head">
                         <div>
                             <div class="scw-kicker">ANALYSIS WORKSPACE</div>
@@ -717,7 +737,7 @@ final class SC_Workspace {
                 </section>
 
 
-                <section class="scw-decision" aria-labelledby="scw-decision-title">
+                <section class="scw-decision" data-scw-project-panel="decision" aria-labelledby="scw-decision-title">
                     <div class="scw-decision-head">
                         <div>
                             <div class="scw-kicker">DECISION WORKSPACE</div>
@@ -801,7 +821,7 @@ final class SC_Workspace {
                     </div>
                 </section>
 
-                <section class="scw-canvas" aria-labelledby="scw-canvas-title">
+                <section class="scw-canvas" data-scw-project-panel="canvas" aria-labelledby="scw-canvas-title">
                     <div class="scw-canvas-head">
                         <div>
                             <div class="scw-kicker">CANVAS &amp; STRUCTURED THINKING</div>
@@ -876,7 +896,7 @@ final class SC_Workspace {
                     </div>
                 </section>
 
-                <section class="scw-objects" aria-labelledby="scw-objects-title">
+                <section class="scw-objects" data-scw-project-panel="objects" aria-labelledby="scw-objects-title">
                     <div class="scw-object-head">
                         <div>
                             <div class="scw-kicker">WORKSPACE OBJECTS</div>
@@ -973,12 +993,14 @@ final class SC_Workspace {
                 </section>
             </section>
 
-            <section class="scw-handoffs" aria-labelledby="scw-handoffs-title">
+            <details class="scw-connections-drawer">
+                <summary><span><small>Connected workflows</small><strong>Tools, returns &amp; handoff history</strong></span><em>Open</em></summary>
+                <section class="scw-handoffs" aria-labelledby="scw-handoffs-title">
                 <div class="scw-handoff-head">
                     <div>
                         <div class="scw-kicker">CROSS-PRODUCT HANDOFFS</div>
-                        <h3 id="scw-handoffs-title">Move the work without losing the thread.</h3>
-                        <p>Every connected-tool launch receives a stable handoff ID and is recorded inside the active project. Compatible Sustainable Catalyst tools can return structured artifacts to the same project without placing project content in the URL.</p>
+                        <h3 id="scw-handoffs-title">Connections & returns</h3>
+                        <p>Review return activity or import a structured return package when you need it. The underlying handoff IDs and privacy checks remain intact.</p>
                     </div>
                     <div class="scw-handoff-actions">
                         <button class="scw-button" type="button" data-scw-handoff-check>Check return inbox</button>
@@ -998,7 +1020,7 @@ final class SC_Workspace {
                     <span>Outbound URLs carry only stable IDs, destination intent, and a return signal. Structured returned content is accepted locally through the return inbox and becomes ordinary Workspace Objects with tool provenance.</span>
                 </div>
                 <div class="scw-adapter-boundary" data-scw-return-adapters role="note">
-                    <strong>RETURN ADAPTERS / v1</strong>
+                    <strong>ADAPTER DIAGNOSTICS</strong>
                     <span>Workspace now normalizes canonical returns from Research Librarian, Knowledge Library, Site Intelligence, Workbench, Analytics R, Decision Studio, Catalyst Canvas, Catalyst Data, and Lab. Automatic returns must match the locally recorded project, handoff ID, and destination.</span>
                 </div>
                 <div class="scw-handoff-list" data-scw-handoff-list></div>
@@ -1009,10 +1031,10 @@ final class SC_Workspace {
                 <div class="scw-section-head">
                     <div>
                         <div class="scw-kicker">CONNECTED TOOLS</div>
-                        <h2 id="scw-tools-title">Launch a specialized tool with a durable return path.</h2>
-                        <p class="scw-section-note">Workspace records each launch as a handoff, passes only stable context IDs and intent in the URL, and can receive structured return artifacts into the originating project.</p>
+                        <h2 id="scw-tools-title">Open a specialized Sustainable Catalyst tool.</h2>
+                        <p class="scw-section-note">The active project context stays available when supported tools open and return work.</p>
                     </div>
-                    <a class="scw-text-link" href="<?php echo esc_url(home_url('/platform/')); ?>">Platform overview <span aria-hidden="true">→</span></a>
+                    <a class="scw-text-link" href="<?php echo esc_url(home_url('/platform/')); ?>">Workspace home <span aria-hidden="true">→</span></a>
                 </div>
 
                 <div class="scw-tool-grid">
@@ -1025,11 +1047,12 @@ final class SC_Workspace {
                         </a>
                     <?php endforeach; ?>
                 </div>
-            </section>
+                </section>
+            </details>
 
             <footer class="scw-footer">
-                <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Commercial Release · Free public access</div>
-                <div>Guest and signed-in sessions use device-local project storage in v0.8.1. Return adapters preserve the local-first boundary; no project content is uploaded by Workspace.</div>
+                <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
+                <div>Projects remain device-local in v0.8.2. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1041,38 +1064,32 @@ final class SC_Workspace {
         $workspace = $this->render_workspace();
         ob_start();
         ?>
-        <section class="scw-platform-page" data-sc-workspace-platform data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>">
+        <section class="scw-platform-page scw-public-experience" data-sc-workspace-platform data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>">
             <header class="scw-platform-hero">
-                <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
-                <div class="scw-platform-hero-grid">
-                    <div>
-                        <h1>Research. Analyze. Decide. Move the work.</h1>
-                        <p>Workspace is the free personal operating environment across Sustainable Catalyst—one place to organize projects, preserve evidence, structure analysis, record decisions, map complex thinking, and move work between Sustainable Catalyst tools without losing project context.</p>
-                        <div class="scw-platform-actions">
-                            <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
-                            <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
-                        </div>
+                <div class="scw-platform-hero-inner">
+                    <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
+                    <h1>Research. Analyze. Decide.</h1>
+                    <p>Workspace is a free personal environment for structured inquiry, evidence, analysis, decisions, and visual reasoning across Sustainable Catalyst.</p>
+                    <div class="scw-platform-actions">
+                        <a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a>
+                        <a class="scw-button" href="<?php echo esc_url(home_url('/library/')); ?>">Explore the Library</a>
                     </div>
-                    <aside class="scw-platform-state" aria-label="Workspace access and persistence">
-                        <span>FREE PUBLIC ACCESS</span>
-                        <strong>No login wall.</strong>
-                        <p>Projects remain on this device in v0.8.1. Optional sign-in establishes identity only; cross-product handoffs do not upload or synchronize project content.</p>
-                    </aside>
+                    <div class="scw-platform-access-note"><strong>No login required.</strong><span>Projects are saved on this device. Sign-in is optional and does not upload project content.</span></div>
                 </div>
             </header>
 
             <section class="scw-platform-flow" aria-label="Workspace workflow">
-                <article><span>01 / RESEARCH</span><strong>Frame the inquiry.</strong><p>Questions, sources, reading queues, evidence, and claims remain attached to the project.</p></article>
-                <article><span>02 / EVIDENCE</span><strong>Preserve what supports the work.</strong><p>Sources and evidence become reusable Workspace Objects with provenance rather than disposable browser context.</p></article>
-                <article><span>03 / ANALYSIS</span><strong>Make assumptions visible.</strong><p>Register datasets, variables, methods, comparisons, findings, and links back to evidence.</p></article>
-                <article><span>04 / DECISION</span><strong>Record the reasoning.</strong><p>Compare options, weight criteria, assess risks, and preserve the selected course with rationale and confidence.</p></article>
-                <article><span>05 / CANVAS</span><strong>Map the system around the decision.</strong><p>Arrange questions, claims, evidence, data, analyses, decisions, systems, stakeholders, and ideas into reusable structured-thinking boards.</p></article>
+                <article><span>01</span><strong>Research</strong><p>Frame questions and organize sources.</p></article>
+                <article><span>02</span><strong>Evidence</strong><p>Preserve support and provenance.</p></article>
+                <article><span>03</span><strong>Analysis</strong><p>Make methods and assumptions visible.</p></article>
+                <article><span>04</span><strong>Decision</strong><p>Compare options and record rationale.</p></article>
+                <article><span>05</span><strong>Canvas</strong><p>Map systems, relationships, and ideas.</p></article>
             </section>
 
-            <section class="scw-platform-principles" aria-label="Workspace principles">
-                <div><span>PERSONAL CAPABILITY</span><strong>A serious free working environment.</strong><p>Workspace is useful on its own. Institutional features belong in Catalyst Intelligence because the operating context changes—not because the personal product is intentionally weakened.</p></div>
-                <div><span>LOCAL FIRST</span><strong>Your work stays on this device.</strong><p>Guest and signed-in sessions use the same explicit persistence boundary. Export/import remains available for manual portability.</p></div>
-                <div><span>CONNECTED BY DESIGN</span><strong>Use the wider Sustainable Catalyst system.</strong><p>Research Librarian, Library, Site Intelligence, Workbench, Analytics R, Decision Studio, Canvas, Data, and Lab can receive privacy-minimized project context and return structured artifacts to the originating project.</p></div>
+            <section class="scw-platform-bridge" aria-label="Workspace design principles">
+                <div><strong>Free personal capability</strong><span>A serious working environment, not a limited demo.</span></div>
+                <div><strong>Local first</strong><span>Your projects remain on this device unless you explicitly export them.</span></div>
+                <div><strong>Connected when useful</strong><span>Move context between Sustainable Catalyst tools without putting project content in URLs.</span></div>
             </section>
 
             <div class="scw-platform-application" id="workspace-application">

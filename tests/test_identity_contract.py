@@ -1,6 +1,6 @@
 import json,unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.1.js'
+ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.2.js'
 class Identity(unittest.TestCase):
  def test_identity_schema(self):
   i=json.loads((ROOT/'schemas/sc-workspace-identity-v1.schema.json').read_text()); self.assertEqual(i['properties']['schema']['const'],'sc-workspace-identity/1.0'); self.assertFalse(i['properties']['cloudSync']['const']); self.assertFalse(i['properties']['serverProjectStorage']['const'])
@@ -12,5 +12,5 @@ class Identity(unittest.TestCase):
  def test_export_redacts_device_id(self):
   t=JS.read_text(); self.assertIn("deviceId: 'scwd-portable'",t)
  def test_no_project_upload(self):
-  m=json.loads((ROOT/'release-manifest-v0.8.1.json').read_text()); self.assertFalse(m['governance']['automatic_cloud_upload']); self.assertFalse(m['governance']['account_session_uploads_project_content']); self.assertFalse(m['governance']['sign_in_changes_storage_scope'])
+  m=json.loads((ROOT/'release-manifest-v0.8.2.json').read_text()); self.assertFalse(m['governance']['automatic_cloud_upload']); self.assertFalse(m['governance']['account_session_uploads_project_content']); self.assertFalse(m['governance']['sign_in_changes_storage_scope'])
 if __name__=='__main__': unittest.main()

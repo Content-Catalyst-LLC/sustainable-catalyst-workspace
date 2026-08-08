@@ -1,7 +1,7 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.1.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.2.js'
 HELPER=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-return-adapter-v1.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 class ReturnAdapterTests(unittest.TestCase):
@@ -42,7 +42,7 @@ class ReturnAdapterTests(unittest.TestCase):
         ):
             self.assertIn(token,t)
     def test_manifest_no_data_migration(self):
-        m=json.loads((ROOT/'release-manifest-v0.8.1.json').read_text())
+        m=json.loads((ROOT/'release-manifest-v0.8.2.json').read_text())
         self.assertEqual(m['storage_schema_version'],9)
         self.assertEqual(m['project_schema'],'sc-workspace-project/7.0')
         self.assertEqual(m['handoff_adapter_schema'],'sc-workspace-return-adapter/1.0')

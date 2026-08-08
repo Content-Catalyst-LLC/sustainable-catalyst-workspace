@@ -3,7 +3,7 @@
 
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
-  const RECOVERY_KEY = 'sc_workspace_recovery_v0_8_1';
+  const RECOVERY_KEY = 'sc_workspace_recovery_v0_8_2';
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
@@ -790,6 +790,7 @@
       addActivity(project, 'migrated', 'Migrated from Workspace v0.1.0');
       state.projects.push(project);
       state.activeProjectId = project.id;
+      activeProjectMode = 'overview';
     }
     state.updatedAt = nowIso();
     return state;
@@ -1054,6 +1055,7 @@
     root.dataset.scwReady = '1';
 
     let state = readState();
+    let activeProjectMode = 'overview';
     let filter = 'active';
     let objectArchiveFilter = 'current';
     let objectTypeFilter = 'all';
@@ -1202,7 +1204,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.8.1 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.8.2 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1214,6 +1216,20 @@
 
     function activeProject() {
       return state.projects.find((project) => project.id === state.activeProjectId && !project.archivedAt) || null;
+    }
+
+    function setProjectMode(mode) {
+      const allowed = new Set(['overview','research','analysis','decision','canvas','objects']);
+      activeProjectMode = allowed.has(mode) ? mode : 'overview';
+      root.classList.add('scw-mode-enabled');
+      root.querySelectorAll('[data-scw-project-mode]').forEach((button) => {
+        const selected = button.dataset.scwProjectMode === activeProjectMode;
+        button.classList.toggle('is-active', selected);
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      });
+      root.querySelectorAll('[data-scw-project-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.scwProjectPanel !== activeProjectMode;
+      });
     }
 
     function activeObject() {
@@ -1286,6 +1302,7 @@
           addActivity(project, 'restored', 'Project restored');
         }
         state.activeProjectId = project.id;
+        activeProjectMode = 'overview';
         persist();
         render();
         activePanel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
@@ -1722,6 +1739,7 @@
       renderList();
       renderActive();
       if (recoveryNotice) showRecovery();
+      setProjectMode(activeProjectMode);
     }
 
     function updateProject(mutator) {
@@ -1792,14 +1810,14 @@
     root.querySelector('[data-scw-duplicate]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const copy = cloneProject(project);
-      state.projects.push(copy); state.activeProjectId = copy.id;
+      state.projects.push(copy); state.activeProjectId = copy.id; activeProjectMode = 'overview';
       persist('Duplicate saved on this device'); render();
     });
 
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.1', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.2', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1831,9 +1849,9 @@
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
-          state.projects.push(project); state.activeProjectId = project.id; persist('Imported project saved'); render();
+          state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.8.1, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.8.2, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -1948,7 +1966,7 @@
 
     root.querySelector('[data-scw-new-object]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
-      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.8.1 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
+      if (project.objects.length >= MAX_OBJECTS) { window.alert(`This v0.8.2 project has reached the ${MAX_OBJECTS}-object local limit.`); return; }
       objectCreateForm.hidden = false;
       objectCreateForm.querySelector('input[name="title"]').focus();
     });
@@ -1993,7 +2011,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.1', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.8.2', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2021,6 +2039,11 @@
     if (handoffImportFile) handoffImportFile.addEventListener('change',()=>{const file=handoffImportFile.files&&handoffImportFile.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const result=ingestReturnPacket(state,JSON.parse(String(reader.result||'')),{mode:'manual',allowUnmatched:true});if(!result.ok)throw new Error(result.message);persist(result.message);render();}catch(err){window.alert(err&&err.message?err.message:'Workspace could not import this handoff return package.');}finally{handoffImportFile.value='';}};reader.readAsText(file);});
     if (handoffCheckButton) handoffCheckButton.addEventListener('click',()=>checkReturnInbox(true));
     if (handoffTemplateButton) handoffTemplateButton.addEventListener('click',()=>{const project=activeProject();if(!project||!project.handoffs)return;const entry=project.handoffs.entries.find((item)=>item.id===project.handoffs.activeHandoffId)||project.handoffs.entries[0];if(!entry){window.alert('Open a connected tool first so Workspace has a handoff to receive back.');return;}downloadReturnTemplate(project,entry);});
+
+    root.querySelectorAll('[data-scw-project-mode]').forEach((button) => {
+      button.addEventListener('click', () => setProjectMode(button.dataset.scwProjectMode || 'overview'));
+    });
+    setProjectMode('overview');
 
     root.querySelectorAll('[data-scw-tool]').forEach((link) => {
       link.dataset.scwBaseHref = link.href;
@@ -2067,6 +2090,7 @@
       const project = state.projects.find((item) => item.id === returnProject && !item.archivedAt);
       if (project) {
         state.activeProjectId = project.id;
+        activeProjectMode = 'overview';
         if (returnObject && project.objects.some((object) => object.id === returnObject && !object.archivedAt)) project.activeObjectId = returnObject;
         if (returnCanvas && project.canvas && project.canvas.boards.some((board) => board.id === returnCanvas)) project.canvas.activeBoardId = returnCanvas;
         if (returnHandoff && project.handoffs) project.handoffs.activeHandoffId = project.handoffs.entries.some((entry)=>entry.id===returnHandoff) ? returnHandoff : project.handoffs.activeHandoffId;
