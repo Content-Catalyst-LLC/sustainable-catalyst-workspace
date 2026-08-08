@@ -356,6 +356,7 @@ final class SC_Workspace {
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
             'public_experience' => 'advisory-aligned-editorial',
+                'editorial_header_bar' => true,
             'editorial_shell' => true,
             'illustrative_software_preview' => true,
             'alternating_surface_rhythm' => true,
@@ -390,13 +391,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.3.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.8.3.1.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.3.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.8.3.1.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -1056,7 +1057,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.8.3. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.8.3.1. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1069,6 +1070,7 @@ final class SC_Workspace {
         ob_start();
         ?>
         <section class="scw-platform-page scw-public-experience scw-editorial-shell" data-sc-workspace-platform data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>">
+            <div class="scw-editorial-header-bar" aria-hidden="true"></div>
             <header class="scw-platform-hero scw-platform-hero-editorial">
                 <div class="scw-platform-hero-grid">
                     <div class="scw-platform-hero-copy">
@@ -1132,11 +1134,11 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.8.3.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.8.3.1.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.8.3.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.8.3.1.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">

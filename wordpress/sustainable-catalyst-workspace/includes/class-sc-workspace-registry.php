@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v083';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v083';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0831';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0831';
+    const LEGACY_PENDING_KEY_V083 = 'sc_workspace_registry_pending_v083';
     const LEGACY_PENDING_KEY_V082 = 'sc_workspace_registry_pending_v082';
     const LEGACY_PENDING_KEY_V081 = 'sc_workspace_registry_pending_v081';
     const LEGACY_PENDING_KEY_V080 = 'sc_workspace_registry_pending_v080';
@@ -82,6 +83,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V083);
         delete_option(self::LEGACY_PENDING_KEY_V082);
         delete_option(self::LEGACY_PENDING_KEY_V081);
         delete_option(self::LEGACY_PENDING_KEY_V080);
@@ -144,11 +146,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.8.2',
+            'previous_version' => '0.8.3',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Advisory Visual Integration & Workspace Editorial Shell: Advisory-aligned hero composition, editorial section rhythm, institutional black/red emphasis, software preview, and refined full-width application presentation.',
+            'change_summary' => 'Editorial Header Bar & Page Alignment: adds the Advisory-aligned black editorial header bar above the Workspace hero and tightens top-of-page spacing without changing functionality, routes, or data contracts.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.8.3 is a visual/editorial integration release that brings Workspace into the same institutional design grammar as Advisory while preserving the v0.8.2 storage, project, object, handoff, identity, route, and navigation contracts. The public shell uses editorial hero composition, alternating white/warm-neutral/black surfaces, sharp rules, restrained red accents, a software preview, and a stronger application frame. No cloud sync or server project storage is introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.8.3.1 is a presentation-only micro-release adding the Advisory-aligned black editorial header bar and page alignment refinement. It preserves all v0.8.3 storage, project, object, handoff, identity, route, navigation, and application contracts. No cloud sync or server project storage is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

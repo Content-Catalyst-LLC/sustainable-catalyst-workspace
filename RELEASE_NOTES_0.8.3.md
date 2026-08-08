@@ -1,4 +1,4 @@
-# Sustainable Catalyst Workspace v0.8.3 — Advisory Visual Integration & Workspace Editorial Shell
+# Sustainable Catalyst Workspace v0.8.3.1 — Advisory Visual Integration & Workspace Editorial Shell
 
 Released: 2026-08-08
 

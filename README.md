@@ -4,7 +4,7 @@ Sustainable Catalyst Workspace is the free personal working environment across t
 
 ## Current release
 
-**v0.8.3 — Advisory Visual Integration & Workspace Editorial Shell**
+**v0.8.3.1 — Advisory Visual Integration & Workspace Editorial Shell**
 
 Workspace now supports a connected personal workflow:
 
@@ -46,5 +46,5 @@ Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public 
 See `docs/CANVAS_STRUCTURED_THINKING_V070.md`.
 
 
-## v0.8.3 — Advisory Visual Integration & Workspace Editorial Shell
+## v0.8.3.1 — Advisory Visual Integration & Workspace Editorial Shell
 Workspace now records outbound tool handoffs, exposes a stable return contract, and can materialize structured return artifacts into the originating project without introducing cloud storage.

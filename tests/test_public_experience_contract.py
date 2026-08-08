@@ -2,8 +2,8 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.8.3.css'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.3.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.8.3.1.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.8.3.1.js'
 PLATFORM=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-platform.php'
 class PublicExperienceTests(unittest.TestCase):
     def test_advisory_aligned_editorial_hero(self):
@@ -13,6 +13,12 @@ class PublicExperienceTests(unittest.TestCase):
         self.assertIn('scw-platform-preview',t)
         self.assertIn('ILLUSTRATIVE WORKSPACE',t)
         self.assertIn('scw-platform-access-grid',t)
+    def test_editorial_header_bar_and_alignment(self):
+        t=PHP.read_text(); c=CSS.read_text()
+        self.assertIn('scw-editorial-header-bar',t)
+        self.assertIn('.scw-editorial-header-bar{height:12px;background:#0b0b0b',c)
+        self.assertIn('scw-editorial-header-bar + .scw-platform-hero-editorial',c)
+        self.assertIn('height:9px',c)
     def test_editorial_section_rhythm(self):
         t=PHP.read_text(); c=CSS.read_text()
         for token in ('ONE PERSONAL WORKSPACE','WORKSPACE PATHWAYS','PERSONAL CAPABILITY','WORKSPACE APPLICATION','scw-editorial-band','scw-editorial-closing'):
@@ -33,7 +39,7 @@ class PublicExperienceTests(unittest.TestCase):
         self.assertIn('Tools, returns &amp; handoff history',t)
     def test_visual_system_uses_advisory_grammar(self):
         c=CSS.read_text()
-        self.assertIn('v0.8.3 — Advisory Visual Integration & Workspace Editorial Shell',c)
+        self.assertIn('v0.8.3.1 — Editorial Header Bar & Page Alignment',c)
         self.assertIn('--scw-warm:#f7f3ea',c)
         self.assertIn('--scw-dark:#0d0d0d',c)
         self.assertIn('--scw-accent:#ff0000',c)
@@ -48,11 +54,11 @@ class PublicExperienceTests(unittest.TestCase):
         self.assertIn('relabel_navigation_items',a)
         self.assertIn("post_title' => 'Workspace'",a)
     def test_no_data_schema_change(self):
-        m=json.loads((ROOT/'release-manifest-v0.8.3.json').read_text())
+        m=json.loads((ROOT/'release-manifest-v0.8.3.1.json').read_text())
         self.assertEqual(m['storage_schema_version'],9)
         self.assertEqual(m['project_schema'],'sc-workspace-project/7.0')
-        self.assertEqual(m['version'],'0.8.3')
-        self.assertEqual(m['previous_version'],'0.8.2')
+        self.assertEqual(m['version'],'0.8.3.1')
+        self.assertEqual(m['previous_version'],'0.8.3')
         self.assertFalse(m['cloud_sync'])
         self.assertFalse(m['server_project_storage'])
 if __name__=='__main__': unittest.main()
