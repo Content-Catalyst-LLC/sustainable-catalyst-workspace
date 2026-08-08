@@ -1,0 +1,34 @@
+{
+  "schema": "sustainable-catalyst-release/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "canonical_id": "sustainable-catalyst-workspace",
+  "version": "0.1.0",
+  "release_name": "Workspace Foundation & Product Registry",
+  "release_date": "2026-08-08",
+  "product_family": "commercial",
+  "access_model": "free-public",
+  "paid_entitlement_required": false,
+  "lifecycle": "experimental",
+  "wordpress": {
+    "slug": "sustainable-catalyst-workspace",
+    "main_file": "sustainable-catalyst-workspace.php",
+    "shortcodes": [
+      "sc_workspace",
+      "sc_workspace_entry"
+    ],
+    "rest_health": "/wp-json/sc-workspace/v1/health"
+  },
+  "persistence": {
+    "browser_local": true,
+    "server_projects": false,
+    "accounts": false,
+    "collaboration": false
+  },
+  "registry": {
+    "option_key": "scfs_canonical_product_registry",
+    "family": "commercial",
+    "console_screen": "commercial",
+    "display_order": 400,
+    "backup_option": "sc_workspace_registry_backup_v010"
+  }
+}
