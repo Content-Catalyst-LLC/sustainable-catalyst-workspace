@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0200';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0200';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0210';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0210';
+    const LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200';
     const LEGACY_PENDING_KEY_V0190 = 'sc_workspace_registry_pending_v0190';
     const LEGACY_PENDING_KEY_V0180 = 'sc_workspace_registry_pending_v0180';
     const LEGACY_PENDING_KEY_V0170 = 'sc_workspace_registry_pending_v0170';
@@ -96,6 +97,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0200);
         delete_option(self::LEGACY_PENDING_KEY_V0190);
         delete_option(self::LEGACY_PENDING_KEY_V0180);
         delete_option(self::LEGACY_PENDING_KEY_V0170);
@@ -172,11 +174,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.19.0',
+            'previous_version' => '0.20.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Stability, Accessibility & Release Readiness: hardens local recovery, diagnostics, keyboard/focus behavior, reduced-motion support, high-contrast resilience, and release-health reporting without changing the Workspace project or storage schema.',
+            'change_summary' => 'Accounts & Cloud Persistence Foundation: adds optional manual account cloud backups and restore-as-copy recovery while preserving guest/local-first access and prohibiting automatic sync.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.20.0 is a consolidation and readiness release. Storage remains schema 20 and project schema remains sc-workspace-project/11.0. It adds last-known-good local recovery, privacy-minimized diagnostics, explicit emergency backup export, focus/keyboard hardening, reduced-motion and forced-colors support, and a public release-readiness contract without introducing cloud sync, telemetry, institutional permissions, or a new project subsystem.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.21.0 preserves anonymous local-first use and project schema sc-workspace-project/11.0 while advancing storage to schema 21 for account-persistence metadata. Signed-in users may explicitly create per-project server backups and restore them as new local copies. Automatic upload, background synchronization, overwrite-on-restore, team storage, and institutional permissions remain disabled.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

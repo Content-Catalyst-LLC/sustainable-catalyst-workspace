@@ -1,20 +1,20 @@
 from pathlib import Path
 import json, unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.20.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.21.0.js').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.20.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.21.0.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-MANIFEST=json.loads((ROOT/'release-manifest-v0.20.0.json').read_text())
+MANIFEST=json.loads((ROOT/'release-manifest-v0.21.0.json').read_text())
 
 class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
     def test_release_metadata_and_schema_stability(self):
-        self.assertEqual(MANIFEST['version'],'0.20.0')
-        self.assertEqual(MANIFEST['previous_version'],'0.19.0')
-        self.assertEqual(MANIFEST['release_name'],'Stability, Accessibility & Release Readiness')
-        self.assertEqual(MANIFEST['storage_schema_version'],20)
+        self.assertEqual(MANIFEST['version'],'0.21.0')
+        self.assertEqual(MANIFEST['previous_version'],'0.20.0')
+        self.assertEqual(MANIFEST['release_name'],'Accounts & Cloud Persistence Foundation')
+        self.assertEqual(MANIFEST['storage_schema_version'],21)
         self.assertEqual(MANIFEST['project_schema'],'sc-workspace-project/11.0')
-        self.assertFalse(MANIFEST['schema_migration_required'])
+        self.assertTrue(MANIFEST['schema_migration_required'])
     def test_public_readiness_contract(self):
         self.assertIn("'/readiness-contract'",PHP)
         self.assertIn('public function readiness_contract()',PHP)
@@ -70,14 +70,14 @@ class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
         self.assertEqual(MANIFEST['readiness']['accessibility_target'],'WCAG 2.2 AA')
     def test_release_keeps_cloud_and_behavioral_boundaries(self):
         self.assertFalse(MANIFEST['cloud_sync'])
-        self.assertFalse(MANIFEST['server_project_storage'])
+        self.assertEqual(MANIFEST['server_project_storage'],'manual-account-backup-only')
         self.assertFalse(MANIFEST['governance']['behavioral_telemetry'])
         self.assertFalse(MANIFEST['governance']['productivity_score'])
     def test_registry_lineage_advances_without_data_migration(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0200'",REG)
-        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0200'",REG)
-        self.assertIn("LEGACY_PENDING_KEY_V0190 = 'sc_workspace_registry_pending_v0190'",REG)
-        self.assertIn("'previous_version' => '0.19.0'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0210'",REG)
+        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0210'",REG)
+        self.assertIn("LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200'",REG)
+        self.assertIn("'previous_version' => '0.20.0'",REG)
     def test_canonical_library_route_is_unchanged(self):
         self.assertEqual(MANIFEST['canonical_library_path'],'/knowledge-libraries/')
         self.assertIn('/knowledge-libraries/',PHP)

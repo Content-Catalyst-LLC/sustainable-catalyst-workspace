@@ -1,14 +1,14 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.20.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.20.0.css';MANIFEST=ROOT/'release-manifest-v0.20.0.json'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.21.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.21.0.css';MANIFEST=ROOT/'release-manifest-v0.21.0.json'
 class WorkflowActivityIntelligenceContract(unittest.TestCase):
  def test_manifest(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.20.0');self.assertEqual(m['previous_version'],'0.19.0');self.assertEqual(m['storage_schema_version'],20);self.assertEqual(m['project_schema'],'sc-workspace-project/11.0');self.assertEqual(m['activity_intelligence_schema'],'sc-workspace-activity-intelligence/1.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.21.0');self.assertEqual(m['previous_version'],'0.20.0');self.assertEqual(m['storage_schema_version'],21);self.assertEqual(m['project_schema'],'sc-workspace-project/11.0');self.assertEqual(m['activity_intelligence_schema'],'sc-workspace-activity-intelligence/1.0')
  def test_schema(self):
   s=json.loads((ROOT/'schemas/sc-workspace-activity-intelligence-v1.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-activity-intelligence/1.0')
  def test_storage_migration_only(self):
-  j=JS.read_text();self.assertIn('const STORAGE_VERSION = 20',j);self.assertIn('function migrateV17(raw)',j);self.assertIn('if (raw.schemaVersion === 17) return migrateV17(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/11.0'",j)
+  j=JS.read_text();self.assertIn('const STORAGE_VERSION = 21',j);self.assertIn('function migrateV17(raw)',j);self.assertIn('if (raw.schemaVersion === 17) return migrateV17(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/11.0'",j)
  def test_top_level_activity_view(self):
   p=PHP.read_text();self.assertIn('data-scw-workspace-view="activity"',p);self.assertIn('WORKFLOW &amp; ACTIVITY INTELLIGENCE',p)
  def test_next_actions_are_user_controlled(self):

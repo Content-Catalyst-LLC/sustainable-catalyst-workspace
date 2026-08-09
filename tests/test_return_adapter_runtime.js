@@ -15,4 +15,4 @@ if(packet.artifacts.length!==1||packet.artifacts[0].type!=='analysis') throw new
 if(!sessionStorage.getItem('sc_workspace_handoff_return_v1')) throw new Error('return not stored');
 if(!posted||posted.o!=='https://sustainablecatalyst.com') throw new Error('postMessage target');
 if(assigned!=='https://sustainablecatalyst.com/platform/') throw new Error('return redirect');
-console.log('PASS - v0.20.0 return adapter producer runtime');
+console.log('PASS - v0.21.0 return adapter producer runtime');

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Account Persistence",
+  "type": "object",
+  "required": [
+    "schema",
+    "selectedProjectId",
+    "cloudRecords",
+    "history",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-account-persistence/1.0"
+    },
+    "selectedProjectId": {
+      "type": "string"
+    },
+    "cloudRecords": {
+      "type": "array"
+    },
+    "history": {
+      "type": "array"
+    },
+    "lastRefreshAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

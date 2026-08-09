@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0200, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0190, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0180, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0170, '') === '1' ||
@@ -64,7 +65,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.20.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.21.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -173,6 +174,35 @@ final class SC_Workspace {
             'callback' => array($this, 'institutional_handoff_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/account-persistence-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'account_persistence_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/cloud-projects', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array($this, 'cloud_projects_list'),
+                'permission_callback' => array($this, 'cloud_permission'),
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array($this, 'cloud_project_store'),
+                'permission_callback' => array($this, 'cloud_permission'),
+            ),
+        ));
+        register_rest_route('sc-workspace/v1', '/cloud-projects/(?P<project_id>[A-Za-z0-9._-]{1,160})', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array($this, 'cloud_project_get'),
+                'permission_callback' => array($this, 'cloud_permission'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array($this, 'cloud_project_delete'),
+                'permission_callback' => array($this, 'cloud_permission'),
+            ),
+        ));
         register_rest_route('sc-workspace/v1', '/readiness-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'readiness_contract'),
@@ -193,7 +223,7 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v20',
+            'persistence' => 'browser-local-projects-v21-plus-explicit-account-backup',
             'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
@@ -226,8 +256,8 @@ final class SC_Workspace {
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 20,
-            'server_project_storage' => false,
+            'storage_schema_version' => 21,
+            'server_project_storage' => 'manual-account-backup-only',
             'cloud_sync' => false,
             'release_readiness' => 'stability-accessibility-validated',
             'accessibility_target' => 'WCAG 2.2 AA',
@@ -255,7 +285,7 @@ final class SC_Workspace {
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
             'export_schema' => 'sc-workspace-project-export/11.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -487,7 +517,7 @@ final class SC_Workspace {
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
             'project_schema' => 'sc-workspace-project/11.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'templates' => array('research-investigation', 'evidence-review', 'analytical-assessment', 'decision-case', 'systems-mapping', 'publication-preparation'),
             'run_statuses' => array('active', 'paused', 'complete'),
             'step_statuses' => array('todo', 'in-progress', 'complete', 'skipped'),
@@ -570,7 +600,7 @@ final class SC_Workspace {
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'node_types' => array('project','provenance','source','evidence','dataset','analysis','decision','document','export'),
             'relationship_types' => array('contains','sourced-from','same-source','evidence-from','uses','informs','supports','contradicts','derived-from','produced-by','supersedes','cites'),
@@ -627,7 +657,7 @@ final class SC_Workspace {
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'accepted_formats' => array('json','csv','tsv','markdown','html','text'),
             'staged_review_required' => true,
@@ -653,7 +683,7 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'transport' => array('local-download', 'manual-file-transfer', 'local-import-as-copy'),
             'review_copy_html' => true,
@@ -678,7 +708,7 @@ final class SC_Workspace {
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'derived_from_local_project_state' => true,
             'next_actions_user_created' => true,
@@ -699,7 +729,7 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'roles' => array('owner', 'contributor', 'reviewer', 'observer'),
             'review_statuses' => array('draft', 'requested', 'in-review', 'changes-requested', 'approved', 'closed'),
@@ -726,7 +756,7 @@ final class SC_Workspace {
             'institutional_handoff_schema' => 'sc-workspace-institutional-handoff/1.0',
             'institutional_handoff_package_schema' => 'sc-workspace-institutional-handoff-package/1.0',
             'institutional_handoff_receipt_schema' => 'sc-workspace-institutional-handoff-receipt/1.0',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'target_product' => 'catalyst-intelligence-platform',
             'promotion_mode' => 'copy-into-institution',
@@ -746,12 +776,146 @@ final class SC_Workspace {
         ));
     }
 
+    public function account_persistence_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-account-persistence-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'storage_schema_version' => 21,
+            'project_schema' => 'sc-workspace-project/11.0',
+            'anonymous_access' => true,
+            'account_required' => false,
+            'authentication_provider' => 'wordpress',
+            'manual_cloud_backup' => true,
+            'automatic_cloud_upload' => false,
+            'background_sync' => false,
+            'restore_mode' => 'new-local-copy',
+            'overwrite_local_project_on_restore' => false,
+            'server_store' => 'wordpress-user-meta',
+            'max_projects_per_account' => 25,
+            'max_project_bytes' => 2621440,
+            'max_account_bytes' => 26214400,
+            'backup_schema' => 'sc-workspace-cloud-backup/1.0',
+            'integrity_algorithm' => 'SHA-256',
+            'team_storage' => false,
+            'institutional_permissions' => false,
+        ));
+    }
+
+    public function cloud_permission() {
+        return is_user_logged_in() && current_user_can('read');
+    }
+
+    private function cloud_store_key() {
+        return 'sc_workspace_cloud_projects_v1';
+    }
+
+    private function cloud_store_read() {
+        $store = get_user_meta(get_current_user_id(), $this->cloud_store_key(), true);
+        return is_array($store) ? $store : array();
+    }
+
+    private function cloud_metadata($record) {
+        return array(
+            'projectId' => isset($record['projectId']) ? (string) $record['projectId'] : '',
+            'title' => isset($record['title']) ? (string) $record['title'] : 'Workspace project',
+            'clientUpdatedAt' => isset($record['clientUpdatedAt']) ? (string) $record['clientUpdatedAt'] : '',
+            'backedUpAt' => isset($record['backedUpAt']) ? (string) $record['backedUpAt'] : '',
+            'fingerprint' => isset($record['fingerprint']) ? (string) $record['fingerprint'] : '',
+            'bytes' => isset($record['bytes']) ? (int) $record['bytes'] : 0,
+            'objectCount' => isset($record['objectCount']) ? (int) $record['objectCount'] : 0,
+        );
+    }
+
+    public function cloud_projects_list() {
+        $items = array();
+        foreach ($this->cloud_store_read() as $record) {
+            if (is_array($record)) {
+                $items[] = $this->cloud_metadata($record);
+            }
+        }
+        usort($items, function($a, $b) {
+            return strcmp($b['backedUpAt'], $a['backedUpAt']);
+        });
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-account-cloud-index/1.0',
+            'items' => $items,
+            'automaticSync' => false,
+        ));
+    }
+
+    public function cloud_project_store($request) {
+        $payload = $request->get_json_params();
+        if (!is_array($payload) || ($payload['schema'] ?? '') !== 'sc-workspace-cloud-backup/1.0') {
+            return new WP_Error('scw_invalid_cloud_backup', 'Unsupported Workspace cloud-backup package.', array('status' => 400));
+        }
+        $project = isset($payload['project']) && is_array($payload['project']) ? $payload['project'] : null;
+        $project_id = isset($payload['sourceProjectId']) ? sanitize_key((string) $payload['sourceProjectId']) : '';
+        if (!$project || $project_id === '' || (($project['schema'] ?? '') !== 'sc-workspace-project/11.0')) {
+            return new WP_Error('scw_invalid_cloud_project', 'A valid Workspace project is required.', array('status' => 400));
+        }
+        $canonical = wp_json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $bytes = strlen($canonical);
+        if ($bytes > 2621440) {
+            return new WP_Error('scw_cloud_project_too_large', 'This project exceeds the 2.5 MB manual cloud-backup limit.', array('status' => 413));
+        }
+        $store = $this->cloud_store_read();
+        if (!isset($store[$project_id]) && count($store) >= 25) {
+            return new WP_Error('scw_cloud_project_limit', 'This account has reached the 25-project cloud-backup limit.', array('status' => 409));
+        }
+        $replacement = array(
+            'projectId' => $project_id,
+            'title' => sanitize_text_field((string) ($payload['projectTitle'] ?? $project['title'] ?? 'Workspace project')),
+            'clientUpdatedAt' => sanitize_text_field((string) ($payload['clientUpdatedAt'] ?? $project['updatedAt'] ?? '')),
+            'backedUpAt' => gmdate('c'),
+            'fingerprint' => hash('sha256', $canonical),
+            'bytes' => $bytes,
+            'objectCount' => isset($project['objects']) && is_array($project['objects']) ? count($project['objects']) : 0,
+            'package' => $payload,
+        );
+        $candidate = $store;
+        $candidate[$project_id] = $replacement;
+        $account_bytes = 0;
+        foreach ($candidate as $record) {
+            $account_bytes += is_array($record) ? (int) ($record['bytes'] ?? 0) : 0;
+        }
+        if ($account_bytes > 26214400) {
+            return new WP_Error('scw_cloud_account_limit', 'This account has reached the 25 MB Workspace cloud-backup limit.', array('status' => 409));
+        }
+        update_user_meta(get_current_user_id(), $this->cloud_store_key(), $candidate);
+        return rest_ensure_response(array('ok' => true, 'item' => $this->cloud_metadata($replacement)));
+    }
+
+    public function cloud_project_get($request) {
+        $project_id = sanitize_key((string) $request['project_id']);
+        $store = $this->cloud_store_read();
+        if (!isset($store[$project_id]) || !is_array($store[$project_id])) {
+            return new WP_Error('scw_cloud_project_missing', 'Workspace cloud backup not found.', array('status' => 404));
+        }
+        $record = $store[$project_id];
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-cloud-backup-response/1.0',
+            'item' => $this->cloud_metadata($record),
+            'package' => $record['package'],
+        ));
+    }
+
+    public function cloud_project_delete($request) {
+        $project_id = sanitize_key((string) $request['project_id']);
+        $store = $this->cloud_store_read();
+        if (!isset($store[$project_id])) {
+            return rest_ensure_response(array('ok' => true, 'deleted' => false));
+        }
+        unset($store[$project_id]);
+        update_user_meta(get_current_user_id(), $this->cloud_store_key(), $store);
+        return rest_ensure_response(array('ok' => true, 'deleted' => true));
+    }
+
     public function readiness_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-release-readiness-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'release' => 'Stability, Accessibility & Release Readiness',
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'schema_migration_required' => false,
             'local_recovery' => array(
@@ -800,7 +964,7 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 20,
+            'storage_schema_version' => 21,
             'project_schema' => 'sc-workspace-project/11.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
@@ -833,10 +997,12 @@ final class SC_Workspace {
             'registration_respects_site_setting' => true,
             'device_identity' => true,
             'device_identity_contains_personal_data' => false,
-            'project_persistence_scope' => 'device',
-            'server_project_storage' => false,
+            'project_persistence_scope' => 'device-by-default',
+            'server_project_storage' => 'manual-account-backup-only',
             'cloud_sync' => false,
-            'account_session_uploads_project_content' => false,
+            'automatic_account_upload' => false,
+            'manual_cloud_backup' => true,
+            'restore_mode' => 'new-local-copy',
             'manual_portability' => 'project-json-export-import',
             'future_sync_boundary_prepared' => true,
         ));
@@ -844,14 +1010,14 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0200',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.20.0.css',
+            'sc-workspace-v0210',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.21.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v0200',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.20.0.js',
+            'sc-workspace-v0210',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.21.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -860,16 +1026,19 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0200', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0210', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
             'logoutUrl' => wp_logout_url($return_url),
             'registrationEnabled' => (bool) get_option('users_can_register'),
             'registrationUrl' => get_option('users_can_register') ? wp_registration_url() : '',
-            'storageMode' => 'device-local',
+            'storageMode' => 'device-local-default',
             'cloudSync' => false,
-            'serverProjectStorage' => false,
+            'manualCloudBackup' => true,
+            'serverProjectStorage' => 'manual-account-backup-only',
+            'restRoot' => esc_url_raw(rest_url('sc-workspace/v1/')),
+            'restNonce' => $authenticated ? wp_create_nonce('wp_rest') : '',
         ));
     }
 
@@ -893,7 +1062,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="20" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="21" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -913,7 +1082,7 @@ final class SC_Workspace {
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional and does not upload or synchronize project content. Connected tools can return structured work to the originating project through the established local-first handoff contract.</span>
+                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional. Manual cloud recovery requires an explicit backup action; nothing uploads automatically. Connected tools can return structured work to the originating project through the established local-first handoff contract.</span>
             </div>
 
             <details class="scw-settings-drawer" data-scw-settings-drawer>
@@ -932,7 +1101,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.20.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Local first · optional backup</strong><small>Automatic cloud synchronization is not enabled. Manual account backups are opt-in.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -940,7 +1109,18 @@ final class SC_Workspace {
                         <a class="scw-button" data-scw-logout href="#" hidden>Sign out</a>
                     </div>
                 </div>
-                <p class="scw-identity-note" data-scw-identity-note>Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.</p>
+                <p class="scw-identity-note" data-scw-identity-note>Sign-in keeps local work available and unlocks explicit per-project cloud recovery. Nothing uploads automatically.</p>
+                </section>
+                <section class="scw-cloud-recovery" aria-labelledby="scw-cloud-recovery-title">
+                    <div class="scw-cloud-recovery-head"><div><div class="scw-kicker">ACCOUNT CLOUD RECOVERY</div><h3 id="scw-cloud-recovery-title">Back up a project deliberately. Restore it as a copy.</h3></div><span class="scw-cloud-badge" data-scw-cloud-badge>LOCAL ONLY</span></div>
+                    <p>Cloud recovery is optional and account-bound. Workspace never uploads in the background, never overwrites a local project during restore, and does not convert personal backups into team or institutional storage.</p>
+                    <div class="scw-cloud-controls">
+                        <label><span>LOCAL PROJECT</span><select data-scw-cloud-project><option value="">Choose a project</option></select></label>
+                        <button class="scw-button scw-button-primary" type="button" data-scw-cloud-backup>Back up now</button>
+                        <button class="scw-button" type="button" data-scw-cloud-refresh>Refresh backups</button>
+                    </div>
+                    <div class="scw-cloud-status" data-scw-cloud-status role="status" aria-live="polite">Sign in to use manual cloud recovery. Local Workspace remains fully available without an account.</div>
+                    <div class="scw-cloud-list" data-scw-cloud-list></div>
                 </section>
                 <section class="scw-readiness" aria-labelledby="scw-readiness-title">
                     <div class="scw-readiness-head"><div><div class="scw-kicker">LOCAL HEALTH &amp; RECOVERY</div><h3 id="scw-readiness-title">Inspect the browser boundary before it becomes a problem.</h3></div><span class="scw-readiness-badge" data-scw-readiness-badge>NOT CHECKED</span></div>
@@ -1167,7 +1347,7 @@ final class SC_Workspace {
 
             <section class="scw-collaboration" data-scw-workspace-section="collaboration" hidden aria-labelledby="scw-collaboration-title">
                 <div class="scw-collaboration-head">
-                    <div><div class="scw-editorial-kicker">COLLABORATION FOUNDATION</div><h2 id="scw-collaboration-title">Structured review without surrendering project ownership.</h2><p>Create a review request, send a privacy-minimized project copy, collect object-linked comments or suggestions, and bring feedback back to the source Workspace. v0.20.0 keeps collaboration asynchronous and file-based; it does not create a shared cloud project or server permission system.</p></div>
+                    <div><div class="scw-editorial-kicker">COLLABORATION FOUNDATION</div><h2 id="scw-collaboration-title">Structured review without surrendering project ownership.</h2><p>Create a review request, send a privacy-minimized project copy, collect object-linked comments or suggestions, and bring feedback back to the source Workspace. v0.21.0 keeps collaboration asynchronous and file-based; it does not create a shared cloud project or server permission system.</p></div>
                 </div>
                 <div class="scw-collaboration-metrics" aria-label="Collaboration metrics">
                     <div><strong data-scw-collab-metric-sessions>0</strong><span>review sessions</span></div>
@@ -1207,7 +1387,7 @@ final class SC_Workspace {
                     <div class="scw-collaboration-stage-actions"><button class="scw-button scw-button-primary" type="button" data-scw-collab-commit disabled>Commit staged review package</button><button class="scw-button" type="button" data-scw-collab-clear disabled>Clear</button></div>
                     <div class="scw-collaboration-history" data-scw-collab-history></div>
                 </section>
-                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Roles in v0.20.0 continue to describe review responsibility inside portable packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
+                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Roles in v0.21.0 continue to describe review responsibility inside portable packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
             </section>
 
             <section class="scw-institutional" data-scw-workspace-section="institutional" hidden aria-labelledby="scw-institutional-title">
@@ -1255,7 +1435,7 @@ final class SC_Workspace {
                     <div class="scw-institutional-actions"><button class="scw-button scw-button-primary" type="button" data-scw-institutional-commit disabled>Commit receipt</button><button class="scw-button" type="button" data-scw-institutional-clear disabled>Clear</button></div>
                     <div class="scw-institutional-history" data-scw-institutional-history></div>
                 </section>
-                <div class="scw-institutional-governance" role="note"><strong>Workspace does not become the institution.</strong><span>v0.20.0 preserves the governed handoff contract for Catalyst Intelligence while hardening the surrounding Workspace runtime. It does not create organization membership, server permissions, shared cloud storage, automatic ingestion, or an institutional tenant inside Workspace.</span></div>
+                <div class="scw-institutional-governance" role="note"><strong>Workspace does not become the institution.</strong><span>v0.21.0 preserves the governed handoff contract for Catalyst Intelligence while hardening the surrounding Workspace runtime. It does not create organization membership, server permissions, shared cloud storage, automatic ingestion, or an institutional tenant inside Workspace.</span></div>
             </section>
 
             <section class="scw-share" data-scw-workspace-section="share" hidden aria-labelledby="scw-share-title">
@@ -2019,7 +2199,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.20.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain local by default. Signed-in users can explicitly create manual cloud-recovery backups; automatic upload and background synchronization remain disabled.</div>
             </footer>
         </section>
         <?php
@@ -2046,7 +2226,7 @@ final class SC_Workspace {
                         <div class="scw-platform-access-grid" aria-label="Workspace access summary">
                             <div><span>ACCESS</span><strong>Free public use</strong></div>
                             <div><span>ACCOUNT</span><strong>Optional</strong></div>
-                            <div><span>PERSISTENCE</span><strong>Saved on this device</strong></div>
+                            <div><span>PERSISTENCE</span><strong>Local first · optional backup</strong></div>
                         </div>
                     </div>
                     <aside class="scw-platform-preview" aria-label="Illustrative Workspace project preview">
@@ -2099,15 +2279,15 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.20.0.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest use remains device-local. Signed-in users may opt into explicit project backups for recovery without background sync.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.20.0.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Signing in does not upload project content; each cloud backup requires an explicit action.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">
-                <div><div class="scw-editorial-kicker">WORKSPACE APPLICATION</div><h2 id="scw-app-title">Open the working environment.</h2><p>Projects hold the work; Personal Knowledge and Graph connect it across projects; Activity makes workflow state and next actions inspectable; Import, Share, and connected tools move work without turning Workspace into a cloud service; local diagnostics and recovery safeguards make that browser boundary easier to inspect.</p></div>
+                <div><div class="scw-editorial-kicker">WORKSPACE APPLICATION</div><h2 id="scw-app-title">Open the working environment.</h2><p>Projects hold the work; Personal Knowledge and Graph connect it across projects; Activity makes workflow state and next actions inspectable; Import, Share, and connected tools move work deliberately; optional account backups add recovery without background synchronization, while local diagnostics keep the persistence boundary inspectable.</p></div>
                 <a class="scw-button scw-button-primary" href="#workspace-application">Go to projects</a>
             </section>
 

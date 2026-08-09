@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__);
-define('SC_WORKSPACE_VERSION', '0.20.0');
+define('SC_WORKSPACE_VERSION', '0.21.0');
 $GLOBALS['scw_options'] = array();
 $GLOBALS['scw_actions'] = array();
 function get_option($key, $default = false) { return array_key_exists($key, $GLOBALS['scw_options']) ? $GLOBALS['scw_options'][$key] : $default; }
@@ -22,11 +22,11 @@ assert_true(SC_Workspace_Registry::register_product(), 'direct registry registra
 $r = get_option(SC_Workspace_Registry::OPTION_KEY);
 assert_true(isset($r['catalyst-intelligence']), 'existing commercial record preserved');
 assert_true(isset($r['sustainable-catalyst-workspace']), 'Workspace exists in direct registry');
-assert_true($r['sustainable-catalyst-workspace']['public_version'] === '0.20.0', 'Workspace version updated');
-assert_true($r['sustainable-catalyst-workspace']['previous_version'] === '0.19.0', 'previous version recorded');
+assert_true($r['sustainable-catalyst-workspace']['public_version'] === '0.21.0', 'Workspace version updated');
+assert_true($r['sustainable-catalyst-workspace']['previous_version'] === '0.20.0', 'previous version recorded');
 assert_true($r['sustainable-catalyst-workspace']['display_order'] === 400, 'Workspace remains before Catalyst Intelligence');
 assert_true($r['sustainable-catalyst-workspace']['custom_preserved'] === 'yes', 'unknown existing fields preserved');
-assert_true(get_option(SC_Workspace_Registry::BACKUP_KEY) === $before, 'pre-v0.20.0 registry backup created');
+assert_true(get_option(SC_Workspace_Registry::BACKUP_KEY) === $before, 'pre-v0.21.0 registry backup created');
 
 $GLOBALS['scw_options'] = array(
     SC_Workspace_Registry::OPTION_KEY => array(
@@ -45,13 +45,13 @@ $count = 0;
 foreach ($r['products'] as $product) {
     if (($product['canonical_id'] ?? '') === 'sustainable-catalyst-workspace') {
         $count++;
-        assert_true($product['public_version'] === '0.20.0', 'list Workspace version updated');
+        assert_true($product['public_version'] === '0.21.0', 'list Workspace version updated');
     }
 }
 assert_true($count === 1, 'Workspace appears exactly once');
 
 $GLOBALS['scw_options'] = array();
 assert_true(SC_Workspace_Registry::register_product() === false, 'missing registry does not fabricate a catalog');
-assert_true(get_option(SC_Workspace_Registry::PENDING_KEY) === '1', 'v0.20.0 pending marker is set');
+assert_true(get_option(SC_Workspace_Registry::PENDING_KEY) === '1', 'v0.21.0 pending marker is set');
 
-echo "PASS - Workspace v0.20.0 registry runtime migration\n";
+echo "PASS - Workspace v0.21.0 registry runtime migration\n";

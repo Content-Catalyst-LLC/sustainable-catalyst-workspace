@@ -2,9 +2,9 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release: **v0.20.0 — Stability, Accessibility & Release Readiness**
+## Current release: **v0.21.0 — Accounts & Cloud Persistence Foundation**
 
-Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, Import & Interoperability, Share & Portable Projects, Search & Knowledge Graph, Workflow & Activity Intelligence, Collaboration Foundation, and Institutional Handoff. v0.20.0 consolidates that capability into a more resilient public runtime with local recovery, diagnostics, accessibility hardening, and release-readiness checks.
+Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, Import & Interoperability, Share & Portable Projects, Search & Knowledge Graph, Workflow & Activity Intelligence, Collaboration Foundation, and Institutional Handoff. v0.21.0 adds optional manual account cloud recovery on top of the hardened local-first runtime. Guest use remains first-class; signed-in users choose exactly when a project backup is created.
 
 ## WordPress shortcodes
 
@@ -16,9 +16,9 @@ Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Can
 
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects and Workspace-level state remain device-local. Optional WordPress authentication identifies the account session only; Workspace does not automatically upload or synchronize project content.
+Workspace remains usable without signing in. Projects and Workspace-level state remain device-local by default. Optional WordPress authentication unlocks explicit per-project cloud recovery backups; sign-in itself never uploads project content and background synchronization remains disabled.
 
-v0.20.0 adds a last-known-good local snapshot before verified writes, read-after-write persistence verification, visible fallback after corrupted state is quarantined, privacy-minimized local diagnostics, and an explicit emergency backup export.
+v0.21.0 retains the v0.20.0 recovery safeguards and adds manual account backups stored privately per WordPress user, with restore-as-copy semantics and explicit size/count guardrails.
 
 ## Contracts
 
@@ -42,23 +42,23 @@ v0.20.0 adds a last-known-good local snapshot before verified writes, read-after
 - Release Readiness: `sc-workspace-release-readiness-contract/1.0`
 - Diagnostic Report: `sc-workspace-diagnostic-report/1.0`
 - Emergency Backup: `sc-workspace-emergency-backup/1.0`
-- Storage schema: `20`
+- Account Persistence: `sc-workspace-account-persistence/1.0`
+- Cloud Backup: `sc-workspace-cloud-backup/1.0`
+- Storage schema: `21`
 
-## v0.20.0 data boundary
+## v0.21.0 data boundary
 
-This is intentionally a schema-stable release:
-
-- Storage schema remains `20`.
+- Storage schema advances from `20` to `21`.
 - Project schema remains `sc-workspace-project/11.0`.
-- Cloud sync remains disabled.
-- Server project storage remains disabled.
-- Automatic telemetry remains disabled.
-- Diagnostic exports exclude project content, source URLs, and device identifiers.
-- Emergency backup export is explicit and contains project content.
+- Guest/local Workspace remains fully functional.
+- Signed-in users can explicitly create manual cloud backups.
+- Automatic upload and background cloud sync remain disabled.
+- Cloud restore always creates a new local copy.
+- Team storage and institutional permissions remain outside Workspace.
 
 ## Accessibility target
 
-v0.20.0 sets WCAG 2.2 AA as the public release target and adds an application skip link, stronger visible focus, focus movement between top-level Workspace views, reduced-motion handling, and forced-colors resilience.
+v0.21.0 sets WCAG 2.2 AA as the public release target and adds an application skip link, stronger visible focus, focus movement between top-level Workspace views, reduced-motion handling, and forced-colors resilience.
 
 ## Public routes
 
@@ -69,4 +69,4 @@ v0.20.0 sets WCAG 2.2 AA as the public release target and adds an application sk
 
 Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
 
-See `docs/STABILITY_ACCESSIBILITY_RELEASE_READINESS_V0200.md`.
+See `docs/ACCOUNTS_CLOUD_PERSISTENCE_FOUNDATION_V0210.md`.

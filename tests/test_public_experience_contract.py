@@ -2,8 +2,8 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.20.0.css'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.20.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.21.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.21.0.js'
 PLATFORM=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-platform.php'
 class PublicExperienceTests(unittest.TestCase):
     def test_advisory_aligned_editorial_hero(self):
@@ -54,11 +54,11 @@ class PublicExperienceTests(unittest.TestCase):
         self.assertIn('relabel_navigation_items',a)
         self.assertIn("post_title' => 'Workspace'",a)
     def test_traceability_schema_migration_preserves_platform_boundary(self):
-        m=json.loads((ROOT/'release-manifest-v0.20.0.json').read_text())
-        self.assertEqual(m['storage_schema_version'],20)
+        m=json.loads((ROOT/'release-manifest-v0.21.0.json').read_text())
+        self.assertEqual(m['storage_schema_version'],21)
         self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
-        self.assertEqual(m['version'],'0.20.0')
-        self.assertEqual(m['previous_version'],'0.19.0')
+        self.assertEqual(m['version'],'0.21.0')
+        self.assertEqual(m['previous_version'],'0.20.0')
         self.assertFalse(m['cloud_sync'])
-        self.assertFalse(m['server_project_storage'])
+        self.assertEqual(m['server_project_storage'],'manual-account-backup-only')
 if __name__=='__main__': unittest.main()
