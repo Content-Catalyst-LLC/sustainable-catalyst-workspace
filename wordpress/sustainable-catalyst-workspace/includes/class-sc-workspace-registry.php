@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0270';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0270';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0280';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0280';
+    const LEGACY_PENDING_KEY_V0270 = 'sc_workspace_registry_pending_v0270';
     const LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260';
     const LEGACY_PENDING_KEY_V0250 = 'sc_workspace_registry_pending_v0250';
     const LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240';
@@ -103,6 +104,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0270);
         delete_option(self::LEGACY_PENDING_KEY_V0260);
         delete_option(self::LEGACY_PENDING_KEY_V0250);
         delete_option(self::LEGACY_PENDING_KEY_V0240);
@@ -186,11 +188,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.26.0',
+            'previous_version' => '0.27.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Reconciliation Provenance & Decision Receipts: records accepted and declined changes, explicit rationale, reviewer label, source-state provenance, and SHA-256 receipt integrity for each reconciled copy.',
+            'change_summary' => 'Project Audit Trail & Governance Ledger: one derived chronological view across authoritative Workspace governance histories, with transparent source labels and portable JSON export.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.27.0 advances Workspace storage to schema 26 while project schema remains sc-workspace-project/11.0. Reconciliation receipts are browser-local, user-rationalized, integrity-fingerprinted, and authoritative independently of the editable Document summary created in the reconciled copy.',
+            'manual_notes' => 'Free public Workspace. v0.28.0 is schema-stable at storage schema 26 and project schema 11.0. Audit Trail is derived from existing authoritative ledgers; it creates no shadow event database, hidden governance score, or people ranking.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

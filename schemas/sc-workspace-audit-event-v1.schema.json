@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-audit-event/1.0",
+  "title": "Workspace Audit Event",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "source",
+    "action",
+    "title",
+    "at",
+    "derived",
+    "editable"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-audit-event/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "sourceLabel": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "detail": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "projectTitle": {
+      "type": "string"
+    },
+    "actorLabel": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string"
+    },
+    "sourceRef": {
+      "type": "string"
+    },
+    "at": {
+      "type": "string"
+    },
+    "derived": {
+      "const": true
+    },
+    "editable": {
+      "const": false
+    }
+  }
+}

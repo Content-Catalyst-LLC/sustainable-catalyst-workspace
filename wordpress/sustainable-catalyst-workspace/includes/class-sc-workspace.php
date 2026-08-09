@@ -70,7 +70,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.26.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.28.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -214,6 +214,11 @@ final class SC_Workspace {
             'callback' => array($this, 'reconciliation_receipts_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/audit-trail-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'audit_trail_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/cloud-projects', array(
             array(
                 'methods' => 'GET',
@@ -258,7 +263,7 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v26-plus-guided-reconciliation-change-gates-version-history-account-backup-and-explicit-conflict-safe-sync',
+            'persistence' => 'browser-local-projects-v26-plus-derived-governance-audit-guided-reconciliation-change-gates-version-history-account-backup-and-explicit-conflict-safe-sync',
             'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
@@ -990,6 +995,29 @@ final class SC_Workspace {
         ));
     }
 
+    public function audit_trail_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-audit-trail-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'storage_schema_version' => 26,
+            'project_schema' => 'sc-workspace-project/11.0',
+            'trail_schema' => 'sc-workspace-audit-trail/1.0',
+            'event_schema' => 'sc-workspace-audit-event/1.0',
+            'export_schema' => 'sc-workspace-audit-export/1.0',
+            'derived_from_authoritative_ledgers' => true,
+            'stored_shadow_database' => false,
+            'event_sources' => array('project-activity','version-history','account-recovery','cross-device-sync','safe-actions','reconciliation','collaboration','institutional-handoff','share','interoperability'),
+            'chronological_sort' => 'newest-first',
+            'project_filter' => true,
+            'source_filter' => true,
+            'portable_json_export' => true,
+            'project_content_in_audit_export' => false,
+            'events_editable' => false,
+            'hidden_governance_score' => false,
+            'schema_migration_required' => false,
+        ));
+    }
+
     public function cloud_permission() {
         return is_user_logged_in() && current_user_can('read');
     }
@@ -1237,8 +1265,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0260',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.27.0.css',
+            'sc-workspace-v0280',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.28.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1271,9 +1299,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0260',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.27.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1'),
+            'sc-workspace-audit-trail-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-audit-trail-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0280',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.28.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1281,7 +1316,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0260', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0280', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1319,7 +1354,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="25" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="26" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -1434,6 +1469,7 @@ final class SC_Workspace {
                 <button type="button" data-scw-workspace-view="changes" aria-pressed="false">Changes</button>
                 <button type="button" data-scw-workspace-view="reconcile" aria-pressed="false">Reconcile</button>
                 <button type="button" data-scw-workspace-view="safety" aria-pressed="false">Safety</button>
+                <button type="button" data-scw-workspace-view="audit" aria-pressed="false">Audit</button>
                 <button type="button" data-scw-workspace-view="interoperability" aria-pressed="false">Import &amp; Interoperability</button>
                 <button type="button" data-scw-workspace-view="collaboration" aria-pressed="false">Collaborate</button>
                 <button type="button" data-scw-workspace-view="institutional" aria-pressed="false">Institutional</button>
@@ -1677,6 +1713,22 @@ final class SC_Workspace {
                     <section class="scw-safe-actions-panel"><div class="scw-knowledge-panel-head"><span>02 / LEDGER</span><h3>Recent safe-action decisions</h3></div><div data-scw-safe-history><div class="scw-safe-actions-empty">No gated actions have been recorded yet.</div></div></section>
                 </div>
                 <div class="scw-safe-actions-governance" role="note"><strong>Human decision remains the control point.</strong><span>Change gates never apply, restore, merge, sync, share, or promote automatically. The action runs only after its preflight is shown and the required acknowledgement is explicitly checked.</span></div>
+            </section>
+
+            <section class="scw-audit-trail" data-scw-workspace-section="audit" hidden aria-labelledby="scw-audit-trail-title">
+                <div class="scw-audit-trail-head">
+                    <div><div class="scw-editorial-kicker">PROJECT AUDIT TRAIL &amp; GOVERNANCE LEDGER</div><h2 id="scw-audit-trail-title">See how consequential Workspace actions accumulated over time.</h2><p>Audit Trail derives one chronological view from the authoritative histories already maintained by Workspace. It does not copy those events into a second shadow ledger.</p></div>
+                    <div class="scw-audit-trail-boundary"><strong>Derived, not duplicated</strong><span>Restore points, sync, Safe Actions, reconciliation receipts, collaboration, institutional handoffs, sharing, interoperability, and project activity remain authoritative in their original ledgers.</span></div>
+                </div>
+                <div class="scw-audit-trail-controls">
+                    <label><span>Project</span><select data-scw-audit-project><option value="">All projects</option></select></label>
+                    <label><span>Event source</span><select data-scw-audit-source><option value="">All governance sources</option><option value="version-history">Version history</option><option value="account-recovery">Account recovery</option><option value="cross-device-sync">Cross-device sync</option><option value="safe-actions">Safe Actions</option><option value="reconciliation">Reconciliation</option><option value="collaboration">Collaboration</option><option value="institutional-handoff">Institutional handoff</option><option value="share">Share &amp; portability</option><option value="interoperability">Import &amp; interoperability</option><option value="project-activity">Project activity</option></select></label>
+                    <button type="button" class="scw-button" data-scw-audit-export>Export audit JSON</button>
+                </div>
+                <div class="scw-audit-trail-metrics" aria-label="Audit trail metrics"><div><strong data-scw-audit-metric-events>0</strong><span>events</span></div><div><strong data-scw-audit-metric-projects>0</strong><span>projects</span></div><div><strong data-scw-audit-metric-sources>0</strong><span>sources</span></div><div><strong data-scw-audit-metric-newest>None</strong><span>newest event</span></div></div>
+                <div class="scw-audit-trail-list" data-scw-audit-list><div class="scw-audit-trail-empty">No governance events are available in this view yet.</div></div>
+                <div class="scw-audit-trail-status" data-scw-audit-status role="status" aria-live="polite">Audit events are reconstructed locally from existing Workspace ledgers.</div>
+                <div class="scw-audit-trail-governance" role="note"><strong>No hidden governance score.</strong><span>The audit trail is chronological and source-labeled. Workspace does not score compliance, infer misconduct, rank people, or edit authoritative source events from this view.</span></div>
             </section>
 
             <section class="scw-interoperability" data-scw-workspace-section="interoperability" hidden aria-labelledby="scw-interoperability-title">

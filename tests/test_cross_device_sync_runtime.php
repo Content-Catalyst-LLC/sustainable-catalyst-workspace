@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__);
-define('SC_WORKSPACE_VERSION', '0.27.0');
+define('SC_WORKSPACE_VERSION', '0.28.0');
 $GLOBALS['logged_in']=true;$GLOBALS['uid']=42;$GLOBALS['user_meta']=array();
 function add_action($a,$b){} function add_shortcode($a,$b){}
 function is_user_logged_in(){return $GLOBALS['logged_in'];} function current_user_can($cap){return $GLOBALS['logged_in'];} function get_current_user_id(){return $GLOBALS['uid'];}

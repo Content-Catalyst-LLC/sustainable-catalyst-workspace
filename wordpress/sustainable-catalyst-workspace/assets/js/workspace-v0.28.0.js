@@ -1555,7 +1555,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.27.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.28.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -2644,6 +2644,16 @@
     let activeReconciliation = null;
     const safeActionsSection = root.querySelector('[data-scw-workspace-section="safety"]');
     const safeHistory = root.querySelector('[data-scw-safe-history]');
+    const auditTrailSection = root.querySelector('[data-scw-workspace-section="audit"]');
+    const auditProject = root.querySelector('[data-scw-audit-project]');
+    const auditSource = root.querySelector('[data-scw-audit-source]');
+    const auditList = root.querySelector('[data-scw-audit-list]');
+    const auditExport = root.querySelector('[data-scw-audit-export]');
+    const auditStatus = root.querySelector('[data-scw-audit-status]');
+    const auditMetricEvents = root.querySelector('[data-scw-audit-metric-events]');
+    const auditMetricProjects = root.querySelector('[data-scw-audit-metric-projects]');
+    const auditMetricSources = root.querySelector('[data-scw-audit-metric-sources]');
+    const auditMetricNewest = root.querySelector('[data-scw-audit-metric-newest]');
     const safeMetricTotal = root.querySelector('[data-scw-safe-metric-total]');
     const safeMetricProceeded = root.querySelector('[data-scw-safe-metric-proceeded]');
     const safeMetricCancelled = root.querySelector('[data-scw-safe-metric-cancelled]');
@@ -3657,10 +3667,20 @@
       if(actionGateReview){if(review){const flags=(review.attention||[]).map(flag=>`<li>${escapeHtml(flag)}</li>`).join('');actionGateReview.innerHTML=`<div class="scw-action-gate-summary"><strong>${escapeHtml(review.summary.total)} explicit changes</strong><span>${escapeHtml(review.summary.added)} added · ${escapeHtml(review.summary.removed)} removed · ${escapeHtml(review.summary.modified)} modified · ${escapeHtml(review.summary.relationshipsChanged)} relationship changes</span></div>${flags?`<ul>${flags}</ul>`:'<p>No attention labels were triggered.</p>'}<small>${escapeHtml(gate.baseline.label)} → ${escapeHtml(gate.target.label)}</small>`;}else actionGateReview.innerHTML=`<div class="scw-action-gate-summary"><strong>No prior comparison state</strong><span>This action can still proceed only after explicit acknowledgement. Create named restore points to make future preflights more informative.</span></div>`;}
       if(actionGateAck)actionGateAck.checked=false;if(actionGateProceed)actionGateProceed.disabled=true;if(actionGate){actionGate.hidden=false;actionGate.setAttribute('aria-hidden','false');}setTimeout(()=>actionGateAck?.focus(),0);return gate;
     }
+    function renderAuditTrail(){
+      if(!auditTrailSection)return;
+      const helper=window.SCWorkspaceAuditTrail;if(!helper){if(auditStatus)auditStatus.textContent='Audit Trail helper is unavailable.';return;}
+      if(auditProject){const current=auditProject.value||'';auditProject.innerHTML='<option value="">All projects</option>';state.projects.forEach(project=>{const option=document.createElement('option');option.value=project.id;option.textContent=project.title;auditProject.appendChild(option);});if(current&&state.projects.some(project=>project.id===current))auditProject.value=current;}
+      const projectId=auditProject?.value||'',source=auditSource?.value||'',events=helper.derive(state,{projectId,sources:source?[source]:helper.SOURCES,limit:500}),summary=helper.summary(events);
+      if(auditMetricEvents)auditMetricEvents.textContent=String(summary.eventCount);if(auditMetricProjects)auditMetricProjects.textContent=String(summary.projectCount);if(auditMetricSources)auditMetricSources.textContent=String(summary.sourceCount);if(auditMetricNewest)auditMetricNewest.textContent=summary.newestAt?formatTime(summary.newestAt):'None';
+      if(auditList){auditList.innerHTML='';if(!events.length){auditList.innerHTML='<div class="scw-audit-trail-empty">No governance events are available in this view yet.</div>';}events.forEach(item=>{const row=document.createElement('article');row.className='scw-audit-event';row.innerHTML=`<div class="scw-audit-event-source"><span>${escapeHtml(item.sourceLabel)}</span><small>${escapeHtml(formatTime(item.at))}</small></div><div class="scw-audit-event-body"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.detail||item.action.replaceAll('-',' '))}</p><small>${escapeHtml(item.projectTitle||'Workspace-wide')}${item.actorLabel?` · ${escapeHtml(item.actorLabel)}`:''}${item.outcome?` · ${escapeHtml(item.outcome)}`:''}</small></div>`;if(item.projectId&&state.projects.some(project=>project.id===item.projectId)){const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open project';open.addEventListener('click',()=>{state.activeProjectId=item.projectId;persist('Audit trail project opened');render();setWorkspaceView('projects');setProjectMode('overview');});row.appendChild(open);}auditList.appendChild(row);});}
+      if(auditStatus)auditStatus.textContent=`Derived ${events.length} event${events.length===1?'':'s'} from authoritative Workspace ledgers. No duplicate audit database was created.`;
+    }
+
     async function gateFromLatestRestore(action,project,perform){const point=latestRestorePoint(project.id);return openSafeActionGate({action,project,baseProject:point?.snapshot||null,baseMeta:point?{kind:'restore-point',restorePointId:point.id,id:point.id,label:point.label}:{kind:'none',label:'No named restore point'},targetProject:project,targetMeta:{kind:'current-project',id:project.id,label:'Current project'},perform});}
 
     function setWorkspaceView(view, moveFocus = false) {
-      workspaceView = ['projects','knowledge','graph','activity','history','changes','reconcile','safety','interoperability','collaboration','institutional','share'].includes(view) ? view : 'projects';
+      workspaceView = ['projects','knowledge','graph','activity','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share'].includes(view) ? view : 'projects';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
@@ -3675,6 +3695,7 @@
       if (changeReviewSection) changeReviewSection.hidden = workspaceView !== 'changes';
       if (reconciliationSection) reconciliationSection.hidden = workspaceView !== 'reconcile';
       if (safeActionsSection) safeActionsSection.hidden = workspaceView !== 'safety';
+      if (auditTrailSection) auditTrailSection.hidden = workspaceView !== 'audit';
       if (interoperabilitySection) interoperabilitySection.hidden = workspaceView !== 'interoperability';
       if (collaborationSection) collaborationSection.hidden = workspaceView !== 'collaboration';
       if (institutionalSection) institutionalSection.hidden = workspaceView !== 'institutional';
@@ -3691,6 +3712,7 @@
       if (workspaceView === 'institutional') renderInstitutional();
       if (workspaceView === 'share') renderShare();
       if (workspaceView === 'safety') renderSafeActions();
+      if (workspaceView === 'audit') renderAuditTrail();
       if (moveFocus) {
         const section = root.querySelector(`[data-scw-workspace-section="${workspaceView}"]`);
         const heading = section && section.querySelector('h2, h3');
@@ -4336,6 +4358,10 @@
     if(actionGateAck)actionGateAck.addEventListener('change',()=>{if(actionGateProceed)actionGateProceed.disabled=!Boolean(actionGateAck.checked);});
     if(actionGateProceed)actionGateProceed.addEventListener('click',async()=>{if(!activeSafeGate||!activeSafeAction||!window.SCWorkspaceSafeActions?.canProceed(activeSafeGate,Boolean(actionGateAck?.checked)))return;actionGateProceed.disabled=true;if(actionGateStatus)actionGateStatus.textContent='Proceeding with the acknowledged action…';const gate=activeSafeGate,action=activeSafeAction;try{await action();recordSafeAction(gate,'proceeded');persist('Safe action proceeded after explicit preflight');activeSafeGate=null;activeSafeAction=null;if(actionGate)actionGate.hidden=true;renderSafeActions();}catch(err){recordSafeAction(gate,'blocked');persist('Safe action blocked after preflight');if(actionGateStatus)actionGateStatus.textContent=err?.message||'The action was blocked.';renderSafeActions();}});
     root.querySelectorAll('[data-scw-action-gate-cancel]').forEach(el=>el.addEventListener('click',()=>closeSafeActionGate('cancelled')));
+
+    if(auditProject)auditProject.addEventListener('change',renderAuditTrail);
+    if(auditSource)auditSource.addEventListener('change',renderAuditTrail);
+    if(auditExport)auditExport.addEventListener('click',()=>{const helper=window.SCWorkspaceAuditTrail;if(!helper)return;const projectId=auditProject?.value||'',source=auditSource?.value||'',events=helper.derive(state,{projectId,sources:source?[source]:helper.SOURCES,limit:1000}),pkg=helper.exportPackage(events,{projectId,source});downloadJson(`workspace-audit-trail-${new Date().toISOString().slice(0,10)}.json`,pkg);if(auditStatus)auditStatus.textContent='Portable audit JSON exported. Project/object content was not included.';});
 
     root.querySelectorAll('[data-scw-workspace-view]').forEach((button) => {
       button.addEventListener('click', () => setWorkspaceView(button.dataset.scwWorkspaceView, true));

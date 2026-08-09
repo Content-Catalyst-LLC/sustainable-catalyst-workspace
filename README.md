@@ -1,21 +1,19 @@
 # Sustainable Catalyst Workspace
 
-Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, recovery, optional account persistence, and conflict-safe sync.
+Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, recovery, optional account persistence, conflict-safe sync, and inspectable governance history.
 
-## Current release: **v0.27.0 — Reconciliation Provenance & Decision Receipts
+## Current release: **v0.28.0 — Project Audit Trail & Governance Ledger**
 
-v0.26.0 extends deterministic Change Review into a controlled selective-apply workflow. Users choose individual changes, preview the resulting project state, resolve dependency blockers, and create a new reconciled project copy while both source states remain untouched.
+v0.28.0 unifies consequential Workspace events into one source-labeled chronological view. The view is derived from the authoritative histories already maintained by Workspace and does not create a shadow audit database.
 
-### Reconciliation model
+### Audit model
 
-- deterministic differences from the existing Project Diff engine
-- explicit change selection; nothing selected automatically
-- dependency validation before creation
-- human acknowledgement required
-- new reconciled project copy with remapped local identities
-- portable reconciliation-plan JSON
-- browser-local reconciliation history
-- no automatic merge, overwrite, or source mutation
+- project and event-source filters
+- newest-first chronology
+- Version History, account recovery, sync, Safe Actions, reconciliation receipts, Collaboration, Institutional Handoff, Share, interoperability, and project activity
+- portable audit JSON without project/object content
+- read-only derived events
+- no hidden governance score, compliance inference, or people ranking
 
 ## Access boundary
 
@@ -23,11 +21,10 @@ Guest/local Workspace remains first-class. Accounts add optional private recover
 
 ## Data boundary
 
-- Workspace storage schema: **25**
+- Workspace storage schema: **26** (unchanged from v0.27.0)
 - Project schema: **sc-workspace-project/11.0** (unchanged)
-- Change Review schema: **sc-workspace-change-review/1.0**
-- Safe Actions schema: **sc-workspace-safe-actions/1.0**
-- Reconciliation schema: **sc-workspace-reconciliation/1.0**
+- Audit Trail schema: **sc-workspace-audit-trail/1.0**
+- Audit Event schema: **sc-workspace-audit-event/1.0**
 - Canonical public route: `/platform/`
 - Canonical Knowledge Library route: `/knowledge-libraries/`
 
@@ -35,7 +32,7 @@ Guest/local Workspace remains first-class. Accounts add optional private recover
 
 Shortcodes: `[sc_workspace]`, `[sc_workspace_entry]`, `[sc_workspace_platform]`.
 
-Public contracts include `/wp-json/sc-workspace/v1/health`, `/project-contract`, `/version-history-contract`, `/change-review-contract`, `/safe-actions-contract`, and `/reconciliation-contract`.
+Public contracts include `/wp-json/sc-workspace/v1/health`, `/version-history-contract`, `/change-review-contract`, `/safe-actions-contract`, `/reconciliation-contract`, `/reconciliation-receipts-contract`, and `/audit-trail-contract`.
 
 ## Release integrity
 
