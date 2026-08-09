@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-ai-assistance-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Responsible AI Assistance v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sessions",
+    "activeSessionId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-ai-assistance/1.0"
+    },
+    "activeSessionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "sessions": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "task",
+          "status",
+          "prompt",
+          "objectIds",
+          "response",
+          "responseSource",
+          "citationObjectIds",
+          "acceptedDocumentObjectId",
+          "createdAt",
+          "updatedAt",
+          "sentAt",
+          "respondedAt",
+          "acceptedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "task": {
+            "enum": [
+              "grounded-summary",
+              "evidence-gaps",
+              "compare-alternatives",
+              "briefing-draft",
+              "method-explanation",
+              "general-question"
+            ]
+          },
+          "status": {
+            "enum": [
+              "prepared",
+              "sent",
+              "response-received",
+              "accepted",
+              "rejected"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "objectIds": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          "response": {
+            "type": "string",
+            "maxLength": 30000
+          },
+          "responseSource": {
+            "enum": [
+              "manual",
+              "research-librarian",
+              "adapter",
+              "external"
+            ]
+          },
+          "citationObjectIds": {
+            "type": "array",
+            "maxItems": 24,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          "acceptedDocumentObjectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "sentAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "respondedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "acceptedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

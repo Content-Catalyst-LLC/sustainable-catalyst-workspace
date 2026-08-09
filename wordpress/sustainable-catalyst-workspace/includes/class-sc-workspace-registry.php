@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0120';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0120';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0130';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0130';
+    const LEGACY_PENDING_KEY_V0120 = 'sc_workspace_registry_pending_v0120';
     const LEGACY_PENDING_KEY_V0110 = 'sc_workspace_registry_pending_v0110';
     const LEGACY_PENDING_KEY_V0100 = 'sc_workspace_registry_pending_v0100';
     const LEGACY_PENDING_KEY_V0901 = 'sc_workspace_registry_pending_v0901';
@@ -88,6 +89,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0120);
         delete_option(self::LEGACY_PENDING_KEY_V0110);
         delete_option(self::LEGACY_PENDING_KEY_V0100);
         delete_option(self::LEGACY_PENDING_KEY_V0901);
@@ -156,11 +158,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.11.0',
+            'previous_version' => '0.12.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Personal Knowledge Environment: adds a device-local cross-project knowledge index, transparent related-work discovery, reusable collections, and direct return to canonical Workspace Objects without duplicating object content.',
+            'change_summary' => 'Responsible AI Assistance: adds explicit grounded request preparation, local response review, human acceptance/rejection, and traceable AI-assisted Document materialization without automatic model submission or decision authority.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.12.0 adds the device-local Personal Knowledge Environment. Storage advances to schema 13 while project schema remains sc-workspace-project/10.0. The knowledge index is derived from existing project objects; collections store stable references only. No server index, cloud sync, hidden semantic scoring, or content duplication is introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.13.0 adds Responsible AI Assistance. Storage advances to schema 14 and project schema to sc-workspace-project/11.0. AI requests are explicitly grounded in selected Workspace Objects; Workspace does not automatically send project content to a model, approve decisions, publish outputs, or mutate canonical evidence. Human acceptance is required before AI output is materialized as a working Document.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

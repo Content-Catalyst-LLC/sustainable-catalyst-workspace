@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0120, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0110, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0100, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0901, '') === '1' ||
@@ -56,7 +57,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.12.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.13.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -130,6 +131,11 @@ final class SC_Workspace {
             'callback' => array($this, 'personal_knowledge_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/ai-assistance-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'ai_assistance_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -145,8 +151,8 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v13',
-            'project_schema' => 'sc-workspace-project/10.0',
+            'persistence' => 'browser-local-projects-v14',
+            'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
@@ -161,12 +167,13 @@ final class SC_Workspace {
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 13,
+            'storage_schema_version' => 14,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -177,16 +184,16 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/10.0',
+            'schema' => 'sc-workspace-project-contract/11.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'export_schema' => 'sc-workspace-project-export/10.0',
-            'storage_schema_version' => 13,
+            'export_schema' => 'sc-workspace-project-export/11.0',
+            'storage_schema_version' => 14,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -206,6 +213,7 @@ final class SC_Workspace {
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
         ));
     }
 
@@ -247,7 +255,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-analysis-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'dataset_object_type' => 'dataset',
             'analysis_object_type' => 'analysis',
             'question_statuses' => array('open', 'resolved', 'deferred'),
@@ -274,7 +282,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-decision-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'decision_schema' => 'sc-workspace-decision/1.0',
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'decision_object_type' => 'decision',
             'decision_statuses' => array('framing', 'evaluating', 'decided', 'revisit'),
             'option_statuses' => array('candidate', 'shortlisted', 'selected', 'rejected'),
@@ -297,7 +305,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-canvas-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'board_statuses' => array('draft', 'working', 'ready'),
             'node_types' => array('note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea'),
             'relationship_types' => array('supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence'),
@@ -316,7 +324,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-handoff-contract/2.1',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'handoff_schema' => 'sc-workspace-handoff/2.0',
             'ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
             'return_schema' => 'sc-workspace-handoff-return/1.0',
@@ -376,7 +384,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-traceability-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'traceability_schema' => 'sc-workspace-traceability/1.0',
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
@@ -403,8 +411,9 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
-            'project_schema' => 'sc-workspace-project/10.0',
-            'storage_schema_version' => 13,
+            'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
+            'project_schema' => 'sc-workspace-project/11.0',
+            'storage_schema_version' => 14,
             'templates' => array('research-investigation', 'evidence-review', 'analytical-assessment', 'decision-case', 'systems-mapping', 'publication-preparation'),
             'run_statuses' => array('active', 'paused', 'complete'),
             'step_statuses' => array('todo', 'in-progress', 'complete', 'skipped'),
@@ -420,7 +429,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-briefing-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/10.0',
+            'project_schema' => 'sc-workspace-project/11.0',
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
             'draft_formats' => array('briefing', 'memo', 'report', 'article', 'publication-draft'),
@@ -444,6 +453,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-personal-knowledge-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
             'scope' => 'device-local-workspace',
             'index' => array(
                 'derived_from_projects' => true,
@@ -472,6 +482,35 @@ final class SC_Workspace {
         ));
     }
 
+    public function ai_assistance_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-ai-assistance-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'project_schema' => 'sc-workspace-project/11.0',
+            'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
+            'ai_request_export_schema' => 'sc-workspace-ai-request-export/1.0',
+            'ai_response_export_schema' => 'sc-workspace-ai-response-export/1.0',
+            'task_types' => array('grounded-summary','evidence-gaps','compare-alternatives','briefing-draft','method-explanation','general-question'),
+            'statuses' => array('prepared','sent','response-received','accepted','rejected'),
+            'max_sessions_per_project' => 40,
+            'max_grounding_objects_per_session' => 24,
+            'request_session_storage_key' => 'sc_workspace_ai_request_v1',
+            'response_session_storage_key' => 'sc_workspace_ai_response_v1',
+            'response_schema' => 'sc-workspace-ai-response/1.0',
+            'producer_helper' => sc_workspace_ai_adapter_script_url(),
+            'automatic_remote_send' => false,
+            'automatic_object_mutation' => false,
+            'automatic_decision_authority' => false,
+            'automatic_publication' => false,
+            'human_acceptance_required' => true,
+            'grounding_requires_selected_workspace_objects' => true,
+            'response_materializes_document_only_after_acceptance' => true,
+            'same_origin_research_librarian_handoff_supported' => true,
+            'server_ai_provider_configured_by_workspace' => false,
+            'local_first' => true,
+        ));
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -486,8 +525,8 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 13,
-            'project_schema' => 'sc-workspace-project/10.0',
+            'storage_schema_version' => 14,
+            'project_schema' => 'sc-workspace-project/11.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
             'public_experience' => 'advisory-aligned-editorial',
@@ -529,13 +568,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.12.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.13.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.12.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.13.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -577,7 +616,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="13" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="14" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
                 <div class="scw-hero-grid">
@@ -615,7 +654,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.12.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.13.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -736,6 +775,7 @@ final class SC_Workspace {
                     <button type="button" data-scw-project-mode="decision" aria-pressed="false">Decisions</button>
                     <button type="button" data-scw-project-mode="canvas" aria-pressed="false">Canvas</button>
                     <button type="button" data-scw-project-mode="traceability" aria-pressed="false">Traceability</button>
+                    <button type="button" data-scw-project-mode="assist" aria-pressed="false">Assist</button>
                     <button type="button" data-scw-project-mode="briefing" aria-pressed="false">Briefing</button>
                     <button type="button" data-scw-project-mode="objects" aria-pressed="false">Objects</button>
                 </nav>
@@ -1182,6 +1222,65 @@ final class SC_Workspace {
                 </section>
 
 
+                <section class="scw-ai" data-scw-project-panel="assist" aria-labelledby="scw-ai-title">
+                    <div class="scw-ai-head">
+                        <div>
+                            <div class="scw-kicker">RESPONSIBLE AI ASSISTANCE</div>
+                            <h3 id="scw-ai-title">Ask for help without hiding the basis of the work.</h3>
+                            <p>Prepare grounded AI requests from selected Workspace Objects, review responses locally, and explicitly accept useful material as a draft Document. Workspace does not automatically send project content to a model, approve decisions, publish outputs, or overwrite evidence.</p>
+                        </div>
+                        <div class="scw-ai-boundary"><strong>HUMAN CONTROLLED</strong><span>Prepare → review → accept or reject</span></div>
+                    </div>
+                    <div class="scw-ai-metrics" aria-label="Responsible AI assistance metrics">
+                        <div><strong data-scw-ai-metric-sessions>0</strong><span>requests</span></div>
+                        <div><strong data-scw-ai-metric-grounding>0</strong><span>grounding refs</span></div>
+                        <div><strong data-scw-ai-metric-responses>0</strong><span>responses</span></div>
+                        <div><strong data-scw-ai-metric-accepted>0</strong><span>accepted drafts</span></div>
+                    </div>
+                    <div class="scw-ai-grid">
+                        <section class="scw-ai-panel" aria-labelledby="scw-ai-request-heading">
+                            <div class="scw-ai-panel-head"><span>01 / PREPARE</span><h4 id="scw-ai-request-heading">Ground an assistance request.</h4></div>
+                            <form class="scw-ai-form" data-scw-ai-request-form>
+                                <label><span>Request title</span><input type="text" name="title" maxlength="200" required placeholder="e.g. Summarize the evidence on grid stability"></label>
+                                <label><span>Task</span><select name="task"><option value="grounded-summary">Grounded summary</option><option value="evidence-gaps">Evidence gaps &amp; contradictions</option><option value="compare-alternatives">Compare alternatives</option><option value="briefing-draft">Draft briefing section</option><option value="method-explanation">Explain method &amp; assumptions</option><option value="general-question">Grounded question</option></select></label>
+                                <label><span>User request</span><textarea name="prompt" rows="5" maxlength="5000" required placeholder="What would you like assistance with? State the scope, audience, or constraints explicitly."></textarea></label>
+                                <label><span>Grounding objects</span><select multiple size="8" data-scw-ai-object-select aria-label="Workspace Objects used to ground the request"></select></label>
+                                <button class="scw-button" type="submit">Prepare request</button>
+                            </form>
+                        </section>
+                        <section class="scw-ai-panel" aria-labelledby="scw-ai-sessions-heading">
+                            <div class="scw-ai-panel-head"><span>02 / REQUESTS</span><h4 id="scw-ai-sessions-heading">Keep assistance sessions reviewable.</h4></div>
+                            <div class="scw-ai-active"><span>ACTIVE REQUEST</span><strong data-scw-ai-active>No active AI assistance request.</strong></div>
+                            <div class="scw-ai-session-list" data-scw-ai-session-list></div>
+                        </section>
+                        <section class="scw-ai-panel" aria-labelledby="scw-ai-grounding-heading">
+                            <div class="scw-ai-panel-head"><span>03 / GROUNDING</span><h4 id="scw-ai-grounding-heading">Make the source basis visible.</h4></div>
+                            <div class="scw-ai-grounding" data-scw-ai-grounding></div>
+                            <div class="scw-ai-actions scw-ai-request-actions">
+                                <button class="scw-card-action" type="button" data-scw-ai-copy-prompt>Copy grounded prompt</button>
+                                <button class="scw-card-action" type="button" data-scw-ai-export-request>Export request JSON</button>
+                                <button class="scw-card-action" type="button" data-scw-ai-open-librarian>Open Research Librarian</button>
+                            </div>
+                            <p class="scw-ai-note">Preparing a request is local. No selected object content is sent automatically. A compatible same-origin Research Librarian adapter can read the prepared request only after this explicit user action. If no adapter is active, use Copy or Export instead.</p>
+                        </section>
+                        <section class="scw-ai-panel scw-ai-panel-wide" aria-labelledby="scw-ai-response-heading">
+                            <div class="scw-ai-panel-head"><span>04 / REVIEW</span><h4 id="scw-ai-response-heading">Treat AI output as a draft, not evidence.</h4></div>
+                            <div class="scw-ai-review-grid">
+                                <label><span>Response source</span><select data-scw-ai-response-source><option value="manual">Manual paste / review</option><option value="research-librarian">Research Librarian</option><option value="adapter">Connected adapter</option><option value="external">External AI tool</option></select></label>
+                                <label class="scw-ai-response-field"><span>Response</span><textarea rows="12" maxlength="30000" data-scw-ai-response placeholder="Paste or review an AI response here. Nothing is accepted into the project until you explicitly choose Accept as Document."></textarea></label>
+                                <label><span>Grounding references cited by the response</span><select multiple size="7" data-scw-ai-citation-select></select></label>
+                            </div>
+                            <div class="scw-ai-actions scw-ai-review-actions">
+                                <button class="scw-button" type="button" data-scw-ai-save-response>Save response for review</button>
+                                <button class="scw-button" type="button" data-scw-ai-accept-document>Accept as Document</button>
+                                <button class="scw-button" type="button" data-scw-ai-reject>Reject response</button>
+                                <button class="scw-card-action" type="button" data-scw-ai-export-response>Export response JSON</button>
+                            </div>
+                            <div class="scw-ai-policy" role="note"><strong>AI does not become evidence by acceptance.</strong><span>Accepted output becomes a working Document object tagged <code>ai-assisted</code> and <code>human-accepted</code>. Any selected citation objects remain separate canonical Sources/Evidence and are linked through visible provenance lineage.</span></div>
+                        </section>
+                    </div>
+                </section>
+
                 <section class="scw-briefing" data-scw-project-panel="briefing" aria-labelledby="scw-briefing-title">
                     <div class="scw-briefing-head">
                         <div>
@@ -1392,7 +1491,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.12.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.13.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1470,11 +1569,11 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.12.0.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.13.0.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.12.0.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.13.0.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">

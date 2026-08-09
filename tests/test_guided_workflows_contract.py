@@ -2,15 +2,15 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.12.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.13.0.js'
 SCHEMA=ROOT/'schemas/sc-workspace-guided-workflows-v1.schema.json'
 PROJECT=ROOT/'schemas/sc-workspace-project-v10.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.12.0.json'
+MANIFEST=ROOT/'release-manifest-v0.13.0.json'
 class GuidedWorkflowContractTests(unittest.TestCase):
     def test_release_boundary(self):
         m=json.loads(MANIFEST.read_text())
-        self.assertEqual(m['version'],'0.12.0'); self.assertEqual(m['previous_version'],'0.11.0')
-        self.assertEqual(m['storage_schema_version'],13); self.assertEqual(m['project_schema'],'sc-workspace-project/10.0')
+        self.assertEqual(m['version'],'0.13.0'); self.assertEqual(m['previous_version'],'0.12.0')
+        self.assertEqual(m['storage_schema_version'],14); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
         self.assertEqual(m['guided_workflows_schema'],'sc-workspace-guided-workflows/1.0')
         self.assertTrue(m['workflow_principles']['blank_projects_supported']); self.assertFalse(m['workflow_principles']['automatic_step_completion'])
     def test_schema_and_project_reference(self):
@@ -40,7 +40,7 @@ class GuidedWorkflowContractTests(unittest.TestCase):
         self.assertIn('guidedWorkflows: guidedWorkflowsTemplate()',j)
     def test_migration_and_import_compatibility(self):
         j=JS.read_text()
-        for token in ("const STORAGE_VERSION = 13","const PROJECT_SCHEMA = 'sc-workspace-project/10.0'","const LEGACY_PROJECT_SCHEMA_V9 = 'sc-workspace-project/9.0'",'function migrateV11(raw)',"if (raw.schemaVersion === 11) return migrateV11(raw)","LEGACY_EXPORT_SCHEMA_V9"):
+        for token in ("const STORAGE_VERSION = 14","const PROJECT_SCHEMA = 'sc-workspace-project/11.0'","const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0'",'function migrateV13(raw)',"if (raw.schemaVersion === 13) return migrateV13(raw)","LEGACY_EXPORT_SCHEMA_V9"):
             self.assertIn(token,j)
     def test_duplicate_and_cleanup_refs(self):
         j=JS.read_text()
@@ -51,7 +51,7 @@ class GuidedWorkflowContractTests(unittest.TestCase):
         j=JS.read_text()
         self.assertIn("open.textContent='Open workspace'",j)
         self.assertIn('setProjectMode(step.mode)',j)
-        self.assertIn("['overview','guide','research','analysis','decision','canvas','traceability','briefing','objects']",j)
+        self.assertIn("['overview','guide','research','analysis','decision','canvas','traceability','assist','briefing','objects']",j)
     def test_no_new_server_boundary(self):
         m=json.loads(MANIFEST.read_text())
         self.assertFalse(m['server_project_storage']); self.assertFalse(m['cloud_sync']); self.assertFalse(m['governance']['templates_generate_findings'])

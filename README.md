@@ -2,11 +2,11 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release
+## Current release: **v0.13.0 — Responsible AI Assistance**
 
-**v0.12.0 — Personal Knowledge Environment**
+**v0.13.0 — Responsible AI Assistance**
 
-Workspace supports a connected personal workflow across Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, reusable Workspace Objects, and cross-product handoffs. v0.12.0 adds a device-local Personal Knowledge Environment that makes canonical objects discoverable and reusable across projects without copying project content into a second knowledge store.
+Workspace supports a connected personal workflow across Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, reusable Workspace Objects, Personal Knowledge, and cross-product handoffs. v0.13.0 adds Responsible AI Assistance as an explicit grounding-and-review layer: users select the Workspace Objects that form the request basis, review returned output as a draft, and must explicitly accept it before it can become a canonical Document. Workspace does not automatically send project content to a model or grant AI decision or publication authority.
 
 ## WordPress shortcodes
 
@@ -46,3 +46,7 @@ Workspace remains usable without signing in. Projects and the Personal Knowledge
 Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
 
 See `docs/PERSONAL_KNOWLEDGE_ENVIRONMENT_V0120.md`.
+
+
+## v0.13.0 — Responsible AI Assistance
+Prepare grounded AI requests from selected Workspace Objects, review responses locally, and explicitly accept useful output as traceable working Documents. Workspace does not automatically submit project content to a model or delegate decision authority.

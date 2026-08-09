@@ -7,8 +7,9 @@
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 13;
-  const PROJECT_SCHEMA = 'sc-workspace-project/10.0';
+  const STORAGE_VERSION = 14;
+  const PROJECT_SCHEMA = 'sc-workspace-project/11.0';
+  const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
   const LEGACY_PROJECT_SCHEMA_V9 = 'sc-workspace-project/9.0';
   const LEGACY_PROJECT_SCHEMA_V8 = 'sc-workspace-project/8.0';
@@ -21,7 +22,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/10.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/11.0';
+  const LEGACY_EXPORT_SCHEMA_V11 = 'sc-workspace-project-export/11.0';
   const LEGACY_EXPORT_SCHEMA_V10 = 'sc-workspace-project-export/10.0';
   const LEGACY_EXPORT_SCHEMA_V9 = 'sc-workspace-project-export/9.0';
   const LEGACY_EXPORT_SCHEMA_V8 = 'sc-workspace-project-export/8.0';
@@ -50,7 +52,16 @@
   const PUBLICATION_EXPORT_SCHEMA = 'sc-workspace-publication-export/1.0';
   const GUIDED_WORKFLOWS_SCHEMA = 'sc-workspace-guided-workflows/1.0';
   const PERSONAL_KNOWLEDGE_SCHEMA = 'sc-workspace-personal-knowledge/1.0';
+  const AI_ASSISTANCE_SCHEMA = 'sc-workspace-ai-assistance/1.0';
+  const AI_REQUEST_EXPORT_SCHEMA = 'sc-workspace-ai-request-export/1.0';
+  const AI_RESPONSE_EXPORT_SCHEMA = 'sc-workspace-ai-response-export/1.0';
+  const AI_REQUEST_KEY = 'sc_workspace_ai_request_v1';
+  const AI_RESPONSE_KEY = 'sc_workspace_ai_response_v1';
+  const AI_RESPONSE_SCHEMA = 'sc-workspace-ai-response/1.0';
   const KNOWLEDGE_COLLECTION_EXPORT_SCHEMA = 'sc-workspace-knowledge-collection-export/1.0';
+  const AI_TASKS = new Set(['grounded-summary','evidence-gaps','compare-alternatives','briefing-draft','method-explanation','general-question']);
+  const AI_SESSION_STATUS = new Set(['prepared','sent','response-received','accepted','rejected']);
+  const AI_RESPONSE_SOURCES = new Set(['manual','research-librarian','adapter','external']);
   const WORKFLOW_RUN_STATUS = new Set(['active','paused','complete']);
   const WORKFLOW_STEP_STATUS = new Set(['todo','in-progress','complete','skipped']);
   const TRACE_RELATIONS = new Set(['derived-from','supports','contradicts','uses','produced-by','informs','supersedes','cites']);
@@ -91,6 +102,10 @@
   const MAX_WORKFLOW_OBJECT_REFS = 80;
   const MAX_KNOWLEDGE_COLLECTIONS = 30;
   const MAX_KNOWLEDGE_COLLECTION_ITEMS = 200;
+  const MAX_AI_SESSIONS = 40;
+  const MAX_AI_OBJECT_REFS = 24;
+  const MAX_AI_PROMPT = 5000;
+  const MAX_AI_RESPONSE = 30000;
   const MAX_HANDOFF_OBJECT_REFS = 12;
   const MAX_RETURN_ARTIFACTS = 20;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
@@ -936,6 +951,70 @@
     };
   }
 
+  function aiAssistanceTemplate() {
+    const stamp = nowIso();
+    return { schema: AI_ASSISTANCE_SCHEMA, sessions: [], activeSessionId: null, createdAt: stamp, updatedAt: stamp };
+  }
+
+  function normalizeAiSession(raw, objectIds) {
+    if (!raw || typeof raw !== 'object') return null;
+    const stamp = nowIso();
+    const ids = Array.isArray(raw.objectIds) ? [...new Set(raw.objectIds.map(v=>String(v).slice(0,160)))].filter(v=>objectIds.has(v)).slice(0,MAX_AI_OBJECT_REFS) : [];
+    const citations = Array.isArray(raw.citationObjectIds) ? [...new Set(raw.citationObjectIds.map(v=>String(v).slice(0,160)))].filter(v=>objectIds.has(v)&&ids.includes(v)).slice(0,MAX_AI_OBJECT_REFS) : [];
+    return {
+      id:String(raw.id||id('ai')).slice(0,160),
+      title:String(raw.title||'AI assistance request').trim().slice(0,200)||'AI assistance request',
+      task:AI_TASKS.has(raw.task)?raw.task:'general-question',
+      status:AI_SESSION_STATUS.has(raw.status)?raw.status:'prepared',
+      prompt:String(raw.prompt||'').slice(0,MAX_AI_PROMPT),
+      objectIds:ids,
+      response:String(raw.response||'').slice(0,MAX_AI_RESPONSE),
+      responseSource:AI_RESPONSE_SOURCES.has(raw.responseSource)?raw.responseSource:'manual',
+      citationObjectIds:citations,
+      acceptedDocumentObjectId:objectIds.has(String(raw.acceptedDocumentObjectId||''))?String(raw.acceptedDocumentObjectId):'',
+      createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,
+      updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp,
+      sentAt:validIso(raw.sentAt)?raw.sentAt:null,
+      respondedAt:validIso(raw.respondedAt)?raw.respondedAt:null,
+      acceptedAt:validIso(raw.acceptedAt)?raw.acceptedAt:null
+    };
+  }
+
+  function normalizeAiAssistance(raw, objects=[]) {
+    const base=aiAssistanceTemplate(), value=raw&&typeof raw==='object'?raw:{}, objectIds=new Set(objects.map(o=>o.id));
+    base.sessions=Array.isArray(value.sessions)?value.sessions.map(x=>normalizeAiSession(x,objectIds)).filter(Boolean).slice(0,MAX_AI_SESSIONS):[];
+    base.activeSessionId=base.sessions.some(x=>x.id===value.activeSessionId)?value.activeSessionId:null;
+    base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt; base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt;
+    return base;
+  }
+
+  function touchAiAssistance(project){ if(!project.aiAssistance)project.aiAssistance=aiAssistanceTemplate(); project.aiAssistance.updatedAt=nowIso(); project.updatedAt=project.aiAssistance.updatedAt; }
+  function activeAiSession(project){ return project&&project.aiAssistance?project.aiAssistance.sessions.find(x=>x.id===project.aiAssistance.activeSessionId)||null:null; }
+  function cleanAiAssistanceReferences(project,objectId){ if(!project||!project.aiAssistance)return; project.aiAssistance.sessions.forEach(s=>{s.objectIds=s.objectIds.filter(v=>v!==objectId);s.citationObjectIds=s.citationObjectIds.filter(v=>v!==objectId);if(s.acceptedDocumentObjectId===objectId)s.acceptedDocumentObjectId='';});touchAiAssistance(project); }
+  function aiTaskLabel(task){ return ({'grounded-summary':'Grounded summary','evidence-gaps':'Evidence gaps & contradictions','compare-alternatives':'Compare alternatives','briefing-draft':'Draft briefing section','method-explanation':'Explain method & assumptions','general-question':'Grounded question'})[task]||'Grounded question'; }
+  function aiGroundingPolicy(){ return {selectedWorkspaceContextOnly:true,discloseInsufficientEvidence:true,distinguishEvidenceFromInference:true,preserveUncertainty:true,noDecisionAuthority:true,noAutomaticPublication:true,humanAcceptanceRequired:true}; }
+  function aiSelectedObjects(project,session){ const ids=new Set(session.objectIds); return project.objects.filter(o=>ids.has(o.id)&&!o.archivedAt); }
+  function aiRequestPackage(project,session){
+    return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
+  }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.13.0'; }
+  function aiPromptMarkdown(project,session){
+    const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
+    objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
+    return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n');
+  }
+  function aiResponsePackage(project,session){return {schema:AI_RESPONSE_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),project:{id:project.id,title:project.title},requestId:session.id,task:session.task,status:session.status,responseSource:session.responseSource,response:session.response,citationObjectIds:session.citationObjectIds.slice(),acceptedDocumentObjectId:session.acceptedDocumentObjectId||null,groundingPolicy:aiGroundingPolicy()};}
+  function writeAiRequestToSession(project,session){try{window.sessionStorage.setItem(AI_REQUEST_KEY,JSON.stringify(aiRequestPackage(project,session)));return true;}catch(_){return false;}}
+
+  function ingestAiResponsePacket(stateValue, raw){
+    if(!raw||typeof raw!=='object'||raw.schema!==AI_RESPONSE_SCHEMA)return {ok:false,message:'Unsupported AI response package.'};
+    const project=stateValue.projects.find(p=>p.id===String(raw.projectId||'')&&!p.archivedAt); if(!project)return {ok:false,message:'AI response does not match a local Workspace Project.'};
+    const session=project.aiAssistance&&project.aiAssistance.sessions.find(x=>x.id===String(raw.requestId||'')); if(!session)return {ok:false,message:'AI response does not match a local assistance request.'};
+    const response=String(raw.response||'').slice(0,MAX_AI_RESPONSE); if(!response)return {ok:false,message:'AI response is empty.'};
+    const allowed=new Set(session.objectIds); session.response=response; session.responseSource='adapter'; session.citationObjectIds=Array.isArray(raw.citationObjectIds)?[...new Set(raw.citationObjectIds.map(v=>String(v).slice(0,160)).filter(v=>allowed.has(v)))].slice(0,MAX_AI_OBJECT_REFS):[]; session.status='response-received'; session.respondedAt=validIso(raw.returnedAt)?raw.returnedAt:nowIso(); session.updatedAt=nowIso(); project.aiAssistance.activeSessionId=session.id; touchAiAssistance(project); addActivity(project,'ai-response-returned',`AI response returned for review: ${session.title}`); return {ok:true,message:'AI response returned for human review.',projectId:project.id,requestId:session.id};
+  }
+  function checkAiResponseInbox(showMessage=false){try{const raw=window.sessionStorage.getItem(AI_RESPONSE_KEY);if(!raw)return false;const result=ingestAiResponsePacket(state,JSON.parse(raw));if(!result.ok){if(showMessage)window.alert(result.message);return false;}window.sessionStorage.removeItem(AI_RESPONSE_KEY);state.activeProjectId=result.projectId;activeProjectMode='assist';persist(result.message);render();return true;}catch(_){if(showMessage)window.alert('Workspace could not read the AI response inbox.');return false;}}
+
   function projectTemplate(title, description = '') {
     const stamp = nowIso();
     const project = {
@@ -961,7 +1040,8 @@
       handoffs: handoffLedgerTemplate(),
       traceability: traceabilityTemplate(),
       briefing: briefingTemplate(),
-      guidedWorkflows: guidedWorkflowsTemplate()
+      guidedWorkflows: guidedWorkflowsTemplate(),
+      aiAssistance: aiAssistanceTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -1065,7 +1145,8 @@
       handoffs: normalizeHandoffs(raw.handoffs, objects, canvas),
       traceability: normalizeTraceability(raw.traceability, objects),
       briefing: normalizeBriefing(raw.briefing, objects),
-      guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects)
+      guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects),
+      aiAssistance: normalizeAiAssistance(raw.aiAssistance, objects)
     };
   }
 
@@ -1230,6 +1311,14 @@
     return state;
   }
 
+  function migrateV13(raw) {
+    const state=defaultState();
+    state.projects=Array.isArray(raw.projects)?raw.projects.map((project)=>{const normalized=normalizeProject(project);if(normalized)addActivity(normalized,'migrated','Project upgraded to Responsible AI Assistance');return normalized;}).filter(Boolean):[];
+    state.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];
+    state.activeProjectId=state.projects.some((project)=>project.id===raw.activeProjectId&&!project.archivedAt)?raw.activeProjectId:null;
+    state.identity=normalizeIdentity(raw.identity); state.knowledge=normalizeKnowledge(raw.knowledge,state.projects); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -1244,6 +1333,7 @@
     if (raw.schemaVersion === 10) return migrateV10(raw);
     if (raw.schemaVersion === 11) return migrateV11(raw);
     if (raw.schemaVersion === 12) return migrateV12(raw);
+    if (raw.schemaVersion === 13) return migrateV13(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -1391,6 +1481,7 @@
     const draftMap=new Map(); copy.briefing.drafts=copy.briefing.drafts.map((draft)=>{const old=draft.id,next=id('bd');draftMap.set(old,next);return {...draft,id:next,objectIds:draft.objectIds.map(v=>objectMap.get(v)).filter(Boolean),documentObjectId:objectMap.get(draft.documentObjectId)||'',sections:draft.sections.map(sec=>({...sec,id:id('bs'),objectIds:sec.objectIds.map(v=>objectMap.get(v)).filter(Boolean),createdAt:copy.createdAt,updatedAt:copy.createdAt})),status:draft.status==='exported'?'ready':draft.status,lastExportedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt};}); copy.briefing.activeDraftId=null; copy.briefing.createdAt=copy.createdAt; copy.briefing.updatedAt=copy.createdAt;
     copy.guidedWorkflows.runs = copy.guidedWorkflows.runs.map((run)=>({...run,id:id('wr'),currentStepId:null,status:run.status==='complete'?'paused':run.status,completedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt,steps:run.steps.map((step,index)=>({...step,id:id('ws'),status:index===0?'in-progress':step.status==='complete'?'todo':step.status,objectIds:step.objectIds.map(v=>objectMap.get(v)).filter(Boolean),completedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt}))}));
     copy.guidedWorkflows.runs.forEach(run=>{run.currentStepId=run.steps.find(x=>x.status==='in-progress')?.id||run.steps[0]?.id||null;});copy.guidedWorkflows.activeRunId=null;copy.guidedWorkflows.createdAt=copy.createdAt;copy.guidedWorkflows.updatedAt=copy.createdAt;
+    copy.aiAssistance.sessions=copy.aiAssistance.sessions.map(session=>({...session,id:id('ai'),status:'prepared',objectIds:session.objectIds.map(v=>objectMap.get(v)).filter(Boolean),citationObjectIds:session.citationObjectIds.map(v=>objectMap.get(v)).filter(Boolean),acceptedDocumentObjectId:objectMap.get(session.acceptedDocumentObjectId)||'',sentAt:null,respondedAt:null,acceptedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt}));copy.aiAssistance.activeSessionId=null;copy.aiAssistance.createdAt=copy.createdAt;copy.aiAssistance.updatedAt=copy.createdAt;
     copy.handoffs = handoffLedgerTemplate();
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
@@ -1554,6 +1645,25 @@
     const traceMetricVerified = root.querySelector('[data-scw-trace-metric-verified]');
     const traceExportButton = root.querySelector('[data-scw-traceability-export]');
 
+    const aiRequestForm = root.querySelector('[data-scw-ai-request-form]');
+    const aiSessionList = root.querySelector('[data-scw-ai-session-list]');
+    const aiActive = root.querySelector('[data-scw-ai-active]');
+    const aiObjectSelect = root.querySelector('[data-scw-ai-object-select]');
+    const aiResponse = root.querySelector('[data-scw-ai-response]');
+    const aiCitationSelect = root.querySelector('[data-scw-ai-citation-select]');
+    const aiResponseSource = root.querySelector('[data-scw-ai-response-source]');
+    const aiSaveResponse = root.querySelector('[data-scw-ai-save-response]');
+    const aiCopyPrompt = root.querySelector('[data-scw-ai-copy-prompt]');
+    const aiExportRequest = root.querySelector('[data-scw-ai-export-request]');
+    const aiOpenLibrarian = root.querySelector('[data-scw-ai-open-librarian]');
+    const aiAcceptDocument = root.querySelector('[data-scw-ai-accept-document]');
+    const aiReject = root.querySelector('[data-scw-ai-reject]');
+    const aiExportResponse = root.querySelector('[data-scw-ai-export-response]');
+    const aiGrounding = root.querySelector('[data-scw-ai-grounding]');
+    const aiMetricSessions = root.querySelector('[data-scw-ai-metric-sessions]');
+    const aiMetricGrounding = root.querySelector('[data-scw-ai-metric-grounding]');
+    const aiMetricResponses = root.querySelector('[data-scw-ai-metric-responses]');
+    const aiMetricAccepted = root.querySelector('[data-scw-ai-metric-accepted]');
     const briefingDraftForm = root.querySelector('[data-scw-briefing-draft-form]');
     const briefingDraftList = root.querySelector('[data-scw-briefing-draft-list]');
     const briefingActive = root.querySelector('[data-scw-briefing-active]');
@@ -1615,7 +1725,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.12.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.13.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1630,7 +1740,7 @@
     }
 
     function setProjectMode(mode) {
-      const allowed = new Set(['overview','guide','research','analysis','decision','canvas','traceability','briefing','objects']);
+      const allowed = new Set(['overview','guide','research','analysis','decision','canvas','traceability','assist','briefing','objects']);
       activeProjectMode = allowed.has(mode) ? mode : 'overview';
       root.classList.add('scw-mode-enabled');
       root.querySelectorAll('[data-scw-project-mode]').forEach((button) => {
@@ -2103,10 +2213,24 @@
       destinations: Object.keys(RETURN_ADAPTERS),
       returnStorageKey: HANDOFF_RETURN_KEY
     };
+    window.SCWorkspaceAIReceiver = {
+      schema: AI_RESPONSE_SCHEMA,
+      receive(packet) {
+        const result=ingestAiResponsePacket(state,packet);
+        if(result.ok){state.activeProjectId=result.projectId;activeProjectMode='assist';persist(result.message);render();}
+        return result;
+      },
+      responseStorageKey: AI_RESPONSE_KEY
+    };
     window.addEventListener('message',(event)=>{
       if (event.origin !== window.location.origin) return;
       const envelope=event.data;
       if (!envelope || typeof envelope !== 'object') return;
+      if (envelope.type === 'sc-workspace-ai-response') {
+        const result=window.SCWorkspaceAIReceiver.receive(envelope.packet);
+        if (!result.ok) console.warn(`Workspace AI response rejected: ${result.message}`);
+        return;
+      }
       const candidate=envelope.type === 'sc-workspace-return' ? envelope.payload : envelope;
       if (!candidate || (candidate.schema !== RETURN_ADAPTER_SCHEMA && candidate.schema !== HANDOFF_RETURN_SCHEMA)) return;
       receiveAdapterReturn(candidate,'postMessage');
@@ -2122,7 +2246,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.12.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -2130,7 +2254,7 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.12.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
     function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
     function renderGuidedWorkflows(project){
       if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
@@ -2139,6 +2263,18 @@
       if(workflowActive)workflowActive.textContent=run?`${run.title} · ${run.status}`:'No active guided workflow selected.';
       if(workflowRunList){workflowRunList.innerHTML='';if(!g.runs.length)workflowRunList.innerHTML='<div class="scw-workflow-empty">No guided workflows yet. Start from a template when structure would help; blank projects remain fully supported.</div>';g.runs.forEach(item=>{const row=document.createElement('article');row.className=`scw-workflow-run${item.id===g.activeRunId?' is-active':''}`;const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const complete=item.steps.filter(x=>x.status==='complete').length;const p=document.createElement('p');p.textContent=`${item.status} · ${complete}/${item.steps.length} steps complete`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-workflow-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent=item.id===g.activeRunId?'Active':'Open';open.addEventListener('click',()=>{g.activeRunId=item.id;touchGuidedWorkflows(project);persist('Guided workflow opened');renderGuidedWorkflows(project);});const pause=document.createElement('button');pause.type='button';pause.className='scw-card-action';pause.textContent=item.status==='paused'?'Resume':'Pause';pause.disabled=item.status==='complete';pause.addEventListener('click',()=>{item.status=item.status==='paused'?'active':'paused';item.updatedAt=nowIso();touchGuidedWorkflows(project);persist('Workflow status saved');renderGuidedWorkflows(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{if(!window.confirm(`Remove guided workflow “${item.title}”? Project content and objects will remain.`))return;g.runs=g.runs.filter(x=>x.id!==item.id);if(g.activeRunId===item.id)g.activeRunId=g.runs[0]?.id||null;touchGuidedWorkflows(project);persist('Guided workflow removed');renderGuidedWorkflows(project);});acts.append(open,pause,remove);row.append(body,acts);workflowRunList.appendChild(row);});}
       if(workflowStepList){workflowStepList.innerHTML='';if(!run)workflowStepList.innerHTML='<div class="scw-workflow-empty">Open a guided workflow to see its steps.</div>';else run.steps.forEach((step,index)=>{const row=document.createElement('article');row.className=`scw-workflow-step is-${step.status}`;const number=document.createElement('span');number.className='scw-workflow-step-number';number.textContent=String(index+1).padStart(2,'0');const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=step.title;const p=document.createElement('p');p.textContent=step.description;const note=document.createElement('textarea');note.rows=2;note.maxLength=2000;note.placeholder='Optional step note';note.value=step.note;note.addEventListener('input',()=>{step.note=note.value.slice(0,2000);step.updatedAt=nowIso();touchGuidedWorkflows(project);schedulePersist();});body.append(strong,p,note);const acts=document.createElement('div');acts.className='scw-workflow-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open workspace';open.addEventListener('click',()=>{run.currentStepId=step.id;if(step.status==='todo')step.status='in-progress';step.updatedAt=nowIso();run.updatedAt=step.updatedAt;touchGuidedWorkflows(project);persist('Workflow step opened');setProjectMode(step.mode);});const status=document.createElement('select');['todo','in-progress','complete','skipped'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v==='in-progress'?'In progress':v[0].toUpperCase()+v.slice(1);status.appendChild(o);});status.value=step.status;status.addEventListener('change',()=>{step.status=WORKFLOW_STEP_STATUS.has(status.value)?status.value:'todo';step.completedAt=step.status==='complete'?nowIso():null;step.updatedAt=nowIso();run.currentStepId=step.id;const unfinished=run.steps.some(x=>!['complete','skipped'].includes(x.status));run.status=unfinished?'active':'complete';run.completedAt=unfinished?null:nowIso();run.updatedAt=step.updatedAt;touchGuidedWorkflows(project);persist('Workflow step status saved');renderGuidedWorkflows(project);});acts.append(open,status);row.append(number,body,acts);workflowStepList.appendChild(row);});}
+    }
+
+    function renderAiAssistance(project){
+      if(!aiSessionList)return; const a=project.aiAssistance||aiAssistanceTemplate(), session=activeAiSession(project), objects=project.objects.filter(o=>!o.archivedAt);
+      if(aiMetricSessions)aiMetricSessions.textContent=a.sessions.length; if(aiMetricGrounding)aiMetricGrounding.textContent=a.sessions.reduce((n,x)=>n+x.objectIds.length,0); if(aiMetricResponses)aiMetricResponses.textContent=a.sessions.filter(x=>x.response).length; if(aiMetricAccepted)aiMetricAccepted.textContent=a.sessions.filter(x=>x.status==='accepted').length;
+      if(aiSessionList){aiSessionList.innerHTML='';if(!a.sessions.length)aiSessionList.innerHTML='<div class="scw-ai-empty">No AI assistance requests yet. Prepare one from selected Workspace Objects when AI would help; nothing is sent automatically.</div>';a.sessions.forEach(item=>{const row=document.createElement('article');row.className=`scw-ai-session${item.id===a.activeSessionId?' is-active':''}`;const body=document.createElement('div');const meta=document.createElement('span');meta.textContent=`${aiTaskLabel(item.task)} · ${item.status.replaceAll('-',' ')}`;const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.objectIds.length} grounding object(s)${item.response?` · response ${item.response.length.toLocaleString()} chars`:''}`;body.append(meta,strong,p);const actions=document.createElement('div');actions.className='scw-ai-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent=item.id===a.activeSessionId?'Active':'Open';open.addEventListener('click',()=>{a.activeSessionId=item.id;touchAiAssistance(project);persist('AI request opened');renderAiAssistance(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{if(!window.confirm(`Remove AI assistance request “${item.title}”? Accepted Workspace Objects will remain.`))return;a.sessions=a.sessions.filter(x=>x.id!==item.id);if(a.activeSessionId===item.id)a.activeSessionId=a.sessions[0]?.id||null;touchAiAssistance(project);persist('AI request removed');renderAiAssistance(project);});actions.append(open,remove);row.append(body,actions);aiSessionList.appendChild(row);});}
+      if(aiActive)aiActive.textContent=session?`${session.title} · ${aiTaskLabel(session.task)} · ${session.status.replaceAll('-',' ')}`:'No active AI assistance request.';
+      if(aiObjectSelect){aiObjectSelect.innerHTML='';objects.forEach(o=>{const opt=document.createElement('option');opt.value=o.id;opt.textContent=`${OBJECT_LABELS[o.type]||o.type} · ${o.title}`;opt.selected=Boolean(session&&session.objectIds.includes(o.id));aiObjectSelect.appendChild(opt);});}
+      if(aiCitationSelect){aiCitationSelect.innerHTML='';const allowed=session?new Set(session.objectIds):new Set();objects.filter(o=>allowed.has(o.id)).forEach(o=>{const opt=document.createElement('option');opt.value=o.id;opt.textContent=`${OBJECT_LABELS[o.type]||o.type} · ${o.title}`;opt.selected=Boolean(session&&session.citationObjectIds.includes(o.id));aiCitationSelect.appendChild(opt);});}
+      if(aiResponse)aiResponse.value=session?session.response:''; if(aiResponseSource)aiResponseSource.value=session?session.responseSource:'manual';
+      const disabled=!session;[aiResponse,aiCitationSelect,aiResponseSource,aiSaveResponse,aiCopyPrompt,aiExportRequest,aiOpenLibrarian,aiAcceptDocument,aiReject,aiExportResponse].forEach(el=>{if(el)el.disabled=disabled;});
+      if(aiGrounding){aiGrounding.innerHTML='';if(!session)aiGrounding.innerHTML='<div class="scw-ai-empty">Open a request to inspect its grounding basis.</div>';else{const selected=aiSelectedObjects(project,session);const sourceCount=selected.filter(o=>['source','evidence'].includes(o.type)).length, provenanceCount=selected.filter(o=>o.provenance&&(o.provenance.sourceTitle||o.provenance.sourceUrl||o.provenance.capturedAt)).length;const summary=document.createElement('div');summary.className='scw-ai-grounding-summary';summary.innerHTML=`<strong>${selected.length} selected object(s)</strong><span>${sourceCount} source/evidence · ${provenanceCount} with provenance</span><small>Only these selected Workspace Objects are included in the prepared request package.</small>`;aiGrounding.appendChild(summary);selected.forEach(o=>{const row=document.createElement('article');row.innerHTML=`<span>${escapeHtml(OBJECT_LABELS[o.type]||o.type)}</span><strong>${escapeHtml(o.title)}</strong><small>${escapeHtml(o.provenance?.sourceTitle||o.provenance?.sourceUrl||'Manual Workspace object')}</small>`;aiGrounding.appendChild(row);});}}
     }
 
     function renderBriefing(project){
@@ -2192,7 +2328,7 @@
       const head = document.createElement('div'); head.className='scw-knowledge-collection-head';
       const body=document.createElement('div'); const strong=document.createElement('strong');strong.textContent=collection.title;const p=document.createElement('p');p.textContent=collection.description||'No collection description.';body.append(strong,p);
       const acts=document.createElement('div');acts.className='scw-knowledge-actions';
-      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.12.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
+      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove collection';remove.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Workspace Objects will not be deleted.`))return;state.knowledge.collections=state.knowledge.collections.filter(c=>c.id!==collection.id);state.knowledge.activeCollectionId=state.knowledge.collections[0]?.id||null;touchKnowledge();persist('Knowledge collection removed');renderKnowledge();});acts.append(exp,remove);head.append(body,acts);knowledgeCollectionDetail.appendChild(head);
       const list=document.createElement('div');list.className='scw-knowledge-collection-items';
       if(!collection.items.length)list.innerHTML='<div class="scw-knowledge-empty-note">No objects in this collection yet.</div>';
@@ -2257,6 +2393,7 @@
       renderHandoffs(project);
       renderTraceability(project);
       renderGuidedWorkflows(project);
+      renderAiAssistance(project);
       renderBriefing(project);
       renderObjects(project);
       renderObjectEditor(project);
@@ -2357,7 +2494,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.12.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.13.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -2382,16 +2519,16 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V10 || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.12.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.13.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -2551,7 +2688,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.12.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.13.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2566,8 +2703,17 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.12.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
+
+    if(aiRequestForm) aiRequestForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.aiAssistance.sessions.length>=MAX_AI_SESSIONS)return;const data=new FormData(aiRequestForm),title=String(data.get('title')||'').trim().slice(0,200),prompt=String(data.get('prompt')||'').trim().slice(0,MAX_AI_PROMPT),task=AI_TASKS.has(String(data.get('task')))?String(data.get('task')):'general-question',objectIds=selectedValues(aiObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_AI_OBJECT_REFS);if(!title||!prompt)return;const stamp=nowIso(),session={id:id('ai'),title,task,status:'prepared',prompt,objectIds,response:'',responseSource:'manual',citationObjectIds:[],acceptedDocumentObjectId:'',createdAt:stamp,updatedAt:stamp,sentAt:null,respondedAt:null,acceptedAt:null};project.aiAssistance.sessions.unshift(session);project.aiAssistance.activeSessionId=session.id;touchAiAssistance(project);addActivity(project,'ai-request-prepared',`AI assistance request prepared: ${title}`);aiRequestForm.reset();persist('AI assistance request prepared locally');renderAiAssistance(project);});
+    if(aiCopyPrompt) aiCopyPrompt.addEventListener('click',async()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session)return;const text=aiPromptMarkdown(project,session);try{await navigator.clipboard.writeText(text);persist('Grounded prompt copied');}catch(_){downloadText(`${safeFileName(session.title)}.ai-prompt.md`,text,'text/markdown;charset=utf-8');persist('Grounded prompt exported');}});
+    if(aiExportRequest) aiExportRequest.addEventListener('click',()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session)return;downloadJson(`${safeFileName(session.title)}.sc-workspace-ai-request.json`,aiRequestPackage(project,session));addActivity(project,'ai-request-export',`AI request package exported: ${session.title}`);persist('AI request package exported');});
+    if(aiOpenLibrarian) aiOpenLibrarian.addEventListener('click',()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session)return;writeAiRequestToSession(project,session);session.status='sent';session.sentAt=nowIso();session.updatedAt=session.sentAt;touchAiAssistance(project);persist('AI request prepared for Research Librarian');const link=root.querySelector('[data-scw-tool="research-librarian"]');if(link){link.click();window.location.href=link.href;}});
+    if(aiSaveResponse) aiSaveResponse.addEventListener('click',()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session)return;session.response=String(aiResponse.value||'').slice(0,MAX_AI_RESPONSE);session.responseSource=AI_RESPONSE_SOURCES.has(aiResponseSource.value)?aiResponseSource.value:'manual';session.citationObjectIds=selectedValues(aiCitationSelect).filter(v=>session.objectIds.includes(v)).slice(0,MAX_AI_OBJECT_REFS);session.status=session.response?'response-received':'prepared';session.respondedAt=session.response?nowIso():null;session.updatedAt=nowIso();touchAiAssistance(project);addActivity(project,'ai-response-saved',`AI response saved for review: ${session.title}`);persist('AI response saved locally');renderAiAssistance(project);});
+    if(aiAcceptDocument) aiAcceptDocument.addEventListener('click',()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session||!session.response)return;if(project.objects.length>=MAX_OBJECTS){window.alert('This project has reached the Workspace Object limit.');return;}let doc=session.acceptedDocumentObjectId?objectById(project,session.acceptedDocumentObjectId):null;if(!doc){doc=objectTemplate('document',`${session.title} — AI-assisted draft`);project.objects.push(doc);session.acceptedDocumentObjectId=doc.id;}doc.summary=`Human-accepted AI-assisted draft for ${aiTaskLabel(session.task)}.`;doc.content=session.response;doc.status='working';doc.tags=normalizeTags([...doc.tags,'ai-assisted','human-accepted']);doc.provenance={sourceType:'tool',sourceTitle:'Workspace Responsible AI Assistance',sourceUrl:'',capturedAt:nowIso()};doc.updatedAt=nowIso();session.status='accepted';session.acceptedAt=nowIso();session.updatedAt=session.acceptedAt;session.citationObjectIds.forEach(refId=>{if(project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;if(!project.traceability.lineage.some(x=>x.fromObjectId===doc.id&&x.toObjectId===refId&&x.relation==='derived-from'))project.traceability.lineage.push({id:id('tl'),fromObjectId:doc.id,toObjectId:refId,relation:'derived-from',note:'AI-assisted draft grounding reference accepted by user',createdAt:nowIso()});});touchTraceability(project);touchAiAssistance(project);addActivity(project,'ai-response-accepted',`AI-assisted draft accepted as Document: ${doc.title}`);persist('AI-assisted draft materialized as Document');renderAiAssistance(project);renderObjects(project);});
+    if(aiReject) aiReject.addEventListener('click',()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session)return;session.status='rejected';session.updatedAt=nowIso();touchAiAssistance(project);addActivity(project,'ai-response-rejected',`AI response rejected: ${session.title}`);persist('AI response rejected');renderAiAssistance(project);});
+    if(aiExportResponse) aiExportResponse.addEventListener('click',()=>{const project=activeProject(),session=activeAiSession(project);if(!project||!session||!session.response)return;downloadJson(`${safeFileName(session.title)}.sc-workspace-ai-response.json`,aiResponsePackage(project,session));persist('AI response package exported');});
 
     if(briefingDraftForm) briefingDraftForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.briefing.drafts.length>=MAX_BRIEFING_DRAFTS)return;const data=new FormData(briefingDraftForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),draft={id:id('bd'),title,format:BRIEFING_FORMATS.has(String(data.get('format')))?String(data.get('format')):'briefing',audience:String(data.get('audience')||'').slice(0,300),purpose:String(data.get('purpose')||'').slice(0,600),status:'draft',objectIds:[],sections:[],documentObjectId:'',createdAt:stamp,updatedAt:stamp,lastExportedAt:null};project.briefing.drafts.unshift(draft);project.briefing.activeDraftId=draft.id;touchBriefing(project);addActivity(project,'briefing-created',`Draft created: ${title}`);briefingDraftForm.reset();persist('Briefing draft created');renderBriefing(project);});
     if(briefingSaveBasis) briefingSaveBasis.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!project||!draft)return;draft.objectIds=selectedValues(briefingObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_BRIEFING_OBJECT_REFS);draft.updatedAt=nowIso();touchBriefing(project);persist('Draft basis saved');renderBriefing(project);});
@@ -2582,7 +2728,7 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); cleanTraceabilityReferences(project, object.id); cleanBriefingReferences(project, object.id); cleanGuidedWorkflowReferences(project, object.id); cleanKnowledgeObjectReferences(project.id, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); cleanTraceabilityReferences(project, object.id); cleanBriefingReferences(project, object.id); cleanGuidedWorkflowReferences(project, object.id); cleanAiAssistanceReferences(project, object.id); cleanKnowledgeObjectReferences(project.id, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 
@@ -2663,6 +2809,7 @@
       }
     } catch (_) {}
 
+    checkAiResponseInbox(false);
     checkReturnInbox(false);
     persist();
     render();

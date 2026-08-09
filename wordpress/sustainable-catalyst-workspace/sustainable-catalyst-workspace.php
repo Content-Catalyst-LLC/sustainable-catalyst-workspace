@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Description: Free public research, evidence, analysis, decision, briefing, guided-workflow, and personal knowledge workspace with traceable provenance and local-first persistence.
- * Version: 0.12.0
+ * Description: Free public research, evidence, analysis, decision, briefing, personal knowledge, and responsible AI assistance workspace with traceable provenance and local-first persistence.
+ * Version: 0.13.0
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '0.12.0');
+define('SC_WORKSPACE_VERSION', '0.13.0');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
@@ -31,4 +31,9 @@ SC_Workspace::instance();
 /** Public producer helper URL for compatible Sustainable Catalyst tools. */
 function sc_workspace_return_adapter_script_url() {
     return SC_WORKSPACE_URL . 'assets/js/sc-workspace-return-adapter-v1.js';
+}
+
+/** Public Responsible AI adapter helper URL for compatible same-origin tools. */
+function sc_workspace_ai_adapter_script_url() {
+    return SC_WORKSPACE_URL . 'assets/js/sc-workspace-ai-adapter-v1.js';
 }
