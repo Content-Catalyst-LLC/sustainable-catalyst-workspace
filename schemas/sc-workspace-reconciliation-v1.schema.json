@@ -1,0 +1,13 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-reconciliation-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Reconciliation Ledger v1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","history","updatedAt"],
+  "properties":{
+    "schema":{"const":"sc-workspace-reconciliation/1.0"},
+    "history":{"type":"array","maxItems":80,"items":{"type":"object","required":["schema","id","sourceProjectId","sourceProjectTitle","baseLabel","targetLabel","availableChangeCount","selectedChangeCount","blockerCount","outputProjectId","outputProjectTitle","at"],"properties":{"schema":{"const":"sc-workspace-reconciliation/1.0"},"id":{"type":"string","maxLength":160},"sourceProjectId":{"type":"string","maxLength":160},"sourceProjectTitle":{"type":"string","maxLength":200},"baseLabel":{"type":"string","maxLength":200},"targetLabel":{"type":"string","maxLength":200},"availableChangeCount":{"type":"integer","minimum":0},"selectedChangeCount":{"type":"integer","minimum":0},"blockerCount":{"type":"integer","minimum":0},"outputProjectId":{"type":"string","maxLength":160},"outputProjectTitle":{"type":"string","maxLength":200},"at":{"type":"string"}},"additionalProperties":false}},
+    "updatedAt":{"type":"string"}
+  }
+}

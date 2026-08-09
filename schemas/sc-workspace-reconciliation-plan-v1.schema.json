@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-reconciliation-plan-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Reconciliation Plan v1",
+  "type":"object",
+  "required":["schema","id","createdAt","projectId","projectTitle","base","target","availableChangeCount","selectedChangeCount","selected","governance"],
+  "properties":{
+    "schema":{"const":"sc-workspace-reconciliation-plan/1.0"},
+    "id":{"type":"string"},"createdAt":{"type":"string"},"projectId":{"type":"string"},"projectTitle":{"type":"string"},"base":{"type":"object"},"target":{"type":"object"},
+    "availableChangeCount":{"type":"integer","minimum":0},"selectedChangeCount":{"type":"integer","minimum":0},
+    "selected":{"type":"array","items":{"type":"object","required":["key","category","kind","change","id","label","fields"]}},
+    "governance":{"type":"object","required":["explicitSelectionRequired","automaticSelection","automaticMerge","automaticOverwrite","createsNewProjectCopy","preservesBothSourceStates"]}
+  }
+}

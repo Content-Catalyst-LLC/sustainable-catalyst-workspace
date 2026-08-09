@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0250, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0240, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0230, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0220, '') === '1' ||
@@ -69,7 +70,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.25.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.26.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -203,6 +204,11 @@ final class SC_Workspace {
             'callback' => array($this, 'safe_actions_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/reconciliation-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'reconciliation_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/cloud-projects', array(
             array(
                 'methods' => 'GET',
@@ -247,7 +253,7 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v24-plus-change-gates-version-history-account-backup-and-explicit-conflict-safe-sync',
+            'persistence' => 'browser-local-projects-v25-plus-guided-reconciliation-change-gates-version-history-account-backup-and-explicit-conflict-safe-sync',
             'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
@@ -280,7 +286,7 @@ final class SC_Workspace {
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'server_project_storage' => 'manual-backup-plus-explicit-sync-head',
             'cloud_sync' => 'explicit-project-enrollment',
             'cross_device_sync_schema' => 'sc-workspace-cross-device-sync/1.0',
@@ -317,7 +323,7 @@ final class SC_Workspace {
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
             'export_schema' => 'sc-workspace-project-export/11.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -549,7 +555,7 @@ final class SC_Workspace {
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
             'project_schema' => 'sc-workspace-project/11.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'templates' => array('research-investigation', 'evidence-review', 'analytical-assessment', 'decision-case', 'systems-mapping', 'publication-preparation'),
             'run_statuses' => array('active', 'paused', 'complete'),
             'step_statuses' => array('todo', 'in-progress', 'complete', 'skipped'),
@@ -632,7 +638,7 @@ final class SC_Workspace {
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'node_types' => array('project','provenance','source','evidence','dataset','analysis','decision','document','export'),
             'relationship_types' => array('contains','sourced-from','same-source','evidence-from','uses','informs','supports','contradicts','derived-from','produced-by','supersedes','cites'),
@@ -689,7 +695,7 @@ final class SC_Workspace {
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'accepted_formats' => array('json','csv','tsv','markdown','html','text'),
             'staged_review_required' => true,
@@ -715,7 +721,7 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'transport' => array('local-download', 'manual-file-transfer', 'local-import-as-copy'),
             'review_copy_html' => true,
@@ -740,7 +746,7 @@ final class SC_Workspace {
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'derived_from_local_project_state' => true,
             'next_actions_user_created' => true,
@@ -761,7 +767,7 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'roles' => array('owner', 'contributor', 'reviewer', 'observer'),
             'review_statuses' => array('draft', 'requested', 'in-review', 'changes-requested', 'approved', 'closed'),
@@ -788,7 +794,7 @@ final class SC_Workspace {
             'institutional_handoff_schema' => 'sc-workspace-institutional-handoff/1.0',
             'institutional_handoff_package_schema' => 'sc-workspace-institutional-handoff-package/1.0',
             'institutional_handoff_receipt_schema' => 'sc-workspace-institutional-handoff-receipt/1.0',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'target_product' => 'catalyst-intelligence-platform',
             'promotion_mode' => 'copy-into-institution',
@@ -812,7 +818,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-account-persistence-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'anonymous_access' => true,
             'account_required' => false,
@@ -843,7 +849,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-cross-device-sync-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'sync_schema' => 'sc-workspace-cross-device-sync/1.0',
             'push_schema' => 'sc-workspace-sync-push/1.0',
@@ -874,7 +880,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-version-history-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'version_history_schema' => 'sc-workspace-version-history/1.0',
             'restore_point_schema' => 'sc-workspace-restore-point/1.0',
@@ -897,7 +903,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-change-review-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'change_review_schema' => 'sc-workspace-change-review/1.0',
             'comparison_sources' => array('current-project', 'restore-point', 'cloud-revision'),
@@ -917,7 +923,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-safe-actions-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'safe_actions_schema' => 'sc-workspace-safe-actions/1.0',
             'action_gate_schema' => 'sc-workspace-action-gate/1.0',
@@ -933,6 +939,28 @@ final class SC_Workspace {
             'conflict_protections_preserved' => true,
             'share_scope_review_required' => true,
             'institutional_scope_review_required' => true,
+        ));
+    }
+
+    public function reconciliation_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-reconciliation-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'storage_schema_version' => 25,
+            'project_schema' => 'sc-workspace-project/11.0',
+            'reconciliation_schema' => 'sc-workspace-reconciliation/1.0',
+            'plan_schema' => 'sc-workspace-reconciliation-plan/1.0',
+            'comparison_engine' => 'sc-workspace-change-review/1.0',
+            'selection_required' => true,
+            'automatic_selection' => false,
+            'automatic_merge' => false,
+            'automatic_overwrite' => false,
+            'output_mode' => 'new-local-project-copy',
+            'source_states_mutated' => false,
+            'dependency_validation' => true,
+            'human_acknowledgement_required' => true,
+            'ledger_scope' => 'browser-local-workspace-level',
+            'project_schema_changes' => false,
         ));
     }
 
@@ -1084,7 +1112,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-release-readiness-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'release' => 'Stability, Accessibility & Release Readiness',
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'schema_migration_required' => false,
             'local_recovery' => array(
@@ -1133,7 +1161,7 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 24,
+            'storage_schema_version' => 25,
             'project_schema' => 'sc-workspace-project/11.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
@@ -1183,8 +1211,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0250',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.25.0.css',
+            'sc-workspace-v0260',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.26.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1203,9 +1231,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0250',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.25.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1'),
+            'sc-workspace-reconciliation-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-reconciliation-v1.js',
+            array('sc-workspace-project-diff-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0260',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.26.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1213,7 +1248,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0250', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0260', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1251,7 +1286,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="24" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="25" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -1364,6 +1399,7 @@ final class SC_Workspace {
                 <button type="button" data-scw-workspace-view="activity" aria-pressed="false">Activity</button>
                 <button type="button" data-scw-workspace-view="history" aria-pressed="false">History</button>
                 <button type="button" data-scw-workspace-view="changes" aria-pressed="false">Changes</button>
+                <button type="button" data-scw-workspace-view="reconcile" aria-pressed="false">Reconcile</button>
                 <button type="button" data-scw-workspace-view="safety" aria-pressed="false">Safety</button>
                 <button type="button" data-scw-workspace-view="interoperability" aria-pressed="false">Import &amp; Interoperability</button>
                 <button type="button" data-scw-workspace-view="collaboration" aria-pressed="false">Collaborate</button>
@@ -1563,6 +1599,7 @@ final class SC_Workspace {
                     <label><span>Compare against</span><select data-scw-change-target disabled><option value="current">Current project</option></select></label>
                     <button class="scw-button scw-button-primary" type="button" data-scw-change-run disabled>Review changes</button>
                     <button class="scw-button" type="button" data-scw-change-export disabled>Export review JSON</button>
+                    <button class="scw-button" type="button" data-scw-change-reconcile disabled>Reconcile changes</button>
                 </div>
                 <div class="scw-change-review-status" data-scw-change-status role="status" aria-live="polite">Choose a project and restore point to begin a change review.</div>
                 <div class="scw-change-review-metrics" aria-label="Change review metrics">
@@ -1571,6 +1608,28 @@ final class SC_Workspace {
                 <div class="scw-change-review-attention" data-scw-change-attention></div>
                 <div class="scw-change-review-results" data-scw-change-results><div class="scw-change-review-empty">No comparison generated yet.</div></div>
                 <div class="scw-change-review-governance" role="note"><strong>No automatic reconciliation</strong><span>Use this review to inform a restore, sync, share, or institutional handoff. Workspace does not merge project states or infer which version is correct.</span></div>
+            </section>
+
+            <section class="scw-reconciliation" data-scw-workspace-section="reconcile" hidden aria-labelledby="scw-reconciliation-title">
+                <div class="scw-reconciliation-head">
+                    <div><div class="scw-editorial-kicker">GUIDED RECONCILIATION &amp; SELECTIVE APPLY</div><h2 id="scw-reconciliation-title">Carry forward only the changes you explicitly choose.</h2><p>Start from a named restore point, compare it with the current project or another restore point, select individual changes, validate dependencies, and create a new reconciled project copy. Neither source state is edited.</p></div>
+                    <div class="scw-reconciliation-boundary"><strong>New copy only</strong><span>Workspace never mutates either comparison source, never auto-selects changes, and never performs a hidden merge. A reconciled result is always created as a separate local project.</span></div>
+                </div>
+                <div class="scw-reconciliation-controls">
+                    <label><span>Project</span><select data-scw-reconcile-project><option value="">Choose project</option></select></label>
+                    <label><span>Base state</span><select data-scw-reconcile-base disabled><option value="">Choose a restore point</option></select></label>
+                    <label><span>Target state</span><select data-scw-reconcile-target disabled><option value="current">Current project</option></select></label>
+                    <button class="scw-button scw-button-primary" type="button" data-scw-reconcile-load disabled>Load differences</button>
+                </div>
+                <div class="scw-reconciliation-status" data-scw-reconcile-status role="status" aria-live="polite">Choose a project and base restore point to begin.</div>
+                <div class="scw-reconciliation-metrics" aria-label="Reconciliation metrics"><div><strong data-scw-reconcile-metric-available>0</strong><span>available changes</span></div><div><strong data-scw-reconcile-metric-selected>0</strong><span>selected</span></div><div><strong data-scw-reconcile-metric-blockers>0</strong><span>dependency blockers</span></div><div><strong data-scw-reconcile-metric-copies>0</strong><span>reconciled copies</span></div></div>
+                <div class="scw-reconciliation-actions"><button class="scw-button" type="button" data-scw-reconcile-select-all disabled>Select all</button><button class="scw-button" type="button" data-scw-reconcile-clear disabled>Clear selection</button><button class="scw-button" type="button" data-scw-reconcile-export disabled>Export plan JSON</button></div>
+                <div class="scw-reconciliation-grid">
+                    <section class="scw-reconciliation-panel"><div class="scw-knowledge-panel-head"><span>01 / SELECT</span><h3>Explicit changes</h3></div><div data-scw-reconcile-list><div class="scw-reconciliation-empty">No comparison loaded yet.</div></div></section>
+                    <section class="scw-reconciliation-panel"><div class="scw-knowledge-panel-head"><span>02 / PREVIEW</span><h3>Reconciled copy preflight</h3></div><div data-scw-reconcile-preview><div class="scw-reconciliation-empty">Select one or more changes to build a preview.</div></div><label class="scw-reconciliation-ack"><input type="checkbox" data-scw-reconcile-ack disabled> <span>I understand this creates a new local project copy and leaves both source states unchanged.</span></label><button class="scw-button scw-button-primary" type="button" data-scw-reconcile-create disabled>Create reconciled copy</button></section>
+                </div>
+                <section class="scw-reconciliation-history"><div class="scw-knowledge-panel-head"><span>03 / LEDGER</span><h3>Recent reconciliations</h3></div><div data-scw-reconcile-history><div class="scw-reconciliation-empty">No reconciled copies have been created yet.</div></div></section>
+                <div class="scw-reconciliation-governance" role="note"><strong>Selective apply is not an automatic merge.</strong><span>Workspace applies only checked records to a temporary candidate, validates key object and relationship dependencies, and creates a new project copy only after explicit acknowledgement. Blocked plans cannot be created.</span></div>
             </section>
 
             <section class="scw-safe-actions" data-scw-workspace-section="safety" hidden aria-labelledby="scw-safe-actions-title">

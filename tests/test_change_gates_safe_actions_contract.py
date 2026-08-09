@@ -1,20 +1,20 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.25.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.26.0.json').read_text())
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.25.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.26.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-safe-actions-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.25.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.26.0.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 
 class ChangeGatesSafeActionsContract(unittest.TestCase):
     def test_release_lineage_and_storage_migration(self):
-        self.assertEqual(MAN['version'],'0.25.0'); self.assertEqual(MAN['previous_version'],'0.24.0')
-        self.assertEqual(MAN['release_name'],'Change Gates & Safe Actions')
-        self.assertEqual(MAN['storage_schema_version'],24); self.assertEqual(MAN['project_schema'],'sc-workspace-project/11.0')
-        self.assertTrue(MAN['schema_migration_required']); self.assertEqual(MAN['migration']['storage_from'],23); self.assertEqual(MAN['migration']['storage_to'],24)
-        self.assertTrue(MAN['migration']['initializes_safe_actions']); self.assertTrue(MAN['migration']['project_schema_unchanged'])
+        self.assertEqual(MAN['version'],'0.26.0'); self.assertEqual(MAN['previous_version'],'0.25.0')
+        self.assertEqual(MAN['release_name'],'Guided Reconciliation & Selective Apply')
+        self.assertEqual(MAN['storage_schema_version'],25); self.assertEqual(MAN['project_schema'],'sc-workspace-project/11.0')
+        self.assertTrue(MAN['schema_migration_required']); self.assertEqual(MAN['migration']['storage_from'],24); self.assertEqual(MAN['migration']['storage_to'],25)
+        self.assertTrue(MAN['migration']['preserves_safe_actions']); self.assertTrue(MAN['migration']['project_schema_unchanged'])
     def test_contract_schemas(self):
         self.assertEqual(MAN['safe_actions_schema'],'sc-workspace-safe-actions/1.0')
         self.assertEqual(MAN['action_gate_schema'],'sc-workspace-action-gate/1.0')
@@ -22,7 +22,7 @@ class ChangeGatesSafeActionsContract(unittest.TestCase):
     def test_public_rest_contract(self):
         self.assertIn('/wp-json/sc-workspace/v1/safe-actions-contract',MAN['rest_routes'])
         self.assertIn("'/safe-actions-contract'",PHP); self.assertIn('public function safe_actions_contract()',PHP)
-        self.assertIn("'storage_schema_version' => 24",PHP)
+        self.assertIn("'storage_schema_version' => 25",PHP)
     def test_all_high_risk_actions_are_gated(self):
         expected=['restore-copy','sync-resolve-local','sync-resolve-cloud','share-portable','share-review-copy','institutional-promotion']
         self.assertEqual(MAN['safe_actions']['gated_actions'],expected)
@@ -63,8 +63,8 @@ class ChangeGatesSafeActionsContract(unittest.TestCase):
         self.assertIn('/wp-json/sc-workspace/v1/change-review-contract',MAN['rest_routes']); self.assertIn('sc-workspace-project-diff-v1.js',PHP)
         self.assertIn('cloud-revision',MAN['change_review']['sources'])
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0250'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0250'",REG)
-        self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG); self.assertIn("'previous_version' => '0.24.0'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0260'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0260'",REG)
+        self.assertIn("LEGACY_PENDING_KEY_V0250 = 'sc_workspace_registry_pending_v0250'",REG); self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG); self.assertIn("'previous_version' => '0.25.0'",REG)
     def test_accessibility_and_forced_colors(self):
         self.assertIn('.scw-action-gate',CSS); self.assertIn('@media(forced-colors:active)',CSS)
         self.assertIn('aria-live="polite"',PHP); self.assertIn('role="dialog"',PHP)

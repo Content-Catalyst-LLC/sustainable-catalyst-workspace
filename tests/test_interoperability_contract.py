@@ -1,14 +1,14 @@
 import json,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.25.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.26.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.25.0.css'
-MANIFEST=ROOT/'release-manifest-v0.25.0.json'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.26.0.css'
+MANIFEST=ROOT/'release-manifest-v0.26.0.json'
 SCHEMA=ROOT/'schemas/sc-workspace-interoperability-v1.schema.json'
 class InteroperabilityTests(unittest.TestCase):
  def test_release(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.25.0');self.assertEqual(m['previous_version'],'0.24.0');self.assertEqual(m['storage_schema_version'],24);self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.26.0');self.assertEqual(m['previous_version'],'0.25.0');self.assertEqual(m['storage_schema_version'],25);self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
  def test_contract(self):
   p=PHP.read_text();self.assertIn("'/interoperability-contract'",p);self.assertIn("'staged_review_required' => true",p);self.assertIn("'automatic_overwrite' => false",p);self.assertIn("'server_import_pipeline' => false",p)
  def test_schema(self):
