@@ -2,9 +2,9 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release: **v0.14.0 — Import & Interoperability**
+## Current release: **v0.15.0 — Share & Portable Projects**
 
-Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, and cross-product handoffs. v0.14.0 adds a browser-local interoperability boundary for staging external files, reviewing what will be created, preserving imported provenance, and exporting portable structured packages.
+Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, and cross-product handoffs. v0.15.0 adds a browser-local interoperability boundary for staging external files, reviewing what will be created, preserving imported provenance, and exporting portable structured packages.
 
 ## WordPress shortcodes
 
@@ -31,7 +31,7 @@ Workspace remains usable without signing in. Projects, Personal Knowledge, AI re
 - Guided Workflows: `sc-workspace-guided-workflows/1.0`
 - Personal Knowledge: `sc-workspace-personal-knowledge/1.0`
 - Responsible AI: `sc-workspace-ai-assistance/1.0`
-- Import & Interoperability: `sc-workspace-interoperability/1.0`
+- Share & Portable Projects: `sc-workspace-interoperability/1.0`
 - Portable interchange: `sc-workspace-interchange/1.0`
 - Identity: `sc-workspace-identity/1.0`
 - Storage schema: `15`

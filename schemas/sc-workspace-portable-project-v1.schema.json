@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-portable-project-v1.schema.json",
+  "title": "Sustainable Catalyst Portable Project",
+  "type": "object",
+  "required": [
+    "schema",
+    "manifest",
+    "project",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-portable-project/1.0"
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "schema",
+        "workspaceVersion",
+        "createdAt",
+        "sourceProjectId",
+        "projectTitle",
+        "objectCount",
+        "privacy",
+        "transport"
+      ]
+    },
+    "project": {
+      "type": "object",
+      "required": [
+        "schema",
+        "id",
+        "title",
+        "objects"
+      ]
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "payloadFingerprint",
+        "fingerprintAvailable"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "payloadFingerprint": {
+          "type": "string"
+        },
+        "fingerprintAvailable": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

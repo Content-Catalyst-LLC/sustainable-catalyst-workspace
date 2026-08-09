@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-share-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Share State",
+  "type": "object",
+  "required": [
+    "schema",
+    "history",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-share/1.0"
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "direction",
+          "kind",
+          "projectId",
+          "projectTitle",
+          "at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "import",
+              "export"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "portable-project",
+              "review-html"
+            ]
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "projectTitle": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "objectCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": true
+}

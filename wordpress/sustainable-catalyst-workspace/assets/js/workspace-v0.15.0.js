@@ -7,7 +7,7 @@
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 15;
+  const STORAGE_VERSION = 16;
   const PROJECT_SCHEMA = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
@@ -61,6 +61,9 @@
   const KNOWLEDGE_COLLECTION_EXPORT_SCHEMA = 'sc-workspace-knowledge-collection-export/1.0';
   const INTEROPERABILITY_SCHEMA = 'sc-workspace-interoperability/1.0';
   const INTERCHANGE_EXPORT_SCHEMA = 'sc-workspace-interchange/1.0';
+  const SHARE_SCHEMA = 'sc-workspace-share/1.0';
+  const PORTABLE_PROJECT_SCHEMA = 'sc-workspace-portable-project/1.0';
+  const MAX_SHARE_HISTORY = 60;
   const MAX_INTEROP_HISTORY = 60;
   const MAX_INTEROP_IMPORT_OBJECTS = 100;
   const INTEROP_FORMATS = new Set(['json','csv','tsv','markdown','html','text']);
@@ -406,9 +409,52 @@
     return {schema:INTERCHANGE_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),project:{id:project.id,title:project.title,description:project.description},objects:project.objects.filter(o=>!o.archivedAt).map(o=>JSON.parse(JSON.stringify(o))),relationships:(project.traceability&&Array.isArray(project.traceability.lineage)?project.traceability.lineage:[]).filter(r=>objectIds.has(r.fromObjectId)&&objectIds.has(r.toObjectId)).map(r=>({relation:r.relation,fromObjectId:r.fromObjectId,toObjectId:r.toObjectId,note:r.note||''})),boundary:{portableCopy:true,canonicalObjectOverwrite:false,serverUpload:false}};
   }
 
+  function shareTemplate() {
+    const stamp=nowIso();
+    return {schema:SHARE_SCHEMA,history:[],createdAt:stamp,updatedAt:stamp};
+  }
+  function normalizeShare(raw){
+    const base=shareTemplate(),value=raw&&typeof raw==='object'?raw:{};
+    base.history=(Array.isArray(value.history)?value.history:[]).map(item=>({
+      id:String(item&&item.id||id('sh')).slice(0,160),direction:item&&item.direction==='import'?'import':'export',kind:item&&item.kind==='review-html'?'review-html':'portable-project',projectId:String(item&&item.projectId||'').slice(0,160),projectTitle:String(item&&item.projectTitle||'').slice(0,160),fileName:String(item&&item.fileName||'').slice(0,240),fingerprint:String(item&&item.fingerprint||'').slice(0,128),objectCount:Math.max(0,Math.min(1000,Number(item&&item.objectCount)||0)),at:validIso(item&&item.at)?item.at:nowIso()
+    })).slice(0,MAX_SHARE_HISTORY);
+    base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt;base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt;return base;
+  }
+  function touchShare(){state.share=normalizeShare(state.share);state.share.updatedAt=nowIso();}
+  function privacyMinimizedProject(project,options={}){
+    const includeArchived=Boolean(options.includeArchived),includeActivity=Boolean(options.includeActivity),includeAi=Boolean(options.includeAi);
+    const clone=JSON.parse(JSON.stringify(project));
+    delete clone.persistence;delete clone.recentTools;delete clone.handoffs;clone.pinned=false;clone.archivedAt=null;clone.activeObjectId=null;
+    clone.activity=includeActivity?clone.activity:[];
+    clone.objects=(Array.isArray(clone.objects)?clone.objects:[]).filter(o=>includeArchived||!o.archivedAt);
+    const ids=new Set(clone.objects.map(o=>o.id));
+    if(!includeAi)clone.aiAssistance=aiAssistanceTemplate();
+    else clone.aiAssistance=normalizeAiAssistance(clone.aiAssistance,clone.objects);
+    // Re-normalize the content-bearing structures against the objects actually included.
+    clone.research=normalizeResearch(clone.research,clone.objects);clone.analysis=normalizeAnalysis(clone.analysis,clone.objects);clone.decision=normalizeDecision(clone.decision,clone.objects);clone.canvas=normalizeCanvas(clone.canvas,clone.objects);clone.traceability=normalizeTraceability(clone.traceability,clone.objects);clone.briefing=normalizeBriefing(clone.briefing,clone.objects);clone.guidedWorkflows=normalizeGuidedWorkflows(clone.guidedWorkflows,clone.objects);
+    clone.schema=PROJECT_SCHEMA;clone.updatedAt=nowIso();
+    return clone;
+  }
+  function portableManifest(project,options,payload){return {schema:PORTABLE_PROJECT_SCHEMA,workspaceVersion:rootVersion(),createdAt:nowIso(),sourceProjectId:project.id,projectTitle:project.title,objectCount:payload.objects.length,privacy:{deviceIdentityIncluded:false,accountIdentityIncluded:false,persistenceMetadataIncluded:false,handoffStateIncluded:false,recentToolsIncluded:false,activityIncluded:Boolean(options.includeActivity),aiReviewHistoryIncluded:Boolean(options.includeAi),archivedObjectsIncluded:Boolean(options.includeArchived)},transport:{cloudUpload:false,publicShareLink:false,liveCollaboration:false,importMode:'copy'}};}
+  async function portableProjectPackage(project,options={}){
+    const payload=privacyMinimizedProject(project,options),manifest=portableManifest(project,options,payload),canonical=JSON.stringify({manifest,project:payload});const fingerprint=await sha256Text(canonical);
+    return {schema:PORTABLE_PROJECT_SCHEMA,manifest,project:payload,integrity:{algorithm:'SHA-256',payloadFingerprint:fingerprint||'',fingerprintAvailable:Boolean(fingerprint)}};
+  }
+  async function verifyPortablePackage(pkg){
+    if(!pkg||pkg.schema!==PORTABLE_PROJECT_SCHEMA||!pkg.manifest||!pkg.project)return {ok:false,message:'Unsupported portable project package.'};
+    const expected=String(pkg.integrity&&pkg.integrity.payloadFingerprint||'');if(!expected)return {ok:true,verified:false,message:'Package has no browser-generated fingerprint; review before import.'};
+    const actual=await sha256Text(JSON.stringify({manifest:pkg.manifest,project:pkg.project}));if(!actual)return {ok:true,verified:false,message:'This browser cannot verify the package fingerprint.'};
+    return actual===expected?{ok:true,verified:true,message:'SHA-256 package integrity verified.'}:{ok:false,verified:false,message:'Package fingerprint does not match its contents.'};
+  }
+  function reviewCopyHtml(project){
+    const objects=project.objects.filter(o=>!o.archivedAt),counts={};objects.forEach(o=>counts[o.type]=(counts[o.type]||0)+1);const rows=objects.map(o=>`<tr><td>${escapeHtml(OBJECT_LABELS[o.type]||o.type)}</td><td>${escapeHtml(o.title)}</td><td>${escapeHtml(o.summary||'')}</td><td>${escapeHtml(o.provenance?.sourceTitle||o.provenance?.sourceType||'')}</td></tr>`).join('');
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(project.title)} — Workspace review copy</title><style>body{font-family:Arial,sans-serif;margin:0;color:#111}main{max-width:1080px;margin:auto;padding:48px 28px}header{border-top:12px solid #000;border-bottom:1px solid #bbb;padding:28px 0}.k{font-size:12px;letter-spacing:.12em;color:#8b0000;font-weight:700}h1{font-size:42px;margin:10px 0}p{line-height:1.55}table{width:100%;border-collapse:collapse;margin-top:28px}th,td{text-align:left;vertical-align:top;border-bottom:1px solid #ddd;padding:10px 8px}th{font-size:12px;letter-spacing:.08em;text-transform:uppercase}.note{margin-top:32px;padding:16px;border-top:3px solid #000;background:#f4f1eb}</style></head><body><main><header><div class="k">SUSTAINABLE CATALYST / WORKSPACE REVIEW COPY</div><h1>${escapeHtml(project.title)}</h1><p>${escapeHtml(project.description||'')}</p><p><strong>Status:</strong> ${escapeHtml(project.status)} · <strong>Objects:</strong> ${objects.length}</p></header><section><h2>Project objects</h2><table><thead><tr><th>Type</th><th>Title</th><th>Summary</th><th>Provenance</th></tr></thead><tbody>${rows}</tbody></table></section><div class="note"><strong>Static review copy.</strong> This file is not a live Workspace Project and cannot synchronize changes back to Sustainable Catalyst.</div></main></body></html>`;
+  }
+  function downloadText(filename,text,type='text/plain'){const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+
   function defaultState() {
     const stamp = nowIso();
-    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), interoperability: interoperabilityTemplate(), createdAt: stamp, updatedAt: stamp };
+    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), createdAt: stamp, updatedAt: stamp };
   }
 
   function provenanceTemplate() {
@@ -1069,7 +1115,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.14.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.15.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -1379,6 +1425,8 @@
     state.activeProjectId = state.projects.some(project => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
     state.identity = normalizeIdentity(raw.identity);
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
+    state.interoperability = normalizeInteroperability(raw.interoperability);
+    state.share = normalizeShare(raw.share);
     state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
     state.updatedAt = nowIso();
     return state;
@@ -1394,6 +1442,10 @@
 
   function migrateV14(raw) {
     const state=defaultState(); state.projects=Array.isArray(raw.projects)?raw.projects.map(normalizeProject).filter(Boolean):[]; state.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[]; state.activeProjectId=state.projects.some(p=>p.id===raw.activeProjectId&&!p.archivedAt)?raw.activeProjectId:null; state.identity=normalizeIdentity(raw.identity); state.knowledge=normalizeKnowledge(raw.knowledge,state.projects); state.interoperability=interoperabilityTemplate(); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
+  }
+
+  function migrateV15(raw) {
+    const next=defaultState();next.projects=Array.isArray(raw.projects)?raw.projects.map(normalizeProject).filter(Boolean):[];next.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];next.activeProjectId=next.projects.some(p=>p.id===raw.activeProjectId&&!p.archivedAt)?raw.activeProjectId:null;next.identity=normalizeIdentity(raw.identity);next.knowledge=normalizeKnowledge(raw.knowledge,next.projects);next.interoperability=normalizeInteroperability(raw.interoperability);next.share=shareTemplate();next.createdAt=validIso(raw.createdAt)?raw.createdAt:next.createdAt;next.updatedAt=nowIso();return next;
   }
 
   function normalizeState(raw) {
@@ -1412,12 +1464,15 @@
     if (raw.schemaVersion === 12) return migrateV12(raw);
     if (raw.schemaVersion === 13) return migrateV13(raw);
     if (raw.schemaVersion === 14) return migrateV14(raw);
+    if (raw.schemaVersion === 15) return migrateV15(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
     state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
+    state.interoperability = normalizeInteroperability(raw.interoperability);
+    state.share = normalizeShare(raw.share);
     state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
     state.updatedAt = validIso(raw.updatedAt) ? raw.updatedAt : state.updatedAt;
     return state;
@@ -1462,6 +1517,7 @@
     state.identity = normalizeIdentity(state.identity);
     state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); });
     state.interoperability = normalizeInteroperability(state.interoperability);
+    state.share = normalizeShare(state.share);
     state.updatedAt = nowIso();
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1773,6 +1829,7 @@
     const projectsSection = root.querySelector('[data-scw-workspace-section="projects"]');
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
     const interoperabilitySection = root.querySelector('[data-scw-workspace-section="interoperability"]');
+    const shareSection = root.querySelector('[data-scw-workspace-section="share"]');
     const interoperabilityForm = root.querySelector('[data-scw-interoperability-form]');
     const interoperabilityProject = root.querySelector('[data-scw-interoperability-project]');
     const interoperabilityFile = root.querySelector('[data-scw-interoperability-file]');
@@ -1782,6 +1839,18 @@
     const interoperabilityExportProject = root.querySelector('[data-scw-interoperability-export-project]');
     const interoperabilityExport = root.querySelector('[data-scw-interoperability-export]');
     const interoperabilityHistory = root.querySelector('[data-scw-interoperability-history]');
+    const shareProject = root.querySelector('[data-scw-share-project]');
+    const shareIncludeArchived = root.querySelector('[data-scw-share-include-archived]');
+    const shareIncludeActivity = root.querySelector('[data-scw-share-include-activity]');
+    const shareIncludeAi = root.querySelector('[data-scw-share-include-ai]');
+    const shareExport = root.querySelector('[data-scw-share-export]');
+    const shareReview = root.querySelector('[data-scw-share-review]');
+    const shareFile = root.querySelector('[data-scw-share-file]');
+    const shareStage = root.querySelector('[data-scw-share-stage]');
+    const shareImport = root.querySelector('[data-scw-share-import]');
+    const shareClear = root.querySelector('[data-scw-share-clear]');
+    const shareHistory = root.querySelector('[data-scw-share-history]');
+    let stagedPortableProject = null;
     const knowledgeSearch = root.querySelector('[data-scw-knowledge-search]');
     const knowledgeType = root.querySelector('[data-scw-knowledge-type]');
     const knowledgeProject = root.querySelector('[data-scw-knowledge-project]');
@@ -1815,7 +1884,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.14.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.15.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -2336,7 +2405,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -2344,7 +2413,7 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
     function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
     function renderGuidedWorkflows(project){
       if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
@@ -2380,7 +2449,7 @@
     }
 
     function setWorkspaceView(view) {
-      workspaceView = ['projects','knowledge','interoperability'].includes(view) ? view : 'projects';
+      workspaceView = ['projects','knowledge','interoperability','share'].includes(view) ? view : 'projects';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
@@ -2390,9 +2459,11 @@
       if (activePanel) activePanel.hidden = workspaceView !== 'projects' || !activeProject();
       if (knowledgeSection) knowledgeSection.hidden = workspaceView !== 'knowledge';
       if (interoperabilitySection) interoperabilitySection.hidden = workspaceView !== 'interoperability';
+      if (shareSection) shareSection.hidden = workspaceView !== 'share';
       if (connectionsDrawer) connectionsDrawer.hidden = workspaceView !== 'projects';
       if (workspaceView === 'knowledge') renderKnowledge();
       if (workspaceView === 'interoperability') renderInteroperability();
+      if (workspaceView === 'share') renderShare();
     }
 
     function openKnowledgeEntry(entry) {
@@ -2420,7 +2491,7 @@
       const head = document.createElement('div'); head.className='scw-knowledge-collection-head';
       const body=document.createElement('div'); const strong=document.createElement('strong');strong.textContent=collection.title;const p=document.createElement('p');p.textContent=collection.description||'No collection description.';body.append(strong,p);
       const acts=document.createElement('div');acts.className='scw-knowledge-actions';
-      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
+      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove collection';remove.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Workspace Objects will not be deleted.`))return;state.knowledge.collections=state.knowledge.collections.filter(c=>c.id!==collection.id);state.knowledge.activeCollectionId=state.knowledge.collections[0]?.id||null;touchKnowledge();persist('Knowledge collection removed');renderKnowledge();});acts.append(exp,remove);head.append(body,acts);knowledgeCollectionDetail.appendChild(head);
       const list=document.createElement('div');list.className='scw-knowledge-collection-items';
       if(!collection.items.length)list.innerHTML='<div class="scw-knowledge-empty-note">No objects in this collection yet.</div>';
@@ -2433,6 +2504,13 @@
       if(interoperabilityStage){interoperabilityStage.innerHTML='';if(!stagedInteroperability){interoperabilityStage.innerHTML='<span>No file staged.</span>';}else{const head=document.createElement('div');head.className='scw-interoperability-stage-head';head.innerHTML=`<strong>${escapeHtml(stagedInteroperability.fileName)}</strong><span>${escapeHtml(stagedInteroperability.format.toUpperCase())} · ${stagedInteroperability.objects.length} object(s) · SHA-256 ${escapeHtml(stagedInteroperability.fingerprint?stagedInteroperability.fingerprint.slice(0,16)+'…':'unavailable')}</span>`;const list=document.createElement('div');list.className='scw-interoperability-preview-list';stagedInteroperability.objects.slice(0,20).forEach(o=>{const row=document.createElement('article');row.innerHTML=`<span>${escapeHtml(OBJECT_LABELS[o.type]||o.type)}</span><strong>${escapeHtml(o.title)}</strong><small>${escapeHtml(o.summary||'Imported artifact')}</small>`;list.appendChild(row);});if(stagedInteroperability.objects.length>20){const more=document.createElement('small');more.textContent=`+ ${stagedInteroperability.objects.length-20} additional object(s)`;list.appendChild(more);}interoperabilityStage.append(head,list);}}
       if(interoperabilityCommit)interoperabilityCommit.disabled=!stagedInteroperability||!stagedInteroperability.objects.length;if(interoperabilityClear)interoperabilityClear.disabled=!stagedInteroperability;
       if(interoperabilityHistory){interoperabilityHistory.innerHTML='';const hist=state.interoperability&&state.interoperability.history||[];if(!hist.length){interoperabilityHistory.innerHTML='<div class="scw-analysis-empty">No import or interchange export activity yet.</div>';}hist.forEach(item=>{const row=document.createElement('article');row.className='scw-interoperability-history-row';row.innerHTML=`<span>${escapeHtml(item.direction.toUpperCase())} · ${escapeHtml(item.format.toUpperCase())}</span><strong>${escapeHtml(item.fileName||item.projectTitle||'Workspace package')}</strong><small>${escapeHtml(item.projectTitle)} · ${item.objectCount} object(s) · ${escapeHtml(formatTime(item.at))}</small>`;interoperabilityHistory.appendChild(row);});}
+    }
+
+    function renderShare(){
+      const projects=state.projects.filter(p=>!p.archivedAt);if(shareProject){const current=shareProject.value;shareProject.innerHTML='<option value="">Choose project</option>';projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.title;shareProject.appendChild(o);});if(projects.some(p=>p.id===current))shareProject.value=current;else if(state.activeProjectId&&projects.some(p=>p.id===state.activeProjectId))shareProject.value=state.activeProjectId;}
+      if(shareStage){shareStage.innerHTML='';if(!stagedPortableProject)shareStage.innerHTML='<span>No portable project staged.</span>';else{const p=stagedPortableProject.package,verification=stagedPortableProject.verification;shareStage.innerHTML=`<strong>${escapeHtml(p.manifest?.projectTitle||p.project?.title||'Portable project')}</strong><span>${escapeHtml(verification.message)} · ${Number(p.manifest?.objectCount||p.project?.objects?.length||0)} object(s)</span><small>${escapeHtml(stagedPortableProject.fileName)}</small>`;}}
+      if(shareImport)shareImport.disabled=!stagedPortableProject||!stagedPortableProject.verification.ok;if(shareClear)shareClear.disabled=!stagedPortableProject;
+      if(shareHistory){shareHistory.innerHTML='';const hist=state.share&&state.share.history||[];if(!hist.length)shareHistory.innerHTML='<div class="scw-analysis-empty">No portable project sharing activity yet.</div>';hist.forEach(item=>{const row=document.createElement('article');row.className='scw-share-history-row';row.innerHTML=`<span>${escapeHtml(item.direction.toUpperCase())} · ${item.kind==='review-html'?'REVIEW COPY':'PORTABLE PROJECT'}</span><strong>${escapeHtml(item.fileName||item.projectTitle)}</strong><small>${escapeHtml(item.projectTitle)} · ${item.objectCount} object(s) · ${escapeHtml(formatTime(item.at))}</small>`;shareHistory.appendChild(row);});}
     }
 
     function renderKnowledge() {
@@ -2594,7 +2672,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.14.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.15.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -2628,7 +2706,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.14.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.15.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -2788,7 +2866,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.14.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.15.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2803,7 +2881,7 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
 
     if(aiRequestForm) aiRequestForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.aiAssistance.sessions.length>=MAX_AI_SESSIONS)return;const data=new FormData(aiRequestForm),title=String(data.get('title')||'').trim().slice(0,200),prompt=String(data.get('prompt')||'').trim().slice(0,MAX_AI_PROMPT),task=AI_TASKS.has(String(data.get('task')))?String(data.get('task')):'general-question',objectIds=selectedValues(aiObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_AI_OBJECT_REFS);if(!title||!prompt)return;const stamp=nowIso(),session={id:id('ai'),title,task,status:'prepared',prompt,objectIds,response:'',responseSource:'manual',citationObjectIds:[],acceptedDocumentObjectId:'',createdAt:stamp,updatedAt:stamp,sentAt:null,respondedAt:null,acceptedAt:null};project.aiAssistance.sessions.unshift(session);project.aiAssistance.activeSessionId=session.id;touchAiAssistance(project);addActivity(project,'ai-request-prepared',`AI assistance request prepared: ${title}`);aiRequestForm.reset();persist('AI assistance request prepared locally');renderAiAssistance(project);});
@@ -2850,6 +2928,11 @@
     if(interoperabilityClear)interoperabilityClear.addEventListener('click',()=>{stagedInteroperability=null;if(interoperabilityFile)interoperabilityFile.value='';renderInteroperability();});
     if(interoperabilityCommit)interoperabilityCommit.addEventListener('click',()=>{if(!stagedInteroperability)return;const project=state.projects.find(p=>p.id===stagedInteroperability.projectId&&!p.archivedAt);if(!project){window.alert('The target project is no longer available.');return;}const capacity=Math.max(0,MAX_OBJECTS-project.objects.length);const incoming=stagedInteroperability.objects.slice(0,capacity);if(!incoming.length){window.alert('The target project has reached its local object limit.');return;}const sourceMap=new Map();incoming.forEach(obj=>{const stagedId=obj.id,sourceId=String(obj._sourceObjectId||'');const finalId=id('scwo');obj.id=finalId;delete obj._importFingerprint;delete obj._sourceObjectId;const normalized=normalizeObject(obj);project.objects.unshift(normalized);sourceMap.set(stagedId,finalId);if(sourceId)sourceMap.set(sourceId,finalId);});let importedRelations=0;(Array.isArray(stagedInteroperability.relationships)?stagedInteroperability.relationships:[]).forEach(rel=>{if(project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const from=sourceMap.get(rel.fromObjectId),to=sourceMap.get(rel.toObjectId);if(!from||!to||from===to)return;project.traceability.lineage.push({id:id('tl'),relation:TRACE_RELATIONS.has(rel.relation)?rel.relation:'derived-from',fromObjectId:from,toObjectId:to,note:String(rel.note||'Imported interoperability relationship').slice(0,1000),createdAt:nowIso()});importedRelations++;});if(importedRelations)touchTraceability(project);project.updatedAt=nowIso();addActivity(project,'interop-import',`Imported ${incoming.length} artifact(s)${importedRelations?` and ${importedRelations} relationship(s)`:''} from ${stagedInteroperability.fileName}`);state.interoperability.history.unshift({id:id('io'),direction:'import',format:stagedInteroperability.format,projectId:project.id,projectTitle:project.title,fileName:stagedInteroperability.fileName,fingerprint:stagedInteroperability.fingerprint,objectCount:incoming.length,at:nowIso()});state.interoperability.history=state.interoperability.history.slice(0,MAX_INTEROP_HISTORY);touchInteroperability();const message=`Imported ${incoming.length} artifact(s) as draft Workspace Objects. Review provenance before using them as evidence.`;stagedInteroperability=null;if(interoperabilityFile)interoperabilityFile.value='';persist(message);render();setWorkspaceView('interoperability');});
     if(interoperabilityExport)interoperabilityExport.addEventListener('click',()=>{const project=state.projects.find(p=>p.id===(interoperabilityExportProject&&interoperabilityExportProject.value)&&!p.archivedAt);if(!project){window.alert('Choose a project to export.');return;}const pkg=interchangePackage(project);const name=`${safeFileName(project.title)}.sc-workspace-interchange.json`;downloadJson(name,pkg);state.interoperability.history.unshift({id:id('io'),direction:'export',format:'json',projectId:project.id,projectTitle:project.title,fileName:name,fingerprint:'',objectCount:pkg.objects.length,at:nowIso()});state.interoperability.history=state.interoperability.history.slice(0,MAX_INTEROP_HISTORY);touchInteroperability();persist('Interchange package exported');renderInteroperability();});
+    if(shareExport)shareExport.addEventListener('click',async()=>{const project=state.projects.find(p=>p.id===(shareProject&&shareProject.value)&&!p.archivedAt);if(!project){window.alert('Choose a project to share.');return;}const options={includeArchived:Boolean(shareIncludeArchived&&shareIncludeArchived.checked),includeActivity:Boolean(shareIncludeActivity&&shareIncludeActivity.checked),includeAi:Boolean(shareIncludeAi&&shareIncludeAi.checked)};const pkg=await portableProjectPackage(project,options),name=`${safeFileName(project.title)}.sc-workspace-project.json`;downloadJson(name,pkg);state.share.history.unshift({id:id('sh'),direction:'export',kind:'portable-project',projectId:project.id,projectTitle:project.title,fileName:name,fingerprint:pkg.integrity.payloadFingerprint,objectCount:pkg.manifest.objectCount,at:nowIso()});state.share.history=state.share.history.slice(0,MAX_SHARE_HISTORY);touchShare();persist('Portable project exported');renderShare();});
+    if(shareReview)shareReview.addEventListener('click',()=>{const project=state.projects.find(p=>p.id===(shareProject&&shareProject.value)&&!p.archivedAt);if(!project){window.alert('Choose a project to review.');return;}const name=`${safeFileName(project.title)}.workspace-review.html`;downloadText(name,reviewCopyHtml(project),'text/html');state.share.history.unshift({id:id('sh'),direction:'export',kind:'review-html',projectId:project.id,projectTitle:project.title,fileName:name,fingerprint:'',objectCount:project.objects.filter(o=>!o.archivedAt).length,at:nowIso()});state.share.history=state.share.history.slice(0,MAX_SHARE_HISTORY);touchShare();persist('Static review copy exported');renderShare();});
+    if(shareFile)shareFile.addEventListener('change',async()=>{stagedPortableProject=null;const file=shareFile.files&&shareFile.files[0];if(!file){renderShare();return;}if(file.size>8*1024*1024){window.alert('Portable project packages are limited to 8 MB in this local release.');shareFile.value='';renderShare();return;}try{const pkg=JSON.parse(await file.text()),verification=await verifyPortablePackage(pkg);stagedPortableProject={fileName:file.name,package:pkg,verification};renderShare();if(!verification.ok)window.alert(verification.message);}catch(err){stagedPortableProject=null;renderShare();window.alert(err&&err.message?err.message:'Workspace could not read this portable project.');}});
+    if(shareClear)shareClear.addEventListener('click',()=>{stagedPortableProject=null;if(shareFile)shareFile.value='';renderShare();});
+    if(shareImport)shareImport.addEventListener('click',()=>{if(!stagedPortableProject||!stagedPortableProject.verification.ok)return;const pkg=stagedPortableProject.package,copy=normalizeProject(pkg.project);if(!copy){window.alert('Portable project content is not valid.');return;}const originalId=copy.id;copy.id=id('scwp');copy.persistence=projectPersistenceTemplate();copy.pinned=false;copy.archivedAt=null;copy.recentTools=[];copy.handoffs=handoffLedgerTemplate();copy.activity=[{id:id('act'),type:'portable-import',summary:`Imported as a portable copy from ${pkg.manifest?.projectTitle||copy.title}`,at:nowIso()}];copy.title=(state.projects.some(p=>p.title===copy.title)?`${copy.title} (shared copy)`:copy.title).slice(0,120);copy.updatedAt=nowIso();state.projects.unshift(copy);state.activeProjectId=copy.id;state.share.history.unshift({id:id('sh'),direction:'import',kind:'portable-project',projectId:copy.id,projectTitle:copy.title,fileName:stagedPortableProject.fileName,fingerprint:String(pkg.integrity&&pkg.integrity.payloadFingerprint||''),objectCount:copy.objects.length,at:nowIso()});state.share.history=state.share.history.slice(0,MAX_SHARE_HISTORY);touchShare();stagedPortableProject=null;if(shareFile)shareFile.value='';persist(`Portable project imported as a new local copy. Source project ID: ${originalId}`);render();setWorkspaceView('projects');});
 
     root.querySelectorAll('[data-scw-workspace-view]').forEach((button) => {
       button.addEventListener('click', () => setWorkspaceView(button.dataset.scwWorkspaceView));
