@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0290';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0290';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0300';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0300';
+    const LEGACY_PENDING_KEY_V0290 = 'sc_workspace_registry_pending_v0290';
     const LEGACY_PENDING_KEY_V0280 = 'sc_workspace_registry_pending_v0280';
     const LEGACY_PENDING_KEY_V0270 = 'sc_workspace_registry_pending_v0270';
     const LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260';
@@ -105,6 +106,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0290);
         delete_option(self::LEGACY_PENDING_KEY_V0280);
         delete_option(self::LEGACY_PENDING_KEY_V0270);
         delete_option(self::LEGACY_PENDING_KEY_V0260);
@@ -190,11 +192,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.28.0',
+            'previous_version' => '0.29.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Governance Milestones & Project Lifecycle: seven human-declared project lifecycle states with transparent readiness checklists, required rationale, milestone history, and Audit Trail integration.',
+            'change_summary' => 'Public Beta & Product Readiness: consolidated Start experience, guided first-project pathways, runtime capability status, keyboard workspace navigation, and beta release diagnostics without a schema migration.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.29.0 advances storage schema 26 to 27 and project schema 11.0 to 12.0 to carry portable lifecycle milestone history. Lifecycle advancement is always human-declared; readiness is an explainable checklist, never a score or certification.',
+            'manual_notes' => 'Free public Workspace. v0.30.0 is the first public-beta consolidation milestone. Storage remains schema 27 and project schema 12.0. Guest access stays first-class; cloud backup/sync remain explicit; lifecycle advancement remains human-declared; no behavioral telemetry or hidden readiness score is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

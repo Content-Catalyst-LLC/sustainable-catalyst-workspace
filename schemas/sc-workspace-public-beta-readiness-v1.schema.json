@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-public-beta-readiness-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Public Beta Readiness",
+  "type": "object",
+  "required": ["schema", "projectCount", "objectCount", "recentProjects", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-public-beta-readiness/1.0"},
+    "projectCount": {"type": "integer", "minimum": 0},
+    "objectCount": {"type": "integer", "minimum": 0},
+    "milestoneCount": {"type": "integer", "minimum": 0},
+    "restorePointCount": {"type": "integer", "minimum": 0},
+    "safeActionCount": {"type": "integer", "minimum": 0},
+    "reconciliationReceiptCount": {"type": "integer", "minimum": 0},
+    "syncEnrollmentCount": {"type": "integer", "minimum": 0},
+    "recentProjects": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "updatedAt", "lifecycleState"],
+        "properties": {
+          "id": {"type": "string"},
+          "title": {"type": "string"},
+          "updatedAt": {"type": "string"},
+          "lifecycleState": {"type": "string"}
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": ["hiddenScore", "automaticProjectCreation", "automaticLifecycleAdvance", "automaticCloudUpload", "automaticTelemetry"],
+      "properties": {
+        "hiddenScore": {"const": false},
+        "automaticProjectCreation": {"const": false},
+        "automaticLifecycleAdvance": {"const": false},
+        "automaticCloudUpload": {"const": false},
+        "automaticTelemetry": {"const": false}
+      }
+    }
+  }
+}

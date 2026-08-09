@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0290, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0280, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0270, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0260, '') === '1' ||
@@ -73,7 +74,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.29.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.30.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -254,6 +255,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/readiness-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'readiness_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/public-beta-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'public_beta_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
@@ -1235,6 +1241,48 @@ final class SC_Workspace {
         ));
     }
 
+    public function public_beta_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-public-beta-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release_stage' => 'public-beta',
+            'readiness_schema' => 'sc-workspace-public-beta-readiness/1.0',
+            'storage_schema_version' => 27,
+            'project_schema' => 'sc-workspace-project/12.0',
+            'schema_migration_required' => false,
+            'start_view' => true,
+            'quick_start_templates' => array('research-investigation','analytical-assessment','decision-case','publication-preparation'),
+            'first_project_support' => array(
+                'blank_project' => true,
+                'guided_project' => true,
+                'continue_recent_project' => true,
+                'knowledge_library_path' => '/knowledge-libraries/',
+            ),
+            'runtime_capability_checks' => array('local-storage','session-storage','web-crypto-sha256','file-api','post-message','network-state','reduced-motion'),
+            'accessibility' => array(
+                'target' => 'WCAG 2.2 AA',
+                'keyboard_workspace_navigation' => true,
+                'aria_current_view' => true,
+                'visible_focus' => true,
+                'reduced_motion' => true,
+            ),
+            'performance' => array(
+                'advanced_views_render_on_selection' => true,
+                'no_remote_boot_dependency' => true,
+                'local_project_list_available_offline_after_page_load' => true,
+            ),
+            'governance' => array(
+                'guest_workspace_supported' => true,
+                'login_wall' => false,
+                'automatic_cloud_upload' => false,
+                'background_sync' => false,
+                'automatic_telemetry' => false,
+                'hidden_readiness_score' => false,
+                'automatic_lifecycle_advance' => false,
+            ),
+        ));
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -1299,8 +1347,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0290',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.29.0.css',
+            'sc-workspace-v0300',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.30.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1347,9 +1395,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0290',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.29.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1'),
+            'sc-workspace-public-beta-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0300',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.30.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1357,7 +1412,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0290', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0300', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1395,7 +1450,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="27" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="27" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -1408,14 +1463,14 @@ final class SC_Workspace {
                         <span>FREE ACCESS</span>
                         <span>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></span>
                         <span>ACCOUNT-AWARE</span>
-                        <span>EXPERIMENTAL</span>
+                        <span>PUBLIC BETA</span>
                     </div>
                 </div>
             </div>
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional. Account recovery and cross-device sync are optional. Backups require an explicit action, sync requires explicit per-project enrollment, and nothing synchronizes in the background. Connected tools can return structured work to the originating project through the established local-first handoff contract.</span>
+                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional. Account recovery and cross-device sync are optional. Backups require an explicit action, sync requires explicit per-project enrollment, and nothing synchronizes in the background. Connected tools can return structured work to the originating project through the established local-first handoff contract. Public beta does not change these boundaries.</span>
             </div>
 
             <details class="scw-settings-drawer" data-scw-settings-drawer>
@@ -1502,7 +1557,8 @@ final class SC_Workspace {
             </div>
 
             <nav id="scw-workspace-main" class="scw-workspace-view-nav" aria-label="Workspace views" data-scw-workspace-view-nav tabindex="-1">
-                <button type="button" class="is-active" data-scw-workspace-view="projects" aria-pressed="true">Projects</button>
+                <button type="button" class="is-active" data-scw-workspace-view="start" aria-pressed="true" aria-current="page">Start</button>
+                <button type="button" data-scw-workspace-view="projects" aria-pressed="false">Projects</button>
                 <button type="button" data-scw-workspace-view="knowledge" aria-pressed="false">Knowledge</button>
                 <button type="button" data-scw-workspace-view="graph" aria-pressed="false">Graph</button>
                 <button type="button" data-scw-workspace-view="activity" aria-pressed="false">Activity</button>
@@ -1531,11 +1587,63 @@ final class SC_Workspace {
                 </section>
             </div>
 
-            <section class="scw-projects" data-scw-workspace-section="projects" aria-labelledby="scw-projects-title">
+            <section class="scw-public-beta-start" data-scw-workspace-section="start" aria-labelledby="scw-public-beta-title">
+                <div class="scw-public-beta-head">
+                    <div>
+                        <div class="scw-kicker">PUBLIC BETA / START</div>
+                        <h2 id="scw-public-beta-title">Begin with the work, not the software.</h2>
+                        <p>Start a blank project, choose a guided pathway, or reopen recent work. Workspace remains local-first and usable without an account; public beta adds a clearer front door without changing the governance or persistence boundaries underneath it.</p>
+                    </div>
+                    <div class="scw-public-beta-badge"><span>PUBLIC BETA</span><strong>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong></div>
+                </div>
+                <div class="scw-public-beta-metrics" aria-label="Workspace beta summary">
+                    <div><strong data-scw-beta-projects>0</strong><span>Active projects</span></div>
+                    <div><strong data-scw-beta-objects>0</strong><span>Canonical objects</span></div>
+                    <div><strong data-scw-beta-milestones>0</strong><span>Lifecycle milestones</span></div>
+                    <div><strong data-scw-beta-restore-points>0</strong><span>Restore points</span></div>
+                </div>
+                <div class="scw-public-beta-actions">
+                    <button class="scw-button scw-button-primary" type="button" data-scw-beta-new>New blank project</button>
+                    <button class="scw-button" type="button" data-scw-beta-continue disabled>Continue recent project</button>
+                    <a class="scw-button" href="<?php echo esc_url(home_url('/knowledge-libraries/')); ?>">Explore the Library</a>
+                </div>
+                <div class="scw-public-beta-grid">
+                    <section class="scw-beta-pathways" aria-labelledby="scw-beta-pathways-title">
+                        <div class="scw-editorial-kicker">GUIDED FIRST PROJECT</div>
+                        <h3 id="scw-beta-pathways-title">Use structure when it helps.</h3>
+                        <p>Each quick start creates a new local project and opens an editable guided workflow. Nothing is inferred, completed, or uploaded automatically.</p>
+                        <div class="scw-beta-pathway-list">
+                            <button type="button" data-scw-beta-template="research-investigation"><strong>Research investigation</strong><span>Question → sources → evidence → analysis → briefing</span></button>
+                            <button type="button" data-scw-beta-template="analytical-assessment"><strong>Analytical assessment</strong><span>Variables → assumptions → methods → comparisons → findings</span></button>
+                            <button type="button" data-scw-beta-template="decision-case"><strong>Decision case</strong><span>Alternatives → criteria → evidence → risk → rationale</span></button>
+                            <button type="button" data-scw-beta-template="publication-preparation"><strong>Publication preparation</strong><span>Basis → outline → draft → review → export</span></button>
+                        </div>
+                    </section>
+                    <section class="scw-beta-runtime" aria-labelledby="scw-beta-runtime-title">
+                        <div class="scw-editorial-kicker">RUNTIME STATUS</div>
+                        <h3 id="scw-beta-runtime-title">Know what this browser can support.</h3>
+                        <div class="scw-beta-runtime-grid" aria-live="polite">
+                            <div><span>LOCAL STORAGE</span><strong data-scw-beta-cap-storage>Checking…</strong></div>
+                            <div><span>INTEGRITY</span><strong data-scw-beta-cap-crypto>Checking…</strong></div>
+                            <div><span>FILE IMPORT / EXPORT</span><strong data-scw-beta-cap-files>Checking…</strong></div>
+                            <div><span>RETURN HANDOFFS</span><strong data-scw-beta-cap-return>Checking…</strong></div>
+                        </div>
+                        <p class="scw-beta-runtime-note" data-scw-beta-runtime-note role="status" aria-live="polite">Running local capability checks…</p>
+                    </section>
+                </div>
+                <section class="scw-beta-recent" aria-labelledby="scw-beta-recent-title">
+                    <div class="scw-editorial-kicker">RECENT WORK</div>
+                    <h3 id="scw-beta-recent-title">Continue where you left off.</h3>
+                    <div class="scw-beta-recent-list" data-scw-beta-recent-list><div class="scw-beta-empty">No local projects yet. Start a blank project or choose a guided pathway above.</div></div>
+                </section>
+                <div class="scw-beta-boundary" role="note"><strong>Public beta boundary</strong><span>Guest use remains first-class. Sign-in is optional. Cloud backup and sync stay explicit. Lifecycle states remain human-declared. Workspace does not run behavioral telemetry or assign readiness/productivity scores.</span></div>
+            </section>
+
+            <section class="scw-projects" data-scw-workspace-section="projects" hidden aria-labelledby="scw-projects-title">
                 <div class="scw-section-head scw-section-head-projects">
                     <div>
                         <div class="scw-kicker">PROJECTS</div>
-                        <h2 id="scw-projects-title">Persistent work, without an account.</h2>
+                        <h2 id="scw-projects-title">Projects that preserve the reasoning.</h2>
                     </div>
                     <div class="scw-project-actions">
                         <button class="scw-button scw-button-primary" type="button" data-scw-new-project>New project</button>
@@ -1564,6 +1672,7 @@ final class SC_Workspace {
                 <div class="scw-empty" data-scw-empty>
                     <strong>No Workspace Projects yet.</strong>
                     <span>Create one to keep notes, objects, activity, and cross-product context together on this device.</span>
+                    <div class="scw-empty-actions"><button class="scw-button scw-button-primary" type="button" data-scw-empty-new>New project</button><button class="scw-button" type="button" data-scw-empty-start>Back to Start</button></div>
                 </div>
                 <div class="scw-project-list" data-scw-project-list aria-live="polite"></div>
             </section>
@@ -2678,7 +2787,7 @@ final class SC_Workspace {
             </details>
 
             <footer class="scw-footer">
-                <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
+                <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access · Public beta</div>
                 <div>Projects remain local by default. Signed-in users can create manual recovery backups or explicitly enroll individual projects in conflict-safe sync. Nothing synchronizes in the background.</div>
             </footer>
         </section>

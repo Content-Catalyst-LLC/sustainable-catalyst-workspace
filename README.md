@@ -4,41 +4,41 @@ Sustainable Catalyst Workspace is a free, local-first personal environment for s
 
 ## Current release
 
-**v0.29.0 — Governance Milestones & Project Lifecycle**
+**v0.30.0 — Public Beta & Product Readiness**
 
-v0.29.0 adds a human-controlled Lifecycle environment with seven explicit project states: Draft, Evidence-ready, Analysis-ready, Decision-ready, Review-ready, Publication-ready, and Institutional-ready. Workspace derives visible readiness conditions from the work already in the project, but never advances a lifecycle automatically and never converts readiness into a hidden score or certification. Every declaration requires acknowledgement and rationale, and the recorded readiness snapshot becomes portable project governance history.
+v0.30.0 is the first public-beta consolidation milestone. Workspace now opens on a Start environment that foregrounds the work rather than the software, supports blank projects and four guided first-project pathways, surfaces recent work and local runtime capability status, and strengthens keyboard navigation, focus behavior, empty states, responsive presentation, reduced-motion support, and forced-colors resilience. It introduces no new project database and no automatic telemetry, cloud upload, lifecycle advancement, or hidden readiness score.
 
 ## Data boundary
 
-- Workspace storage schema: **27**
-- Project schema: **`sc-workspace-project/12.0`**
+- Workspace storage schema: **27** (unchanged from v0.29.0)
+- Project schema: **`sc-workspace-project/12.0`** (unchanged)
 - Canonical object schema: **`sc-workspace-object/1.0`**
 - Lifecycle schema: **`sc-workspace-project-lifecycle/1.0`**
-- Governance milestone schema: **`sc-workspace-governance-milestone/1.0`**
+- Public-beta readiness schema: **`sc-workspace-public-beta-readiness/1.0`**
 - Canonical public route: **`/platform/`**
 - Canonical Knowledge Library route: **`/knowledge-libraries/`**
 
 Guest/local Workspace remains fully functional. Account backup and explicitly enrolled cross-device sync remain optional. Institutional governance remains a separate Catalyst Intelligence boundary.
 
+## Start pathways
+
+- Research Investigation
+- Analytical Assessment
+- Decision Case
+- Publication Preparation
+- Blank project
+- Continue recent project
+
 ## Public contracts
 
-Workspace exposes versioned REST contracts under `/wp-json/sc-workspace/v1/`, including:
-
-- `/project-contract`
-- `/object-contract`
-- `/traceability-contract`
-- `/change-review-contract`
-- `/safe-actions-contract`
-- `/reconciliation-contract`
-- `/reconciliation-receipts-contract`
-- `/audit-trail-contract`
-- `/project-lifecycle-contract`
+Workspace exposes versioned REST contracts under `/wp-json/sc-workspace/v1/`, including `/project-contract`, `/change-review-contract`, `/safe-actions-contract`, `/reconciliation-contract`, `/audit-trail-contract`, `/project-lifecycle-contract`, and `/public-beta-contract`.
 
 ## Principles
 
 - human judgment stays visible;
 - AI assists but does not decide;
 - provenance and evidence remain inspectable;
-- high-risk actions require explicit review;
+- higher-risk actions require explicit review;
 - local work stays useful without an account;
+- public beta does not change the storage, privacy, or institutional boundary;
 - organizational governance belongs in Catalyst Intelligence rather than being silently introduced into personal Workspace.

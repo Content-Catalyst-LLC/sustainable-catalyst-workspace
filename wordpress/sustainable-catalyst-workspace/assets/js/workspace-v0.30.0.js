@@ -2449,7 +2449,7 @@
 
     let state = readState();
     let activeProjectMode = 'overview';
-    let workspaceView = 'projects';
+    let workspaceView = 'start';
     let stagedInteroperability = null;
     let selectedKnowledgeKey = null;
     let filter = 'active';
@@ -2676,6 +2676,19 @@
     const workflowMetricSteps = root.querySelector('[data-scw-workflow-metric-steps]');
     const workflowMetricComplete = root.querySelector('[data-scw-workflow-metric-complete]');
     const workspaceViewNav = root.querySelector('[data-scw-workspace-view-nav]');
+    const startSection = root.querySelector('[data-scw-workspace-section="start"]');
+    const betaProjects = root.querySelector('[data-scw-beta-projects]');
+    const betaObjects = root.querySelector('[data-scw-beta-objects]');
+    const betaMilestones = root.querySelector('[data-scw-beta-milestones]');
+    const betaRestorePoints = root.querySelector('[data-scw-beta-restore-points]');
+    const betaNew = root.querySelector('[data-scw-beta-new]');
+    const betaContinue = root.querySelector('[data-scw-beta-continue]');
+    const betaRecentList = root.querySelector('[data-scw-beta-recent-list]');
+    const betaCapStorage = root.querySelector('[data-scw-beta-cap-storage]');
+    const betaCapCrypto = root.querySelector('[data-scw-beta-cap-crypto]');
+    const betaCapFiles = root.querySelector('[data-scw-beta-cap-files]');
+    const betaCapReturn = root.querySelector('[data-scw-beta-cap-return]');
+    const betaRuntimeNote = root.querySelector('[data-scw-beta-runtime-note]');
     const projectsSection = root.querySelector('[data-scw-workspace-section="projects"]');
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
     const graphSection = root.querySelector('[data-scw-workspace-section="graph"]');
@@ -3109,6 +3122,7 @@
         const selected = button.dataset.scwProjectMode === activeProjectMode;
         button.classList.toggle('is-active', selected);
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        if (selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
       });
       root.querySelectorAll('[data-scw-project-panel]').forEach((panel) => {
         panel.hidden = panel.dataset.scwProjectPanel !== activeProjectMode;
@@ -3798,13 +3812,85 @@
 
     async function gateFromLatestRestore(action,project,perform){const point=latestRestorePoint(project.id);return openSafeActionGate({action,project,baseProject:point?.snapshot||null,baseMeta:point?{kind:'restore-point',restorePointId:point.id,id:point.id,label:point.label}:{kind:'none',label:'No named restore point'},targetProject:project,targetMeta:{kind:'current-project',id:project.id,label:'Current project'},perform});}
 
+    function renderPublicBeta() {
+      if (!startSection) return;
+      const helper = window.SCWorkspacePublicBeta;
+      if (!helper) {
+        if (betaRuntimeNote) betaRuntimeNote.textContent = 'Public beta readiness helper is unavailable; core Workspace projects remain usable.';
+        return;
+      }
+      const summary = helper.summary(state);
+      if (betaProjects) betaProjects.textContent = String(summary.projectCount);
+      if (betaObjects) betaObjects.textContent = String(summary.objectCount);
+      if (betaMilestones) betaMilestones.textContent = String(summary.milestoneCount);
+      if (betaRestorePoints) betaRestorePoints.textContent = String(summary.restorePointCount);
+      const caps = helper.capabilities(window);
+      const readiness = helper.readiness(caps);
+      if (betaCapStorage) betaCapStorage.textContent = caps.localStorage ? 'READY' : 'LIMITED';
+      if (betaCapCrypto) betaCapCrypto.textContent = caps.webCryptoSha256 ? 'SHA-256 READY' : 'LIMITED';
+      if (betaCapFiles) betaCapFiles.textContent = caps.fileApi ? 'READY' : 'LIMITED';
+      if (betaCapReturn) betaCapReturn.textContent = caps.sessionStorage && caps.postMessage ? 'READY' : 'LIMITED';
+      if (betaRuntimeNote) betaRuntimeNote.textContent = readiness.coreReady
+        ? `Core browser capabilities are ready${readiness.integrityReady ? ', including SHA-256 integrity checks' : '; SHA-256 integrity checks are limited in this browser'}.`
+        : 'This browser has limited local Workspace capabilities. Run Local Health & Recovery diagnostics before relying on this session.';
+      const recent = summary.recentProjects || [];
+      if (betaContinue) {
+        betaContinue.disabled = !recent.length;
+        betaContinue.dataset.projectId = recent[0]?.id || '';
+        betaContinue.textContent = recent.length ? `Continue: ${recent[0].title}` : 'Continue recent project';
+      }
+      if (betaRecentList) {
+        betaRecentList.innerHTML = '';
+        if (!recent.length) {
+          betaRecentList.innerHTML = '<div class="scw-beta-empty">No local projects yet. Start a blank project or choose a guided pathway above.</div>';
+        } else {
+          recent.forEach((item) => {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'scw-beta-recent-row';
+            row.innerHTML = `<span>${escapeHtml(lifecycleLabel(item.lifecycleState).toUpperCase())}</span><strong>${escapeHtml(item.title)}</strong><small>${item.updatedAt ? escapeHtml(formatTime(item.updatedAt)) : 'Local project'}</small>`;
+            row.addEventListener('click', () => {
+              const project = state.projects.find(project => project.id === item.id && !project.archivedAt);
+              if (!project) return;
+              state.activeProjectId = project.id;
+              activeProjectMode = 'overview';
+              persist('Recent project opened from Public Beta Start');
+              workspaceView = 'projects';
+              render();
+              setWorkspaceView('projects', true);
+            });
+            betaRecentList.appendChild(row);
+          });
+        }
+      }
+    }
+
+    function startBetaGuidedProject(templateId) {
+      const defs = guidedWorkflowDefinitions();
+      const def = defs[templateId];
+      if (!def) return;
+      const project = projectTemplate(def.title, def.description);
+      const run = startGuidedWorkflow(project, templateId);
+      if (!run) return;
+      state.projects.unshift(project);
+      state.activeProjectId = project.id;
+      activeProjectMode = 'guide';
+      workspaceView = 'projects';
+      persist(`Public beta quick start created: ${def.title}`);
+      render();
+      setWorkspaceView('projects', true);
+      setProjectMode('guide');
+    }
+
     function setWorkspaceView(view, moveFocus = false) {
-      workspaceView = ['projects','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share'].includes(view) ? view : 'projects';
+      workspaceView = ['start','projects','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share'].includes(view) ? view : 'start';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        if (selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
       });
+      if (startSection) startSection.hidden = workspaceView !== 'start';
       if (projectsSection) projectsSection.hidden = workspaceView !== 'projects';
       if (activePanel) activePanel.hidden = workspaceView !== 'projects' || !activeProject();
       if (knowledgeSection) knowledgeSection.hidden = workspaceView !== 'knowledge';
@@ -3821,6 +3907,7 @@
       if (institutionalSection) institutionalSection.hidden = workspaceView !== 'institutional';
       if (shareSection) shareSection.hidden = workspaceView !== 'share';
       if (connectionsDrawer) connectionsDrawer.hidden = workspaceView !== 'projects';
+      if (workspaceView === 'start') renderPublicBeta();
       if (workspaceView === 'knowledge') renderKnowledge();
       if (workspaceView === 'graph') renderKnowledgeGraph();
       if (workspaceView === 'activity') renderActivityIntelligence();
@@ -4487,8 +4574,54 @@
     if(auditSource)auditSource.addEventListener('change',renderAuditTrail);
     if(auditExport)auditExport.addEventListener('click',()=>{const helper=window.SCWorkspaceAuditTrail;if(!helper)return;const projectId=auditProject?.value||'',source=auditSource?.value||'',events=helper.derive(state,{projectId,sources:source?[source]:helper.SOURCES,limit:1000}),pkg=helper.exportPackage(events,{projectId,source});downloadJson(`workspace-audit-trail-${new Date().toISOString().slice(0,10)}.json`,pkg);if(auditStatus)auditStatus.textContent='Portable audit JSON exported. Project/object content was not included.';});
 
+    if (betaNew) betaNew.addEventListener('click', () => {
+      setWorkspaceView('projects', true);
+      if (createForm) {
+        createForm.hidden = false;
+        const title = createForm.querySelector('input[name="title"]');
+        if (title) title.focus();
+      }
+    });
+    if (betaContinue) betaContinue.addEventListener('click', () => {
+      const projectId = betaContinue.dataset.projectId || '';
+      const project = state.projects.find(project => project.id === projectId && !project.archivedAt);
+      if (!project) return;
+      state.activeProjectId = project.id;
+      activeProjectMode = 'overview';
+      persist('Recent project opened from Public Beta Start');
+      workspaceView = 'projects';
+      render();
+      setWorkspaceView('projects', true);
+    });
+    root.querySelectorAll('[data-scw-beta-template]').forEach(button => {
+      button.addEventListener('click', () => startBetaGuidedProject(button.dataset.scwBetaTemplate || ''));
+    });
+    const emptyNew = root.querySelector('[data-scw-empty-new]');
+    if (emptyNew) emptyNew.addEventListener('click', () => {
+      if (createForm) {
+        createForm.hidden = false;
+        const title = createForm.querySelector('input[name="title"]');
+        if (title) title.focus();
+      }
+    });
+    const emptyStart = root.querySelector('[data-scw-empty-start]');
+    if (emptyStart) emptyStart.addEventListener('click', () => setWorkspaceView('start', true));
+
     root.querySelectorAll('[data-scw-workspace-view]').forEach((button) => {
       button.addEventListener('click', () => setWorkspaceView(button.dataset.scwWorkspaceView, true));
+    });
+    if (workspaceViewNav) workspaceViewNav.addEventListener('keydown', (event) => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      const buttons = [...workspaceViewNav.querySelectorAll('[data-scw-workspace-view]')];
+      if (!buttons.length) return;
+      const current = Math.max(0, buttons.indexOf(document.activeElement));
+      let next = current;
+      if (event.key === 'ArrowRight') next = (current + 1) % buttons.length;
+      if (event.key === 'ArrowLeft') next = (current - 1 + buttons.length) % buttons.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = buttons.length - 1;
+      event.preventDefault();
+      buttons[next].focus();
     });
 
     if (runDiagnostics) runDiagnostics.addEventListener('click', () => {
