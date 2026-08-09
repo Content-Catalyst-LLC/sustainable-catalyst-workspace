@@ -284,7 +284,7 @@
 @media(forced-colors:active){.scw-safe-actions-panel,.scw-safe-actions-metrics,.scw-action-gate-dialog,.scw-action-gate-review,.scw-action-gate-ack{border-color:CanvasText}.scw-safe-actions-boundary,.scw-safe-actions-governance{border-left-color:Highlight}}
 
 
-/* v0.26.0 — Guided Reconciliation & Selective Apply */
+/* v0.27.0 — Reconciliation Provenance & Decision Receipts */
 .scw-reconciliation{padding:38px;border-top:1px solid #d9d4cb;background:#fbfaf7}
 .scw-reconciliation-head{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.75fr);gap:28px;align-items:start}
 .scw-reconciliation-head h2{margin:6px 0 12px;font-size:clamp(1.65rem,3vw,2.6rem);line-height:1.05}
@@ -306,3 +306,7 @@
 @media(max-width:900px){.scw-reconciliation-head,.scw-reconciliation-grid{grid-template-columns:1fr}.scw-reconciliation-controls{grid-template-columns:1fr 1fr}.scw-reconciliation-history-row{grid-template-columns:1fr}.scw-reconciliation-history-row small{text-align:left}}
 @media(max-width:620px){.scw-reconciliation{padding:24px 18px}.scw-reconciliation-controls,.scw-reconciliation-metrics{grid-template-columns:1fr}.scw-reconciliation-metrics>div{border-right:0;border-bottom:1px solid #e5dfd5}.scw-reconciliation-metrics>div:last-child{border-bottom:0}}
 @media(forced-colors:active){.scw-reconciliation-boundary,.scw-reconciliation-governance,.scw-reconciliation-panel,.scw-reconciliation-history,.scw-reconciliation-row{forced-color-adjust:auto}}
+
+
+/* v0.27.0 — Reconciliation Provenance & Decision Receipts */
+.scw-reconciliation-decision{display:grid;grid-template-columns:minmax(180px,.35fr) minmax(280px,1fr);gap:14px;margin:16px 0;padding:16px;border:1px solid rgba(0,0,0,.18);background:#faf8f4}.scw-reconciliation-decision label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}.scw-reconciliation-decision input,.scw-reconciliation-decision textarea{width:100%;box-sizing:border-box;border:1px solid #222;background:#fff;padding:10px;font:inherit;text-transform:none;letter-spacing:normal}.scw-reconciliation-decision textarea{min-height:88px;resize:vertical}.scw-reconciliation-receipts{margin-top:22px}.scw-reconciliation-receipt-row{display:grid;grid-template-columns:1fr auto;gap:18px;padding:16px 0;border-top:1px solid rgba(0,0,0,.2)}.scw-reconciliation-receipt-row span{font-size:10px;font-weight:800;letter-spacing:.12em}.scw-reconciliation-receipt-row strong{display:block;margin:4px 0}.scw-reconciliation-receipt-row p,.scw-reconciliation-receipt-row small{display:block;margin:3px 0}.scw-reconciliation-receipt-row blockquote{margin:10px 0 0;padding-left:12px;border-left:2px solid #111;color:#333}.scw-reconciliation-receipt-actions{display:flex;gap:8px;align-items:start}@media(max-width:720px){.scw-reconciliation-decision,.scw-reconciliation-receipt-row{grid-template-columns:1fr}.scw-reconciliation-receipt-actions{flex-wrap:wrap}}

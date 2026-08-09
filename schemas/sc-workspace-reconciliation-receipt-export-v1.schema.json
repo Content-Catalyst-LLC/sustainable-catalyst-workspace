@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-reconciliation-receipt-export-v1.schema.json",
+  "title": "Workspace Reconciliation Receipt Export v1.0",
+  "type": "object",
+  "required": [
+    "schema",
+    "exportedAt",
+    "receipt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-reconciliation-receipt-export/1.0"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "receipt": {
+      "$ref": "sc-workspace-reconciliation-receipt-v1.schema.json"
+    }
+  }
+}

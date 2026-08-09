@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-reconciliation-receipt-v1.schema.json",
+  "title": "Workspace Reconciliation Decision Receipt v1.0",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "id",
+    "createdAt",
+    "sourceProjectId",
+    "outputProjectId",
+    "reviewerLabel",
+    "rationale",
+    "base",
+    "target",
+    "decision",
+    "governance",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-reconciliation-receipt/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "sourceProjectId": {
+      "type": "string"
+    },
+    "outputProjectId": {
+      "type": "string"
+    },
+    "reviewerLabel": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "base": {
+      "type": "object"
+    },
+    "target": {
+      "type": "object"
+    },
+    "decision": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "fingerprint"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "fingerprint": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

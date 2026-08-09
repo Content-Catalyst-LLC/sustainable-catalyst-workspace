@@ -2,7 +2,7 @@
 
 Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, recovery, optional account persistence, and conflict-safe sync.
 
-## Current release: **v0.26.0 — Guided Reconciliation & Selective Apply**
+## Current release: **v0.27.0 — Reconciliation Provenance & Decision Receipts
 
 v0.26.0 extends deterministic Change Review into a controlled selective-apply workflow. Users choose individual changes, preview the resulting project state, resolve dependency blockers, and create a new reconciled project copy while both source states remain untouched.
 

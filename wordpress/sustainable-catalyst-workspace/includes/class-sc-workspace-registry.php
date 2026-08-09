@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0260';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0260';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0270';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0270';
+    const LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260';
     const LEGACY_PENDING_KEY_V0250 = 'sc_workspace_registry_pending_v0250';
     const LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240';
     const LEGACY_PENDING_KEY_V0230 = 'sc_workspace_registry_pending_v0230';
@@ -102,6 +103,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0260);
         delete_option(self::LEGACY_PENDING_KEY_V0250);
         delete_option(self::LEGACY_PENDING_KEY_V0240);
         delete_option(self::LEGACY_PENDING_KEY_V0230);
@@ -184,11 +186,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.25.0',
+            'previous_version' => '0.26.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Guided Reconciliation & Selective Apply: lets users explicitly select reviewed changes and create a new reconciled project copy while preserving both source states.',
+            'change_summary' => 'Reconciliation Provenance & Decision Receipts: records accepted and declined changes, explicit rationale, reviewer label, source-state provenance, and SHA-256 receipt integrity for each reconciled copy.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.26.0 advances Workspace storage to schema 25 while project schema remains sc-workspace-project/11.0. Guided Reconciliation stores only a browser-local reconciliation ledger; selections are explicit and output is always a new local project copy, preserving both source states.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.27.0 advances Workspace storage to schema 26 while project schema remains sc-workspace-project/11.0. Reconciliation receipts are browser-local, user-rationalized, integrity-fingerprinted, and authoritative independently of the editable Document summary created in the reconciled copy.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
