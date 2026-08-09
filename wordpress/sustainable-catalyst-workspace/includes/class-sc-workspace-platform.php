@@ -75,7 +75,7 @@ final class SC_Workspace_Platform {
             return;
         }
         $url = admin_url('tools.php?page=' . self::ADMIN_SLUG);
-        echo '<div class="notice notice-info"><p><strong>Sustainable Catalyst Workspace v0.19.0:</strong> the dedicated Workspace page is ready. The Platform page is not changed automatically. <a href="' . esc_url($url) . '">Review the reversible Platform conversion</a>.</p></div>';
+        echo '<div class="notice notice-info"><p><strong>Sustainable Catalyst Workspace v0.20.0:</strong> the dedicated Workspace page is ready. The Platform page is not changed automatically. <a href="' . esc_url($url) . '">Review the reversible Platform conversion</a>.</p></div>';
     }
 
     public function render_admin_page() {
@@ -89,7 +89,7 @@ final class SC_Workspace_Platform {
         ?>
         <div class="wrap">
             <h1>Workspace Page Conversion</h1>
-            <p>v0.19.0 keeps <code>/platform/</code> as the stable route while presenting the product publicly as <strong>Workspace</strong>. Page conversion and navigation relabeling remain explicit administrator actions with rollback.</p>
+            <p>v0.20.0 keeps <code>/platform/</code> as the stable route while presenting the product publicly as <strong>Workspace</strong>. This release hardens stability and accessibility without changing the route. Page conversion and navigation relabeling remain explicit administrator actions with rollback.</p>
             <?php if ($result === 'converted') : ?><div class="notice notice-success inline"><p>Platform was converted to the dedicated Workspace page. A rollback snapshot was preserved.</p></div><?php endif; ?>
             <?php if ($result === 'restored') : ?><div class="notice notice-success inline"><p>The original Platform page title and content were restored.</p></div><?php endif; ?>
             <?php if ($result === 'missing') : ?><div class="notice notice-error inline"><p>No root page with slug <code>platform</code> was found. Nothing was changed.</p></div><?php endif; ?>

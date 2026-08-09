@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0190';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0190';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0200';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0200';
+    const LEGACY_PENDING_KEY_V0190 = 'sc_workspace_registry_pending_v0190';
     const LEGACY_PENDING_KEY_V0180 = 'sc_workspace_registry_pending_v0180';
     const LEGACY_PENDING_KEY_V0170 = 'sc_workspace_registry_pending_v0170';
     const LEGACY_PENDING_KEY_V0160 = 'sc_workspace_registry_pending_v0160';
@@ -95,6 +96,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0190);
         delete_option(self::LEGACY_PENDING_KEY_V0180);
         delete_option(self::LEGACY_PENDING_KEY_V0170);
         delete_option(self::LEGACY_PENDING_KEY_V0160);
@@ -170,11 +172,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.18.0',
-            'release_date' => '2026-08-08',
-            'change_summary' => 'Institutional Handoff: adds explicit, privacy-minimized promotion packages and matched institutional receipts for governed copy-into-institution workflows without converting or mutating the personal Workspace source.',
+            'previous_version' => '0.19.0',
+            'release_date' => '2026-08-09',
+            'change_summary' => 'Stability, Accessibility & Release Readiness: hardens local recovery, diagnostics, keyboard/focus behavior, reduced-motion support, high-contrast resilience, and release-health reporting without changing the Workspace project or storage schema.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.19.0 adds Institutional Handoff. Storage advances to schema 20 while project schema remains sc-workspace-project/11.0. Promotion is an explicit copy into Catalyst Intelligence: the personal Workspace source remains independent, institutional governance begins only after receiving-system acceptance, and Workspace introduces no automatic upload, institutional ingestion, organization membership, or server permission system.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.20.0 is a consolidation and readiness release. Storage remains schema 20 and project schema remains sc-workspace-project/11.0. It adds last-known-good local recovery, privacy-minimized diagnostics, explicit emergency backup export, focus/keyboard hardening, reduced-motion and forced-colors support, and a public release-readiness contract without introducing cloud sync, telemetry, institutional permissions, or a new project subsystem.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
