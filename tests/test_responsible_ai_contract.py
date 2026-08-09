@@ -2,15 +2,15 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.23.0.js'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.23.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.24.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.24.0.css'
 SCHEMA=ROOT/'schemas/sc-workspace-ai-assistance-v1.schema.json'
 PROJECT=ROOT/'schemas/sc-workspace-project-v11.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.23.0.json'
+MANIFEST=ROOT/'release-manifest-v0.24.0.json'
 AI_ADAPTER=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-ai-adapter-v1.js'
 class ResponsibleAIContractTests(unittest.TestCase):
   def test_release_boundary(self):
-    m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.23.0'); self.assertEqual(m['previous_version'],'0.22.0'); self.assertEqual(m['storage_schema_version'],23); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0'); self.assertEqual(m['ai_assistance_schema'],'sc-workspace-ai-assistance/1.0'); self.assertIn('responsible_ai_assistance',m['capabilities'])
+    m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.24.0'); self.assertEqual(m['previous_version'],'0.23.0'); self.assertEqual(m['storage_schema_version'],23); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0'); self.assertEqual(m['ai_assistance_schema'],'sc-workspace-ai-assistance/1.0'); self.assertIn('responsible_ai_assistance',m['capabilities'])
   def test_schema_and_limits(self):
     s=json.loads(SCHEMA.read_text()); self.assertEqual(s['properties']['schema']['const'],'sc-workspace-ai-assistance/1.0'); self.assertEqual(s['properties']['sessions']['maxItems'],40); props=s['properties']['sessions']['items']['properties']; self.assertEqual(props['objectIds']['maxItems'],24); self.assertEqual(props['response']['maxLength'],30000)
   def test_project_contains_ai_assistance(self):

@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0230';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0230';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0240';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0240';
+    const LEGACY_PENDING_KEY_V0230 = 'sc_workspace_registry_pending_v0230';
     const LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220';
     const LEGACY_PENDING_KEY_V0210 = 'sc_workspace_registry_pending_v0210';
     const LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200';
@@ -99,6 +100,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0230);
         delete_option(self::LEGACY_PENDING_KEY_V0220);
         delete_option(self::LEGACY_PENDING_KEY_V0210);
         delete_option(self::LEGACY_PENDING_KEY_V0200);
@@ -178,11 +180,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.22.0',
+            'previous_version' => '0.23.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Project Version History & Restore Points: adds named local project snapshots, SHA-256 integrity verification, safe restore-as-copy recovery, and workspace-level history without changing the project schema.',
+            'change_summary' => 'Project Diff & Change Review: adds deterministic restore-point/current-state comparison across objects, evidence, assumptions, decisions, and relationships without automatic reconciliation.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.23.0 preserves anonymous local-first use and project schema sc-workspace-project/11.0 while advancing Workspace storage to schema 23 for a bounded local restore-point ledger. Named snapshots are SHA-256 fingerprinted, restore only as new local copies, and never overwrite the current project. Account backup and explicit conflict-safe sync remain available and independent.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.24.0 is schema-stable at Workspace storage 23 and project schema sc-workspace-project/11.0. Change Review is derived from current project state plus local restore points, reports explicit added/removed/modified records and relationship changes, exports a portable review package, and never applies, restores, syncs, or merges automatically.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

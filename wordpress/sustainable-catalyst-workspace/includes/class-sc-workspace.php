@@ -191,6 +191,11 @@ final class SC_Workspace {
             'callback' => array($this, 'version_history_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/change-review-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'change_review_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/cloud-projects', array(
             array(
                 'methods' => 'GET',
@@ -235,7 +240,7 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v23-plus-version-history-account-backup-and-explicit-conflict-safe-sync',
+            'persistence' => 'browser-local-projects-v23-plus-version-history-change-review-account-backup-and-explicit-conflict-safe-sync',
             'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
@@ -849,6 +854,9 @@ final class SC_Workspace {
             'server_store' => 'wordpress-user-meta',
             'team_sync' => false,
             'institutional_sync' => false,
+            'project_change_review' => true,
+            'change_review_automatic_apply' => false,
+            'change_review_hidden_score' => false,
         ));
     }
 
@@ -872,6 +880,26 @@ final class SC_Workspace {
             'automatic_cloud_upload' => false,
             'server_version_history' => false,
             'sync_conflict_protections_preserved' => true,
+        ));
+    }
+
+    public function change_review_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-change-review-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'storage_schema_version' => 23,
+            'project_schema' => 'sc-workspace-project/11.0',
+            'change_review_schema' => 'sc-workspace-change-review/1.0',
+            'comparison_sources' => array('current-project', 'restore-point'),
+            'review_categories' => array('project-metadata','canonical-objects','research','evidence','analysis','decisions','traceability','canvas','briefing','guided-workflows'),
+            'relationship_changes_explicit' => true,
+            'automatic_apply' => false,
+            'automatic_restore' => false,
+            'automatic_sync' => false,
+            'hidden_change_score' => false,
+            'project_schema_changes' => false,
+            'storage_schema_changes' => false,
+            'exportable_json_review' => true,
         ));
     }
 
@@ -1122,15 +1150,22 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0230',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.23.0.css',
+            'sc-workspace-v0240',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.24.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
-            'sc-workspace-v0230',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.23.0.js',
+            'sc-workspace-project-diff-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-project-diff-v1.js',
             array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0240',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.24.0.js',
+            array('sc-workspace-project-diff-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1138,7 +1173,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0230', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0240', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1288,6 +1323,7 @@ final class SC_Workspace {
                 <button type="button" data-scw-workspace-view="graph" aria-pressed="false">Graph</button>
                 <button type="button" data-scw-workspace-view="activity" aria-pressed="false">Activity</button>
                 <button type="button" data-scw-workspace-view="history" aria-pressed="false">History</button>
+                <button type="button" data-scw-workspace-view="changes" aria-pressed="false">Changes</button>
                 <button type="button" data-scw-workspace-view="interoperability" aria-pressed="false">Import &amp; Interoperability</button>
                 <button type="button" data-scw-workspace-view="collaboration" aria-pressed="false">Collaborate</button>
                 <button type="button" data-scw-workspace-view="institutional" aria-pressed="false">Institutional</button>
@@ -1462,6 +1498,27 @@ final class SC_Workspace {
                 <div class="scw-version-history-governance" role="note"><strong>Different recovery layers serve different purposes.</strong><span>Last-known-good recovery protects the entire browser Workspace from a damaged write. Account backup protects selected projects off-device. Sync compares local and cloud revisions. Restore points preserve named local project states for deliberate historical recovery.</span></div>
             </section>
 
+            <section class="scw-change-review" data-scw-workspace-section="changes" hidden aria-labelledby="scw-change-review-title">
+                <div class="scw-change-review-head">
+                    <div><div class="scw-editorial-kicker">PROJECT DIFF &amp; CHANGE REVIEW</div><h2 id="scw-change-review-title">See what changed before you restore, sync, share, or promote.</h2><p>Compare the current project with a named restore point—or compare two restore points from the same project. Workspace reports explicit added, removed, and modified records, including evidence, assumptions, decisions, and relationships. Nothing is applied automatically.</p></div>
+                    <div class="scw-change-review-boundary"><strong>Review only</strong><span>Change Review is derived from existing project snapshots. It does not create a second project database, calculate a hidden change score, or modify either state being compared.</span></div>
+                </div>
+                <div class="scw-change-review-controls">
+                    <label><span>Project</span><select data-scw-change-project><option value="">Choose project</option></select></label>
+                    <label><span>Base state</span><select data-scw-change-base disabled><option value="">Choose a restore point</option></select></label>
+                    <label><span>Compare against</span><select data-scw-change-target disabled><option value="current">Current project</option></select></label>
+                    <button class="scw-button scw-button-primary" type="button" data-scw-change-run disabled>Review changes</button>
+                    <button class="scw-button" type="button" data-scw-change-export disabled>Export review JSON</button>
+                </div>
+                <div class="scw-change-review-status" data-scw-change-status role="status" aria-live="polite">Choose a project and restore point to begin a change review.</div>
+                <div class="scw-change-review-metrics" aria-label="Change review metrics">
+                    <div><strong data-scw-change-added>0</strong><span>added</span></div><div><strong data-scw-change-removed>0</strong><span>removed</span></div><div><strong data-scw-change-modified>0</strong><span>modified</span></div><div><strong data-scw-change-relationships>0</strong><span>relationship changes</span></div>
+                </div>
+                <div class="scw-change-review-attention" data-scw-change-attention></div>
+                <div class="scw-change-review-results" data-scw-change-results><div class="scw-change-review-empty">No comparison generated yet.</div></div>
+                <div class="scw-change-review-governance" role="note"><strong>No automatic reconciliation</strong><span>Use this review to inform a restore, sync, share, or institutional handoff. Workspace does not merge project states or infer which version is correct.</span></div>
+            </section>
+
             <section class="scw-interoperability" data-scw-workspace-section="interoperability" hidden aria-labelledby="scw-interoperability-title">
                 <div class="scw-interoperability-head">
                     <div>
@@ -1501,7 +1558,7 @@ final class SC_Workspace {
 
             <section class="scw-collaboration" data-scw-workspace-section="collaboration" hidden aria-labelledby="scw-collaboration-title">
                 <div class="scw-collaboration-head">
-                    <div><div class="scw-editorial-kicker">COLLABORATION FOUNDATION</div><h2 id="scw-collaboration-title">Structured review without surrendering project ownership.</h2><p>Create a review request, send a privacy-minimized project copy, collect object-linked comments or suggestions, and bring feedback back to the source Workspace. v0.23.0 keeps collaboration asynchronous and file-based; it does not create a shared cloud project or server permission system.</p></div>
+                    <div><div class="scw-editorial-kicker">COLLABORATION FOUNDATION</div><h2 id="scw-collaboration-title">Structured review without surrendering project ownership.</h2><p>Create a review request, send a privacy-minimized project copy, collect object-linked comments or suggestions, and bring feedback back to the source Workspace. v0.24.0 keeps collaboration asynchronous and file-based; it does not create a shared cloud project or server permission system.</p></div>
                 </div>
                 <div class="scw-collaboration-metrics" aria-label="Collaboration metrics">
                     <div><strong data-scw-collab-metric-sessions>0</strong><span>review sessions</span></div>
@@ -1541,7 +1598,7 @@ final class SC_Workspace {
                     <div class="scw-collaboration-stage-actions"><button class="scw-button scw-button-primary" type="button" data-scw-collab-commit disabled>Commit staged review package</button><button class="scw-button" type="button" data-scw-collab-clear disabled>Clear</button></div>
                     <div class="scw-collaboration-history" data-scw-collab-history></div>
                 </section>
-                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Roles in v0.23.0 continue to describe review responsibility inside portable packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
+                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Roles in v0.24.0 continue to describe review responsibility inside portable packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
             </section>
 
             <section class="scw-institutional" data-scw-workspace-section="institutional" hidden aria-labelledby="scw-institutional-title">
@@ -1589,7 +1646,7 @@ final class SC_Workspace {
                     <div class="scw-institutional-actions"><button class="scw-button scw-button-primary" type="button" data-scw-institutional-commit disabled>Commit receipt</button><button class="scw-button" type="button" data-scw-institutional-clear disabled>Clear</button></div>
                     <div class="scw-institutional-history" data-scw-institutional-history></div>
                 </section>
-                <div class="scw-institutional-governance" role="note"><strong>Workspace does not become the institution.</strong><span>v0.23.0 preserves the governed handoff contract for Catalyst Intelligence while hardening the surrounding Workspace runtime. It does not create organization membership, server permissions, shared cloud storage, automatic ingestion, or an institutional tenant inside Workspace.</span></div>
+                <div class="scw-institutional-governance" role="note"><strong>Workspace does not become the institution.</strong><span>v0.24.0 preserves the governed handoff contract for Catalyst Intelligence while hardening the surrounding Workspace runtime. It does not create organization membership, server permissions, shared cloud storage, automatic ingestion, or an institutional tenant inside Workspace.</span></div>
             </section>
 
             <section class="scw-share" data-scw-workspace-section="share" hidden aria-labelledby="scw-share-title">

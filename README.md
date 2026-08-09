@@ -1,36 +1,32 @@
 # Sustainable Catalyst Workspace
 
-Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, and deliberate account recovery/synchronization.
+Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, recovery, optional account persistence, and conflict-safe sync.
 
-## Current release: **v0.22.0 — Cross-Device Sync & Conflict-Safe Recovery**
+## Current release: **v0.24.0 — Project Diff & Change Review**
 
-Workspace remains fully usable as a guest with browser-local projects. Signed-in users may opt individual projects into explicit cross-device synchronization. Sign-in or enrollment alone sends no project content; synchronization occurs only when the user chooses **Sync now**.
+v0.24.0 adds a deterministic Change Review environment for comparing a named restore point with the current project or another restore point before recovery, synchronization, sharing, or institutional promotion.
 
-### Sync model
+### Change-review model
 
-- explicit per-project enrollment
-- manual Sync now; no background sync
-- SHA-256 local/cloud project fingerprints
-- server revision precondition for every sync push
-- stale pushes rejected with HTTP 409
-- safe remote pull only when local has not diverged
-- conflicts are never silently overwritten
-- cloud can be opened as a copy
-- accepting cloud preserves the divergent local project as a conflict copy
-- keeping local as sync head requires explicit confirmation
-
-Manual account backups and restore-as-copy recovery from v0.21.0 remain available independently of sync.
+- explicit Added / Removed / Modified records
+- canonical object changes
+- evidence and provenance changes
+- analysis assumption/method/finding changes
+- decision record changes
+- traceability and Canvas relationship changes
+- transparent attention labels; no hidden score
+- portable JSON review export
+- no automatic merge, restore, sync, share, or promotion
 
 ## Access boundary
 
-Guest/local Workspace remains first-class. Accounts add optional private recovery and explicit sync; they are not a login wall. Workspace does not provide team tenants or institutional permissions. Catalyst Intelligence remains the governed institutional environment.
+Guest/local Workspace remains first-class. Accounts add optional private recovery and explicit sync; they are not a login wall. Workspace does not provide institutional tenants or organization permissions.
 
 ## Data boundary
 
-- Workspace storage schema: **22**
+- Workspace storage schema: **23** (unchanged)
 - Project schema: **sc-workspace-project/11.0** (unchanged)
-- Cross-device sync schema: **sc-workspace-cross-device-sync/1.0**
-- Sync push schema: **sc-workspace-sync-push/1.0**
+- Change Review schema: **sc-workspace-change-review/1.0**
 - Canonical public route: `/platform/`
 - Canonical Knowledge Library route: `/knowledge-libraries/`
 
@@ -38,8 +34,8 @@ Guest/local Workspace remains first-class. Accounts add optional private recover
 
 Shortcodes: `[sc_workspace]`, `[sc_workspace_entry]`, `[sc_workspace_platform]`.
 
-Public contracts include `/wp-json/sc-workspace/v1/health`, `/project-contract`, `/account-persistence-contract`, and `/sync-contract`. Account backup/sync endpoints require an authenticated WordPress account and REST nonce.
+Public contracts include `/wp-json/sc-workspace/v1/health`, `/project-contract`, `/version-history-contract`, and `/change-review-contract`.
 
 ## Release integrity
 
-The release installer validates checksums, Python contracts, PHP syntax/runtime migration tests, JavaScript syntax/runtime adapter tests, canonical Git origin, full release-history reconstruction, and tagged release installation.
+The release installer validates checksums, Python contracts, PHP syntax/runtime migration tests, JavaScript syntax/runtime tests, canonical Git origin, full release-history reconstruction, and tagged release installation.

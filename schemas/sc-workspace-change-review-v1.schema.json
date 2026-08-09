@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-change-review-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Change Review v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generatedAt",
+    "projectId",
+    "projectTitle",
+    "base",
+    "target",
+    "summary",
+    "attention",
+    "categories",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-change-review/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "projectTitle": {
+      "type": "string"
+    },
+    "base": {
+      "type": "object"
+    },
+    "target": {
+      "type": "object"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "added",
+        "removed",
+        "modified",
+        "total",
+        "relationshipsChanged",
+        "categoriesChanged"
+      ],
+      "properties": {
+        "added": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "removed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "modified": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "relationshipsChanged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "categoriesChanged": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "attention": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "category",
+          "kind",
+          "changes"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "content",
+              "relationship"
+            ]
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}
