@@ -2,9 +2,9 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release: **v0.15.0 — Share & Portable Projects**
+## Current release: **v0.16.0 — Workspace Search & Knowledge Graph**
 
-Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, and cross-product handoffs. v0.15.0 adds a browser-local interoperability boundary for staging external files, reviewing what will be created, preserving imported provenance, and exporting portable structured packages.
+Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, and cross-product handoffs. v0.16.0 adds a deterministic, device-local Workspace Search & Knowledge Graph across projects, canonical objects, provenance, traceability, and decision/analysis relationships without semantic embeddings or server indexing.
 
 ## WordPress shortcodes
 

@@ -7,7 +7,7 @@
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 16;
+  const STORAGE_VERSION = 17;
   const PROJECT_SCHEMA = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
@@ -52,6 +52,7 @@
   const PUBLICATION_EXPORT_SCHEMA = 'sc-workspace-publication-export/1.0';
   const GUIDED_WORKFLOWS_SCHEMA = 'sc-workspace-guided-workflows/1.0';
   const PERSONAL_KNOWLEDGE_SCHEMA = 'sc-workspace-personal-knowledge/1.0';
+  const KNOWLEDGE_GRAPH_SCHEMA = 'sc-workspace-knowledge-graph/1.0';
   const AI_ASSISTANCE_SCHEMA = 'sc-workspace-ai-assistance/1.0';
   const AI_REQUEST_EXPORT_SCHEMA = 'sc-workspace-ai-request-export/1.0';
   const AI_RESPONSE_EXPORT_SCHEMA = 'sc-workspace-ai-response-export/1.0';
@@ -110,6 +111,8 @@
   const MAX_WORKFLOW_OBJECT_REFS = 80;
   const MAX_KNOWLEDGE_COLLECTIONS = 30;
   const MAX_KNOWLEDGE_COLLECTION_ITEMS = 200;
+  const MAX_GRAPH_NODES = 1600;
+  const MAX_GRAPH_EDGES = 5000;
   const MAX_AI_SESSIONS = 40;
   const MAX_AI_OBJECT_REFS = 24;
   const MAX_AI_PROMPT = 5000;
@@ -119,6 +122,7 @@
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
   const OBJECT_TYPES = new Set(['source', 'evidence', 'dataset', 'analysis', 'decision', 'document', 'export']);
   const OBJECT_STATUS = new Set(['draft', 'working', 'ready']);
+  const GRAPH_RELATIONS = new Set(['contains','sourced-from','same-source','evidence-from','uses','informs','supports','contradicts','derived-from','produced-by','supersedes','cites']);
   const PROVENANCE_TYPES = new Set(['manual', 'web', 'library', 'dataset', 'tool', 'imported']);
   const QUESTION_STATUS = new Set(['open', 'answered', 'deferred']);
   const QUESTION_PRIORITY = new Set(['low', 'normal', 'high']);
@@ -342,6 +346,90 @@
     }).filter(x => x.score >= 3).sort((a,b) => b.score - a.score || String(b.entry.object.updatedAt).localeCompare(String(a.entry.object.updatedAt))).slice(0, 8);
   }
 
+
+
+  function knowledgeGraphTemplate() {
+    const stamp = nowIso();
+    return {
+      schema: KNOWLEDGE_GRAPH_SCHEMA,
+      preferences: { query:'', nodeType:'all', relation:'all', project:'all', scope:'active', depth:1 },
+      selectedNodeId: '',
+      createdAt: stamp,
+      updatedAt: stamp
+    };
+  }
+
+  function normalizeKnowledgeGraph(raw, projects=[]) {
+    const base=knowledgeGraphTemplate(), value=raw&&typeof raw==='object'?raw:{}, pref=value.preferences&&typeof value.preferences==='object'?value.preferences:{};
+    const projectIds=new Set(projects.map(p=>p.id));
+    const allowedTypes=new Set(['all','project','provenance',...OBJECT_TYPES]);
+    base.preferences={
+      query:String(pref.query||'').slice(0,240),
+      nodeType:allowedTypes.has(pref.nodeType)?pref.nodeType:'all',
+      relation:pref.relation==='all'||GRAPH_RELATIONS.has(pref.relation)?(pref.relation||'all'):'all',
+      project:pref.project==='all'||projectIds.has(pref.project)?(pref.project||'all'):'all',
+      scope:pref.scope==='all'?'all':'active',
+      depth:Number(pref.depth)===2?2:1
+    };
+    base.selectedNodeId=String(value.selectedNodeId||'').slice(0,260);
+    base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt;
+    base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt;
+    return base;
+  }
+
+  function touchKnowledgeGraph() {
+    state.knowledgeGraph=normalizeKnowledgeGraph(state.knowledgeGraph,state.projects);
+    state.knowledgeGraph.updatedAt=nowIso();
+    state.updatedAt=state.knowledgeGraph.updatedAt;
+  }
+
+  function graphToken(value) {
+    const text=String(value||''); let hash=2166136261;
+    for(let i=0;i<text.length;i++){hash^=text.charCodeAt(i);hash=Math.imul(hash,16777619);}
+    return (hash>>>0).toString(16).padStart(8,'0');
+  }
+
+  function buildKnowledgeGraph() {
+    const nodes=new Map(), edges=[], edgeKeys=new Set();
+    const addNode=(node)=>{if(node&&node.id&&!nodes.has(node.id)&&nodes.size<MAX_GRAPH_NODES)nodes.set(node.id,node);};
+    const addEdge=(from,to,relation,meta={})=>{if(!from||!to||from===to||!GRAPH_RELATIONS.has(relation)||edges.length>=MAX_GRAPH_EDGES)return;const key=`${from}|${relation}|${to}`;if(edgeKeys.has(key))return;edgeKeys.add(key);edges.push({id:`ge-${graphToken(key)}`,from,to,relation,...meta});};
+    const objectNodeId=(projectId,objectId)=>`object:${projectId}:${objectId}`;
+    state.projects.forEach(project=>{
+      const projectNode=`project:${project.id}`;
+      addNode({id:projectNode,type:'project',label:project.title,summary:project.description||'',projectId:project.id,projectTitle:project.title,archived:Boolean(project.archivedAt),updatedAt:project.updatedAt||project.createdAt});
+      project.objects.filter(o=>!o.archivedAt).forEach(object=>{
+        const oid=objectNodeId(project.id,object.id);
+        addNode({id:oid,type:object.type,label:object.title,summary:object.summary||'',projectId:project.id,projectTitle:project.title,objectId:object.id,archived:Boolean(project.archivedAt),tags:object.tags||[],updatedAt:object.updatedAt||object.createdAt});
+        addEdge(projectNode,oid,'contains',{projectId:project.id});
+        const provenanceKey=String(object.provenance?.sourceUrl||object.provenance?.sourceTitle||'').trim();
+        if(provenanceKey){const pid=`provenance:${graphToken(provenanceKey.toLowerCase())}`;addNode({id:pid,type:'provenance',label:object.provenance?.sourceTitle||object.provenance?.sourceUrl||'Provenance source',summary:object.provenance?.sourceUrl||object.provenance?.sourceType||'',projectId:'',projectTitle:'',archived:false,updatedAt:object.provenance?.capturedAt||object.updatedAt});addEdge(oid,pid,'sourced-from',{projectId:project.id});}
+      });
+      const byId=new Map(project.objects.filter(o=>!o.archivedAt).map(o=>[o.id,objectNodeId(project.id,o.id)]));
+      (project.traceability?.lineage||[]).forEach(rel=>{const from=byId.get(rel.fromObjectId),to=byId.get(rel.toObjectId);if(from&&to)addEdge(from,to,GRAPH_RELATIONS.has(rel.relation)?rel.relation:'derived-from',{projectId:project.id,note:rel.note||''});});
+      (project.research?.evidenceLinks||[]).forEach(link=>{const source=byId.get(link.sourceObjectId),evidence=byId.get(link.evidenceObjectId);if(source&&evidence)addEdge(source,evidence,'evidence-from',{projectId:project.id});});
+      (project.analysis?.methods||[]).forEach(method=>{const analysis=byId.get(method.analysisObjectId);if(!analysis)return;(method.datasetObjectIds||[]).forEach(idValue=>{const dataset=byId.get(idValue);if(dataset)addEdge(dataset,analysis,'uses',{projectId:project.id});});});
+      (project.analysis?.findings||[]).forEach(finding=>{const analysis=byId.get(finding.analysisObjectId);if(!analysis)return;(finding.evidenceObjectIds||[]).forEach(idValue=>{const evidence=byId.get(idValue);if(evidence)addEdge(evidence,analysis,'informs',{projectId:project.id});});});
+      (project.decision?.decisions||[]).forEach(decision=>{const decisionObject=byId.get(decision.decisionObjectId);if(!decisionObject)return;(project.decision.options||[]).filter(option=>option.decisionId===decision.id).forEach(option=>{(option.evidenceObjectIds||[]).forEach(idValue=>{const evidence=byId.get(idValue);if(evidence)addEdge(evidence,decisionObject,'informs',{projectId:project.id});});(option.analysisObjectIds||[]).forEach(idValue=>{const analysis=byId.get(idValue);if(analysis)addEdge(analysis,decisionObject,'informs',{projectId:project.id});});});});
+    });
+    const provenanceBuckets=new Map();
+    nodes.forEach(node=>{if(node.type!=='source'&&node.type!=='evidence'&&node.type!=='document')return;const project=state.projects.find(p=>p.id===node.projectId),object=project?.objects.find(o=>o.id===node.objectId);const key=String(object?.provenance?.sourceUrl||object?.provenance?.sourceTitle||'').trim().toLowerCase();if(!key)return;if(!provenanceBuckets.has(key))provenanceBuckets.set(key,[]);provenanceBuckets.get(key).push(node.id);});
+    provenanceBuckets.forEach(ids=>{if(ids.length<2)return;for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length&&j<i+8;j++){addEdge(ids[i],ids[j],'same-source');addEdge(ids[j],ids[i],'same-source');}});
+    return {schema:KNOWLEDGE_GRAPH_SCHEMA,nodes:Array.from(nodes.values()),edges};
+  }
+
+  function graphNeighborhood(graph,nodeId,depth=1,relation='all') {
+    if(!nodeId)return {nodes:[],edges:[]};
+    const seen=new Set([nodeId]), frontier=[nodeId], selectedEdges=[];
+    for(let d=0;d<depth;d++){
+      const next=[];
+      graph.edges.forEach(edge=>{if(relation!=='all'&&edge.relation!==relation)return;const hit=frontier.includes(edge.from)||frontier.includes(edge.to);if(!hit)return;selectedEdges.push(edge);const other=frontier.includes(edge.from)?edge.to:edge.from;if(!seen.has(other)){seen.add(other);next.push(other);}});
+      frontier.splice(0,frontier.length,...next);
+      if(!frontier.length)break;
+    }
+    const edgeIds=new Set(selectedEdges.map(e=>e.id));
+    return {nodes:graph.nodes.filter(n=>seen.has(n.id)),edges:graph.edges.filter(e=>edgeIds.has(e.id)&&seen.has(e.from)&&seen.has(e.to))};
+  }
+
   function interoperabilityTemplate() {
     const stamp=nowIso();
     return { schema:INTEROPERABILITY_SCHEMA, history:[], createdAt:stamp, updatedAt:stamp };
@@ -454,7 +542,7 @@
 
   function defaultState() {
     const stamp = nowIso();
-    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), createdAt: stamp, updatedAt: stamp };
+    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), knowledgeGraph: knowledgeGraphTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), createdAt: stamp, updatedAt: stamp };
   }
 
   function provenanceTemplate() {
@@ -1115,7 +1203,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.15.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.16.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -1297,6 +1385,7 @@
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
     state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
+    state.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, state.projects);
     state.interoperability = normalizeInteroperability(raw.interoperability);
     state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
     state.updatedAt = nowIso();
@@ -1425,6 +1514,7 @@
     state.activeProjectId = state.projects.some(project => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
     state.identity = normalizeIdentity(raw.identity);
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
+    state.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, state.projects);
     state.interoperability = normalizeInteroperability(raw.interoperability);
     state.share = normalizeShare(raw.share);
     state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
@@ -1448,6 +1538,22 @@
     const next=defaultState();next.projects=Array.isArray(raw.projects)?raw.projects.map(normalizeProject).filter(Boolean):[];next.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];next.activeProjectId=next.projects.some(p=>p.id===raw.activeProjectId&&!p.archivedAt)?raw.activeProjectId:null;next.identity=normalizeIdentity(raw.identity);next.knowledge=normalizeKnowledge(raw.knowledge,next.projects);next.interoperability=normalizeInteroperability(raw.interoperability);next.share=shareTemplate();next.createdAt=validIso(raw.createdAt)?raw.createdAt:next.createdAt;next.updatedAt=nowIso();return next;
   }
 
+
+  function migrateV16(raw) {
+    const next=defaultState();
+    next.projects=Array.isArray(raw.projects)?raw.projects.map(normalizeProject).filter(Boolean):[];
+    next.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];
+    next.activeProjectId=next.projects.some(p=>p.id===raw.activeProjectId&&!p.archivedAt)?raw.activeProjectId:null;
+    next.identity=normalizeIdentity(raw.identity);
+    next.knowledge=normalizeKnowledge(raw.knowledge,next.projects);
+    next.knowledgeGraph=knowledgeGraphTemplate();
+    next.interoperability=normalizeInteroperability(raw.interoperability);
+    next.share=normalizeShare(raw.share);
+    next.createdAt=validIso(raw.createdAt)?raw.createdAt:next.createdAt;
+    next.updatedAt=nowIso();
+    return next;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -1465,12 +1571,14 @@
     if (raw.schemaVersion === 13) return migrateV13(raw);
     if (raw.schemaVersion === 14) return migrateV14(raw);
     if (raw.schemaVersion === 15) return migrateV15(raw);
+    if (raw.schemaVersion === 16) return migrateV16(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
     state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
+    state.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, state.projects);
     state.interoperability = normalizeInteroperability(raw.interoperability);
     state.share = normalizeShare(raw.share);
     state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
@@ -1828,6 +1936,7 @@
     const workspaceViewNav = root.querySelector('[data-scw-workspace-view-nav]');
     const projectsSection = root.querySelector('[data-scw-workspace-section="projects"]');
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
+    const graphSection = root.querySelector('[data-scw-workspace-section="graph"]');
     const interoperabilitySection = root.querySelector('[data-scw-workspace-section="interoperability"]');
     const shareSection = root.querySelector('[data-scw-workspace-section="share"]');
     const interoperabilityForm = root.querySelector('[data-scw-interoperability-form]');
@@ -1867,6 +1976,20 @@
     const knowledgeMetricProjects = root.querySelector('[data-scw-knowledge-metric-projects]');
     const knowledgeMetricCollections = root.querySelector('[data-scw-knowledge-metric-collections]');
     const knowledgeMetricTags = root.querySelector('[data-scw-knowledge-metric-tags]');
+    const graphSearch = root.querySelector('[data-scw-graph-search]');
+    const graphNodeType = root.querySelector('[data-scw-graph-node-type]');
+    const graphRelation = root.querySelector('[data-scw-graph-relation]');
+    const graphProject = root.querySelector('[data-scw-graph-project]');
+    const graphScope = root.querySelector('[data-scw-graph-scope]');
+    const graphDepth = root.querySelector('[data-scw-graph-depth]');
+    const graphResults = root.querySelector('[data-scw-graph-results]');
+    const graphDetail = root.querySelector('[data-scw-graph-detail]');
+    const graphRelations = root.querySelector('[data-scw-graph-relations]');
+    const graphSvg = root.querySelector('[data-scw-graph-svg]');
+    const graphMetricNodes = root.querySelector('[data-scw-graph-metric-nodes]');
+    const graphMetricEdges = root.querySelector('[data-scw-graph-metric-edges]');
+    const graphMetricProjects = root.querySelector('[data-scw-graph-metric-projects]');
+    const graphMetricProvenance = root.querySelector('[data-scw-graph-metric-provenance]');
     const connectionsDrawer = root.querySelector('.scw-connections-drawer');
     const handoffList = root.querySelector('[data-scw-handoff-list]');
     const handoffEmpty = root.querySelector('[data-scw-handoff-empty]');
@@ -1884,7 +2007,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.15.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.16.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -2405,7 +2528,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.16.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -2413,7 +2536,7 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.16.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
     function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
     function renderGuidedWorkflows(project){
       if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
@@ -2449,7 +2572,7 @@
     }
 
     function setWorkspaceView(view) {
-      workspaceView = ['projects','knowledge','interoperability','share'].includes(view) ? view : 'projects';
+      workspaceView = ['projects','knowledge','graph','interoperability','share'].includes(view) ? view : 'projects';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
@@ -2458,10 +2581,12 @@
       if (projectsSection) projectsSection.hidden = workspaceView !== 'projects';
       if (activePanel) activePanel.hidden = workspaceView !== 'projects' || !activeProject();
       if (knowledgeSection) knowledgeSection.hidden = workspaceView !== 'knowledge';
+      if (graphSection) graphSection.hidden = workspaceView !== 'graph';
       if (interoperabilitySection) interoperabilitySection.hidden = workspaceView !== 'interoperability';
       if (shareSection) shareSection.hidden = workspaceView !== 'share';
       if (connectionsDrawer) connectionsDrawer.hidden = workspaceView !== 'projects';
       if (workspaceView === 'knowledge') renderKnowledge();
+      if (workspaceView === 'graph') renderKnowledgeGraph();
       if (workspaceView === 'interoperability') renderInteroperability();
       if (workspaceView === 'share') renderShare();
     }
@@ -2491,7 +2616,7 @@
       const head = document.createElement('div'); head.className='scw-knowledge-collection-head';
       const body=document.createElement('div'); const strong=document.createElement('strong');strong.textContent=collection.title;const p=document.createElement('p');p.textContent=collection.description||'No collection description.';body.append(strong,p);
       const acts=document.createElement('div');acts.className='scw-knowledge-actions';
-      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
+      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.16.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove collection';remove.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Workspace Objects will not be deleted.`))return;state.knowledge.collections=state.knowledge.collections.filter(c=>c.id!==collection.id);state.knowledge.activeCollectionId=state.knowledge.collections[0]?.id||null;touchKnowledge();persist('Knowledge collection removed');renderKnowledge();});acts.append(exp,remove);head.append(body,acts);knowledgeCollectionDetail.appendChild(head);
       const list=document.createElement('div');list.className='scw-knowledge-collection-items';
       if(!collection.items.length)list.innerHTML='<div class="scw-knowledge-empty-note">No objects in this collection yet.</div>';
@@ -2549,6 +2674,20 @@
       if(knowledgeCollectionSelect){knowledgeCollectionSelect.innerHTML='<option value="">Select collection</option>';state.knowledge.collections.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.title} (${c.items.length})`;knowledgeCollectionSelect.appendChild(o);});knowledgeCollectionSelect.value=state.knowledge.activeCollectionId||'';}
       if(knowledgeCollectionList){knowledgeCollectionList.innerHTML='';state.knowledge.collections.forEach(c=>{const b=document.createElement('button');b.type='button';b.className=`scw-knowledge-collection-chip${c.id===state.knowledge.activeCollectionId?' is-active':''}`;b.textContent=`${c.title} · ${c.items.length}`;b.addEventListener('click',()=>{state.knowledge.activeCollectionId=c.id;touchKnowledge();persist('Knowledge collection opened');renderKnowledge();});knowledgeCollectionList.appendChild(b);});}
       renderKnowledgeCollectionDetail(index);
+    }
+
+
+
+    function graphNodeLabel(node){return node.type==='project'?'Project':node.type==='provenance'?'Provenance':(OBJECT_LABELS[node.type]||node.type);}
+    function openGraphNode(node){if(!node)return;if(node.type==='project'){const project=state.projects.find(p=>p.id===node.projectId&&!p.archivedAt);if(!project)return;state.activeProjectId=project.id;persist('Project opened from Knowledge Graph');render();setWorkspaceView('projects');activePanel.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});return;}if(node.objectId){openKnowledgeEntry({projectId:node.projectId,objectId:node.objectId,key:`${node.projectId}:${node.objectId}`,object:state.projects.find(p=>p.id===node.projectId)?.objects.find(o=>o.id===node.objectId)});}}
+    function renderGraphSvg(focus,neighborhood){if(!graphSvg)return;while(graphSvg.firstChild)graphSvg.removeChild(graphSvg.firstChild);graphSvg.setAttribute('viewBox','0 0 760 430');const NS='http://www.w3.org/2000/svg';if(!focus){const t=document.createElementNS(NS,'text');t.setAttribute('x','380');t.setAttribute('y','215');t.setAttribute('text-anchor','middle');t.setAttribute('class','scw-graph-svg-empty');t.textContent='Select a graph node to inspect its neighborhood.';graphSvg.appendChild(t);return;}const others=neighborhood.nodes.filter(n=>n.id!==focus.id).slice(0,14),cx=380,cy=215,radius=155;const positions=new Map([[focus.id,{x:cx,y:cy}]]);others.forEach((n,i)=>{const angle=(Math.PI*2*i/Math.max(others.length,1))-Math.PI/2;positions.set(n.id,{x:cx+Math.cos(angle)*radius,y:cy+Math.sin(angle)*radius});});neighborhood.edges.forEach(edge=>{const a=positions.get(edge.from),b=positions.get(edge.to);if(!a||!b)return;const line=document.createElementNS(NS,'line');line.setAttribute('x1',a.x);line.setAttribute('y1',a.y);line.setAttribute('x2',b.x);line.setAttribute('y2',b.y);line.setAttribute('class','scw-graph-edge');graphSvg.appendChild(line);});[focus,...others].forEach(node=>{const p=positions.get(node.id),g=document.createElementNS(NS,'g');g.setAttribute('class',`scw-graph-node scw-graph-node-${node.type}${node.id===focus.id?' is-focus':''}`);g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label',`${graphNodeLabel(node)}: ${node.label}`);const circle=document.createElementNS(NS,'circle');circle.setAttribute('cx',p.x);circle.setAttribute('cy',p.y);circle.setAttribute('r',node.id===focus.id?'31':'23');const text=document.createElementNS(NS,'text');text.setAttribute('x',p.x);text.setAttribute('y',p.y+(node.id===focus.id?48:39));text.setAttribute('text-anchor','middle');text.textContent=String(node.label||'').slice(0,28);g.append(circle,text);const select=()=>{state.knowledgeGraph.selectedNodeId=node.id;touchKnowledgeGraph();persist('Knowledge Graph focus saved');renderKnowledgeGraph();};g.addEventListener('click',select);g.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();select();}});graphSvg.appendChild(g);});}
+    function renderKnowledgeGraph(){if(!graphSection)return;state.knowledgeGraph=normalizeKnowledgeGraph(state.knowledgeGraph,state.projects);const graph=buildKnowledgeGraph(),prefs=state.knowledgeGraph.preferences;const projectIds=new Set(graph.nodes.filter(n=>n.type==='project').map(n=>n.projectId));if(graphSearch&&document.activeElement!==graphSearch)graphSearch.value=prefs.query;if(graphNodeType)graphNodeType.value=prefs.nodeType;if(graphRelation)graphRelation.value=prefs.relation;if(graphScope)graphScope.value=prefs.scope;if(graphDepth)graphDepth.value=String(prefs.depth);if(graphProject){const current=prefs.project;graphProject.innerHTML='<option value="all">All projects</option>';state.projects.slice().sort(projectSort).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.title}${p.archivedAt?' (archived)':''}`;graphProject.appendChild(o);});graphProject.value=projectIds.has(current)?current:'all';}
+      if(graphMetricNodes)graphMetricNodes.textContent=String(graph.nodes.length);if(graphMetricEdges)graphMetricEdges.textContent=String(graph.edges.length);if(graphMetricProjects)graphMetricProjects.textContent=String(projectIds.size);if(graphMetricProvenance)graphMetricProvenance.textContent=String(graph.nodes.filter(n=>n.type==='provenance').length);
+      const q=prefs.query.trim().toLowerCase();let candidates=graph.nodes.filter(node=>{if(prefs.scope==='active'&&node.archived)return false;if(prefs.nodeType!=='all'&&node.type!==prefs.nodeType)return false;if(prefs.project!=='all'&&node.type!=='provenance'&&node.projectId!==prefs.project)return false;if(q&&!`${node.label} ${node.summary||''} ${(node.tags||[]).join(' ')} ${node.projectTitle||''}`.toLowerCase().includes(q))return false;if(prefs.relation!=='all'&&!graph.edges.some(edge=>edge.relation===prefs.relation&&(edge.from===node.id||edge.to===node.id)))return false;return true;});candidates=candidates.sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))).slice(0,120);
+      if(graphResults){graphResults.innerHTML='';if(!candidates.length)graphResults.innerHTML='<div class="scw-knowledge-empty-note">No graph nodes match these filters.</div>';candidates.forEach(node=>{const b=document.createElement('button');b.type='button';b.className=`scw-graph-result${state.knowledgeGraph.selectedNodeId===node.id?' is-selected':''}`;const degree=graph.edges.filter(e=>e.from===node.id||e.to===node.id).length;b.innerHTML=`<span>${escapeHtml(graphNodeLabel(node))}${node.projectTitle?` · ${escapeHtml(node.projectTitle)}`:''}</span><strong>${escapeHtml(node.label)}</strong><small>${degree} relationship${degree===1?'':'s'}</small>`;b.addEventListener('click',()=>{state.knowledgeGraph.selectedNodeId=node.id;touchKnowledgeGraph();persist('Knowledge Graph focus saved');renderKnowledgeGraph();});graphResults.appendChild(b);});}
+      let focus=graph.nodes.find(n=>n.id===state.knowledgeGraph.selectedNodeId);if(!focus&&candidates.length){focus=candidates[0];state.knowledgeGraph.selectedNodeId=focus.id;}const neighborhood=focus?graphNeighborhood(graph,focus.id,prefs.depth,prefs.relation):{nodes:[],edges:[]};renderGraphSvg(focus,neighborhood);
+      if(graphDetail){graphDetail.innerHTML='';if(!focus)graphDetail.innerHTML='<div class="scw-knowledge-empty-note">Select a project, object, or provenance source to inspect its graph context.</div>';else{const head=document.createElement('div');head.className='scw-graph-detail-head';head.innerHTML=`<span>${escapeHtml(graphNodeLabel(focus))}${focus.projectTitle?` · ${escapeHtml(focus.projectTitle)}`:''}</span><strong>${escapeHtml(focus.label)}</strong><p>${escapeHtml(focus.summary||'No additional summary.')}</p>`;const action=document.createElement('button');action.type='button';action.className='scw-card-action';action.textContent=focus.type==='provenance'?'Provenance node':'Open source context';action.disabled=focus.type==='provenance';action.addEventListener('click',()=>openGraphNode(focus));head.appendChild(action);graphDetail.appendChild(head);}}
+      if(graphRelations){graphRelations.innerHTML='';if(!focus||!neighborhood.edges.length)graphRelations.innerHTML='<div class="scw-knowledge-empty-note">No relationships are visible for this focus and filter.</div>';else neighborhood.edges.slice(0,80).forEach(edge=>{const otherId=edge.from===focus.id?edge.to:edge.from,other=graph.nodes.find(n=>n.id===otherId);if(!other)return;const row=document.createElement('button');row.type='button';row.className='scw-graph-relation-row';row.innerHTML=`<span>${escapeHtml(edge.relation.replaceAll('-',' '))}</span><strong>${escapeHtml(other.label)}</strong><small>${escapeHtml(graphNodeLabel(other))}${other.projectTitle?` · ${escapeHtml(other.projectTitle)}`:''}</small>`;row.addEventListener('click',()=>{state.knowledgeGraph.selectedNodeId=other.id;touchKnowledgeGraph();persist('Knowledge Graph focus saved');renderKnowledgeGraph();});graphRelations.appendChild(row);});}
     }
 
     function renderActive() {
@@ -2672,7 +2811,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.15.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.16.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -2706,7 +2845,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.15.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.16.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -2866,7 +3005,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.15.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.16.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2881,7 +3020,7 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.15.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.16.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
 
     if(aiRequestForm) aiRequestForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.aiAssistance.sessions.length>=MAX_AI_SESSIONS)return;const data=new FormData(aiRequestForm),title=String(data.get('title')||'').trim().slice(0,200),prompt=String(data.get('prompt')||'').trim().slice(0,MAX_AI_PROMPT),task=AI_TASKS.has(String(data.get('task')))?String(data.get('task')):'general-question',objectIds=selectedValues(aiObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_AI_OBJECT_REFS);if(!title||!prompt)return;const stamp=nowIso(),session={id:id('ai'),title,task,status:'prepared',prompt,objectIds,response:'',responseSource:'manual',citationObjectIds:[],acceptedDocumentObjectId:'',createdAt:stamp,updatedAt:stamp,sentAt:null,respondedAt:null,acceptedAt:null};project.aiAssistance.sessions.unshift(session);project.aiAssistance.activeSessionId=session.id;touchAiAssistance(project);addActivity(project,'ai-request-prepared',`AI assistance request prepared: ${title}`);aiRequestForm.reset();persist('AI assistance request prepared locally');renderAiAssistance(project);});
@@ -2937,6 +3076,10 @@
     root.querySelectorAll('[data-scw-workspace-view]').forEach((button) => {
       button.addEventListener('click', () => setWorkspaceView(button.dataset.scwWorkspaceView));
     });
+
+    [graphSearch].forEach(el=>{if(el)el.addEventListener('input',()=>{state.knowledgeGraph.preferences.query=el.value.slice(0,240);touchKnowledgeGraph();schedulePersist();renderKnowledgeGraph();});});
+    [graphNodeType,graphRelation,graphProject,graphScope,graphDepth].forEach(el=>{if(el)el.addEventListener('change',()=>{if(el===graphNodeType)state.knowledgeGraph.preferences.nodeType=el.value;else if(el===graphRelation)state.knowledgeGraph.preferences.relation=el.value;else if(el===graphProject)state.knowledgeGraph.preferences.project=el.value;else if(el===graphScope)state.knowledgeGraph.preferences.scope=el.value;else if(el===graphDepth)state.knowledgeGraph.preferences.depth=Number(el.value)===2?2:1;touchKnowledgeGraph();persist('Knowledge Graph view saved');renderKnowledgeGraph();});});
+
     [knowledgeSearch, knowledgeTag].forEach(el => { if(el) el.addEventListener('input',()=>{state.knowledge.preferences[el===knowledgeSearch?'query':'tag']=el.value.slice(0,el===knowledgeSearch?240:80);touchKnowledge();schedulePersist();renderKnowledge();}); });
     [knowledgeType, knowledgeProject, knowledgeScope].forEach(el => { if(el) el.addEventListener('change',()=>{const key=el===knowledgeType?'type':el===knowledgeProject?'project':'scope';state.knowledge.preferences[key]=el.value;touchKnowledge();persist('Knowledge view saved');renderKnowledge();}); });
     if(knowledgeCollectionSelect)knowledgeCollectionSelect.addEventListener('change',()=>{state.knowledge.activeCollectionId=knowledgeCollectionSelect.value||null;touchKnowledge();persist('Knowledge collection selected');renderKnowledge();});

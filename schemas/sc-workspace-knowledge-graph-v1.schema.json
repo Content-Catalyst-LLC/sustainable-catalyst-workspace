@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Knowledge Graph",
+  "type": "object",
+  "required": [
+    "schema",
+    "preferences",
+    "selectedNodeId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-knowledge-graph/1.0"
+    },
+    "preferences": {
+      "type": "object",
+      "required": [
+        "query",
+        "nodeType",
+        "relation",
+        "project",
+        "scope",
+        "depth"
+      ],
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "nodeType": {
+          "type": "string"
+        },
+        "relation": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "active",
+            "all"
+          ]
+        },
+        "depth": {
+          "enum": [
+            1,
+            2
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "selectedNodeId": {
+      "type": "string",
+      "maxLength": 260
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

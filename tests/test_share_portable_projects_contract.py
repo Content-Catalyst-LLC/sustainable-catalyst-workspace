@@ -1,10 +1,10 @@
 import json,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.15.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.15.0.css';MANIFEST=ROOT/'release-manifest-v0.15.0.json'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.16.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.16.0.css';MANIFEST=ROOT/'release-manifest-v0.16.0.json'
 class SharePortableProjectsTests(unittest.TestCase):
  def test_release(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.15.0');self.assertEqual(m['previous_version'],'0.14.0');self.assertEqual(m['storage_schema_version'],16);self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.16.0');self.assertEqual(m['previous_version'],'0.15.0');self.assertEqual(m['storage_schema_version'],17);self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
  def test_contract(self):
   p=PHP.read_text();self.assertIn("'/share-contract'",p);self.assertIn("'public_share_links' => false",p);self.assertIn("'collaboration' => false",p);self.assertIn("'import_overwrites_existing_project' => false",p)
  def test_package(self):
@@ -18,5 +18,5 @@ class SharePortableProjectsTests(unittest.TestCase):
  def test_storage_only_migration(self):
   j=JS.read_text();m=json.loads(MANIFEST.read_text());self.assertIn('function migrateV15(raw)',j);self.assertIn('if (raw.schemaVersion === 15) return migrateV15(raw)',j);self.assertTrue(m['migration']['project_schema_unchanged']);self.assertIn('state.share = normalizeShare(raw.share)',j)
  def test_ui(self):
-  p=PHP.read_text();c=CSS.read_text();self.assertIn('SHARE &amp; PORTABLE PROJECTS',p);self.assertIn('data-scw-share-export',p);self.assertIn('data-scw-share-import',p);self.assertIn('.scw-share{',c);self.assertIn("['projects','knowledge','interoperability','share']",JS.read_text());self.assertIn("shareSection.hidden = workspaceView !== 'share'",JS.read_text())
+  p=PHP.read_text();c=CSS.read_text();self.assertIn('SHARE &amp; PORTABLE PROJECTS',p);self.assertIn('data-scw-share-export',p);self.assertIn('data-scw-share-import',p);self.assertIn('.scw-share{',c);self.assertIn("['projects','knowledge','graph','interoperability','share']",JS.read_text());self.assertIn("shareSection.hidden = workspaceView !== 'share'",JS.read_text())
 if __name__=='__main__':unittest.main()

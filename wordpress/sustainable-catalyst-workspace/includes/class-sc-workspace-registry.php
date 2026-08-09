@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0150';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0150';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0160';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0160';
+    const LEGACY_PENDING_KEY_V0150 = 'sc_workspace_registry_pending_v0150';
     const LEGACY_PENDING_KEY_V0140 = 'sc_workspace_registry_pending_v0140';
     const LEGACY_PENDING_KEY_V0130 = 'sc_workspace_registry_pending_v0130';
     const LEGACY_PENDING_KEY_V0120 = 'sc_workspace_registry_pending_v0120';
@@ -91,6 +92,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0150);
         delete_option(self::LEGACY_PENDING_KEY_V0140);
         delete_option(self::LEGACY_PENDING_KEY_V0130);
         delete_option(self::LEGACY_PENDING_KEY_V0120);
@@ -162,11 +164,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.14.0',
+            'previous_version' => '0.15.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Share & Portable Projects: adds privacy-minimized whole-project packages, SHA-256 integrity manifests, review-copy HTML, controlled import-as-copy, and local sharing history without cloud sync or collaboration.',
+            'change_summary' => 'Workspace Search & Knowledge Graph: adds deterministic cross-project graph search, project/object/provenance nodes, explicit relationship inspection, focus-neighborhood visualization, and local graph preferences without semantic embeddings or server indexing.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.15.0 adds Share & Portable Projects. Storage advances to schema 16 while project schema remains sc-workspace-project/11.0. Portable project packages are explicit local copies with integrity fingerprints; device identity, handoff/session state, and account metadata are excluded. Import always creates a local copy rather than overwriting an existing project.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.16.0 adds Workspace Search & Knowledge Graph. Storage advances to schema 17 while project schema remains sc-workspace-project/11.0. The graph is derived locally from canonical projects, objects, provenance, traceability, analysis, decision, and deterministic cross-project source relationships; no semantic embeddings, cloud graph, or server search index are introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
