@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0170, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0160, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0150, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0140, '') === '1' ||
@@ -61,7 +62,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.17.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.18.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -160,6 +161,11 @@ final class SC_Workspace {
             'callback' => array($this, 'activity_intelligence_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/collaboration-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'collaboration_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -175,7 +181,7 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v18',
+            'persistence' => 'browser-local-projects-v19',
             'project_schema' => 'sc-workspace-project/11.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
@@ -193,6 +199,8 @@ final class SC_Workspace {
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
+            'collaboration_schema' => 'sc-workspace-collaboration/1.0',
+            'review_package_schema' => 'sc-workspace-review-package/1.0',
             'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
             'interoperability_schema' => 'sc-workspace-interoperability/1.0',
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
@@ -203,10 +211,12 @@ final class SC_Workspace {
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'server_project_storage' => false,
             'cloud_sync' => false,
-            'collaboration' => false,
+            'collaboration' => 'asynchronous-portable-review',
+            'live_collaboration' => false,
+            'server_collaboration' => false,
             'registry_family' => 'commercial',
             'lifecycle' => 'experimental',
         ));
@@ -223,7 +233,7 @@ final class SC_Workspace {
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
             'export_schema' => 'sc-workspace-project-export/11.0',
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -248,6 +258,8 @@ final class SC_Workspace {
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
+            'collaboration_schema' => 'sc-workspace-collaboration/1.0',
+            'review_package_schema' => 'sc-workspace-review-package/1.0',
         ));
     }
 
@@ -451,7 +463,7 @@ final class SC_Workspace {
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
             'project_schema' => 'sc-workspace-project/11.0',
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'templates' => array('research-investigation', 'evidence-review', 'analytical-assessment', 'decision-case', 'systems-mapping', 'publication-preparation'),
             'run_statuses' => array('active', 'paused', 'complete'),
             'step_statuses' => array('todo', 'in-progress', 'complete', 'skipped'),
@@ -531,8 +543,10 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
+            'collaboration_schema' => 'sc-workspace-collaboration/1.0',
+            'review_package_schema' => 'sc-workspace-review-package/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'project_schema' => 'sc-workspace-project/11.0',
             'node_types' => array('project','provenance','source','evidence','dataset','analysis','decision','document','export'),
             'relationship_types' => array('contains','sourced-from','same-source','evidence-from','uses','informs','supports','contradicts','derived-from','produced-by','supersedes','cites'),
@@ -589,7 +603,7 @@ final class SC_Workspace {
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'project_schema' => 'sc-workspace-project/11.0',
             'accepted_formats' => array('json','csv','tsv','markdown','html','text'),
             'staged_review_required' => true,
@@ -615,7 +629,7 @@ final class SC_Workspace {
             'workspace_version' => SC_WORKSPACE_VERSION,
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'project_schema' => 'sc-workspace-project/11.0',
             'transport' => array('local-download', 'manual-file-transfer', 'local-import-as-copy'),
             'review_copy_html' => true,
@@ -638,17 +652,45 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-activity-intelligence-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
-            'storage_schema_version' => 18,
+            'collaboration_schema' => 'sc-workspace-collaboration/1.0',
+            'review_package_schema' => 'sc-workspace-review-package/1.0',
+            'storage_schema_version' => 19,
             'project_schema' => 'sc-workspace-project/11.0',
             'derived_from_local_project_state' => true,
             'next_actions_user_created' => true,
-            'signal_kinds' => array('workflow', 'research', 'analysis', 'decision', 'traceability', 'handoff', 'briefing', 'stale'),
+            'signal_kinds' => array('workflow', 'research', 'analysis', 'decision', 'traceability', 'handoff', 'briefing', 'collaboration', 'stale'),
             'signal_severities' => array('info', 'attention', 'high'),
             'productivity_score' => false,
             'automatic_task_completion' => false,
             'time_on_page_tracking' => false,
             'behavioral_telemetry' => false,
             'server_activity_analytics' => false,
+            'local_first' => true,
+        ));
+    }
+
+    public function collaboration_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-collaboration-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'collaboration_schema' => 'sc-workspace-collaboration/1.0',
+            'review_package_schema' => 'sc-workspace-review-package/1.0',
+            'storage_schema_version' => 19,
+            'project_schema' => 'sc-workspace-project/11.0',
+            'roles' => array('owner', 'contributor', 'reviewer', 'observer'),
+            'review_statuses' => array('draft', 'requested', 'in-review', 'changes-requested', 'approved', 'closed'),
+            'thread_kinds' => array('comment', 'suggestion', 'question'),
+            'thread_statuses' => array('open', 'resolved'),
+            'transport' => array('local-download', 'manual-file-transfer', 'local-import'),
+            'roles_are_server_permissions' => false,
+            'source_project_owner_controlled' => true,
+            'imported_feedback_mutates_project_automatically' => false,
+            'review_request_contains_privacy_minimized_project_copy' => true,
+            'review_response_contains_project_content' => false,
+            'live_collaboration' => false,
+            'server_collaboration' => false,
+            'cloud_team_directory' => false,
+            'automatic_cloud_upload' => false,
             'local_first' => true,
         ));
     }
@@ -667,7 +709,7 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 18,
+            'storage_schema_version' => 19,
             'project_schema' => 'sc-workspace-project/11.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
@@ -676,7 +718,8 @@ final class SC_Workspace {
             'briefing_publication_workspace_mode' => true,
             'guided_workflows_workspace_mode' => true,
             'interoperability_workspace_view' => true,
-                'editorial_header_bar' => true,
+            'collaboration_foundation_view' => true,
+            'editorial_header_bar' => true,
             'editorial_shell' => true,
             'illustrative_software_preview' => true,
             'alternating_surface_rhythm' => true,
@@ -711,13 +754,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.17.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.18.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.17.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.18.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -797,7 +840,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.17.0.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.18.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -820,6 +863,7 @@ final class SC_Workspace {
                 <button type="button" data-scw-workspace-view="graph" aria-pressed="false">Graph</button>
                 <button type="button" data-scw-workspace-view="activity" aria-pressed="false">Activity</button>
                 <button type="button" data-scw-workspace-view="interoperability" aria-pressed="false">Import &amp; Interoperability</button>
+                <button type="button" data-scw-workspace-view="collaboration" aria-pressed="false">Collaborate</button>
                 <button type="button" data-scw-workspace-view="share" aria-pressed="false">Share</button>
             </nav>
 
@@ -944,7 +988,7 @@ final class SC_Workspace {
                     <label><span>Project</span><select data-scw-activity-project><option value="all">All projects</option></select></label>
                     <label><span>Activity window</span><select data-scw-activity-window><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option></select></label>
                     <label><span>Stale after</span><select data-scw-activity-stale><option value="7">7 days</option><option value="14">14 days</option><option value="30">30 days</option></select></label>
-                    <label><span>Signal</span><select data-scw-activity-signal><option value="all">All signals</option><option value="workflow">Workflow</option><option value="research">Research</option><option value="analysis">Analysis</option><option value="decision">Decision</option><option value="traceability">Traceability</option><option value="handoff">Handoffs</option><option value="briefing">Briefing</option><option value="stale">Stale work</option></select></label>
+                    <label><span>Signal</span><select data-scw-activity-signal><option value="all">All signals</option><option value="workflow">Workflow</option><option value="research">Research</option><option value="analysis">Analysis</option><option value="decision">Decision</option><option value="traceability">Traceability</option><option value="handoff">Handoffs</option><option value="briefing">Briefing</option><option value="collaboration">Collaboration</option><option value="stale">Stale work</option></select></label>
                 </div>
                 <div class="scw-activity-intelligence-grid">
                     <section class="scw-activity-intelligence-panel" aria-labelledby="scw-next-actions-heading">
@@ -1010,6 +1054,51 @@ final class SC_Workspace {
                     <div class="scw-knowledge-panel-head"><span>03 / ACTIVITY</span><h3 id="scw-interoperability-history-heading">Recent interoperability activity</h3></div>
                     <div data-scw-interoperability-history></div>
                 </section>
+            </section>
+
+            <section class="scw-collaboration" data-scw-workspace-section="collaboration" hidden aria-labelledby="scw-collaboration-title">
+                <div class="scw-collaboration-head">
+                    <div><div class="scw-editorial-kicker">COLLABORATION FOUNDATION</div><h2 id="scw-collaboration-title">Structured review without surrendering project ownership.</h2><p>Create a review request, send a privacy-minimized project copy, collect object-linked comments or suggestions, and bring feedback back to the source Workspace. v0.18.0 is asynchronous and file-based; it does not create a shared cloud project or server permission system.</p></div>
+                </div>
+                <div class="scw-collaboration-metrics" aria-label="Collaboration metrics">
+                    <div><strong data-scw-collab-metric-sessions>0</strong><span>review sessions</span></div>
+                    <div><strong data-scw-collab-metric-open>0</strong><span>open threads</span></div>
+                    <div><strong data-scw-collab-metric-people>0</strong><span>contributors</span></div>
+                    <div><strong data-scw-collab-metric-responses>0</strong><span>responses imported</span></div>
+                </div>
+                <div class="scw-collaboration-grid">
+                    <section class="scw-collaboration-panel" aria-labelledby="scw-collab-profile-title">
+                        <div class="scw-knowledge-panel-head"><span>01 / LOCAL IDENTITY</span><h3 id="scw-collab-profile-title">How you appear in review packages</h3></div>
+                        <form class="scw-collaboration-form" data-scw-collab-profile-form>
+                            <label><span>Display name or initials</span><input type="text" name="displayName" maxlength="120" placeholder="e.g. TA or Tariq Ahmad"></label>
+                            <label><span>Default review role</span><select name="role"><option value="owner">Owner</option><option value="contributor">Contributor</option><option value="reviewer">Reviewer</option><option value="observer">Observer</option></select></label>
+                            <button class="scw-button" type="submit">Save local review identity</button>
+                        </form>
+                        <p class="scw-collaboration-note">This label is stored on this device and included only when you explicitly export a review package. It is not an account directory or permission grant.</p>
+                    </section>
+                    <section class="scw-collaboration-panel" aria-labelledby="scw-collab-request-title">
+                        <div class="scw-knowledge-panel-head"><span>02 / REQUEST</span><h3 id="scw-collab-request-title">Start structured review</h3></div>
+                        <form class="scw-collaboration-form" data-scw-collab-request-form>
+                            <label><span>Project</span><select name="projectId" data-scw-collab-project required><option value="">Choose project</option></select></label>
+                            <label><span>Review title</span><input type="text" name="title" maxlength="200" required placeholder="e.g. Review evidence and decision rationale"></label>
+                            <label><span>Review purpose</span><textarea name="purpose" rows="4" maxlength="2400" placeholder="What should the reviewer examine or challenge?"></textarea></label>
+                            <label><span>Requested role</span><select name="requestedRole"><option value="reviewer">Reviewer</option><option value="contributor">Contributor</option><option value="observer">Observer</option></select></label>
+                            <button class="scw-button scw-button-primary" type="submit">Create review request</button>
+                        </form>
+                    </section>
+                </div>
+                <div class="scw-collaboration-layout">
+                    <section class="scw-collaboration-panel" aria-labelledby="scw-collab-sessions-title"><div class="scw-knowledge-panel-head"><span>03 / SESSIONS</span><h3 id="scw-collab-sessions-title">Review sessions</h3></div><div class="scw-collaboration-sessions" data-scw-collab-session-list></div></section>
+                    <section class="scw-collaboration-panel" aria-labelledby="scw-collab-active-title"><div class="scw-knowledge-panel-head"><span>04 / REVIEW</span><h3 id="scw-collab-active-title">Comments, suggestions &amp; questions</h3></div><div class="scw-collaboration-active" data-scw-collab-active></div><form class="scw-collaboration-form" data-scw-collab-thread-form hidden><label><span>Kind</span><select name="kind"><option value="comment">Comment</option><option value="suggestion">Suggestion</option><option value="question">Question</option></select></label><label><span>Project object <em>optional</em></span><select name="objectId" data-scw-collab-object><option value="">Project-level review</option></select></label><label><span>Review note</span><textarea name="body" rows="5" maxlength="5000" required></textarea></label><button class="scw-button" type="submit">Add review thread</button></form><div class="scw-collaboration-threads" data-scw-collab-thread-list></div></section>
+                </div>
+                <section class="scw-collaboration-exchange" aria-labelledby="scw-collab-exchange-title">
+                    <div class="scw-knowledge-panel-head"><span>05 / PORTABLE REVIEW</span><h3 id="scw-collab-exchange-title">Move a review request or response deliberately.</h3></div>
+                    <div class="scw-collaboration-actions"><button class="scw-button" type="button" data-scw-collab-export-request>Export review request</button><button class="scw-button" type="button" data-scw-collab-export-response>Export review response</button><button class="scw-button" type="button" data-scw-collab-import>Import review package</button><input type="file" accept="application/json,.json" data-scw-collab-file hidden></div>
+                    <div class="scw-collaboration-stage" data-scw-collab-stage><span>No review package staged.</span></div>
+                    <div class="scw-collaboration-stage-actions"><button class="scw-button scw-button-primary" type="button" data-scw-collab-commit disabled>Commit staged review package</button><button class="scw-button" type="button" data-scw-collab-clear disabled>Clear</button></div>
+                    <div class="scw-collaboration-history" data-scw-collab-history></div>
+                </section>
+                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Roles in v0.18.0 describe review responsibility inside portable packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
             </section>
 
             <section class="scw-share" data-scw-workspace-section="share" hidden aria-labelledby="scw-share-title">
@@ -1773,7 +1862,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.17.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.18.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1853,11 +1942,11 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.17.0.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.18.0.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.17.0.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.18.0.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">

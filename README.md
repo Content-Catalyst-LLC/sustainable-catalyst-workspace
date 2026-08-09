@@ -2,9 +2,9 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release: **v0.17.0 — Workflow & Activity Intelligence**
+## Current release: **v0.18.0 — Collaboration Foundation**
 
-Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, Import & Interoperability, Share & Portable Projects, Search & Knowledge Graph, and Workflow & Activity Intelligence. v0.17.0 adds an inspectable, device-local activity layer that surfaces explicit next actions, workflow progress, recent changes, and explainable attention conditions without productivity scoring, behavioral telemetry, or server analytics.
+Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, Import & Interoperability, Share & Portable Projects, Search & Knowledge Graph, Workflow & Activity Intelligence, and Collaboration Foundation. v0.18.0 adds asynchronous structured review requests, descriptive contributor roles, object-linked review threads, and portable review request/response packages while preserving local project ownership and avoiding live cloud collaboration.
 
 ## WordPress shortcodes
 
@@ -37,9 +37,15 @@ Workspace remains usable without signing in. Projects, Personal Knowledge, AI re
 - Portable project: `sc-workspace-portable-project/1.0`
 - Knowledge Graph: `sc-workspace-knowledge-graph/1.0`
 - Activity Intelligence: `sc-workspace-activity-intelligence/1.0`
+- Collaboration: `sc-workspace-collaboration/1.0`
+- Review package: `sc-workspace-review-package/1.0`
 - Identity: `sc-workspace-identity/1.0`
 - Handoff: `sc-workspace-handoff/2.0`
-- Storage schema: `18`
+- Storage schema: `19`
+
+## Collaboration boundary
+
+Collaboration Foundation is asynchronous and portable. Roles are descriptive review responsibilities, not server permissions. Review-request imports create local copies; review-response imports add review threads only and never mutate source project content automatically. There is no live co-editing, cloud team directory, organization membership, server collaboration state, or shared-tenant access control in v0.18.0.
 
 ## Workflow & Activity Intelligence boundary
 
@@ -54,4 +60,4 @@ Activity Intelligence is derived from explicit Workspace state. The stored works
 
 Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
 
-See `docs/WORKFLOW_ACTIVITY_INTELLIGENCE_V0170.md`.
+See `docs/COLLABORATION_FOUNDATION_V0180.md`.

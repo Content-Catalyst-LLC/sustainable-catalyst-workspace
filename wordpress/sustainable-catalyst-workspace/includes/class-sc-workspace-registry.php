@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0170';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0170';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0180';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0180';
+    const LEGACY_PENDING_KEY_V0170 = 'sc_workspace_registry_pending_v0170';
     const LEGACY_PENDING_KEY_V0160 = 'sc_workspace_registry_pending_v0160';
     const LEGACY_PENDING_KEY_V0150 = 'sc_workspace_registry_pending_v0150';
     const LEGACY_PENDING_KEY_V0140 = 'sc_workspace_registry_pending_v0140';
@@ -93,6 +94,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0170);
         delete_option(self::LEGACY_PENDING_KEY_V0160);
         delete_option(self::LEGACY_PENDING_KEY_V0150);
         delete_option(self::LEGACY_PENDING_KEY_V0140);
@@ -166,11 +168,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.16.0',
+            'previous_version' => '0.17.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Workflow & Activity Intelligence: adds a transparent cross-project activity timeline, explicit attention signals, guided-workflow status, and user-controlled next actions without productivity scoring or server telemetry.',
+            'change_summary' => 'Collaboration Foundation: adds local-first structured review requests, contributor roles, object-linked review threads, and portable review request/response packages without cloud collaboration or server permissions.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.17.0 adds Workflow & Activity Intelligence. Storage advances to schema 18 while project schema remains sc-workspace-project/11.0. Activity signals are derived locally from explicit project state and workflow records; there is no hidden productivity score, behavioral telemetry, server analytics, or automatic task completion.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.18.0 adds Collaboration Foundation. Storage advances to schema 19 while project schema remains sc-workspace-project/11.0. Collaboration is asynchronous and portable: roles are descriptive, source projects remain owner-controlled, imported feedback cannot mutate project content automatically, and no live collaboration server, team directory, or cloud permission system is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

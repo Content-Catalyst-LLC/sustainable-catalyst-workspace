@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Review Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "workspaceVersion",
+    "createdAt",
+    "request",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-review-package/1.0"
+    },
+    "kind": {
+      "enum": [
+        "request",
+        "response"
+      ]
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "id",
+        "sourceProjectId",
+        "title"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sourceProjectId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    },
+    "project": {
+      "type": "object"
+    },
+    "responder": {
+      "type": "object"
+    },
+    "status": {
+      "type": "string"
+    },
+    "threads": {
+      "type": "array",
+      "maxItems": 300
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "payloadFingerprint"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "payloadFingerprint": {
+          "type": "string"
+        },
+        "fingerprintAvailable": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

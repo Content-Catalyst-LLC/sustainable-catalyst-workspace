@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Collaboration Foundation",
+  "type": "object",
+  "required": [
+    "schema",
+    "profile",
+    "sessions",
+    "history"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-collaboration/1.0"
+    },
+    "profile": {
+      "type": "object",
+      "required": [
+        "displayName",
+        "role"
+      ],
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "role": {
+          "enum": [
+            "owner",
+            "contributor",
+            "reviewer",
+            "observer"
+          ]
+        }
+      }
+    },
+    "sessions": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "requestId",
+          "localProjectId",
+          "sourceProjectId",
+          "title",
+          "status",
+          "requestedRole",
+          "participants",
+          "threads"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "localProjectId": {
+            "type": "string"
+          },
+          "sourceProjectId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 2400
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "requested",
+              "in-review",
+              "changes-requested",
+              "approved",
+              "closed"
+            ]
+          },
+          "requestedRole": {
+            "enum": [
+              "owner",
+              "contributor",
+              "reviewer",
+              "observer"
+            ]
+          },
+          "participants": {
+            "type": "array",
+            "maxItems": 60
+          },
+          "threads": {
+            "type": "array",
+            "maxItems": 300
+          }
+        }
+      }
+    },
+    "activeSessionId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 80
+    }
+  }
+}
