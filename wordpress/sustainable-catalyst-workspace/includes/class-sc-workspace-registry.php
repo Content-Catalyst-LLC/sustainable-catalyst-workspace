@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0300';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0300';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0310';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0310';
+    const LEGACY_PENDING_KEY_V0300 = 'sc_workspace_registry_pending_v0300';
     const LEGACY_PENDING_KEY_V0290 = 'sc_workspace_registry_pending_v0290';
     const LEGACY_PENDING_KEY_V0280 = 'sc_workspace_registry_pending_v0280';
     const LEGACY_PENDING_KEY_V0270 = 'sc_workspace_registry_pending_v0270';
@@ -106,6 +107,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0300);
         delete_option(self::LEGACY_PENDING_KEY_V0290);
         delete_option(self::LEGACY_PENDING_KEY_V0280);
         delete_option(self::LEGACY_PENDING_KEY_V0270);
@@ -192,11 +194,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.29.0',
+            'previous_version' => '0.30.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Public Beta & Product Readiness: consolidated Start experience, guided first-project pathways, runtime capability status, keyboard workspace navigation, and beta release diagnostics without a schema migration.',
+            'change_summary' => 'Public Beta Hardening & Field Diagnostics: adds privacy-minimized field checks, explicit issue-report export, deployment/runtime profiling, recovery verification, and advisory performance thresholds without a schema migration.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.30.0 is the first public-beta consolidation milestone. Storage remains schema 27 and project schema 12.0. Guest access stays first-class; cloud backup/sync remain explicit; lifecycle advancement remains human-declared; no behavioral telemetry or hidden readiness score is introduced.',
+            'manual_notes' => 'Free public Workspace. v0.31.0 hardens the public beta with local field diagnostics and explicit user-generated issue-report export. Storage remains schema 27 and project schema 12.0; no automatic telemetry, issue submission, cloud upload, or hidden health score is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

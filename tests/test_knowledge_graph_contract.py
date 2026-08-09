@@ -1,13 +1,13 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.30.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.31.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.30.0.css'
-MANIFEST=ROOT/'release-manifest-v0.30.0.json'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.31.0.css'
+MANIFEST=ROOT/'release-manifest-v0.31.0.json'
 class KnowledgeGraphContract(unittest.TestCase):
  def test_manifest(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.30.0');self.assertEqual(m['previous_version'],'0.29.0');self.assertEqual(m['storage_schema_version'],27);self.assertEqual(m['project_schema'],'sc-workspace-project/12.0');self.assertEqual(m['knowledge_graph_schema'],'sc-workspace-knowledge-graph/1.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.31.0');self.assertEqual(m['previous_version'],'0.30.0');self.assertEqual(m['storage_schema_version'],27);self.assertEqual(m['project_schema'],'sc-workspace-project/12.0');self.assertEqual(m['knowledge_graph_schema'],'sc-workspace-knowledge-graph/1.0')
  def test_graph_schema(self):
   s=json.loads((ROOT/'schemas/sc-workspace-knowledge-graph-v1.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-knowledge-graph/1.0')
  def test_graph_engine(self):

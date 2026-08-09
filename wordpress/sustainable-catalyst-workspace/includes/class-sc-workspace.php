@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0300, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0290, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0280, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0270, '') === '1' ||
@@ -74,7 +75,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.30.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.31.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -260,6 +261,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/public-beta-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'public_beta_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/field-diagnostics-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'field_diagnostics_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
@@ -1283,6 +1289,55 @@ final class SC_Workspace {
         ));
     }
 
+    public function field_diagnostics_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Public Beta Hardening & Field Diagnostics',
+            'release_stage' => 'public-beta',
+            'storage_schema_version' => 27,
+            'project_schema' => 'sc-workspace-project/12.0',
+            'schema_migration_required' => false,
+            'diagnostic_schema' => 'sc-workspace-field-diagnostic/1.0',
+            'issue_report_schema' => 'sc-workspace-field-report/1.0',
+            'deployment_profile_schema' => 'sc-workspace-deployment-profile/1.0',
+            'checks' => array(
+                'browser-capabilities', 'storage-write-latency', 'workspace-size', 'serialization-latency',
+                'parse-latency', 'dom-density', 'last-known-good-recovery', 'deployment-profile',
+            ),
+            'advisory_thresholds' => array(
+                'workspace_bytes' => 4194304,
+                'storage_probe_ms' => 100,
+                'serialize_ms' => 150,
+                'parse_ms' => 150,
+                'dom_nodes' => 6000,
+            ),
+            'issue_reporting' => array(
+                'user_generated' => true,
+                'export_json' => true,
+                'export_text_summary' => true,
+                'automatic_submission' => false,
+                'project_content_automatically_included' => false,
+                'user_entered_text_included' => true,
+            ),
+            'privacy' => array(
+                'automatic_telemetry' => false,
+                'automatic_submission' => false,
+                'device_identifier_included' => false,
+                'project_content_included' => false,
+                'source_urls_included' => false,
+                'query_string_included' => false,
+                'hash_included' => false,
+            ),
+            'governance' => array(
+                'hidden_health_score' => false,
+                'automatic_repair' => false,
+                'automatic_issue_submission' => false,
+                'human_review_before_issue_export' => true,
+            ),
+        ));
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -1347,8 +1402,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0300',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.30.0.css',
+            'sc-workspace-v0310',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.31.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1402,9 +1457,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0300',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.30.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1'),
+            'sc-workspace-field-diagnostics-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-field-diagnostics-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0310',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.31.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1412,7 +1474,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0300', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0310', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1450,7 +1512,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="27" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="27" data-project-schema="sc-workspace-project/12.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -1549,6 +1611,34 @@ final class SC_Workspace {
                     </div>
                     <div class="scw-readiness-status" data-scw-readiness-status role="status" aria-live="polite">No diagnostic run has been performed.</div>
                 </section>
+                <section class="scw-field-diagnostics" data-scw-field-diagnostics aria-labelledby="scw-field-diagnostics-title">
+                    <div class="scw-field-diagnostics-head"><div><div class="scw-kicker">PUBLIC BETA / FIELD DIAGNOSTICS</div><h3 id="scw-field-diagnostics-title">Capture the environment when something goes wrong.</h3></div><span class="scw-field-badge">LOCAL REPORT</span></div>
+                    <p>Field checks measure browser capability, storage/recovery state, workspace size, serialization latency, and interface density. Reports are created locally. Nothing is submitted automatically, and project content is never added unless you type it into the issue form yourself.</p>
+                    <div class="scw-field-grid" aria-live="polite">
+                        <div><span>RUNTIME</span><strong data-scw-field-browser>NOT CHECKED</strong><small>Browser and core capability status.</small></div>
+                        <div><span>RECOVERY</span><strong data-scw-field-recovery>NOT CHECKED</strong><small>Last-known-good snapshot availability.</small></div>
+                        <div><span>WORKSPACE SIZE</span><strong data-scw-field-storage>NOT CHECKED</strong><small>Serialized local state size only.</small></div>
+                        <div><span>STORAGE PROBE</span><strong data-scw-field-latency>NOT CHECKED</strong><small>Local write/read/remove latency.</small></div>
+                        <div><span>DOM DENSITY</span><strong data-scw-field-dom>NOT CHECKED</strong><small>Rendered Workspace element count.</small></div>
+                        <div><span>ATTENTION</span><strong data-scw-field-attention>NOT CHECKED</strong><small>Explicit threshold flags; never a hidden score.</small></div>
+                    </div>
+                    <div class="scw-field-actions">
+                        <button class="scw-button scw-button-primary" type="button" data-scw-run-field-diagnostics>Run field check</button>
+                        <button class="scw-button" type="button" data-scw-export-field-diagnostic disabled>Export field diagnostic</button>
+                    </div>
+                    <form class="scw-field-report-form" data-scw-field-report-form>
+                        <div class="scw-field-report-grid">
+                            <label><span>ISSUE TYPE</span><select name="type"><option value="functional">Functional</option><option value="performance">Performance</option><option value="accessibility">Accessibility</option><option value="recovery">Recovery / storage</option><option value="sync">Account / sync</option><option value="import-export">Import / export</option><option value="visual">Visual / layout</option><option value="other">Other</option></select></label>
+                            <label><span>IMPACT</span><select name="impact"><option value="inconvenience">Inconvenience</option><option value="blocks-task">Blocks a task</option><option value="data-risk">Potential data risk</option></select></label>
+                        </div>
+                        <label><span>WHAT HAPPENED</span><textarea name="observed" rows="3" maxlength="5000" placeholder="Describe what you observed." required></textarea></label>
+                        <label><span>WHAT DID YOU EXPECT?</span><textarea name="expected" rows="2" maxlength="5000" placeholder="Describe the expected behavior."></textarea></label>
+                        <label><span>STEPS TO REPRODUCE</span><textarea name="steps" rows="3" maxlength="8000" placeholder="List the smallest sequence that reproduces the issue."></textarea></label>
+                        <label class="scw-field-review"><input type="checkbox" name="reviewed" value="1"> <span>I reviewed this report. I understand that text I type above will be included, while Workspace does not automatically attach project content, source URLs, the local device identifier, query strings, or page fragments.</span></label>
+                        <div class="scw-field-actions"><button class="scw-button scw-button-primary" type="submit">Export issue report</button><button class="scw-button" type="button" data-scw-export-support-summary>Export text summary</button></div>
+                    </form>
+                    <div class="scw-field-status" data-scw-field-status role="status" aria-live="polite">No field check has been run. Reports stay on this device until you explicitly export them.</div>
+                </section>
             </details>
 
             <div class="scw-recovery" data-scw-recovery hidden role="status" aria-live="polite">
@@ -1628,7 +1718,7 @@ final class SC_Workspace {
                             <div><span>FILE IMPORT / EXPORT</span><strong data-scw-beta-cap-files>Checking…</strong></div>
                             <div><span>RETURN HANDOFFS</span><strong data-scw-beta-cap-return>Checking…</strong></div>
                         </div>
-                        <p class="scw-beta-runtime-note" data-scw-beta-runtime-note role="status" aria-live="polite">Running local capability checks…</p>
+                        <p class="scw-beta-runtime-note" data-scw-beta-runtime-note role="status" aria-live="polite">Running local capability checks…</p><button class="scw-button scw-beta-diagnostics-link" type="button" data-scw-open-field-diagnostics>Open field diagnostics</button>
                     </section>
                 </div>
                 <section class="scw-beta-recent" aria-labelledby="scw-beta-recent-title">

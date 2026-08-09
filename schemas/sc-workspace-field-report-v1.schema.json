@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-field-report-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Field Report",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "issue",
+    "diagnostic",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-field-report/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "issue": {
+      "type": "object",
+      "required": [
+        "type",
+        "impact",
+        "observed",
+        "expected",
+        "steps"
+      ]
+    },
+    "diagnostic": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "userReviewedBeforeExport",
+        "automaticSubmission",
+        "automaticTelemetry",
+        "projectContentAutomaticallyIncluded",
+        "userEnteredTextIncluded"
+      ],
+      "properties": {
+        "automaticSubmission": {
+          "const": false
+        },
+        "automaticTelemetry": {
+          "const": false
+        },
+        "projectContentAutomaticallyIncluded": {
+          "const": false
+        },
+        "userEnteredTextIncluded": {
+          "const": true
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

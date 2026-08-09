@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-field-diagnostic-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Field Diagnostic",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "deployment",
+    "capabilities",
+    "recovery",
+    "counts",
+    "performance",
+    "attention",
+    "status",
+    "privacy"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-field-diagnostic/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "deployment": {
+      "type": "object"
+    },
+    "capabilities": {
+      "type": "object"
+    },
+    "recovery": {
+      "type": "object"
+    },
+    "counts": {
+      "type": "object"
+    },
+    "performance": {
+      "type": "object"
+    },
+    "attention": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "attention",
+        "limited"
+      ]
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "automaticTelemetry",
+        "automaticSubmission",
+        "projectContentIncluded",
+        "deviceIdentifierIncluded"
+      ],
+      "properties": {
+        "automaticTelemetry": {
+          "const": false
+        },
+        "automaticSubmission": {
+          "const": false
+        },
+        "projectContentIncluded": {
+          "const": false
+        },
+        "deviceIdentifierIncluded": {
+          "const": false
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

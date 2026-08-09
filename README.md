@@ -4,9 +4,9 @@ Sustainable Catalyst Workspace is a free, local-first personal environment for s
 
 ## Current release
 
-**v0.30.0 — Public Beta & Product Readiness**
+**v0.31.0 — Public Beta Hardening & Field Diagnostics**
 
-v0.30.0 is the first public-beta consolidation milestone. Workspace now opens on a Start environment that foregrounds the work rather than the software, supports blank projects and four guided first-project pathways, surfaces recent work and local runtime capability status, and strengthens keyboard navigation, focus behavior, empty states, responsive presentation, reduced-motion support, and forced-colors resilience. It introduces no new project database and no automatic telemetry, cloud upload, lifecycle advancement, or hidden readiness score.
+v0.31.0 hardens the public beta around field operation. Workspace adds privacy-minimized browser, storage, recovery, performance, and deployment diagnostics plus explicit user-generated issue-report export. Reports stay local until exported; project content, source URLs, device identity, query strings, and page fragments are not attached automatically. Storage remains schema 27 and project schema 12.0.
 
 ## Data boundary
 
@@ -31,7 +31,7 @@ Guest/local Workspace remains fully functional. Account backup and explicitly en
 
 ## Public contracts
 
-Workspace exposes versioned REST contracts under `/wp-json/sc-workspace/v1/`, including `/project-contract`, `/change-review-contract`, `/safe-actions-contract`, `/reconciliation-contract`, `/audit-trail-contract`, `/project-lifecycle-contract`, and `/public-beta-contract`.
+Workspace exposes versioned REST contracts under `/wp-json/sc-workspace/v1/`, including `/project-contract`, `/change-review-contract`, `/safe-actions-contract`, `/reconciliation-contract`, `/audit-trail-contract`, `/project-lifecycle-contract`, `/public-beta-contract`, and `/field-diagnostics-contract`.
 
 ## Principles
 

@@ -18,4 +18,4 @@ const env={window:{localStorage,sessionStorage:{},File:function(){},FileReader:f
 const caps=beta.capabilities(env); assert.strictEqual(caps.localStorage,true); assert.strictEqual(caps.webCryptoSha256,true); assert.strictEqual(caps.fileApi,true); assert.strictEqual(caps.postMessage,true); assert.strictEqual(caps.reducedMotion,true);
 const ready=beta.readiness(caps); assert.strictEqual(ready.state,'ready'); assert.strictEqual(ready.hiddenScore,false); assert.strictEqual(ready.crossProductReturnReady,true);
 const limited=beta.readiness({localStorage:false,sessionStorage:true,fileApi:true}); assert.strictEqual(limited.state,'limited');
-console.log('PASS - Workspace v0.30.0 public beta runtime');
+console.log('PASS - Workspace v0.31.0 public beta runtime');
