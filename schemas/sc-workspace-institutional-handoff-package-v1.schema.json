@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Institutional Handoff Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "manifest",
+    "handoff",
+    "project",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-handoff-package/1.0"
+    },
+    "kind": {
+      "const": "promotion"
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "handoffId",
+        "sourceProjectId",
+        "targetProduct",
+        "objectCount",
+        "readiness",
+        "privacy",
+        "governance"
+      ],
+      "properties": {
+        "handoffId": {
+          "type": "string"
+        },
+        "sourceProjectId": {
+          "type": "string"
+        },
+        "targetProduct": {
+          "const": "catalyst-intelligence-platform"
+        },
+        "objectCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "readiness": {
+          "type": "object"
+        },
+        "privacy": {
+          "type": "object"
+        },
+        "governance": {
+          "type": "object"
+        }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "required": [
+        "id",
+        "sourceProjectId",
+        "targetProduct",
+        "requestedMode"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "sourceProjectId": {
+          "type": "string"
+        },
+        "targetProduct": {
+          "const": "catalyst-intelligence-platform"
+        },
+        "requestedMode": {
+          "const": "institutional-copy"
+        }
+      }
+    },
+    "project": {
+      "type": "object"
+    },
+    "integrity": {
+      "type": "object",
+      "required": [
+        "algorithm",
+        "payloadFingerprint"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "SHA-256"
+        },
+        "payloadFingerprint": {
+          "type": "string"
+        },
+        "fingerprintAvailable": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0180';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0180';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0190';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0190';
+    const LEGACY_PENDING_KEY_V0180 = 'sc_workspace_registry_pending_v0180';
     const LEGACY_PENDING_KEY_V0170 = 'sc_workspace_registry_pending_v0170';
     const LEGACY_PENDING_KEY_V0160 = 'sc_workspace_registry_pending_v0160';
     const LEGACY_PENDING_KEY_V0150 = 'sc_workspace_registry_pending_v0150';
@@ -94,6 +95,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0180);
         delete_option(self::LEGACY_PENDING_KEY_V0170);
         delete_option(self::LEGACY_PENDING_KEY_V0160);
         delete_option(self::LEGACY_PENDING_KEY_V0150);
@@ -168,11 +170,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.17.0',
+            'previous_version' => '0.18.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Collaboration Foundation: adds local-first structured review requests, contributor roles, object-linked review threads, and portable review request/response packages without cloud collaboration or server permissions.',
+            'change_summary' => 'Institutional Handoff: adds explicit, privacy-minimized promotion packages and matched institutional receipts for governed copy-into-institution workflows without converting or mutating the personal Workspace source.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.18.0 adds Collaboration Foundation. Storage advances to schema 19 while project schema remains sc-workspace-project/11.0. Collaboration is asynchronous and portable: roles are descriptive, source projects remain owner-controlled, imported feedback cannot mutate project content automatically, and no live collaboration server, team directory, or cloud permission system is introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.19.0 adds Institutional Handoff. Storage advances to schema 20 while project schema remains sc-workspace-project/11.0. Promotion is an explicit copy into Catalyst Intelligence: the personal Workspace source remains independent, institutional governance begins only after receiving-system acceptance, and Workspace introduces no automatic upload, institutional ingestion, organization membership, or server permission system.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
