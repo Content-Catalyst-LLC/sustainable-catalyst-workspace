@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0110, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0100, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0901, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0831, '') === '1' ||
@@ -55,7 +56,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.11.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.12.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -124,6 +125,11 @@ final class SC_Workspace {
             'callback' => array($this, 'guided_workflows_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/personal-knowledge-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'personal_knowledge_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -139,7 +145,7 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v12',
+            'persistence' => 'browser-local-projects-v13',
             'project_schema' => 'sc-workspace-project/10.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
@@ -154,12 +160,13 @@ final class SC_Workspace {
             'traceability_schema' => 'sc-workspace-traceability/1.0',
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
+            'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 12,
+            'storage_schema_version' => 13,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -179,7 +186,7 @@ final class SC_Workspace {
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
             'export_schema' => 'sc-workspace-project-export/10.0',
-            'storage_schema_version' => 12,
+            'storage_schema_version' => 13,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -198,6 +205,7 @@ final class SC_Workspace {
             'content_fingerprint_algorithm' => 'SHA-256',
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
+            'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
         ));
     }
 
@@ -394,8 +402,9 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-guided-workflows-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
+            'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'project_schema' => 'sc-workspace-project/10.0',
-            'storage_schema_version' => 12,
+            'storage_schema_version' => 13,
             'templates' => array('research-investigation', 'evidence-review', 'analytical-assessment', 'decision-case', 'systems-mapping', 'publication-preparation'),
             'run_statuses' => array('active', 'paused', 'complete'),
             'step_statuses' => array('todo', 'in-progress', 'complete', 'skipped'),
@@ -430,6 +439,39 @@ final class SC_Workspace {
         ));
     }
 
+    public function personal_knowledge_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-personal-knowledge-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'scope' => 'device-local-workspace',
+            'index' => array(
+                'derived_from_projects' => true,
+                'duplicates_object_content' => false,
+                'server_index' => false,
+                'semantic_embedding_index' => false,
+                'search_fields' => array('project-title', 'object-title', 'summary', 'content', 'tags', 'provenance-title', 'provenance-url'),
+            ),
+            'collections' => array(
+                'max_collections' => 30,
+                'max_items_per_collection' => 200,
+                'stable_refs' => array('projectId', 'objectId'),
+                'deleting_collection_deletes_objects' => false,
+            ),
+            'related_work' => array(
+                'automatic_semantic_claims' => false,
+                'signals' => array('shared-tags', 'same-source-url', 'same-provenance-title', 'object-type-secondary-signal'),
+                'transparent_reasons' => true,
+            ),
+            'privacy' => array(
+                'local_only' => true,
+                'cloud_sync' => false,
+                'server_project_storage' => false,
+                'external_search_index' => false,
+            ),
+        ));
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -444,7 +486,7 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 12,
+            'storage_schema_version' => 13,
             'project_schema' => 'sc-workspace-project/10.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
@@ -487,13 +529,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.11.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.12.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.11.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.12.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -535,7 +577,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="11" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="13" data-return-url="<?php echo esc_url($return_url); ?>">
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
                 <div class="scw-hero-grid">
@@ -573,7 +615,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-identity-grid">
                     <div><span>ACCESS</span><strong data-scw-identity-access>No account required</strong><small>Anonymous use remains a first-class path.</small></div>
-                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.8.2.</small></div>
+                    <div><span>PERSISTENCE</span><strong>Saved on this device</strong><small>Cloud synchronization is not enabled in v0.12.0.</small></div>
                     <div><span>DEVICE ID</span><strong data-scw-device-id>Initializing…</strong><small>Pseudonymous local identifier; no personal data is encoded.</small></div>
                     <div class="scw-identity-actions">
                         <a class="scw-button scw-button-primary" data-scw-login href="#">Sign in</a>
@@ -590,7 +632,12 @@ final class SC_Workspace {
                 <button type="button" class="scw-button" data-scw-dismiss-recovery>Dismiss</button>
             </div>
 
-            <section class="scw-projects" aria-labelledby="scw-projects-title">
+            <nav class="scw-workspace-view-nav" aria-label="Workspace views" data-scw-workspace-view-nav>
+                <button type="button" class="is-active" data-scw-workspace-view="projects" aria-pressed="true">Projects</button>
+                <button type="button" data-scw-workspace-view="knowledge" aria-pressed="false">Knowledge</button>
+            </nav>
+
+            <section class="scw-projects" data-scw-workspace-section="projects" aria-labelledby="scw-projects-title">
                 <div class="scw-section-head scw-section-head-projects">
                     <div>
                         <div class="scw-kicker">PROJECTS</div>
@@ -625,6 +672,51 @@ final class SC_Workspace {
                     <span>Create one to keep notes, objects, activity, and cross-product context together on this device.</span>
                 </div>
                 <div class="scw-project-list" data-scw-project-list aria-live="polite"></div>
+            </section>
+
+            <section class="scw-personal-knowledge" data-scw-workspace-section="knowledge" hidden aria-labelledby="scw-knowledge-title">
+                <div class="scw-knowledge-head">
+                    <div>
+                        <div class="scw-kicker">PERSONAL KNOWLEDGE ENVIRONMENT</div>
+                        <h2 id="scw-knowledge-title">Find and reuse what you already know.</h2>
+                        <p>Search canonical Workspace Objects across projects, inspect provenance and internal references, discover transparent related-work signals, and organize reusable objects into local collections. The index is built in this browser from existing project data; Workspace does not upload it to a server.</p>
+                    </div>
+                </div>
+                <div class="scw-knowledge-metrics" aria-label="Personal knowledge metrics">
+                    <div><strong data-scw-knowledge-metric-objects>0</strong><span>indexed objects</span></div>
+                    <div><strong data-scw-knowledge-metric-projects>0</strong><span>projects represented</span></div>
+                    <div><strong data-scw-knowledge-metric-collections>0</strong><span>collections</span></div>
+                    <div><strong data-scw-knowledge-metric-tags>0</strong><span>distinct tags</span></div>
+                </div>
+                <div class="scw-knowledge-searchbar">
+                    <label class="scw-knowledge-search"><span>Search local knowledge</span><input type="search" maxlength="240" data-scw-knowledge-search placeholder="Search titles, summaries, content, tags, and provenance"></label>
+                    <label><span>Type</span><select data-scw-knowledge-type><option value="all">All types</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option></select></label>
+                    <label><span>Project</span><select data-scw-knowledge-project><option value="all">All projects</option></select></label>
+                    <label><span>Tag</span><input type="text" maxlength="80" data-scw-knowledge-tag placeholder="Filter by tag"></label>
+                    <label><span>Scope</span><select data-scw-knowledge-scope><option value="active">Active projects</option><option value="all">Active + archived</option></select></label>
+                </div>
+                <div class="scw-knowledge-layout">
+                    <section class="scw-knowledge-results-panel" aria-labelledby="scw-knowledge-results-heading">
+                        <div class="scw-knowledge-panel-head"><span>01 / INDEX</span><h3 id="scw-knowledge-results-heading">Cross-project knowledge</h3></div>
+                        <div class="scw-knowledge-empty" data-scw-knowledge-empty>No matching Workspace Objects yet. Objects remain project-owned; this index only makes them discoverable across the local Workspace.</div>
+                        <div class="scw-knowledge-results" data-scw-knowledge-results></div>
+                    </section>
+                    <aside class="scw-knowledge-detail-panel" aria-labelledby="scw-knowledge-detail-heading">
+                        <div class="scw-knowledge-panel-head"><span>02 / CONTEXT</span><h3 id="scw-knowledge-detail-heading">Provenance &amp; related work</h3></div>
+                        <div data-scw-knowledge-detail></div>
+                    </aside>
+                </div>
+                <section class="scw-knowledge-collections" aria-labelledby="scw-knowledge-collections-heading">
+                    <div class="scw-knowledge-panel-head"><span>03 / COLLECTIONS</span><h3 id="scw-knowledge-collections-heading">Organize reusable objects without moving them.</h3></div>
+                    <form class="scw-knowledge-collection-form" data-scw-knowledge-collection-form>
+                        <label><span>Collection name</span><input type="text" name="title" maxlength="160" required placeholder="e.g. Grid resilience evidence"></label>
+                        <label><span>Description</span><input type="text" name="description" maxlength="1000" placeholder="Optional purpose or scope"></label>
+                        <button class="scw-button" type="submit">Create collection</button>
+                    </form>
+                    <div class="scw-knowledge-collection-controls"><select data-scw-knowledge-collection-select aria-label="Active knowledge collection"><option value="">Select collection</option></select><div class="scw-knowledge-collection-list" data-scw-knowledge-collection-list></div></div>
+                    <div class="scw-knowledge-collection-detail" data-scw-knowledge-collection-detail></div>
+                </section>
+                <div class="scw-knowledge-boundary" role="note"><strong>Local index, canonical objects</strong><span>Personal Knowledge does not copy object bodies into a separate database. Search is derived from device-local projects; collections store only stable project/object references. Related-work suggestions use visible deterministic signals rather than hidden semantic scoring.</span></div>
             </section>
 
             <section class="scw-active-project" data-scw-active-project hidden aria-labelledby="scw-active-title">
@@ -1300,7 +1392,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.11.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.12.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1369,6 +1461,7 @@ final class SC_Workspace {
                     <article><b>03</b><div><strong>Decision and trade-offs</strong><p>Compare alternatives, criteria, uncertainty, risks, mitigations, and rationale.</p></div><span>Decision record</span></article>
                     <article><b>04</b><div><strong>Systems and structured thinking</strong><p>Use Canvas boards to arrange relationships among evidence, analysis, decisions, systems, and stakeholders.</p></div><span>Structured synthesis</span></article>
                     <article><b>05</b><div><strong>Connected tools and reusable artifacts</strong><p>Move stable project context into Sustainable Catalyst tools and return structured artifacts to the originating project.</p></div><span>Portable project context</span></article>
+                    <article><b>06</b><div><strong>Personal knowledge</strong><p>Search canonical objects across projects, inspect provenance and references, discover related work, and organize reusable collections.</p></div><span>Cross-project local index</span></article>
                 </div>
             </section>
 
@@ -1377,15 +1470,15 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.11.0.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.12.0.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.11.0.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.12.0.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">
-                <div><div class="scw-editorial-kicker">WORKSPACE APPLICATION</div><h2 id="scw-app-title">Open the working environment.</h2><p>Projects are where research, analysis, decisions, Canvas boards, reusable objects, and connected-tool handoffs stay together.</p></div>
+                <div><div class="scw-editorial-kicker">WORKSPACE APPLICATION</div><h2 id="scw-app-title">Open the working environment.</h2><p>Projects hold the work; Personal Knowledge makes canonical objects discoverable and reusable across projects without moving or duplicating them.</p></div>
                 <a class="scw-button scw-button-primary" href="#workspace-application">Go to projects</a>
             </section>
 

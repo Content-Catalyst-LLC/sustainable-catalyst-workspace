@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-personal-knowledge-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Personal Knowledge Environment v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "collections",
+    "activeCollectionId",
+    "preferences",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-personal-knowledge/1.0"
+    },
+    "activeCollectionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query",
+        "type",
+        "project",
+        "tag",
+        "scope"
+      ],
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "type": {
+          "enum": [
+            "all",
+            "source",
+            "evidence",
+            "dataset",
+            "analysis",
+            "decision",
+            "document",
+            "export"
+          ]
+        },
+        "project": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "tag": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "scope": {
+          "enum": [
+            "active",
+            "all"
+          ]
+        }
+      }
+    },
+    "collections": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "description",
+          "items",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "projectId",
+                "objectId"
+              ],
+              "properties": {
+                "projectId": {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                "objectId": {
+                  "type": "string",
+                  "maxLength": 160
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

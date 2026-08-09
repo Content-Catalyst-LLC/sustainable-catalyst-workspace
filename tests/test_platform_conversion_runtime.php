@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__ . '/');
-define('SC_WORKSPACE_VERSION', '0.11.0');
+define('SC_WORKSPACE_VERSION', '0.12.0');
 $GLOBALS['opts'] = array();
 $GLOBALS['updates'] = array();
 class WP_Error { public $code; public $message; public function __construct($c,$m){$this->code=$c;$this->message=$m;} }
@@ -33,4 +33,4 @@ assert_true($restored===true,'restore succeeds');
 $last=end($GLOBALS['updates']);
 assert_true($last['ID']===42 && $last['post_title']==='Platform' && $last['post_content']==='Original platform content','restore uses original title/content');
 assert_true(SC_Workspace_Platform::is_converted()===false,'conversion state cleared');
-echo "PASS - Workspace v0.11.0 Platform conversion runtime\n";
+echo "PASS - Workspace v0.12.0 Platform conversion runtime\n";

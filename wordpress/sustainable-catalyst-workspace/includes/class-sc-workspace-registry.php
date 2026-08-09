@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0110';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0110';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0120';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0120';
+    const LEGACY_PENDING_KEY_V0110 = 'sc_workspace_registry_pending_v0110';
     const LEGACY_PENDING_KEY_V0100 = 'sc_workspace_registry_pending_v0100';
     const LEGACY_PENDING_KEY_V0901 = 'sc_workspace_registry_pending_v0901';
     const LEGACY_PENDING_KEY_V090 = 'sc_workspace_registry_pending_v090';
@@ -87,6 +88,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0110);
         delete_option(self::LEGACY_PENDING_KEY_V0100);
         delete_option(self::LEGACY_PENDING_KEY_V0901);
         delete_option(self::LEGACY_PENDING_KEY_V090);
@@ -154,11 +156,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.10.0',
+            'previous_version' => '0.11.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Templates & Guided Workflows: adds visible, editable workflow templates for research, evidence review, analysis, decision cases, systems mapping, and publication preparation while preserving blank-project use and human-controlled completion.',
+            'change_summary' => 'Personal Knowledge Environment: adds a device-local cross-project knowledge index, transparent related-work discovery, reusable collections, and direct return to canonical Workspace Objects without duplicating object content.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.11.0 adds local-first Templates & Guided Workflows. Storage advances to schema 12 and projects to sc-workspace-project/10.0. Templates expose method steps and progress but do not generate hidden findings, infer completion, require an account, or replace blank-project workflows.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.12.0 adds the device-local Personal Knowledge Environment. Storage advances to schema 13 while project schema remains sc-workspace-project/10.0. The knowledge index is derived from existing project objects; collections store stable references only. No server index, cloud sync, hidden semantic scoring, or content duplication is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
