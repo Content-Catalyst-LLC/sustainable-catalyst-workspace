@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Activity Intelligence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "preferences",
+    "nextActions",
+    "dismissedSignalIds",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-activity-intelligence/1.0"
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project",
+        "windowDays",
+        "staleDays",
+        "signal"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "windowDays": {
+          "enum": [
+            7,
+            30,
+            90
+          ]
+        },
+        "staleDays": {
+          "enum": [
+            7,
+            14,
+            30
+          ]
+        },
+        "signal": {
+          "enum": [
+            "all",
+            "workflow",
+            "research",
+            "analysis",
+            "decision",
+            "traceability",
+            "handoff",
+            "briefing",
+            "stale"
+          ]
+        }
+      }
+    },
+    "nextActions": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "projectId",
+          "priority",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "objectId": {
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "normal",
+              "high"
+            ]
+          },
+          "status": {
+            "enum": [
+              "open",
+              "done",
+              "deferred"
+            ]
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "dismissedSignalIds": {
+      "type": "array",
+      "maxItems": 300,
+      "items": {
+        "type": "string",
+        "maxLength": 260
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

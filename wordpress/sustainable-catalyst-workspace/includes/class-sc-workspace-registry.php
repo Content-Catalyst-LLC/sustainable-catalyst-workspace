@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0160';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0160';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0170';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0170';
+    const LEGACY_PENDING_KEY_V0160 = 'sc_workspace_registry_pending_v0160';
     const LEGACY_PENDING_KEY_V0150 = 'sc_workspace_registry_pending_v0150';
     const LEGACY_PENDING_KEY_V0140 = 'sc_workspace_registry_pending_v0140';
     const LEGACY_PENDING_KEY_V0130 = 'sc_workspace_registry_pending_v0130';
@@ -92,6 +93,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0160);
         delete_option(self::LEGACY_PENDING_KEY_V0150);
         delete_option(self::LEGACY_PENDING_KEY_V0140);
         delete_option(self::LEGACY_PENDING_KEY_V0130);
@@ -164,11 +166,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.15.0',
+            'previous_version' => '0.16.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Workspace Search & Knowledge Graph: adds deterministic cross-project graph search, project/object/provenance nodes, explicit relationship inspection, focus-neighborhood visualization, and local graph preferences without semantic embeddings or server indexing.',
+            'change_summary' => 'Workflow & Activity Intelligence: adds a transparent cross-project activity timeline, explicit attention signals, guided-workflow status, and user-controlled next actions without productivity scoring or server telemetry.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.16.0 adds Workspace Search & Knowledge Graph. Storage advances to schema 17 while project schema remains sc-workspace-project/11.0. The graph is derived locally from canonical projects, objects, provenance, traceability, analysis, decision, and deterministic cross-project source relationships; no semantic embeddings, cloud graph, or server search index are introduced.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.17.0 adds Workflow & Activity Intelligence. Storage advances to schema 18 while project schema remains sc-workspace-project/11.0. Activity signals are derived locally from explicit project state and workflow records; there is no hidden productivity score, behavioral telemetry, server analytics, or automatic task completion.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

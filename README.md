@@ -2,9 +2,9 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release: **v0.16.0 — Workspace Search & Knowledge Graph**
+## Current release: **v0.17.0 — Workflow & Activity Intelligence**
 
-Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, and cross-product handoffs. v0.16.0 adds a deterministic, device-local Workspace Search & Knowledge Graph across projects, canonical objects, provenance, traceability, and decision/analysis relationships without semantic embeddings or server indexing.
+Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, Import & Interoperability, Share & Portable Projects, Search & Knowledge Graph, and Workflow & Activity Intelligence. v0.17.0 adds an inspectable, device-local activity layer that surfaces explicit next actions, workflow progress, recent changes, and explainable attention conditions without productivity scoring, behavioral telemetry, or server analytics.
 
 ## WordPress shortcodes
 
@@ -16,7 +16,7 @@ Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Tracea
 
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects, Personal Knowledge, AI review state, and interoperability activity remain device-local. Optional WordPress authentication identifies the account session only; Workspace does not automatically upload or synchronize project content.
+Workspace remains usable without signing in. Projects, Personal Knowledge, AI review state, interoperability/share history, graph preferences, and Activity Intelligence state remain device-local. Optional WordPress authentication identifies the account session only; Workspace does not automatically upload or synchronize project content.
 
 ## Contracts
 
@@ -31,15 +31,19 @@ Workspace remains usable without signing in. Projects, Personal Knowledge, AI re
 - Guided Workflows: `sc-workspace-guided-workflows/1.0`
 - Personal Knowledge: `sc-workspace-personal-knowledge/1.0`
 - Responsible AI: `sc-workspace-ai-assistance/1.0`
-- Share & Portable Projects: `sc-workspace-interoperability/1.0`
+- Interoperability: `sc-workspace-interoperability/1.0`
 - Portable interchange: `sc-workspace-interchange/1.0`
+- Share: `sc-workspace-share/1.0`
+- Portable project: `sc-workspace-portable-project/1.0`
+- Knowledge Graph: `sc-workspace-knowledge-graph/1.0`
+- Activity Intelligence: `sc-workspace-activity-intelligence/1.0`
 - Identity: `sc-workspace-identity/1.0`
-- Storage schema: `15`
 - Handoff: `sc-workspace-handoff/2.0`
+- Storage schema: `18`
 
-## Interoperability boundary
+## Workflow & Activity Intelligence boundary
 
-Supported staged imports: JSON, CSV/TSV, Markdown, HTML, and plain text. Imports require explicit target-project selection and human commit. Imported artifacts are draft canonical Workspace Objects with `imported` provenance. Incoming IDs are remapped rather than overwriting existing objects. Interchange packages can carry traceability lineage, which is reconstructed against the new local IDs on commit.
+Activity Intelligence is derived from explicit Workspace state. The stored workspace-level layer contains only user-created next actions, dismissed-signal IDs, and view/filter preferences. There is no productivity score, time-on-page measurement, behavioral telemetry, server activity analytics, or automatic workflow/task completion.
 
 ## Public routes
 
@@ -50,4 +54,4 @@ Supported staged imports: JSON, CSV/TSV, Markdown, HTML, and plain text. Imports
 
 Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
 
-See `docs/IMPORT_INTEROPERABILITY_V0140.md`.
+See `docs/WORKFLOW_ACTIVITY_INTELLIGENCE_V0170.md`.
