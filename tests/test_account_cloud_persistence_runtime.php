@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__);
-define('SC_WORKSPACE_VERSION', '0.31.0');
+define('SC_WORKSPACE_VERSION', '0.32.0');
 $GLOBALS['logged_in'] = true;
 $GLOBALS['user_meta'] = array();
 function add_action($a,$b){}
@@ -30,7 +30,7 @@ function ok($cond,$msg){ if(!$cond){ fwrite(STDERR,"FAIL: $msg\n"); exit(1);} }
 $w=SC_Workspace::instance();
 ok($w->cloud_permission()===true,'authenticated permission');
 $GLOBALS['logged_in']=false; ok($w->cloud_permission()===false,'anonymous permission denied'); $GLOBALS['logged_in']=true;
-$project=array('schema'=>'sc-workspace-project/12.0','id'=>'scwp-demo','title'=>'Demo','updatedAt'=>'2026-08-09T00:00:00Z','objects'=>array(array('id'=>'scwo-1','schema'=>'sc-workspace-object/1.0','title'=>'Evidence')));
+$project=array('schema'=>'sc-workspace-project/13.0','id'=>'scwp-demo','title'=>'Demo','updatedAt'=>'2026-08-09T00:00:00Z','objects'=>array(array('id'=>'scwo-1','schema'=>'sc-workspace-object/1.0','title'=>'Evidence')));
 $payload=array('schema'=>'sc-workspace-cloud-backup/1.0','sourceProjectId'=>'scwp-demo','projectTitle'=>'Demo','clientUpdatedAt'=>'2026-08-09T00:00:00Z','project'=>$project);
 $res=$w->cloud_project_store(new Req($payload)); ok(is_array($res)&&$res['ok']===true,'backup stored'); ok(strlen($res['item']['fingerprint'])===64,'sha256 fingerprint'); ok(($res['item']['revision']??0)===1,'manual backup creates revision 1');
 $list=$w->cloud_projects_list(); ok(count($list['items'])===1,'backup listed'); ok(!isset($list['items'][0]['package']),'list metadata excludes content');

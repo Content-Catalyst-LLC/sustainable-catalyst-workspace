@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-block-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Block v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "type",
+    "title",
+    "content",
+    "sourceObjectId",
+    "sourceTitle",
+    "sourceUrl",
+    "referenceObjectId",
+    "tags",
+    "promotion",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-block/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "type": {
+      "enum": [
+        "note",
+        "source",
+        "excerpt",
+        "question",
+        "claim",
+        "reference",
+        "checklist",
+        "divider",
+        "attachment"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 50000
+    },
+    "sourceObjectId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "sourceTitle": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "sourceUrl": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "referenceObjectId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 48
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "targetKind",
+        "targetId",
+        "promotedAt"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "none",
+            "promoted"
+          ]
+        },
+        "targetKind": {
+          "enum": [
+            "",
+            "object",
+            "research-question",
+            "research-claim"
+          ]
+        },
+        "targetId": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "promotedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

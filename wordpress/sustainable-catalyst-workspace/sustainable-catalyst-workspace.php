@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Description: Free public research, evidence, analysis, decision, briefing, personal knowledge, inspectable knowledge graph, workflow intelligence, asynchronous review, institutional handoff, responsible AI assistance, interoperability, and portable sharing workspace with hardened local recovery, accessibility, diagnostics, release-readiness safeguards, and optional manual account recovery, conflict-safe cross-device synchronization, local project restore-point history, inspectable project change review, guided selective reconciliation into new project copies, integrity-fingerprinted reconciliation decision receipts, a derived project audit trail that unifies consequential governance events without a shadow history database, human-declared governance milestones with inspectable readiness evidence, a consolidated public-beta start experience with guided first-run pathways and compatibility status, and privacy-minimized public-beta field diagnostics with explicit issue-report export and no automatic submission.
- * Version: 0.31.0
+ * Description: Free public research, evidence, analysis, decision, briefing, personal knowledge, inspectable knowledge graph, workflow intelligence, asynchronous review, institutional handoff, responsible AI assistance, interoperability, and portable sharing workspace with hardened local recovery, accessibility, diagnostics, release-readiness safeguards, and optional manual account recovery, conflict-safe cross-device synchronization, local project restore-point history, inspectable project change review, guided selective reconciliation into new project copies, integrity-fingerprinted reconciliation decision receipts, a derived project audit trail that unifies consequential governance events without a shadow history database, human-declared governance milestones with inspectable readiness evidence, a consolidated public-beta start experience with guided first-run pathways and compatibility status, privacy-minimized public-beta field diagnostics with explicit issue-report export and no automatic submission, and a project-bound Research Notebook for low-friction notes, sources, excerpts, questions, claims, references, checklists, and deliberate promotion into structured Workspace artifacts.
+ * Version: 0.32.0
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '0.31.0');
+define('SC_WORKSPACE_VERSION', '0.32.0');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));

@@ -2,15 +2,15 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.31.0.js'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.31.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.32.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.32.0.css'
 SCHEMA=ROOT/'schemas/sc-workspace-ai-assistance-v1.schema.json'
 PROJECT=ROOT/'schemas/sc-workspace-project-v12.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.31.0.json'
+MANIFEST=ROOT/'release-manifest-v0.32.0.json'
 AI_ADAPTER=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-ai-adapter-v1.js'
 class ResponsibleAIContractTests(unittest.TestCase):
   def test_release_boundary(self):
-    m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.31.0'); self.assertEqual(m['previous_version'],'0.30.0'); self.assertEqual(m['storage_schema_version'],27); self.assertEqual(m['project_schema'],'sc-workspace-project/12.0'); self.assertEqual(m['ai_assistance_schema'],'sc-workspace-ai-assistance/1.0'); self.assertIn('responsible_ai_assistance',m['capabilities'])
+    m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.32.0'); self.assertEqual(m['previous_version'],'0.31.0'); self.assertEqual(m['storage_schema_version'],28); self.assertEqual(m['project_schema'],'sc-workspace-project/13.0'); self.assertEqual(m['ai_assistance_schema'],'sc-workspace-ai-assistance/1.0'); self.assertIn('responsible_ai_assistance',m['capabilities'])
   def test_schema_and_limits(self):
     s=json.loads(SCHEMA.read_text()); self.assertEqual(s['properties']['schema']['const'],'sc-workspace-ai-assistance/1.0'); self.assertEqual(s['properties']['sessions']['maxItems'],40); props=s['properties']['sessions']['items']['properties']; self.assertEqual(props['objectIds']['maxItems'],24); self.assertEqual(props['response']['maxLength'],30000)
   def test_project_contains_ai_assistance(self):
@@ -50,9 +50,9 @@ class ResponsibleAIContractTests(unittest.TestCase):
   def test_rest_ui_and_css(self):
     p=PHP.read_text(); c=CSS.read_text(); self.assertIn("'/ai-assistance-contract'",p); self.assertIn('public function ai_assistance_contract()',p); self.assertIn('RESPONSIBLE AI ASSISTANCE',p); self.assertIn('data-scw-project-mode="assist"',p); self.assertIn('.scw-ai{',c)
   def test_migration(self):
-    j=JS.read_text(); self.assertIn('const STORAGE_VERSION = 27',j); self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/12.0'",j); self.assertIn('function migrateV13(raw)',j); self.assertIn('Project upgraded to Responsible AI Assistance',j)
+    j=JS.read_text(); self.assertIn('const STORAGE_VERSION = 28',j); self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/13.0'",j); self.assertIn('function migrateV13(raw)',j); self.assertIn('Project upgraded to Responsible AI Assistance',j)
   def test_object_cleanup_and_clone_remap(self):
     j=JS.read_text(); self.assertIn('cleanAiAssistanceReferences(project, object.id)',j); self.assertIn('copy.aiAssistance.sessions=copy.aiAssistance.sessions.map',j); self.assertIn('objectMap.get(v)',j)
   def test_v10_project_export_import_compatibility(self):
-    j=JS.read_text(); self.assertIn("const EXPORT_SCHEMA = 'sc-workspace-project-export/12.0'",j); self.assertIn("LEGACY_EXPORT_SCHEMA_V10",j); self.assertIn('payload.schema === LEGACY_EXPORT_SCHEMA_V10',j)
+    j=JS.read_text(); self.assertIn("const EXPORT_SCHEMA = 'sc-workspace-project-export/13.0'",j); self.assertIn("LEGACY_EXPORT_SCHEMA_V10",j); self.assertIn('payload.schema === LEGACY_EXPORT_SCHEMA_V10',j)
 if __name__=='__main__': unittest.main()

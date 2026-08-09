@@ -1,13 +1,13 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.31.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.32.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.31.0.css'
-MANIFEST=ROOT/'release-manifest-v0.31.0.json'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.32.0.css'
+MANIFEST=ROOT/'release-manifest-v0.32.0.json'
 class KnowledgeGraphContract(unittest.TestCase):
  def test_manifest(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.31.0');self.assertEqual(m['previous_version'],'0.30.0');self.assertEqual(m['storage_schema_version'],27);self.assertEqual(m['project_schema'],'sc-workspace-project/12.0');self.assertEqual(m['knowledge_graph_schema'],'sc-workspace-knowledge-graph/1.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.32.0');self.assertEqual(m['previous_version'],'0.31.0');self.assertEqual(m['storage_schema_version'],28);self.assertEqual(m['project_schema'],'sc-workspace-project/13.0');self.assertEqual(m['knowledge_graph_schema'],'sc-workspace-knowledge-graph/1.0')
  def test_graph_schema(self):
   s=json.loads((ROOT/'schemas/sc-workspace-knowledge-graph-v1.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-knowledge-graph/1.0')
  def test_graph_engine(self):
@@ -22,7 +22,7 @@ class KnowledgeGraphContract(unittest.TestCase):
  def test_no_hidden_inference(self):
   self.assertFalse(json.loads(MANIFEST.read_text())['knowledge_graph']['hidden_relationship_inference'])
  def test_storage_migration(self):
-  j=JS.read_text();self.assertIn('const STORAGE_VERSION = 27',j);self.assertIn('function migrateV16(raw)',j);self.assertIn('if (raw.schemaVersion === 16) return migrateV16(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/12.0'",j)
+  j=JS.read_text();self.assertIn('const STORAGE_VERSION = 28',j);self.assertIn('function migrateV16(raw)',j);self.assertIn('if (raw.schemaVersion === 16) return migrateV16(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/13.0'",j)
  def test_ui(self):
   p=PHP.read_text();self.assertIn('data-scw-workspace-view="graph"',p);self.assertIn('WORKSPACE SEARCH &amp; KNOWLEDGE GRAPH',p);self.assertIn('data-scw-graph-svg',p)
  def test_accessible_parallel_relationships(self):

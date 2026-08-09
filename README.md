@@ -1,44 +1,32 @@
 # Sustainable Catalyst Workspace
 
-Sustainable Catalyst Workspace is a free, local-first personal environment for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge organization, recovery, review, and governed handoff across the Sustainable Catalyst ecosystem.
+Free, public, local-first working environment for research, evidence, analysis, decisions, structured thinking, briefing, portable projects, recovery, governance, and project-bound research notebooks.
 
 ## Current release
 
-**v0.31.0 — Public Beta Hardening & Field Diagnostics**
+**v0.32.0 — Research Notebook Foundation**
 
-v0.31.0 hardens the public beta around field operation. Workspace adds privacy-minimized browser, storage, recovery, performance, and deployment diagnostics plus explicit user-generated issue-report export. Reports stay local until exported; project content, source URLs, device identity, query strings, and page fragments are not attached automatically. Storage remains schema 27 and project schema 12.0.
+v0.32.0 adds the low-friction thinking layer between reading and structured Workspace objects. Projects can hold multiple notebooks with reorderable sections and working blocks for notes, sources, excerpts, questions, claims, references, checklists, dividers, and attachment references. Notebook material stays useful as working memory and moves into canonical Workspace objects only through an explicit promotion action.
 
-## Data boundary
+The migration is non-destructive: storage advances from 27 to **28** and the project schema from `sc-workspace-project/12.0` to **`sc-workspace-project/13.0`**. Existing projects receive an empty notebook workspace while preserving objects, provenance, account backup, cross-device sync, restore points, Safe Actions, reconciliation receipts, collaboration, institutional handoffs, audit sources, and lifecycle history.
 
-- Workspace storage schema: **27** (unchanged from v0.29.0)
-- Project schema: **`sc-workspace-project/12.0`** (unchanged)
-- Canonical object schema: **`sc-workspace-object/1.0`**
-- Lifecycle schema: **`sc-workspace-project-lifecycle/1.0`**
-- Public-beta readiness schema: **`sc-workspace-public-beta-readiness/1.0`**
-- Canonical public route: **`/platform/`**
-- Canonical Knowledge Library route: **`/knowledge-libraries/`**
+Notebook does not require AI, does not automatically run AI over notes, does not upload because a user signs in, and does not automatically promote material. Account backup, sync, restore points, and portable project export inherit the existing project boundary.
 
-Guest/local Workspace remains fully functional. Account backup and explicitly enrolled cross-device sync remain optional. Institutional governance remains a separate Catalyst Intelligence boundary.
+## Public product boundary
 
-## Start pathways
+- Guest use remains fully functional and device-local.
+- Accounts are optional; backup and sync remain explicit human actions.
+- Research Notebook is working memory, not a second authoritative object store.
+- Promoted Source, Evidence, Document, Research Question, and Research Claim records remain authoritative after promotion.
+- The canonical Knowledge Library route is `/knowledge-libraries/`.
+- Catalyst Intelligence remains the institutional environment for organization identity, permissions, governance, audit, shared knowledge, connectors, and deployment.
 
-- Research Investigation
-- Analytical Assessment
-- Decision Case
-- Publication Preparation
-- Blank project
-- Continue recent project
+## Current schemas
 
-## Public contracts
-
-Workspace exposes versioned REST contracts under `/wp-json/sc-workspace/v1/`, including `/project-contract`, `/change-review-contract`, `/safe-actions-contract`, `/reconciliation-contract`, `/audit-trail-contract`, `/project-lifecycle-contract`, `/public-beta-contract`, and `/field-diagnostics-contract`.
-
-## Principles
-
-- human judgment stays visible;
-- AI assists but does not decide;
-- provenance and evidence remain inspectable;
-- higher-risk actions require explicit review;
-- local work stays useful without an account;
-- public beta does not change the storage, privacy, or institutional boundary;
-- organizational governance belongs in Catalyst Intelligence rather than being silently introduced into personal Workspace.
+- Workspace storage: **28**
+- Project: **`sc-workspace-project/13.0`**
+- Project export: **`sc-workspace-project-export/13.0`**
+- Notebook workspace: **`sc-workspace-notebook-workspace/1.0`**
+- Notebook: **`sc-workspace-notebook/1.0`**
+- Notebook block: **`sc-workspace-notebook-block/1.0`**
+- Notebook export: **`sc-workspace-notebook-export/1.0`**

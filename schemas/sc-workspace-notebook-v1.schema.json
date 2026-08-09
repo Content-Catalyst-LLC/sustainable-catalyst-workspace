@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Research Notebook v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "description",
+    "sections",
+    "activeSectionId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "sections": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "blocks",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "blocks": {
+            "type": "array",
+            "maxItems": 300,
+            "items": {
+              "$ref": "sc-workspace-notebook-block-v1.schema.json"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "activeSectionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}
