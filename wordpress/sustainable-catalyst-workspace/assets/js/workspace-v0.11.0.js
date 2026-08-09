@@ -7,8 +7,9 @@
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 11;
-  const PROJECT_SCHEMA = 'sc-workspace-project/9.0';
+  const STORAGE_VERSION = 12;
+  const PROJECT_SCHEMA = 'sc-workspace-project/10.0';
+  const LEGACY_PROJECT_SCHEMA_V9 = 'sc-workspace-project/9.0';
   const LEGACY_PROJECT_SCHEMA_V8 = 'sc-workspace-project/8.0';
   const LEGACY_PROJECT_SCHEMA_V7 = 'sc-workspace-project/7.0';
   const LEGACY_PROJECT_SCHEMA_V6 = 'sc-workspace-project/6.0';
@@ -19,7 +20,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/9.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/10.0';
+  const LEGACY_EXPORT_SCHEMA_V9 = 'sc-workspace-project-export/9.0';
   const LEGACY_EXPORT_SCHEMA_V8 = 'sc-workspace-project-export/8.0';
   const LEGACY_EXPORT_SCHEMA_V7 = 'sc-workspace-project-export/7.0';
   const LEGACY_EXPORT_SCHEMA_V6 = 'sc-workspace-project-export/6.0';
@@ -44,6 +46,9 @@
   const REPRO_EXPORT_SCHEMA = 'sc-workspace-reproducibility-export/1.0';
   const BRIEFING_SCHEMA = 'sc-workspace-briefing/1.0';
   const PUBLICATION_EXPORT_SCHEMA = 'sc-workspace-publication-export/1.0';
+  const GUIDED_WORKFLOWS_SCHEMA = 'sc-workspace-guided-workflows/1.0';
+  const WORKFLOW_RUN_STATUS = new Set(['active','paused','complete']);
+  const WORKFLOW_STEP_STATUS = new Set(['todo','in-progress','complete','skipped']);
   const TRACE_RELATIONS = new Set(['derived-from','supports','contradicts','uses','produced-by','informs','supersedes','cites']);
   const REPRO_STATUS = new Set(['draft','ready','verified','stale']);
   const BRIEFING_FORMATS = new Set(['briefing','memo','report','article','publication-draft']);
@@ -77,6 +82,9 @@
   const MAX_BRIEFING_DRAFTS = 30;
   const MAX_BRIEFING_SECTIONS = 24;
   const MAX_BRIEFING_OBJECT_REFS = 80;
+  const MAX_WORKFLOW_RUNS = 20;
+  const MAX_WORKFLOW_STEPS = 16;
+  const MAX_WORKFLOW_OBJECT_REFS = 80;
   const MAX_HANDOFF_OBJECT_REFS = 12;
   const MAX_RETURN_ARTIFACTS = 20;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
@@ -714,6 +722,68 @@
     }; return outlines[format]||outlines.briefing;
   }
 
+  function guidedWorkflowDefinitions() {
+    return {
+      'research-investigation': { title:'Research Investigation', description:'Move from a bounded question through source collection, evidence assessment, analysis, and a reusable briefing.', steps:[
+        ['frame-question','Frame the question','Define the scope, constraints, and what would count as a useful answer.','research'],
+        ['collect-sources','Collect sources','Capture and organize relevant sources in the Research Workspace.','research'],
+        ['extract-evidence','Extract evidence','Create evidence objects and preserve links back to their sources.','research'],
+        ['assess-evidence','Assess evidence','Record relevance, source quality, independence, recency, and provenance.','traceability'],
+        ['analyze','Analyze the evidence','Make methods, assumptions, comparisons, and findings explicit.','analysis'],
+        ['brief','Prepare a briefing','Turn the connected work into a traceable briefing or report.','briefing']
+      ]},
+      'evidence-review': { title:'Evidence Review', description:'Appraise a body of evidence without collapsing uncertainty into a single score.', steps:[
+        ['scope-review','Define the review scope','State the question, inclusion boundary, and review purpose.','research'],
+        ['capture-sources','Capture the source set','Register the sources that belong in the review.','research'],
+        ['extract-evidence','Extract evidence','Create evidence objects and source relationships.','research'],
+        ['assess-provenance','Assess provenance','Record evidence quality dimensions and fingerprints.','traceability'],
+        ['map-claims','Map claims and tensions','Connect evidence to claims, contradictions, and gaps.','research'],
+        ['synthesize','Synthesize the review','Prepare a reusable evidence package or briefing.','briefing']
+      ]},
+      'analytical-assessment': { title:'Analytical Assessment', description:'Structure an analysis so questions, datasets, assumptions, methods, findings, and reproducibility remain connected.', steps:[
+        ['analysis-question','Frame the analysis question','Define the analytical question and intended decision/use.','analysis'],
+        ['register-data','Register datasets and variables','Make data inputs, variables, units, and definitions visible.','analysis'],
+        ['state-assumptions','State assumptions','Record assumptions and link supporting evidence where available.','analysis'],
+        ['select-method','Select methods','Record the method and create the canonical Analysis object.','analysis'],
+        ['record-findings','Record findings','Capture comparisons, findings, uncertainty, and evidence links.','analysis'],
+        ['reproduce','Document reproducibility','Record environment, parameters, steps, and result objects.','traceability'],
+        ['communicate','Communicate the analysis','Build a report or briefing from the connected analytical record.','briefing']
+      ]},
+      'decision-case': { title:'Decision Case', description:'Move from a decision question to explicit alternatives, criteria, evidence, risk, rationale, and a durable decision record.', steps:[
+        ['frame-decision','Frame the decision','State the decision question and the boundary of the choice.','decision'],
+        ['develop-options','Develop options','Create candidate alternatives without prematurely selecting one.','decision'],
+        ['define-criteria','Define criteria','Record evaluation criteria and weights explicitly.','decision'],
+        ['connect-evidence','Connect evidence and analysis','Bring relevant evidence and analytical objects into the decision case.','decision'],
+        ['assess-tradeoffs','Assess trade-offs and risks','Score option/criterion pairs and record risks and mitigations.','decision'],
+        ['record-decision','Record the decision','Select an option and preserve rationale and confidence.','decision'],
+        ['brief-decision','Prepare the decision briefing','Materialize a briefing or memo with a traceable basis.','briefing']
+      ]},
+      'systems-mapping': { title:'Systems Mapping', description:'Use evidence, data, stakeholders, relationships, and structured visual reasoning to develop a system-level synthesis.', steps:[
+        ['define-system','Define the system','State the focal system, boundary, purpose, and key question.','overview'],
+        ['collect-basis','Collect the evidence basis','Capture sources, evidence, and relevant data objects.','research'],
+        ['identify-elements','Identify actors and elements','Create stakeholders, systems, claims, data, and idea nodes.','canvas'],
+        ['map-relations','Map relationships','Use typed relationships and frames to make structure visible.','canvas'],
+        ['analyze-system','Analyze the system','Record assumptions, patterns, comparisons, and implications.','analysis'],
+        ['capture-synthesis','Capture synthesis','Materialize the Canvas synthesis and prepare a briefing.','briefing']
+      ]},
+      'publication-preparation': { title:'Publication Preparation', description:'Move a mature project into a traceable publication draft without bypassing the public publishing systems.', steps:[
+        ['review-basis','Review the basis','Confirm the sources, evidence, analyses, decisions, and documents the publication will rely on.','traceability'],
+        ['check-lineage','Check lineage and provenance','Confirm that important claims and outputs retain their basis.','traceability'],
+        ['create-draft','Create the draft','Choose a publication format, audience, purpose, and object basis.','briefing'],
+        ['structure-draft','Structure the narrative','Build and edit the outline and sections.','briefing'],
+        ['materialize','Materialize the Document','Create the canonical Document object and derived-from lineage.','briefing'],
+        ['export','Export for publication','Export Markdown, HTML, or a portable publication package for the publishing workflow.','briefing']
+      ]}
+    };
+  }
+  function guidedWorkflowsTemplate(){ const stamp=nowIso(); return {schema:GUIDED_WORKFLOWS_SCHEMA,runs:[],activeRunId:null,createdAt:stamp,updatedAt:stamp}; }
+  function normalizeWorkflowStep(raw, objectIds){ if(!raw||typeof raw!=='object')return null;const stamp=nowIso();return{id:String(raw.id||id('ws')).slice(0,160),key:String(raw.key||'step').slice(0,80),title:String(raw.title||'Workflow step').trim().slice(0,180)||'Workflow step',description:String(raw.description||'').slice(0,1200),mode:String(raw.mode||'overview').slice(0,40),status:WORKFLOW_STEP_STATUS.has(raw.status)?raw.status:'todo',note:String(raw.note||'').slice(0,2000),objectIds:Array.isArray(raw.objectIds)?[...new Set(raw.objectIds.map(v=>String(v).slice(0,160)).filter(v=>objectIds.has(v)))].slice(0,MAX_WORKFLOW_OBJECT_REFS):[],createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp,completedAt:validIso(raw.completedAt)?raw.completedAt:null}; }
+  function normalizeWorkflowRun(raw, objectIds){ if(!raw||typeof raw!=='object')return null;const stamp=nowIso(),defs=guidedWorkflowDefinitions(),templateId=String(raw.templateId||'').slice(0,80);if(!defs[templateId])return null;const steps=Array.isArray(raw.steps)?raw.steps.map(x=>normalizeWorkflowStep(x,objectIds)).filter(Boolean).slice(0,MAX_WORKFLOW_STEPS):[];const currentStepId=steps.some(x=>x.id===raw.currentStepId)?raw.currentStepId:null;return{id:String(raw.id||id('wr')).slice(0,160),templateId,title:String(raw.title||defs[templateId].title).trim().slice(0,200)||defs[templateId].title,status:WORKFLOW_RUN_STATUS.has(raw.status)?raw.status:'active',currentStepId,steps,createdAt:validIso(raw.createdAt)?raw.createdAt:stamp,updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp,completedAt:validIso(raw.completedAt)?raw.completedAt:null}; }
+  function normalizeGuidedWorkflows(raw,objects=[]){const base=guidedWorkflowsTemplate(),value=raw&&typeof raw==='object'?raw:{},objectIds=new Set(objects.map(o=>o.id));base.runs=Array.isArray(value.runs)?value.runs.map(x=>normalizeWorkflowRun(x,objectIds)).filter(Boolean).slice(0,MAX_WORKFLOW_RUNS):[];base.activeRunId=base.runs.some(x=>x.id===value.activeRunId)?value.activeRunId:null;base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt;base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt;return base;}
+  function touchGuidedWorkflows(project){if(!project.guidedWorkflows)project.guidedWorkflows=guidedWorkflowsTemplate();project.guidedWorkflows.updatedAt=nowIso();project.updatedAt=project.guidedWorkflows.updatedAt;}
+  function cleanGuidedWorkflowReferences(project,objectId){if(!project||!project.guidedWorkflows)return;project.guidedWorkflows.runs.forEach(run=>run.steps.forEach(step=>{step.objectIds=step.objectIds.filter(v=>v!==objectId);}));touchGuidedWorkflows(project);}
+  function startGuidedWorkflow(project,templateId){const defs=guidedWorkflowDefinitions(),def=defs[templateId];if(!project||!def||project.guidedWorkflows.runs.length>=MAX_WORKFLOW_RUNS)return null;const stamp=nowIso();const steps=def.steps.slice(0,MAX_WORKFLOW_STEPS).map(([key,title,description,mode],index)=>({id:id('ws'),key,title,description,mode,status:index===0?'in-progress':'todo',note:'',objectIds:[],createdAt:stamp,updatedAt:stamp,completedAt:null}));const run={id:id('wr'),templateId,title:def.title,status:'active',currentStepId:steps[0]?.id||null,steps,createdAt:stamp,updatedAt:stamp,completedAt:null};project.guidedWorkflows.runs.unshift(run);project.guidedWorkflows.activeRunId=run.id;touchGuidedWorkflows(project);addActivity(project,'workflow-started',`Guided workflow started: ${def.title}`);return run;}
+
   function objectTemplate(type, title) {
     const stamp = nowIso();
     return {
@@ -756,7 +826,8 @@
       canvas: canvasTemplate(),
       handoffs: handoffLedgerTemplate(),
       traceability: traceabilityTemplate(),
-      briefing: briefingTemplate()
+      briefing: briefingTemplate(),
+      guidedWorkflows: guidedWorkflowsTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -859,7 +930,8 @@
       canvas,
       handoffs: normalizeHandoffs(raw.handoffs, objects, canvas),
       traceability: normalizeTraceability(raw.traceability, objects),
-      briefing: normalizeBriefing(raw.briefing, objects)
+      briefing: normalizeBriefing(raw.briefing, objects),
+      guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects)
     };
   }
 
@@ -1004,6 +1076,13 @@
     state.activeProjectId=state.projects.some((project)=>project.id===raw.activeProjectId&&!project.archivedAt)?raw.activeProjectId:null; state.identity=normalizeIdentity(raw.identity); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
   }
 
+  function migrateV11(raw) {
+    const state=defaultState();
+    state.projects=Array.isArray(raw.projects)?raw.projects.map((project)=>{const normalized=normalizeProject(project);if(normalized)addActivity(normalized,'migrated','Project upgraded to Templates & Guided Workflows');return normalized;}).filter(Boolean):[];
+    state.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];
+    state.activeProjectId=state.projects.some((project)=>project.id===raw.activeProjectId&&!project.archivedAt)?raw.activeProjectId:null;state.identity=normalizeIdentity(raw.identity);state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt;state.updatedAt=nowIso();return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -1016,6 +1095,7 @@
     if (raw.schemaVersion === 8) return migrateV8(raw);
     if (raw.schemaVersion === 9) return migrateV9(raw);
     if (raw.schemaVersion === 10) return migrateV10(raw);
+    if (raw.schemaVersion === 11) return migrateV11(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -1160,6 +1240,8 @@
     copy.traceability.createdAt=copy.createdAt; copy.traceability.updatedAt=copy.createdAt;
 
     const draftMap=new Map(); copy.briefing.drafts=copy.briefing.drafts.map((draft)=>{const old=draft.id,next=id('bd');draftMap.set(old,next);return {...draft,id:next,objectIds:draft.objectIds.map(v=>objectMap.get(v)).filter(Boolean),documentObjectId:objectMap.get(draft.documentObjectId)||'',sections:draft.sections.map(sec=>({...sec,id:id('bs'),objectIds:sec.objectIds.map(v=>objectMap.get(v)).filter(Boolean),createdAt:copy.createdAt,updatedAt:copy.createdAt})),status:draft.status==='exported'?'ready':draft.status,lastExportedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt};}); copy.briefing.activeDraftId=null; copy.briefing.createdAt=copy.createdAt; copy.briefing.updatedAt=copy.createdAt;
+    copy.guidedWorkflows.runs = copy.guidedWorkflows.runs.map((run)=>({...run,id:id('wr'),currentStepId:null,status:run.status==='complete'?'paused':run.status,completedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt,steps:run.steps.map((step,index)=>({...step,id:id('ws'),status:index===0?'in-progress':step.status==='complete'?'todo':step.status,objectIds:step.objectIds.map(v=>objectMap.get(v)).filter(Boolean),completedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt}))}));
+    copy.guidedWorkflows.runs.forEach(run=>{run.currentStepId=run.steps.find(x=>x.status==='in-progress')?.id||run.steps[0]?.id||null;});copy.guidedWorkflows.activeRunId=null;copy.guidedWorkflows.createdAt=copy.createdAt;copy.guidedWorkflows.updatedAt=copy.createdAt;
     copy.handoffs = handoffLedgerTemplate();
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
@@ -1339,6 +1421,13 @@
     const briefingMetricReady = root.querySelector('[data-scw-briefing-metric-ready]');
     const briefingMetricRefs = root.querySelector('[data-scw-briefing-metric-refs]');
     const briefingMetricDocs = root.querySelector('[data-scw-briefing-metric-docs]');
+    const workflowTemplateList = root.querySelector('[data-scw-workflow-template-list]');
+    const workflowRunList = root.querySelector('[data-scw-workflow-run-list]');
+    const workflowActive = root.querySelector('[data-scw-workflow-active]');
+    const workflowStepList = root.querySelector('[data-scw-workflow-step-list]');
+    const workflowMetricRuns = root.querySelector('[data-scw-workflow-metric-runs]');
+    const workflowMetricSteps = root.querySelector('[data-scw-workflow-metric-steps]');
+    const workflowMetricComplete = root.querySelector('[data-scw-workflow-metric-complete]');
     const handoffList = root.querySelector('[data-scw-handoff-list]');
     const handoffEmpty = root.querySelector('[data-scw-handoff-empty]');
     const handoffImportFile = root.querySelector('[data-scw-handoff-import-file]');
@@ -1355,7 +1444,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.10.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.11.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1370,7 +1459,7 @@
     }
 
     function setProjectMode(mode) {
-      const allowed = new Set(['overview','research','analysis','decision','canvas','traceability','briefing','objects']);
+      const allowed = new Set(['overview','guide','research','analysis','decision','canvas','traceability','briefing','objects']);
       activeProjectMode = allowed.has(mode) ? mode : 'overview';
       root.classList.add('scw-mode-enabled');
       root.querySelectorAll('[data-scw-project-mode]').forEach((button) => {
@@ -1862,7 +1951,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.10.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.11.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -1870,7 +1959,17 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.10.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.11.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
+    function renderGuidedWorkflows(project){
+      if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
+      if(workflowMetricRuns)workflowMetricRuns.textContent=String(g.runs.length);if(workflowMetricSteps)workflowMetricSteps.textContent=String(allSteps.filter(x=>x.status==='in-progress').length);if(workflowMetricComplete)workflowMetricComplete.textContent=String(allSteps.filter(x=>x.status==='complete').length);
+      workflowTemplateList.innerHTML='';Object.entries(defs).forEach(([templateId,def])=>{const card=document.createElement('article');card.className='scw-workflow-template';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=def.title;const p=document.createElement('p');p.textContent=def.description;const meta=document.createElement('small');meta.textContent=`${def.steps.length} visible steps · editable progress`;body.append(strong,p,meta);const start=document.createElement('button');start.type='button';start.className='scw-card-action';start.textContent='Start workflow';start.addEventListener('click',()=>{const next=startGuidedWorkflow(project,templateId);if(!next){window.alert('This project has reached the guided workflow limit.');return;}persist('Guided workflow started');renderGuidedWorkflows(project);});card.append(body,start);workflowTemplateList.appendChild(card);});
+      if(workflowActive)workflowActive.textContent=run?`${run.title} · ${run.status}`:'No active guided workflow selected.';
+      if(workflowRunList){workflowRunList.innerHTML='';if(!g.runs.length)workflowRunList.innerHTML='<div class="scw-workflow-empty">No guided workflows yet. Start from a template when structure would help; blank projects remain fully supported.</div>';g.runs.forEach(item=>{const row=document.createElement('article');row.className=`scw-workflow-run${item.id===g.activeRunId?' is-active':''}`;const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const complete=item.steps.filter(x=>x.status==='complete').length;const p=document.createElement('p');p.textContent=`${item.status} · ${complete}/${item.steps.length} steps complete`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-workflow-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent=item.id===g.activeRunId?'Active':'Open';open.addEventListener('click',()=>{g.activeRunId=item.id;touchGuidedWorkflows(project);persist('Guided workflow opened');renderGuidedWorkflows(project);});const pause=document.createElement('button');pause.type='button';pause.className='scw-card-action';pause.textContent=item.status==='paused'?'Resume':'Pause';pause.disabled=item.status==='complete';pause.addEventListener('click',()=>{item.status=item.status==='paused'?'active':'paused';item.updatedAt=nowIso();touchGuidedWorkflows(project);persist('Workflow status saved');renderGuidedWorkflows(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{if(!window.confirm(`Remove guided workflow “${item.title}”? Project content and objects will remain.`))return;g.runs=g.runs.filter(x=>x.id!==item.id);if(g.activeRunId===item.id)g.activeRunId=g.runs[0]?.id||null;touchGuidedWorkflows(project);persist('Guided workflow removed');renderGuidedWorkflows(project);});acts.append(open,pause,remove);row.append(body,acts);workflowRunList.appendChild(row);});}
+      if(workflowStepList){workflowStepList.innerHTML='';if(!run)workflowStepList.innerHTML='<div class="scw-workflow-empty">Open a guided workflow to see its steps.</div>';else run.steps.forEach((step,index)=>{const row=document.createElement('article');row.className=`scw-workflow-step is-${step.status}`;const number=document.createElement('span');number.className='scw-workflow-step-number';number.textContent=String(index+1).padStart(2,'0');const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=step.title;const p=document.createElement('p');p.textContent=step.description;const note=document.createElement('textarea');note.rows=2;note.maxLength=2000;note.placeholder='Optional step note';note.value=step.note;note.addEventListener('input',()=>{step.note=note.value.slice(0,2000);step.updatedAt=nowIso();touchGuidedWorkflows(project);schedulePersist();});body.append(strong,p,note);const acts=document.createElement('div');acts.className='scw-workflow-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open workspace';open.addEventListener('click',()=>{run.currentStepId=step.id;if(step.status==='todo')step.status='in-progress';step.updatedAt=nowIso();run.updatedAt=step.updatedAt;touchGuidedWorkflows(project);persist('Workflow step opened');setProjectMode(step.mode);});const status=document.createElement('select');['todo','in-progress','complete','skipped'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v==='in-progress'?'In progress':v[0].toUpperCase()+v.slice(1);status.appendChild(o);});status.value=step.status;status.addEventListener('change',()=>{step.status=WORKFLOW_STEP_STATUS.has(status.value)?status.value:'todo';step.completedAt=step.status==='complete'?nowIso():null;step.updatedAt=nowIso();run.currentStepId=step.id;const unfinished=run.steps.some(x=>!['complete','skipped'].includes(x.status));run.status=unfinished?'active':'complete';run.completedAt=unfinished?null:nowIso();run.updatedAt=step.updatedAt;touchGuidedWorkflows(project);persist('Workflow step status saved');renderGuidedWorkflows(project);});acts.append(open,status);row.append(number,body,acts);workflowStepList.appendChild(row);});}
+    }
+
     function renderBriefing(project){
       if(!briefingDraftList)return; const b=project.briefing||briefingTemplate(), draft=activeBriefingDraft(project), objects=project.objects.filter(o=>!o.archivedAt);
       if(briefingMetricDrafts)briefingMetricDrafts.textContent=String(b.drafts.length); if(briefingMetricReady)briefingMetricReady.textContent=String(b.drafts.filter(d=>d.status==='ready'||d.status==='exported').length); if(briefingMetricRefs)briefingMetricRefs.textContent=String(b.drafts.reduce((n,d)=>n+d.objectIds.length,0)); if(briefingMetricDocs)briefingMetricDocs.textContent=String(b.drafts.filter(d=>d.documentObjectId&&objectById(project,d.documentObjectId)).length);
@@ -1902,6 +2001,7 @@
       renderCanvas(project);
       renderHandoffs(project);
       renderTraceability(project);
+      renderGuidedWorkflows(project);
       renderBriefing(project);
       renderObjects(project);
       renderObjectEditor(project);
@@ -2001,7 +2101,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.10.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.11.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -2026,16 +2126,16 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.10.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.11.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -2195,7 +2295,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.10.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.11.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2210,7 +2310,7 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.10.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.11.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
 
     if(briefingDraftForm) briefingDraftForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.briefing.drafts.length>=MAX_BRIEFING_DRAFTS)return;const data=new FormData(briefingDraftForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),draft={id:id('bd'),title,format:BRIEFING_FORMATS.has(String(data.get('format')))?String(data.get('format')):'briefing',audience:String(data.get('audience')||'').slice(0,300),purpose:String(data.get('purpose')||'').slice(0,600),status:'draft',objectIds:[],sections:[],documentObjectId:'',createdAt:stamp,updatedAt:stamp,lastExportedAt:null};project.briefing.drafts.unshift(draft);project.briefing.activeDraftId=draft.id;touchBriefing(project);addActivity(project,'briefing-created',`Draft created: ${title}`);briefingDraftForm.reset();persist('Briefing draft created');renderBriefing(project);});
@@ -2226,7 +2326,7 @@
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); cleanTraceabilityReferences(project, object.id); cleanBriefingReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); cleanTraceabilityReferences(project, object.id); cleanBriefingReferences(project, object.id); cleanGuidedWorkflowReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 

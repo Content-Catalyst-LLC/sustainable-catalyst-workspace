@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-guided-workflows-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Templates & Guided Workflows v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runs",
+    "activeRunId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-guided-workflows/1.0"
+    },
+    "activeRunId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "runs": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "templateId",
+          "title",
+          "status",
+          "currentStepId",
+          "steps",
+          "createdAt",
+          "updatedAt",
+          "completedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "templateId": {
+            "enum": [
+              "research-investigation",
+              "evidence-review",
+              "analytical-assessment",
+              "decision-case",
+              "systems-mapping",
+              "publication-preparation"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "status": {
+            "enum": [
+              "active",
+              "paused",
+              "complete"
+            ]
+          },
+          "currentStepId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "key",
+                "title",
+                "description",
+                "mode",
+                "status",
+                "note",
+                "objectIds",
+                "createdAt",
+                "updatedAt",
+                "completedAt"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                "key": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 180
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 1200
+                },
+                "mode": {
+                  "enum": [
+                    "overview",
+                    "research",
+                    "analysis",
+                    "decision",
+                    "canvas",
+                    "traceability",
+                    "briefing",
+                    "objects"
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "todo",
+                    "in-progress",
+                    "complete",
+                    "skipped"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "objectIds": {
+                  "type": "array",
+                  "maxItems": 80,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 160
+                  }
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

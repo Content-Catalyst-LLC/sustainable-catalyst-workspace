@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0100';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0100';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0110';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0110';
+    const LEGACY_PENDING_KEY_V0100 = 'sc_workspace_registry_pending_v0100';
     const LEGACY_PENDING_KEY_V0901 = 'sc_workspace_registry_pending_v0901';
     const LEGACY_PENDING_KEY_V090 = 'sc_workspace_registry_pending_v090';
     const LEGACY_PENDING_KEY_V0831 = 'sc_workspace_registry_pending_v0831';
@@ -86,6 +87,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0100);
         delete_option(self::LEGACY_PENDING_KEY_V0901);
         delete_option(self::LEGACY_PENDING_KEY_V090);
         delete_option(self::LEGACY_PENDING_KEY_V0831);
@@ -152,11 +154,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.9.0.1',
+            'previous_version' => '0.10.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Briefing & Publication Studio: adds structured briefing drafts, editorial sections, source-basis references, Document materialization, and portable Markdown, HTML, and JSON publication packages.',
+            'change_summary' => 'Templates & Guided Workflows: adds visible, editable workflow templates for research, evidence review, analysis, decision cases, systems mapping, and publication preparation while preserving blank-project use and human-controlled completion.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.10.0 adds a local-first Briefing & Publication Studio. Storage advances to schema 11 and projects to sc-workspace-project/9.0. Drafts can materialize as canonical Document objects and export portable packages, but Workspace does not publish directly to WordPress or any CMS.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.11.0 adds local-first Templates & Guided Workflows. Storage advances to schema 12 and projects to sc-workspace-project/10.0. Templates expose method steps and progress but do not generate hidden findings, infer completion, require an account, or replace blank-project workflows.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0100, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0901, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0831, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V082, '') === '1' ||
@@ -54,7 +55,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.10.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.11.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -118,6 +119,11 @@ final class SC_Workspace {
             'callback' => array($this, 'briefing_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/guided-workflows-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'guided_workflows_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/platform-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'platform_contract'),
@@ -133,8 +139,8 @@ final class SC_Workspace {
             'version' => SC_WORKSPACE_VERSION,
             'access' => 'free-public',
             'account_required' => false,
-            'persistence' => 'browser-local-projects-v11',
-            'project_schema' => 'sc-workspace-project/9.0',
+            'persistence' => 'browser-local-projects-v12',
+            'project_schema' => 'sc-workspace-project/10.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'identity_schema' => 'sc-workspace-identity/1.0',
@@ -147,12 +153,13 @@ final class SC_Workspace {
             'return_adapter_schema' => 'sc-workspace-return-adapter/1.0',
             'traceability_schema' => 'sc-workspace-traceability/1.0',
             'briefing_schema' => 'sc-workspace-briefing/1.0',
+            'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'return_adapter_transport' => array('session-storage', 'same-origin-postmessage', 'portable-json'),
             'authentication_provider' => 'wordpress',
             'anonymous_workspace_supported' => true,
-            'storage_schema_version' => 11,
+            'storage_schema_version' => 12,
             'server_project_storage' => false,
             'cloud_sync' => false,
             'collaboration' => false,
@@ -163,16 +170,16 @@ final class SC_Workspace {
 
     public function project_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-project-contract/9.0',
+            'schema' => 'sc-workspace-project-contract/10.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'object_schema' => 'sc-workspace-object/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
             'analysis_schema' => 'sc-workspace-analysis/1.0',
             'decision_schema' => 'sc-workspace-decision/1.0',
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'export_schema' => 'sc-workspace-project-export/9.0',
-            'storage_schema_version' => 11,
+            'export_schema' => 'sc-workspace-project-export/10.0',
+            'storage_schema_version' => 12,
             'persistence' => 'device-local',
             'server_storage' => false,
             'project_persistence_metadata' => true,
@@ -190,6 +197,7 @@ final class SC_Workspace {
             'traceability_schema' => 'sc-workspace-traceability/1.0',
             'content_fingerprint_algorithm' => 'SHA-256',
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
+            'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
         ));
     }
 
@@ -231,7 +239,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-analysis-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'analysis_schema' => 'sc-workspace-analysis/1.0',
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'dataset_object_type' => 'dataset',
             'analysis_object_type' => 'analysis',
             'question_statuses' => array('open', 'resolved', 'deferred'),
@@ -258,7 +266,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-decision-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'decision_schema' => 'sc-workspace-decision/1.0',
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'decision_object_type' => 'decision',
             'decision_statuses' => array('framing', 'evaluating', 'decided', 'revisit'),
             'option_statuses' => array('candidate', 'shortlisted', 'selected', 'rejected'),
@@ -281,7 +289,7 @@ final class SC_Workspace {
             'schema' => 'sc-workspace-canvas-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'canvas_schema' => 'sc-workspace-canvas/1.0',
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'board_statuses' => array('draft', 'working', 'ready'),
             'node_types' => array('note', 'question', 'claim', 'evidence', 'data', 'analysis', 'decision', 'system', 'stakeholder', 'idea'),
             'relationship_types' => array('supports', 'contradicts', 'depends-on', 'influences', 'contains', 'causes', 'relates-to', 'sequence'),
@@ -300,7 +308,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-handoff-contract/2.1',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'handoff_schema' => 'sc-workspace-handoff/2.0',
             'ledger_schema' => 'sc-workspace-handoff-ledger/1.0',
             'return_schema' => 'sc-workspace-handoff-return/1.0',
@@ -360,7 +368,7 @@ final class SC_Workspace {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-traceability-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'traceability_schema' => 'sc-workspace-traceability/1.0',
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
@@ -381,11 +389,29 @@ final class SC_Workspace {
     }
 
 
+    public function guided_workflows_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-guided-workflows-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
+            'project_schema' => 'sc-workspace-project/10.0',
+            'storage_schema_version' => 12,
+            'templates' => array('research-investigation', 'evidence-review', 'analytical-assessment', 'decision-case', 'systems-mapping', 'publication-preparation'),
+            'run_statuses' => array('active', 'paused', 'complete'),
+            'step_statuses' => array('todo', 'in-progress', 'complete', 'skipped'),
+            'blank_projects_supported' => true,
+            'templates_create_hidden_content' => false,
+            'user_controls_step_completion' => true,
+            'max_workflows_per_project' => 20,
+            'local_first' => true,
+        ));
+    }
+
     public function briefing_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-briefing-contract/1.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'project_schema' => 'sc-workspace-project/9.0',
+            'project_schema' => 'sc-workspace-project/10.0',
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
             'draft_formats' => array('briefing', 'memo', 'report', 'article', 'publication-draft'),
@@ -418,13 +444,14 @@ final class SC_Workspace {
             'slug_preserved' => true,
             'page_template_preserved' => true,
             'data_schema_change' => false,
-            'storage_schema_version' => 11,
-            'project_schema' => 'sc-workspace-project/9.0',
+            'storage_schema_version' => 12,
+            'project_schema' => 'sc-workspace-project/10.0',
             'public_product_name' => 'Workspace',
             'recommended_navigation_label' => 'Workspace',
             'public_experience' => 'advisory-aligned-editorial',
             'traceability_workspace_mode' => true,
             'briefing_publication_workspace_mode' => true,
+            'guided_workflows_workspace_mode' => true,
                 'editorial_header_bar' => true,
             'editorial_shell' => true,
             'illustrative_software_preview' => true,
@@ -460,13 +487,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.10.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.11.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.10.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.11.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -611,6 +638,7 @@ final class SC_Workspace {
 
                 <nav class="scw-project-mode-nav" aria-label="Project workspace modes" data-scw-project-mode-nav>
                     <button type="button" class="is-active" data-scw-project-mode="overview" aria-pressed="true">Overview</button>
+                    <button type="button" data-scw-project-mode="guide" aria-pressed="false">Guide</button>
                     <button type="button" data-scw-project-mode="research" aria-pressed="false">Research</button>
                     <button type="button" data-scw-project-mode="analysis" aria-pressed="false">Analysis</button>
                     <button type="button" data-scw-project-mode="decision" aria-pressed="false">Decisions</button>
@@ -649,6 +677,37 @@ final class SC_Workspace {
                 </div>
 
 
+
+                <section class="scw-workflows" data-scw-project-panel="guide" aria-labelledby="scw-workflows-title">
+                    <div class="scw-workflows-head">
+                        <div>
+                            <div class="scw-kicker">TEMPLATES &amp; GUIDED WORKFLOWS</div>
+                            <h3 id="scw-workflows-title">Add structure when the work benefits from it.</h3>
+                            <p>Start from a visible method for research, evidence review, analysis, decisions, systems mapping, or publication preparation. Templates guide the sequence; they do not create hidden findings, complete steps automatically, or prevent blank-project work.</p>
+                        </div>
+                    </div>
+                    <div class="scw-workflow-metrics" aria-label="Guided workflow metrics">
+                        <div><strong data-scw-workflow-metric-runs>0</strong><span>workflow runs</span></div>
+                        <div><strong data-scw-workflow-metric-steps>0</strong><span>in progress</span></div>
+                        <div><strong data-scw-workflow-metric-complete>0</strong><span>steps complete</span></div>
+                    </div>
+                    <div class="scw-workflow-grid">
+                        <section class="scw-workflow-panel scw-workflow-panel-wide" aria-labelledby="scw-workflow-templates-heading">
+                            <div class="scw-workflow-panel-head"><span>01 / TEMPLATES</span><h4 id="scw-workflow-templates-heading">Choose a method, not a locked tier.</h4></div>
+                            <div class="scw-workflow-template-list" data-scw-workflow-template-list></div>
+                        </section>
+                        <section class="scw-workflow-panel" aria-labelledby="scw-workflow-runs-heading">
+                            <div class="scw-workflow-panel-head"><span>02 / RUNS</span><h4 id="scw-workflow-runs-heading">Keep more than one method in the same project.</h4></div>
+                            <div class="scw-workflow-active"><span>ACTIVE WORKFLOW</span><strong data-scw-workflow-active>No active guided workflow selected.</strong></div>
+                            <div class="scw-workflow-run-list" data-scw-workflow-run-list></div>
+                        </section>
+                        <section class="scw-workflow-panel scw-workflow-panel-wide" aria-labelledby="scw-workflow-steps-heading">
+                            <div class="scw-workflow-panel-head"><span>03 / STEPS</span><h4 id="scw-workflow-steps-heading">Progress remains explicit and human-controlled.</h4></div>
+                            <p class="scw-workflow-note">Open a step to move into the relevant Workspace mode. Mark completion yourself; Workspace never interprets activity as approval or completion.</p>
+                            <div class="scw-workflow-step-list" data-scw-workflow-step-list></div>
+                        </section>
+                    </div>
+                </section>
 
                 <section class="scw-research" data-scw-project-panel="research" aria-labelledby="scw-research-title">
                     <div class="scw-research-head">
@@ -1241,7 +1300,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.10.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.11.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1318,11 +1377,11 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.10.0.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.11.0.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.10.0.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.11.0.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">
