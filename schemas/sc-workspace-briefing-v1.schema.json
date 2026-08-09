@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-briefing-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Briefing & Publication Studio v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "drafts",
+    "activeDraftId",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-briefing/1.0"
+    },
+    "activeDraftId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "drafts": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "format",
+          "audience",
+          "purpose",
+          "status",
+          "objectIds",
+          "sections",
+          "documentObjectId",
+          "createdAt",
+          "updatedAt",
+          "lastExportedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "format": {
+            "enum": [
+              "briefing",
+              "memo",
+              "report",
+              "article",
+              "publication-draft"
+            ]
+          },
+          "audience": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "purpose": {
+            "type": "string",
+            "maxLength": 600
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "review",
+              "ready",
+              "exported"
+            ]
+          },
+          "objectIds": {
+            "type": "array",
+            "maxItems": 80,
+            "items": {
+              "type": "string",
+              "maxLength": 160
+            },
+            "uniqueItems": true
+          },
+          "documentObjectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "lastExportedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sections": {
+            "type": "array",
+            "maxItems": 24,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "heading",
+                "body",
+                "objectIds",
+                "createdAt",
+                "updatedAt"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "maxLength": 160
+                },
+                "heading": {
+                  "type": "string",
+                  "maxLength": 180
+                },
+                "body": {
+                  "type": "string",
+                  "maxLength": 8000
+                },
+                "objectIds": {
+                  "type": "array",
+                  "maxItems": 80,
+                  "items": {
+                    "type": "string",
+                    "maxLength": 160
+                  },
+                  "uniqueItems": true
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

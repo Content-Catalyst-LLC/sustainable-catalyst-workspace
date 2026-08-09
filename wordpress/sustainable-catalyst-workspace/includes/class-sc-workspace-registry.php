@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0901';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0901';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0100';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0100';
+    const LEGACY_PENDING_KEY_V0901 = 'sc_workspace_registry_pending_v0901';
     const LEGACY_PENDING_KEY_V090 = 'sc_workspace_registry_pending_v090';
     const LEGACY_PENDING_KEY_V0831 = 'sc_workspace_registry_pending_v0831';
     const LEGACY_PENDING_KEY_V083 = 'sc_workspace_registry_pending_v083';
@@ -85,6 +86,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0901);
         delete_option(self::LEGACY_PENDING_KEY_V090);
         delete_option(self::LEGACY_PENDING_KEY_V0831);
         delete_option(self::LEGACY_PENDING_KEY_V083);
@@ -150,11 +152,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.9.0',
+            'previous_version' => '0.9.0.1',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Closing CTA Cleanup & Action Alignment: removes the redundant closing Open Workspace link, adds a functional New Project action, and retains the canonical Knowledge Library action.',
+            'change_summary' => 'Briefing & Publication Studio: adds structured briefing drafts, editorial sections, source-basis references, Document materialization, and portable Markdown, HTML, and JSON publication packages.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.9.0.1 is a presentation/action micro-release only: storage remains schema 10 and projects remain sc-workspace-project/8.0. The bottom closing action now creates a project rather than redundantly reopening Workspace; Explore the Library remains /knowledge-libraries/.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.10.0 adds a local-first Briefing & Publication Studio. Storage advances to schema 11 and projects to sc-workspace-project/9.0. Drafts can materialize as canonical Document objects and export portable packages, but Workspace does not publish directly to WordPress or any CMS.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

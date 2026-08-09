@@ -4,9 +4,9 @@ Sustainable Catalyst Workspace is the free personal working environment across S
 
 ## Current release
 
-**v0.9.0.1 — Closing CTA Cleanup & Action Alignment**
+**v0.10.0 — Briefing & Publication Studio**
 
-Workspace supports a connected personal workflow across Research, Evidence, Analysis, Decision, Canvas, Traceability, reusable Workspace Objects, and cross-product handoffs. v0.9.0.1 is a focused public-experience micro-release: the redundant bottom **Open Workspace** action is replaced with a functional **New Project** action, while **Explore the Library** uses the canonical `/knowledge-libraries/` route.
+Workspace supports a connected personal workflow across Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, reusable Workspace Objects, and cross-product handoffs. v0.10.0 adds a local-first Briefing & Publication Studio for structured drafts, document materialization, and portable Markdown, HTML, and JSON publication packages without automatic CMS publication.
 
 ## WordPress shortcodes
 

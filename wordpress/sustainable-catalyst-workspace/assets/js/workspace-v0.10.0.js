@@ -7,8 +7,9 @@
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 10;
-  const PROJECT_SCHEMA = 'sc-workspace-project/8.0';
+  const STORAGE_VERSION = 11;
+  const PROJECT_SCHEMA = 'sc-workspace-project/9.0';
+  const LEGACY_PROJECT_SCHEMA_V8 = 'sc-workspace-project/8.0';
   const LEGACY_PROJECT_SCHEMA_V7 = 'sc-workspace-project/7.0';
   const LEGACY_PROJECT_SCHEMA_V6 = 'sc-workspace-project/6.0';
   const LEGACY_PROJECT_SCHEMA_V5 = 'sc-workspace-project/5.0';
@@ -18,7 +19,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/8.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/9.0';
+  const LEGACY_EXPORT_SCHEMA_V8 = 'sc-workspace-project-export/8.0';
   const LEGACY_EXPORT_SCHEMA_V7 = 'sc-workspace-project-export/7.0';
   const LEGACY_EXPORT_SCHEMA_V6 = 'sc-workspace-project-export/6.0';
   const LEGACY_EXPORT_SCHEMA_V5 = 'sc-workspace-project-export/5.0';
@@ -40,8 +42,12 @@
   const CANVAS_SCHEMA = 'sc-workspace-canvas/1.0';
   const TRACEABILITY_SCHEMA = 'sc-workspace-traceability/1.0';
   const REPRO_EXPORT_SCHEMA = 'sc-workspace-reproducibility-export/1.0';
+  const BRIEFING_SCHEMA = 'sc-workspace-briefing/1.0';
+  const PUBLICATION_EXPORT_SCHEMA = 'sc-workspace-publication-export/1.0';
   const TRACE_RELATIONS = new Set(['derived-from','supports','contradicts','uses','produced-by','informs','supersedes','cites']);
   const REPRO_STATUS = new Set(['draft','ready','verified','stale']);
+  const BRIEFING_FORMATS = new Set(['briefing','memo','report','article','publication-draft']);
+  const BRIEFING_STATUS = new Set(['draft','review','ready','exported']);
   const MAX_ACTIVITY = 60;
   const MAX_RECENT_TOOLS = 8;
   const MAX_OBJECTS = 250;
@@ -68,6 +74,9 @@
   const MAX_EVIDENCE_ASSESSMENTS = 250;
   const MAX_LINEAGE_RELATIONS = 1000;
   const MAX_REPRO_RECORDS = 100;
+  const MAX_BRIEFING_DRAFTS = 30;
+  const MAX_BRIEFING_SECTIONS = 24;
+  const MAX_BRIEFING_OBJECT_REFS = 80;
   const MAX_HANDOFF_OBJECT_REFS = 12;
   const MAX_RETURN_ARTIFACTS = 20;
   const ALLOWED_STATUS = new Set(['active', 'paused', 'complete']);
@@ -673,6 +682,38 @@
     try { if(!window.crypto||!window.crypto.subtle||typeof TextEncoder==='undefined') return ''; const bytes=new TextEncoder().encode(canonicalObjectFingerprintText(object)); const digest=await window.crypto.subtle.digest('SHA-256',bytes); return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join(''); } catch(_){ return ''; }
   }
 
+
+
+  function briefingTemplate() {
+    const stamp = nowIso();
+    return { schema: BRIEFING_SCHEMA, drafts: [], activeDraftId: null, createdAt: stamp, updatedAt: stamp };
+  }
+  function normalizeBriefingSection(raw, objectIds) {
+    if (!raw || typeof raw !== 'object') return null; const stamp=nowIso();
+    return { id:String(raw.id||id('bs')).slice(0,160), heading:String(raw.heading||'').trim().slice(0,180), body:String(raw.body||'').slice(0,8000), objectIds:Array.isArray(raw.objectIds)?[...new Set(raw.objectIds.map(v=>String(v).slice(0,160)).filter(v=>objectIds.has(v)))].slice(0,MAX_BRIEFING_OBJECT_REFS):[], createdAt:validIso(raw.createdAt)?raw.createdAt:stamp, updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp };
+  }
+  function normalizeBriefingDraft(raw, objectIds) {
+    if (!raw || typeof raw !== 'object') return null; const stamp=nowIso(); const documentObjectId=String(raw.documentObjectId||'').slice(0,160);
+    const draft={ id:String(raw.id||id('bd')).slice(0,160), title:String(raw.title||'Untitled draft').trim().slice(0,200)||'Untitled draft', format:BRIEFING_FORMATS.has(raw.format)?raw.format:'briefing', audience:String(raw.audience||'').slice(0,300), purpose:String(raw.purpose||'').slice(0,600), status:BRIEFING_STATUS.has(raw.status)?raw.status:'draft', objectIds:Array.isArray(raw.objectIds)?[...new Set(raw.objectIds.map(v=>String(v).slice(0,160)).filter(v=>objectIds.has(v)))].slice(0,MAX_BRIEFING_OBJECT_REFS):[], sections:[], documentObjectId:objectIds.has(documentObjectId)?documentObjectId:'', createdAt:validIso(raw.createdAt)?raw.createdAt:stamp, updatedAt:validIso(raw.updatedAt)?raw.updatedAt:stamp, lastExportedAt:validIso(raw.lastExportedAt)?raw.lastExportedAt:null };
+    draft.sections=Array.isArray(raw.sections)?raw.sections.map(x=>normalizeBriefingSection(x,objectIds)).filter(x=>x&&x.heading).slice(0,MAX_BRIEFING_SECTIONS):[]; return draft;
+  }
+  function normalizeBriefing(raw, objects=[]) {
+    const base=briefingTemplate(), value=raw&&typeof raw==='object'?raw:{}, objectIds=new Set(objects.map(o=>o.id));
+    base.drafts=Array.isArray(value.drafts)?value.drafts.map(x=>normalizeBriefingDraft(x,objectIds)).filter(Boolean).slice(0,MAX_BRIEFING_DRAFTS):[];
+    base.activeDraftId=base.drafts.some(x=>x.id===value.activeDraftId)?value.activeDraftId:null; base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt; base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt; return base;
+  }
+  function touchBriefing(project){ if(!project.briefing)project.briefing=briefingTemplate(); project.briefing.updatedAt=nowIso(); project.updatedAt=project.briefing.updatedAt; }
+  function cleanBriefingReferences(project, objectId){ if(!project||!project.briefing)return; project.briefing.drafts.forEach(d=>{d.objectIds=d.objectIds.filter(v=>v!==objectId);d.sections.forEach(sec=>{sec.objectIds=sec.objectIds.filter(v=>v!==objectId);});if(d.documentObjectId===objectId)d.documentObjectId='';});touchBriefing(project); }
+  function briefingOutline(format){
+    const outlines={
+      'briefing':['Executive summary','Question and context','Evidence base','Analysis','Decision implications','Next steps'],
+      'memo':['Purpose','Background','Findings','Recommendation','Risks and limitations','Next steps'],
+      'report':['Executive summary','Scope','Evidence and methods','Findings','Analysis','Conclusions','Limitations'],
+      'article':['Introduction','Context','Evidence','Analysis','Implications','Conclusion'],
+      'publication-draft':['Abstract','Introduction','Evidence base','Analysis','Discussion','Conclusion','Sources']
+    }; return outlines[format]||outlines.briefing;
+  }
+
   function objectTemplate(type, title) {
     const stamp = nowIso();
     return {
@@ -714,7 +755,8 @@
       decision: decisionTemplate(),
       canvas: canvasTemplate(),
       handoffs: handoffLedgerTemplate(),
-      traceability: traceabilityTemplate()
+      traceability: traceabilityTemplate(),
+      briefing: briefingTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -816,7 +858,8 @@
       decision: normalizeDecision(raw.decision, objects),
       canvas,
       handoffs: normalizeHandoffs(raw.handoffs, objects, canvas),
-      traceability: normalizeTraceability(raw.traceability, objects)
+      traceability: normalizeTraceability(raw.traceability, objects),
+      briefing: normalizeBriefing(raw.briefing, objects)
     };
   }
 
@@ -953,6 +996,14 @@
     state.activeProjectId=state.projects.some((project)=>project.id===raw.activeProjectId&&!project.archivedAt)?raw.activeProjectId:null; state.identity=normalizeIdentity(raw.identity); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
   }
 
+
+  function migrateV10(raw) {
+    const state=defaultState();
+    state.projects=Array.isArray(raw.projects)?raw.projects.map((project)=>{const normalized=normalizeProject(project);if(normalized)addActivity(normalized,'migrated','Project upgraded to Briefing & Publication Studio');return normalized;}).filter(Boolean):[];
+    state.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];
+    state.activeProjectId=state.projects.some((project)=>project.id===raw.activeProjectId&&!project.archivedAt)?raw.activeProjectId:null; state.identity=normalizeIdentity(raw.identity); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -964,6 +1015,7 @@
     if (raw.schemaVersion === 7) return migrateV7(raw);
     if (raw.schemaVersion === 8) return migrateV8(raw);
     if (raw.schemaVersion === 9) return migrateV9(raw);
+    if (raw.schemaVersion === 10) return migrateV10(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -1044,6 +1096,12 @@
     window.setTimeout(() => URL.revokeObjectURL(url), 500);
   }
 
+
+  function downloadText(filename, text, type='text/plain;charset=utf-8') {
+    const blob = new Blob([String(text || '')], { type }); const url=URL.createObjectURL(blob); const anchor=document.createElement('a'); anchor.href=url; anchor.download=filename; document.body.appendChild(anchor); anchor.click(); anchor.remove(); window.setTimeout(()=>URL.revokeObjectURL(url),500);
+  }
+  function escapeHtml(value){ return String(value||'').replace(/[&<>\"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c])); }
+
   function toolLabel(link) {
     const strong = link.querySelector('strong');
     return strong ? strong.textContent.trim() : link.dataset.scwTool;
@@ -1100,6 +1158,8 @@
     copy.traceability.lineage = copy.traceability.lineage.map((item)=>({...item,id:id('tl'),fromObjectId:objectMap.get(item.fromObjectId)||'',toObjectId:objectMap.get(item.toObjectId)||'',createdAt:copy.createdAt})).filter(item=>item.fromObjectId&&item.toObjectId&&item.fromObjectId!==item.toObjectId);
     copy.traceability.reproducibility = copy.traceability.reproducibility.map((item)=>({...item,id:id('trr'),analysisObjectId:objectMap.get(item.analysisObjectId)||'',datasetObjectIds:item.datasetObjectIds.map(v=>objectMap.get(v)).filter(Boolean),evidenceObjectIds:item.evidenceObjectIds.map(v=>objectMap.get(v)).filter(Boolean),resultObjectIds:item.resultObjectIds.map(v=>objectMap.get(v)).filter(Boolean),status:item.status==='verified'?'ready':item.status,lastVerifiedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt}));
     copy.traceability.createdAt=copy.createdAt; copy.traceability.updatedAt=copy.createdAt;
+
+    const draftMap=new Map(); copy.briefing.drafts=copy.briefing.drafts.map((draft)=>{const old=draft.id,next=id('bd');draftMap.set(old,next);return {...draft,id:next,objectIds:draft.objectIds.map(v=>objectMap.get(v)).filter(Boolean),documentObjectId:objectMap.get(draft.documentObjectId)||'',sections:draft.sections.map(sec=>({...sec,id:id('bs'),objectIds:sec.objectIds.map(v=>objectMap.get(v)).filter(Boolean),createdAt:copy.createdAt,updatedAt:copy.createdAt})),status:draft.status==='exported'?'ready':draft.status,lastExportedAt:null,createdAt:copy.createdAt,updatedAt:copy.createdAt};}); copy.briefing.activeDraftId=null; copy.briefing.createdAt=copy.createdAt; copy.briefing.updatedAt=copy.createdAt;
     copy.handoffs = handoffLedgerTemplate();
     addActivity(copy, 'duplicated', `Duplicated from ${project.title}`);
     return copy;
@@ -1260,6 +1320,25 @@
     const traceMetricRepro = root.querySelector('[data-scw-trace-metric-repro]');
     const traceMetricVerified = root.querySelector('[data-scw-trace-metric-verified]');
     const traceExportButton = root.querySelector('[data-scw-traceability-export]');
+
+    const briefingDraftForm = root.querySelector('[data-scw-briefing-draft-form]');
+    const briefingDraftList = root.querySelector('[data-scw-briefing-draft-list]');
+    const briefingActive = root.querySelector('[data-scw-briefing-active]');
+    const briefingObjectSelect = root.querySelector('[data-scw-briefing-object-select]');
+    const briefingSaveBasis = root.querySelector('[data-scw-briefing-save-basis]');
+    const briefingBasisList = root.querySelector('[data-scw-briefing-basis-list]');
+    const briefingOutlineButton = root.querySelector('[data-scw-briefing-outline]');
+    const briefingStatus = root.querySelector('[data-scw-briefing-status]');
+    const briefingSectionForm = root.querySelector('[data-scw-briefing-section-form]');
+    const briefingSectionList = root.querySelector('[data-scw-briefing-section-list]');
+    const briefingMaterialize = root.querySelector('[data-scw-briefing-materialize]');
+    const briefingExportMarkdown = root.querySelector('[data-scw-briefing-export-markdown]');
+    const briefingExportHtml = root.querySelector('[data-scw-briefing-export-html]');
+    const briefingExportPackage = root.querySelector('[data-scw-briefing-export-package]');
+    const briefingMetricDrafts = root.querySelector('[data-scw-briefing-metric-drafts]');
+    const briefingMetricReady = root.querySelector('[data-scw-briefing-metric-ready]');
+    const briefingMetricRefs = root.querySelector('[data-scw-briefing-metric-refs]');
+    const briefingMetricDocs = root.querySelector('[data-scw-briefing-metric-docs]');
     const handoffList = root.querySelector('[data-scw-handoff-list]');
     const handoffEmpty = root.querySelector('[data-scw-handoff-empty]');
     const handoffImportFile = root.querySelector('[data-scw-handoff-import-file]');
@@ -1276,7 +1355,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.9.0.1 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.10.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -1291,7 +1370,7 @@
     }
 
     function setProjectMode(mode) {
-      const allowed = new Set(['overview','research','analysis','decision','canvas','traceability','objects']);
+      const allowed = new Set(['overview','research','analysis','decision','canvas','traceability','briefing','objects']);
       activeProjectMode = allowed.has(mode) ? mode : 'overview';
       root.classList.add('scw-mode-enabled');
       root.querySelectorAll('[data-scw-project-mode]').forEach((button) => {
@@ -1783,7 +1862,25 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.9.0.1',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.10.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+    }
+
+
+    function activeBriefingDraft(project){ return project&&project.briefing?project.briefing.drafts.find(d=>d.id===project.briefing.activeDraftId)||null:null; }
+    function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
+    function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
+    function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.10.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function renderBriefing(project){
+      if(!briefingDraftList)return; const b=project.briefing||briefingTemplate(), draft=activeBriefingDraft(project), objects=project.objects.filter(o=>!o.archivedAt);
+      if(briefingMetricDrafts)briefingMetricDrafts.textContent=String(b.drafts.length); if(briefingMetricReady)briefingMetricReady.textContent=String(b.drafts.filter(d=>d.status==='ready'||d.status==='exported').length); if(briefingMetricRefs)briefingMetricRefs.textContent=String(b.drafts.reduce((n,d)=>n+d.objectIds.length,0)); if(briefingMetricDocs)briefingMetricDocs.textContent=String(b.drafts.filter(d=>d.documentObjectId&&objectById(project,d.documentObjectId)).length);
+      if(briefingActive)briefingActive.textContent=draft?`${draft.title} · ${draft.format.replaceAll('-',' ')}`:'No active draft selected.';
+      briefingDraftList.innerHTML=''; if(!b.drafts.length)briefingDraftList.innerHTML='<div class="scw-briefing-empty">No briefing or publication drafts yet.</div>';
+      b.drafts.forEach(item=>{const row=document.createElement('article');row.className=`scw-briefing-record${item.id===b.activeDraftId?' is-active':''}`;const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.format.replaceAll('-',' ')} · ${item.status} · ${item.sections.length} section(s) · ${item.objectIds.length} reference(s)`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-briefing-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent=item.id===b.activeDraftId?'Active':'Open';open.addEventListener('click',()=>{b.activeDraftId=item.id;touchBriefing(project);persist('Draft opened');renderBriefing(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{if(!window.confirm(`Remove draft “${item.title}”? The materialized Document, if any, will remain in Objects.`))return;b.drafts=b.drafts.filter(d=>d.id!==item.id);if(b.activeDraftId===item.id)b.activeDraftId=b.drafts[0]?.id||null;touchBriefing(project);persist('Draft removed');renderBriefing(project);});acts.append(open,remove);row.append(body,acts);briefingDraftList.appendChild(row);});
+      fillObjectSelect(briefingObjectSelect,objects); if(briefingObjectSelect){Array.from(briefingObjectSelect.options).forEach(o=>{o.selected=Boolean(draft&&draft.objectIds.includes(o.value));});}
+      [briefingSaveBasis,briefingOutlineButton,briefingStatus,briefingMaterialize,briefingExportMarkdown,briefingExportHtml,briefingExportPackage].forEach(el=>{if(el)el.disabled=!draft;}); if(briefingSectionForm)Array.from(briefingSectionForm.elements).forEach(el=>{if(el.matches('input,textarea,button'))el.disabled=!draft;}); if(briefingStatus&&draft)briefingStatus.value=draft.status;
+      if(briefingBasisList){briefingBasisList.innerHTML=''; if(!draft||!draft.objectIds.length)briefingBasisList.innerHTML='<div class="scw-briefing-empty">No Workspace Objects selected as the basis yet.</div>'; else draft.objectIds.map(v=>objectById(project,v)).filter(Boolean).forEach(o=>{const row=document.createElement('div');row.className='scw-briefing-basis-item';row.innerHTML=`<strong>${escapeHtml(o.title)}</strong><span>${escapeHtml(OBJECT_LABELS[o.type]||o.type)}</span>`;briefingBasisList.appendChild(row);});}
+      if(briefingSectionList){briefingSectionList.innerHTML=''; if(!draft||!draft.sections.length)briefingSectionList.innerHTML='<div class="scw-briefing-empty">No sections yet. Add one or build a standard outline.</div>'; else draft.sections.forEach((sec,index)=>{const row=document.createElement('article');row.className='scw-briefing-section-record';const fields=document.createElement('div');const heading=document.createElement('input');heading.type='text';heading.maxLength=180;heading.value=sec.heading;heading.setAttribute('aria-label','Section heading');const body=document.createElement('textarea');body.rows=5;body.maxLength=8000;body.value=sec.body;body.setAttribute('aria-label','Section text');heading.addEventListener('input',()=>{sec.heading=heading.value.slice(0,180);sec.updatedAt=nowIso();touchBriefing(project);schedulePersist();});body.addEventListener('input',()=>{sec.body=body.value.slice(0,8000);sec.updatedAt=nowIso();touchBriefing(project);schedulePersist();});fields.append(heading,body);const acts=document.createElement('div');acts.className='scw-briefing-actions';const up=document.createElement('button');up.type='button';up.className='scw-card-action';up.textContent='↑';up.disabled=index===0;up.addEventListener('click',()=>{[draft.sections[index-1],draft.sections[index]]=[draft.sections[index],draft.sections[index-1]];touchBriefing(project);persist('Section moved');renderBriefing(project);});const down=document.createElement('button');down.type='button';down.className='scw-card-action';down.textContent='↓';down.disabled=index===draft.sections.length-1;down.addEventListener('click',()=>{[draft.sections[index+1],draft.sections[index]]=[draft.sections[index],draft.sections[index+1]];touchBriefing(project);persist('Section moved');renderBriefing(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{draft.sections=draft.sections.filter(x=>x.id!==sec.id);touchBriefing(project);persist('Section removed');renderBriefing(project);});acts.append(up,down,remove);row.append(fields,acts);briefingSectionList.appendChild(row);});}
     }
 
     function renderActive() {
@@ -1805,6 +1902,7 @@
       renderCanvas(project);
       renderHandoffs(project);
       renderTraceability(project);
+      renderBriefing(project);
       renderObjects(project);
       renderObjectEditor(project);
     }
@@ -1903,7 +2001,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.9.0.1', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.10.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -1928,16 +2026,16 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.9.0.1, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.10.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -2097,7 +2195,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.9.0.1', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.10.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2112,12 +2210,23 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.9.0.1',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.10.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+
+
+    if(briefingDraftForm) briefingDraftForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.briefing.drafts.length>=MAX_BRIEFING_DRAFTS)return;const data=new FormData(briefingDraftForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),draft={id:id('bd'),title,format:BRIEFING_FORMATS.has(String(data.get('format')))?String(data.get('format')):'briefing',audience:String(data.get('audience')||'').slice(0,300),purpose:String(data.get('purpose')||'').slice(0,600),status:'draft',objectIds:[],sections:[],documentObjectId:'',createdAt:stamp,updatedAt:stamp,lastExportedAt:null};project.briefing.drafts.unshift(draft);project.briefing.activeDraftId=draft.id;touchBriefing(project);addActivity(project,'briefing-created',`Draft created: ${title}`);briefingDraftForm.reset();persist('Briefing draft created');renderBriefing(project);});
+    if(briefingSaveBasis) briefingSaveBasis.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!project||!draft)return;draft.objectIds=selectedValues(briefingObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_BRIEFING_OBJECT_REFS);draft.updatedAt=nowIso();touchBriefing(project);persist('Draft basis saved');renderBriefing(project);});
+    if(briefingOutlineButton) briefingOutlineButton.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!project||!draft)return;if(draft.sections.length&&!window.confirm('Add a standard outline after the existing sections?'))return;const stamp=nowIso();briefingOutline(draft.format).forEach(heading=>{if(draft.sections.length>=MAX_BRIEFING_SECTIONS)return;if(!draft.sections.some(s=>s.heading.toLowerCase()===heading.toLowerCase()))draft.sections.push({id:id('bs'),heading,body:'',objectIds:[],createdAt:stamp,updatedAt:stamp});});draft.updatedAt=stamp;touchBriefing(project);persist('Standard outline added');renderBriefing(project);});
+    if(briefingStatus) briefingStatus.addEventListener('change',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!draft)return;draft.status=BRIEFING_STATUS.has(briefingStatus.value)?briefingStatus.value:'draft';draft.updatedAt=nowIso();touchBriefing(project);persist('Draft status saved');renderBriefing(project);});
+    if(briefingSectionForm) briefingSectionForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject(),draft=activeBriefingDraft(project);if(!project||!draft||draft.sections.length>=MAX_BRIEFING_SECTIONS)return;const data=new FormData(briefingSectionForm),heading=String(data.get('heading')||'').trim().slice(0,180);if(!heading)return;const stamp=nowIso();draft.sections.push({id:id('bs'),heading,body:String(data.get('body')||'').slice(0,8000),objectIds:[],createdAt:stamp,updatedAt:stamp});draft.updatedAt=stamp;touchBriefing(project);briefingSectionForm.reset();persist('Section added');renderBriefing(project);});
+    if(briefingMaterialize) briefingMaterialize.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!project||!draft)return;let doc=draft.documentObjectId?objectById(project,draft.documentObjectId):null;if(!doc){if(project.objects.length>=MAX_OBJECTS){window.alert('This project has reached the Workspace Object limit.');return;}doc=objectTemplate('document',draft.title);project.objects.push(doc);draft.documentObjectId=doc.id;}doc.title=draft.title;doc.summary=draft.purpose||`Workspace ${draft.format.replaceAll('-',' ')}.`;doc.content=briefingMarkdown(project,draft);doc.status=draft.status==='draft'?'working':'ready';doc.tags=normalizeTags([...doc.tags,'workspace-briefing',draft.format]);doc.provenance={sourceType:'manual',sourceTitle:'Workspace Briefing & Publication Studio',sourceUrl:'',capturedAt:nowIso()};doc.updatedAt=nowIso();draft.updatedAt=doc.updatedAt;draft.objectIds.forEach((refId)=>{if(project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;if(!project.traceability.lineage.some(x=>x.fromObjectId===doc.id&&x.toObjectId===refId&&x.relation==='derived-from'))project.traceability.lineage.push({id:id('tl'),fromObjectId:doc.id,toObjectId:refId,relation:'derived-from',note:'Briefing basis',createdAt:nowIso()});});touchTraceability(project);touchBriefing(project);addActivity(project,'briefing-materialized',`Document materialized: ${draft.title}`);persist('Document materialized');renderBriefing(project);renderObjects(project);});
+    if(briefingExportMarkdown) briefingExportMarkdown.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!draft)return;downloadText(`${safeFileName(draft.title)}.md`,briefingMarkdown(project,draft),'text/markdown;charset=utf-8');draft.status='exported';draft.lastExportedAt=nowIso();touchBriefing(project);persist('Markdown exported');renderBriefing(project);});
+    if(briefingExportHtml) briefingExportHtml.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!draft)return;downloadText(`${safeFileName(draft.title)}.html`,briefingHtml(project,draft),'text/html;charset=utf-8');draft.status='exported';draft.lastExportedAt=nowIso();touchBriefing(project);persist('HTML exported');renderBriefing(project);});
+    if(briefingExportPackage) briefingExportPackage.addEventListener('click',()=>{const project=activeProject(),draft=activeBriefingDraft(project);if(!draft)return;downloadJson(`${safeFileName(draft.title)}.sc-workspace-publication.json`,publicationPackage(project,draft));draft.status='exported';draft.lastExportedAt=nowIso();touchBriefing(project);addActivity(project,'publication-export',`Publication package exported: ${draft.title}`);persist('Publication package exported');renderBriefing(project);});
 
     root.querySelector('[data-scw-object-delete]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
       if (!window.confirm(`Delete “${object.title}” from this project? This cannot be undone unless you exported a copy.`)) return;
-      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); cleanTraceabilityReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
+      project.objects = project.objects.filter((item) => item.id !== object.id); cleanResearchReferences(project, object.id); cleanAnalysisReferences(project, object.id); cleanDecisionReferences(project, object.id); cleanCanvasReferences(project, object.id); cleanHandoffReferences(project, object.id); cleanTraceabilityReferences(project, object.id); cleanBriefingReferences(project, object.id); project.activeObjectId = null; project.updatedAt = nowIso();
       addActivity(project, 'object-deleted', `${OBJECT_LABELS[object.type]} deleted from project`); persist('Object deleted'); render();
     });
 
