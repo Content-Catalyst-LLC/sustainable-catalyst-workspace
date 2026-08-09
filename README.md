@@ -1,72 +1,45 @@
 # Sustainable Catalyst Workspace
 
-Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
+Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, and deliberate account recovery/synchronization.
 
-## Current release: **v0.21.0 — Accounts & Cloud Persistence Foundation**
+## Current release: **v0.22.0 — Cross-Device Sync & Conflict-Safe Recovery**
 
-Workspace supports Guided Workflows, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, Import & Interoperability, Share & Portable Projects, Search & Knowledge Graph, Workflow & Activity Intelligence, Collaboration Foundation, and Institutional Handoff. v0.21.0 adds optional manual account cloud recovery on top of the hardened local-first runtime. Guest use remains first-class; signed-in users choose exactly when a project backup is created.
+Workspace remains fully usable as a guest with browser-local projects. Signed-in users may opt individual projects into explicit cross-device synchronization. Sign-in or enrollment alone sends no project content; synchronization occurs only when the user chooses **Sync now**.
 
-## WordPress shortcodes
+### Sync model
 
-```text
-[sc_workspace]
-[sc_workspace_entry]
-[sc_workspace_platform]
-```
+- explicit per-project enrollment
+- manual Sync now; no background sync
+- SHA-256 local/cloud project fingerprints
+- server revision precondition for every sync push
+- stale pushes rejected with HTTP 409
+- safe remote pull only when local has not diverged
+- conflicts are never silently overwritten
+- cloud can be opened as a copy
+- accepting cloud preserves the divergent local project as a conflict copy
+- keeping local as sync head requires explicit confirmation
 
-## Persistence boundary
+Manual account backups and restore-as-copy recovery from v0.21.0 remain available independently of sync.
 
-Workspace remains usable without signing in. Projects and Workspace-level state remain device-local by default. Optional WordPress authentication unlocks explicit per-project cloud recovery backups; sign-in itself never uploads project content and background synchronization remains disabled.
+## Access boundary
 
-v0.21.0 retains the v0.20.0 recovery safeguards and adds manual account backups stored privately per WordPress user, with restore-as-copy semantics and explicit size/count guardrails.
+Guest/local Workspace remains first-class. Accounts add optional private recovery and explicit sync; they are not a login wall. Workspace does not provide team tenants or institutional permissions. Catalyst Intelligence remains the governed institutional environment.
 
-## Contracts
+## Data boundary
 
-- Project: `sc-workspace-project/11.0`
-- Object: `sc-workspace-object/1.0`
-- Research: `sc-workspace-research/1.0`
-- Analysis: `sc-workspace-analysis/1.0`
-- Decision: `sc-workspace-decision/1.0`
-- Canvas: `sc-workspace-canvas/1.0`
-- Traceability: `sc-workspace-traceability/1.0`
-- Briefing: `sc-workspace-briefing/1.0`
-- Guided Workflows: `sc-workspace-guided-workflows/1.0`
-- Personal Knowledge: `sc-workspace-personal-knowledge/1.0`
-- Responsible AI: `sc-workspace-ai-assistance/1.0`
-- Interoperability: `sc-workspace-interoperability/1.0`
-- Share: `sc-workspace-share/1.0`
-- Knowledge Graph: `sc-workspace-knowledge-graph/1.0`
-- Activity Intelligence: `sc-workspace-activity-intelligence/1.0`
-- Collaboration: `sc-workspace-collaboration/1.0`
-- Institutional Handoff: `sc-workspace-institutional-handoff/1.0`
-- Release Readiness: `sc-workspace-release-readiness-contract/1.0`
-- Diagnostic Report: `sc-workspace-diagnostic-report/1.0`
-- Emergency Backup: `sc-workspace-emergency-backup/1.0`
-- Account Persistence: `sc-workspace-account-persistence/1.0`
-- Cloud Backup: `sc-workspace-cloud-backup/1.0`
-- Storage schema: `21`
+- Workspace storage schema: **22**
+- Project schema: **sc-workspace-project/11.0** (unchanged)
+- Cross-device sync schema: **sc-workspace-cross-device-sync/1.0**
+- Sync push schema: **sc-workspace-sync-push/1.0**
+- Canonical public route: `/platform/`
+- Canonical Knowledge Library route: `/knowledge-libraries/`
 
-## v0.21.0 data boundary
+## WordPress
 
-- Storage schema advances from `20` to `21`.
-- Project schema remains `sc-workspace-project/11.0`.
-- Guest/local Workspace remains fully functional.
-- Signed-in users can explicitly create manual cloud backups.
-- Automatic upload and background cloud sync remain disabled.
-- Cloud restore always creates a new local copy.
-- Team storage and institutional permissions remain outside Workspace.
+Shortcodes: `[sc_workspace]`, `[sc_workspace_entry]`, `[sc_workspace_platform]`.
 
-## Accessibility target
+Public contracts include `/wp-json/sc-workspace/v1/health`, `/project-contract`, `/account-persistence-contract`, and `/sync-contract`. Account backup/sync endpoints require an authenticated WordPress account and REST nonce.
 
-v0.21.0 sets WCAG 2.2 AA as the public release target and adds an application skip link, stronger visible focus, focus movement between top-level Workspace views, reduced-motion handling, and forced-colors resilience.
+## Release integrity
 
-## Public routes
-
-- Workspace: `/platform/`
-- Knowledge Library: `/knowledge-libraries/`
-
-## Product Registry
-
-Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
-
-See `docs/ACCOUNTS_CLOUD_PERSISTENCE_FOUNDATION_V0210.md`.
+The release installer validates checksums, Python contracts, PHP syntax/runtime migration tests, JavaScript syntax/runtime adapter tests, canonical Git origin, full release-history reconstruction, and tagged release installation.

@@ -2,16 +2,16 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.21.0.js'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.21.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.22.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.22.0.css'
 SCHEMA=ROOT/'schemas/sc-workspace-personal-knowledge-v1.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.21.0.json'
+MANIFEST=ROOT/'release-manifest-v0.22.0.json'
 
 class PersonalKnowledgeContractTests(unittest.TestCase):
     def test_release_boundary(self):
         m=json.loads(MANIFEST.read_text())
-        self.assertEqual(m['version'],'0.21.0'); self.assertEqual(m['previous_version'],'0.20.0')
-        self.assertEqual(m['storage_schema_version'],21); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
+        self.assertEqual(m['version'],'0.22.0'); self.assertEqual(m['previous_version'],'0.21.0')
+        self.assertEqual(m['storage_schema_version'],22); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
         self.assertEqual(m['personal_knowledge_schema'],'sc-workspace-personal-knowledge/1.0')
         self.assertTrue(m['migration']['non_destructive']); self.assertTrue(m['migration']['preserves_existing_objects'])
 
@@ -77,7 +77,7 @@ class PersonalKnowledgeContractTests(unittest.TestCase):
     def test_privacy_boundary(self):
         m=json.loads(MANIFEST.read_text()); p=PHP.read_text()
         self.assertFalse(m['knowledge']['server_index']); self.assertFalse(m['governance']['semantic_embedding_index'])
-        self.assertEqual(m['server_project_storage'],'manual-account-backup-only'); self.assertFalse(m['cloud_sync'])
+        self.assertEqual(m['server_project_storage'],'manual-backup-plus-explicit-sync-head'); self.assertEqual(m['cloud_sync'],'explicit-project-enrollment')
         self.assertIn("'server_index' => false",p); self.assertIn("'external_search_index' => false",p)
 
     def test_rest_and_public_experience(self):
@@ -89,7 +89,7 @@ class PersonalKnowledgeContractTests(unittest.TestCase):
 
     def test_migration_from_v011(self):
         j=JS.read_text()
-        for token in ("const STORAGE_VERSION = 21","const PROJECT_SCHEMA = 'sc-workspace-project/11.0'",'function migrateV14(raw)','function migrateV15(raw)',"if (raw.schemaVersion === 15) return migrateV15(raw)",'state.knowledge = normalizeKnowledge(raw.knowledge, state.projects)'):
+        for token in ("const STORAGE_VERSION = 22","const PROJECT_SCHEMA = 'sc-workspace-project/11.0'",'function migrateV14(raw)','function migrateV15(raw)',"if (raw.schemaVersion === 15) return migrateV15(raw)",'state.knowledge = normalizeKnowledge(raw.knowledge, state.projects)'):
             self.assertIn(token,j)
 
 if __name__=='__main__': unittest.main()

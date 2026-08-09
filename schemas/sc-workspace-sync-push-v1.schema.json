@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-sync-push-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Sync Push",
+  "type": "object",
+  "required": [
+    "schema",
+    "sourceProjectId",
+    "projectTitle",
+    "expectedRevision",
+    "project"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-sync-push/1.0"
+    },
+    "sourceProjectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "projectTitle": {
+      "type": "string"
+    },
+    "clientUpdatedAt": {
+      "type": "string"
+    },
+    "expectedRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "projectFingerprint": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

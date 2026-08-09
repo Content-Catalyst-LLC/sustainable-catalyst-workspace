@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0210';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0210';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0220';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0220';
+    const LEGACY_PENDING_KEY_V0210 = 'sc_workspace_registry_pending_v0210';
     const LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200';
     const LEGACY_PENDING_KEY_V0190 = 'sc_workspace_registry_pending_v0190';
     const LEGACY_PENDING_KEY_V0180 = 'sc_workspace_registry_pending_v0180';
@@ -97,6 +98,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0210);
         delete_option(self::LEGACY_PENDING_KEY_V0200);
         delete_option(self::LEGACY_PENDING_KEY_V0190);
         delete_option(self::LEGACY_PENDING_KEY_V0180);
@@ -174,11 +176,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.20.0',
+            'previous_version' => '0.21.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Accounts & Cloud Persistence Foundation: adds optional manual account cloud backups and restore-as-copy recovery while preserving guest/local-first access and prohibiting automatic sync.',
+            'change_summary' => 'Cross-Device Sync & Conflict-Safe Recovery: adds explicit per-project account synchronization with revision preconditions, fingerprint comparison, and human-controlled conflict recovery while preserving local-first guest use.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.21.0 preserves anonymous local-first use and project schema sc-workspace-project/11.0 while advancing storage to schema 21 for account-persistence metadata. Signed-in users may explicitly create per-project server backups and restore them as new local copies. Automatic upload, background synchronization, overwrite-on-restore, team storage, and institutional permissions remain disabled.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.22.0 preserves anonymous local-first use and project schema sc-workspace-project/11.0 while advancing Workspace storage to schema 22 for explicit sync enrollment/history. Signed-in users may enroll a project and choose Sync now; server revision preconditions reject stale pushes, and conflicts require a human choice. Automatic enrollment, automatic upload, background sync, silent last-write-wins, team storage, and institutional permissions remain disabled.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

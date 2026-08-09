@@ -10,7 +10,7 @@
   const EMERGENCY_BACKUP_SCHEMA = 'sc-workspace-emergency-backup/1.0';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 21;
+  const STORAGE_VERSION = 22;
   const PROJECT_SCHEMA = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
@@ -48,7 +48,12 @@
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const ACCOUNT_PERSISTENCE_SCHEMA = 'sc-workspace-account-persistence/1.0';
   const CLOUD_BACKUP_SCHEMA = 'sc-workspace-cloud-backup/1.0';
+  const CROSS_DEVICE_SYNC_SCHEMA = 'sc-workspace-cross-device-sync/1.0';
+  const SYNC_PUSH_SCHEMA = 'sc-workspace-sync-push/1.0';
   const MAX_ACCOUNT_HISTORY = 80;
+  const MAX_SYNC_ENROLLMENTS = 25;
+  const MAX_SYNC_HISTORY = 120;
+  const SYNC_STATUS = new Set(['disabled','not-uploaded','up-to-date','local-ahead','remote-ahead','conflict','remote-missing','error']);
   const ANALYSIS_SCHEMA = 'sc-workspace-analysis/1.0';
   const DECISION_SCHEMA = 'sc-workspace-decision/1.0';
   const CANVAS_SCHEMA = 'sc-workspace-canvas/1.0';
@@ -788,6 +793,9 @@
       clientUpdatedAt: validIso(item?.clientUpdatedAt) ? item.clientUpdatedAt : '',
       backedUpAt: validIso(item?.backedUpAt) ? item.backedUpAt : '',
       fingerprint: String(item?.fingerprint || '').slice(0,128),
+      projectFingerprint: String(item?.projectFingerprint || '').slice(0,128),
+      revision: Math.max(0, Number(item?.revision) || 0),
+      storageMode: ['manual-backup','sync-head'].includes(item?.storageMode) ? item.storageMode : 'manual-backup',
       bytes: Math.max(0, Number(item?.bytes) || 0),
       objectCount: Math.max(0, Number(item?.objectCount) || 0),
     })).filter(item => item.projectId).slice(0,25);
@@ -803,9 +811,41 @@
     return next;
   }
 
+  function crossDeviceSyncTemplate() {
+    return { schema: CROSS_DEVICE_SYNC_SCHEMA, enrollments: [], history: [], updatedAt: nowIso() };
+  }
+
+  function normalizeCrossDeviceSync(raw, projects) {
+    const next = crossDeviceSyncTemplate();
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const projectIds = new Set(projects.map(project => project.id));
+    next.enrollments = (Array.isArray(value.enrollments) ? value.enrollments : []).map(item => ({
+      projectId: String(item?.projectId || '').slice(0,160),
+      enabled: Boolean(item?.enabled),
+      serverRevision: Math.max(0, Number(item?.serverRevision) || 0),
+      lastSyncedFingerprint: String(item?.lastSyncedFingerprint || '').slice(0,128),
+      remoteFingerprint: String(item?.remoteFingerprint || '').slice(0,128),
+      remoteRevision: Math.max(0, Number(item?.remoteRevision) || 0),
+      status: SYNC_STATUS.has(item?.status) ? item.status : 'disabled',
+      lastCheckedAt: validIso(item?.lastCheckedAt) ? item.lastCheckedAt : null,
+      lastSyncedAt: validIso(item?.lastSyncedAt) ? item.lastSyncedAt : null,
+      updatedAt: validIso(item?.updatedAt) ? item.updatedAt : nowIso(),
+    })).filter(item => item.projectId && projectIds.has(item.projectId)).slice(0, MAX_SYNC_ENROLLMENTS);
+    next.history = (Array.isArray(value.history) ? value.history : []).map(item => ({
+      id: String(item?.id || id('syh')).slice(0,160),
+      action: ['enable','disable','check','push','pull','conflict','remote-copy','resolve-local','resolve-cloud','remote-missing'].includes(item?.action) ? item.action : 'check',
+      projectId: String(item?.projectId || '').slice(0,160),
+      projectTitle: String(item?.projectTitle || '').slice(0,200),
+      revision: Math.max(0, Number(item?.revision) || 0),
+      at: validIso(item?.at) ? item.at : nowIso(),
+    })).slice(0, MAX_SYNC_HISTORY);
+    next.updatedAt = validIso(value.updatedAt) ? value.updatedAt : nowIso();
+    return next;
+  }
+
   function defaultState() {
     const stamp = nowIso();
-    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), accountPersistence: accountPersistenceTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), knowledgeGraph: knowledgeGraphTemplate(), activityIntelligence: activityIntelligenceTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), collaboration: collaborationTemplate(), institutional: institutionalTemplate(), createdAt: stamp, updatedAt: stamp };
+    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), accountPersistence: accountPersistenceTemplate(), crossDeviceSync: crossDeviceSyncTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), knowledgeGraph: knowledgeGraphTemplate(), activityIntelligence: activityIntelligenceTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), collaboration: collaborationTemplate(), institutional: institutionalTemplate(), createdAt: stamp, updatedAt: stamp };
   }
 
   function provenanceTemplate() {
@@ -1466,7 +1506,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.21.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.22.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -1647,6 +1687,8 @@
     }).filter(Boolean) : [];
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
     state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
+    state.accountPersistence = normalizeAccountPersistence(raw.accountPersistence, state.projects);
+    state.crossDeviceSync = normalizeCrossDeviceSync(raw.crossDeviceSync, state.projects);
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
     state.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, state.projects);
     state.activityIntelligence = normalizeActivityIntelligence(raw.activityIntelligence, state.projects);
@@ -1883,6 +1925,26 @@
     return next;
   }
 
+  function migrateV21(raw) {
+    const next = defaultState();
+    next.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
+    next.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    next.activeProjectId = next.projects.some(p => p.id === raw.activeProjectId && !p.archivedAt) ? raw.activeProjectId : null;
+    next.identity = normalizeIdentity(raw.identity);
+    next.accountPersistence = normalizeAccountPersistence(raw.accountPersistence, next.projects);
+    next.crossDeviceSync = crossDeviceSyncTemplate();
+    next.knowledge = normalizeKnowledge(raw.knowledge, next.projects);
+    next.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, next.projects);
+    next.activityIntelligence = normalizeActivityIntelligence(raw.activityIntelligence, next.projects);
+    next.interoperability = normalizeInteroperability(raw.interoperability);
+    next.share = normalizeShare(raw.share);
+    next.collaboration = normalizeCollaboration(raw.collaboration, next.projects);
+    next.institutional = normalizeInstitutional(raw.institutional, next.projects);
+    next.createdAt = validIso(raw.createdAt) ? raw.createdAt : next.createdAt;
+    next.updatedAt = nowIso();
+    return next;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -1905,6 +1967,7 @@
     if (raw.schemaVersion === 18) return migrateV18(raw);
     if (raw.schemaVersion === 19) return migrateV19(raw);
     if (raw.schemaVersion === 20) return migrateV20(raw);
+    if (raw.schemaVersion === 21) return migrateV21(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -2001,6 +2064,7 @@
     state.collaboration = normalizeCollaboration(state.collaboration, state.projects);
     state.institutional = normalizeInstitutional(state.institutional, state.projects);
     state.accountPersistence = normalizeAccountPersistence(state.accountPersistence, state.projects);
+    state.crossDeviceSync = normalizeCrossDeviceSync(state.crossDeviceSync, state.projects);
     state.updatedAt = nowIso();
     try {
       const serialized = JSON.stringify(state);
@@ -2217,6 +2281,19 @@
     const cloudRefreshButton = root.querySelector('[data-scw-cloud-refresh]');
     const cloudStatus = root.querySelector('[data-scw-cloud-status]');
     const cloudList = root.querySelector('[data-scw-cloud-list]');
+    const syncBadge = root.querySelector('[data-scw-sync-badge]');
+    const syncProject = root.querySelector('[data-scw-sync-project]');
+    const syncToggleButton = root.querySelector('[data-scw-sync-toggle]');
+    const syncCheckButton = root.querySelector('[data-scw-sync-check]');
+    const syncNowButton = root.querySelector('[data-scw-sync-now]');
+    const syncStatus = root.querySelector('[data-scw-sync-status]');
+    const syncLocal = root.querySelector('[data-scw-sync-local]');
+    const syncRemote = root.querySelector('[data-scw-sync-remote]');
+    const syncBaseline = root.querySelector('[data-scw-sync-baseline]');
+    const syncStateEl = root.querySelector('[data-scw-sync-state]');
+    const syncRemoteCopyButton = root.querySelector('[data-scw-sync-remote-copy]');
+    const syncResolveLocalButton = root.querySelector('[data-scw-sync-resolve-local]');
+    const syncResolveCloudButton = root.querySelector('[data-scw-sync-resolve-cloud]');
     const deviceIdEl = root.querySelector('[data-scw-device-id]');
     const loginLink = root.querySelector('[data-scw-login]');
     const registerLink = root.querySelector('[data-scw-register]');
@@ -2524,9 +2601,9 @@
       state.identity = normalizeIdentity(state.identity);
       if (identityBadge) identityBadge.textContent = authenticated ? 'SIGNED IN' : 'GUEST';
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
-      if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Local storage remains primary; manual cloud recovery is available.' : 'Your work is associated only with this browser device.';
-      if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · manual backup available' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in. Workspace stays local first; use Back up now for an explicit account-bound recovery copy. Background synchronization and automatic upload remain disabled.' : 'Sign in only if you want manual account cloud recovery. Local Workspace remains fully available without an account.';
+      if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Local storage remains primary; manual recovery and explicit project sync are available.' : 'Your work is associated only with this browser device.';
+      if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · backup + explicit sync' : 'No account required';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in. Workspace stays local first; use Back up now for recovery or explicitly enroll a project for conflict-safe cross-device sync. Nothing synchronizes in the background.' : 'Sign in only if you want account recovery or explicit cross-device sync. Local Workspace remains fully available without an account.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -2575,10 +2652,92 @@
       };
     }
 
+    function syncProjectSnapshot(project) {
+      const copy = JSON.parse(JSON.stringify(project));
+      copy.persistence = { scope: 'account-sync-copy', syncState: 'sync-head', accountEligible: true, serverStored: true };
+      copy.recentTools = [];
+      return copy;
+    }
+
+    async function syncProjectFingerprint(project) {
+      return sha256Text(JSON.stringify(syncProjectSnapshot(project)));
+    }
+
+    function syncEnrollment(projectId, create = false) {
+      state.crossDeviceSync = normalizeCrossDeviceSync(state.crossDeviceSync, state.projects);
+      let enrollment = state.crossDeviceSync.enrollments.find(item => item.projectId === projectId) || null;
+      if (!enrollment && create && state.crossDeviceSync.enrollments.length < MAX_SYNC_ENROLLMENTS) {
+        enrollment = { projectId, enabled: false, serverRevision: 0, lastSyncedFingerprint: '', remoteFingerprint: '', remoteRevision: 0, status: 'disabled', lastCheckedAt: null, lastSyncedAt: null, updatedAt: nowIso() };
+        state.crossDeviceSync.enrollments.push(enrollment);
+      }
+      return enrollment;
+    }
+
+    function recordSync(action, project, revision = 0) {
+      state.crossDeviceSync = normalizeCrossDeviceSync(state.crossDeviceSync, state.projects);
+      state.crossDeviceSync.history.unshift({ id: id('syh'), action, projectId: project?.id || '', projectTitle: project?.title || '', revision: Math.max(0, Number(revision) || 0), at: nowIso() });
+      state.crossDeviceSync.history = state.crossDeviceSync.history.slice(0, MAX_SYNC_HISTORY);
+      state.crossDeviceSync.updatedAt = nowIso();
+    }
+
+    function syncPushPayload(project, enrollment, expectedRevision) {
+      return { schema: SYNC_PUSH_SCHEMA, workspaceVersion: rootVersion(), createdAt: nowIso(), sourceProjectId: project.id, projectTitle: project.title, clientUpdatedAt: project.updatedAt, expectedRevision: Math.max(0, Number(expectedRevision) || 0), privacy: { deviceIdentityIncluded: false, accountProfileIncluded: false, recentToolsIncluded: false }, transport: { automaticUpload: false, backgroundSync: false, explicitEnrollment: true, conflictStrategy: 'revision-precondition' }, project: syncProjectSnapshot(project) };
+    }
+
+    function remoteCloudRecord(projectId) {
+      state.accountPersistence = normalizeAccountPersistence(state.accountPersistence, state.projects);
+      return state.accountPersistence.cloudRecords.find(record => record.projectId === projectId) || null;
+    }
+
+    async function refreshCloudIndexForSync() {
+      const data = await cloudRequest('cloud-projects');
+      state.accountPersistence = normalizeAccountPersistence(state.accountPersistence, state.projects);
+      state.accountPersistence.cloudRecords = Array.isArray(data?.items) ? data.items : [];
+      state.accountPersistence.lastRefreshAt = nowIso();
+      return state.accountPersistence.cloudRecords;
+    }
+
+    function syncStatusMessage(status, remote = null) {
+      const revision = remote?.revision ? ` Cloud revision ${remote.revision}.` : '';
+      return ({ disabled:'Sync is off for this project.', 'not-uploaded':'Sync is enabled locally. No cloud sync head exists yet; Sync now will create the first revision.', 'up-to-date':`Local and cloud fingerprints match.${revision}`, 'local-ahead':`Local work has changed since the last synchronized revision.${revision}`, 'remote-ahead':`A newer cloud revision exists and this local project has no competing local changes.${revision}`, conflict:`Both local and cloud state have changed since the last common revision. Workspace will not overwrite either copy automatically.${revision}`, 'remote-missing':'The previously synchronized cloud head is missing. Workspace will not recreate it without confirmation.', error:'Sync status could not be determined.' })[status] || 'Sync status is unknown.';
+    }
+
+    async function evaluateSync(project, refreshRemote = true) {
+      if (!project) return { status:'error', message:'Choose a local project.' };
+      const enrollment = syncEnrollment(project.id, true);
+      if (!enrollment?.enabled) return { status:'disabled', enrollment, message:'Cross-device sync is not enabled for this project.' };
+      if (refreshRemote) await refreshCloudIndexForSync();
+      const localFingerprint = await syncProjectFingerprint(project);
+      if (!localFingerprint) return { status:'error', enrollment, message:'This browser cannot calculate the SHA-256 project fingerprint required for safe synchronization.' };
+      const remote = remoteCloudRecord(project.id);
+      enrollment.lastCheckedAt = nowIso(); enrollment.remoteRevision = remote ? remote.revision : 0; enrollment.remoteFingerprint = remote ? remote.projectFingerprint : '';
+      let status='up-to-date';
+      if (!remote) status=enrollment.serverRevision>0?'remote-missing':'not-uploaded';
+      else if (enrollment.serverRevision===0) { if(remote.projectFingerprint&&remote.projectFingerprint===localFingerprint){enrollment.serverRevision=remote.revision;enrollment.lastSyncedFingerprint=localFingerprint;enrollment.lastSyncedAt=nowIso();status='up-to-date';} else status='conflict'; }
+      else if (remote.revision===enrollment.serverRevision) status=localFingerprint===enrollment.lastSyncedFingerprint?'up-to-date':'local-ahead';
+      else if (remote.revision>enrollment.serverRevision) status=localFingerprint===enrollment.lastSyncedFingerprint?'remote-ahead':'conflict';
+      else status='conflict';
+      enrollment.status=status; enrollment.updatedAt=nowIso(); state.crossDeviceSync.updatedAt=enrollment.updatedAt;
+      return {status,enrollment,remote,localFingerprint,message:syncStatusMessage(status,remote)};
+    }
+
+    async function fetchRemoteSyncProject(projectId) {
+      const data=await cloudRequest(`cloud-projects/${encodeURIComponent(projectId)}`); const source=normalizeProject(data?.package?.project); if(!source)throw new Error('The cloud project is not compatible with this Workspace version.'); return {source,item:data.item||null};
+    }
+
+    async function pushSyncHead(project,enrollment,expectedRevision) {
+      const data=await cloudRequest('cloud-projects',{method:'POST',body:JSON.stringify(syncPushPayload(project,enrollment,expectedRevision))}); if(!data?.item)throw new Error('The server did not return synchronized project metadata.');
+      const localFingerprint=await syncProjectFingerprint(project); enrollment.serverRevision=Math.max(0,Number(data.item.revision)||0); enrollment.remoteRevision=enrollment.serverRevision; enrollment.lastSyncedFingerprint=localFingerprint||String(data.item.projectFingerprint||''); enrollment.remoteFingerprint=String(data.item.projectFingerprint||enrollment.lastSyncedFingerprint||''); enrollment.lastSyncedAt=nowIso(); enrollment.lastCheckedAt=enrollment.lastSyncedAt; enrollment.status='up-to-date'; enrollment.updatedAt=enrollment.lastSyncedAt; state.accountPersistence.cloudRecords=[data.item,...state.accountPersistence.cloudRecords.filter(record=>record.projectId!==data.item.projectId)]; state.crossDeviceSync.updatedAt=enrollment.updatedAt; return data.item;
+    }
+
+    async function applyRemoteInPlace(project,enrollment,remote,preserveLocalConflictCopy=false) {
+      const {source,item}=await fetchRemoteSyncProject(project.id); if(preserveLocalConflictCopy){const safety=cloneProject(project);safety.title=`${project.title} (Local conflict copy)`.slice(0,120);safety.activity.unshift({id:id('act'),type:'sync-conflict-copy',summary:`Preserved local changes before accepting cloud revision ${remote?.revision||item?.revision||''}`.trim(),at:nowIso()});state.projects.unshift(safety);} source.id=project.id; source.persistence=projectPersistenceTemplate(); source.activity=Array.isArray(source.activity)?source.activity:[]; source.activity.unshift({id:id('act'),type:'sync-pull',summary:`Applied cloud revision ${remote?.revision||item?.revision||''}`.trim(),at:nowIso()}); const index=state.projects.findIndex(candidate=>candidate.id===project.id);if(index<0)throw new Error('Local project is no longer available.');state.projects[index]=source; const fingerprint=await syncProjectFingerprint(source); enrollment.serverRevision=Math.max(0,Number(remote?.revision||item?.revision)||0);enrollment.remoteRevision=enrollment.serverRevision;enrollment.lastSyncedFingerprint=fingerprint||String(remote?.projectFingerprint||item?.projectFingerprint||'');enrollment.remoteFingerprint=String(remote?.projectFingerprint||item?.projectFingerprint||enrollment.lastSyncedFingerprint||'');enrollment.lastSyncedAt=nowIso();enrollment.lastCheckedAt=enrollment.lastSyncedAt;enrollment.status='up-to-date';enrollment.updatedAt=enrollment.lastSyncedAt;state.crossDeviceSync.updatedAt=enrollment.updatedAt;return source;
+    }
+
     async function refreshCloudProjects(recordHistory = true) {
       if (!cloudStatus || !cloudList) return;
       if (!IDENTITY_CONFIG.authenticated) {
-        cloudStatus.textContent = 'Sign in to use manual cloud recovery. Local Workspace remains fully available without an account.';
+        cloudStatus.textContent = 'Sign in to use account recovery and explicit cross-device sync. Local Workspace remains fully available without an account.';
         cloudList.innerHTML = '';
         if (cloudBadge) cloudBadge.textContent = 'LOCAL ONLY';
         if (cloudBackupButton) cloudBackupButton.disabled = true;
@@ -2586,7 +2745,7 @@
         return;
       }
       try {
-        cloudStatus.textContent = 'Checking account backups…';
+        cloudStatus.textContent = 'Checking account project copies…';
         const data = await cloudRequest('cloud-projects');
         state.accountPersistence = normalizeAccountPersistence(state.accountPersistence, state.projects);
         state.accountPersistence.cloudRecords = Array.isArray(data?.items) ? data.items : [];
@@ -2594,7 +2753,7 @@
         if (recordHistory) touchAccountPersistence('refresh');
         writeState(state);
         renderCloudRecovery();
-        cloudStatus.textContent = `${state.accountPersistence.cloudRecords.length} manual account backup${state.accountPersistence.cloudRecords.length === 1 ? '' : 's'} available.`;
+        cloudStatus.textContent = `${state.accountPersistence.cloudRecords.length} account project cop${state.accountPersistence.cloudRecords.length === 1 ? 'y' : 'ies'} available.`;
       } catch (error) {
         cloudStatus.textContent = error.message || 'Cloud recovery could not be checked.';
       }
@@ -2610,19 +2769,19 @@
       if (state.projects.some(p => p.id === state.accountPersistence.selectedProjectId && !p.archivedAt)) cloudProject.value = state.accountPersistence.selectedProjectId;
       else if (activeProject()) cloudProject.value = activeProject().id;
       const authenticated = Boolean(IDENTITY_CONFIG.authenticated);
-      if (cloudBadge) cloudBadge.textContent = authenticated ? 'MANUAL BACKUP' : 'LOCAL ONLY';
+      if (cloudBadge) cloudBadge.textContent = authenticated ? 'ACCOUNT COPIES' : 'LOCAL ONLY';
       if (cloudBackupButton) cloudBackupButton.disabled = !authenticated || !cloudProject.value;
       if (cloudRefreshButton) cloudRefreshButton.disabled = !authenticated;
       cloudList.innerHTML = '';
       if (!authenticated) return;
       if (!state.accountPersistence.cloudRecords.length) {
-        cloudList.innerHTML = '<div class="scw-cloud-empty">No account backups yet. Choose a local project and use Back up now.</div>';
+        cloudList.innerHTML = '<div class="scw-cloud-empty">No account project copies yet. Choose a local project and use Back up now, or explicitly enable sync below.</div>';
         return;
       }
       state.accountPersistence.cloudRecords.forEach(record => {
         const row = document.createElement('article'); row.className = 'scw-cloud-item';
         const meta = document.createElement('div');
-        meta.innerHTML = `<span>${escapeHtml(record.objectCount)} objects · ${escapeHtml(formatTime(record.backedUpAt))}</span><strong>${escapeHtml(record.title)}</strong><small>${escapeHtml((record.bytes/1024).toFixed(1))} KB · SHA-256 ${escapeHtml(String(record.fingerprint||'').slice(0,12))}…</small>`;
+        meta.innerHTML = `<span>${escapeHtml(record.objectCount)} objects · ${escapeHtml(formatTime(record.backedUpAt))}</span><strong>${escapeHtml(record.title)}</strong><small>r${escapeHtml(record.revision || 0)} · ${escapeHtml(record.storageMode === 'sync-head' ? 'SYNC HEAD' : 'MANUAL BACKUP')} · ${escapeHtml((record.bytes/1024).toFixed(1))} KB · SHA-256 ${escapeHtml(String(record.projectFingerprint||record.fingerprint||'').slice(0,12))}…</small>`;
         const actions = document.createElement('div'); actions.className='scw-cloud-item-actions';
         const restore = document.createElement('button'); restore.type='button'; restore.className='scw-card-action'; restore.textContent='Restore as copy';
         restore.addEventListener('click', async()=>{
@@ -2643,6 +2802,11 @@
         });
         actions.append(restore,del); row.append(meta,actions); cloudList.appendChild(row);
       });
+    }
+
+    function renderAccountSync() {
+      if (!syncProject || !syncStatus) return;
+      state.crossDeviceSync=normalizeCrossDeviceSync(state.crossDeviceSync,state.projects); const authenticated=Boolean(IDENTITY_CONFIG.authenticated); const current=syncProject.value; syncProject.innerHTML='<option value="">Choose a project</option>'; state.projects.filter(project=>!project.archivedAt).forEach(project=>{const option=document.createElement('option');option.value=project.id;option.textContent=project.title;syncProject.appendChild(option);}); if(state.projects.some(project=>project.id===current&&!project.archivedAt))syncProject.value=current;else if(activeProject())syncProject.value=activeProject().id; const project=state.projects.find(item=>item.id===syncProject.value&&!item.archivedAt)||null; const enrollment=project?syncEnrollment(project.id,false):null; const enabled=Boolean(enrollment?.enabled); if(syncBadge)syncBadge.textContent=!authenticated?'LOCAL ONLY':enabled?String(enrollment.status||'enabled').replaceAll('-',' ').toUpperCase():'SYNC OFF'; if(syncToggleButton){syncToggleButton.disabled=!authenticated||!project;syncToggleButton.textContent=enabled?'Disable sync':'Enable sync';} if(syncCheckButton)syncCheckButton.disabled=!authenticated||!project||!enabled;if(syncNowButton)syncNowButton.disabled=!authenticated||!project||!enabled;if(syncLocal)syncLocal.textContent=project?`Local · ${formatTime(project.updatedAt)}`:'Choose project'; const remote=project?remoteCloudRecord(project.id):null;if(syncRemote)syncRemote.textContent=remote?`Cloud r${remote.revision} · ${formatTime(remote.backedUpAt)}`:'No cloud head';if(syncBaseline)syncBaseline.textContent=enrollment?.serverRevision?`r${enrollment.serverRevision} · ${String(enrollment.lastSyncedFingerprint||'').slice(0,12)}…`:'No common revision';if(syncStateEl)syncStateEl.textContent=enabled?String(enrollment.status||'not-uploaded').replaceAll('-',' ').toUpperCase():'DISABLED';if(!authenticated)syncStatus.textContent='Sign in to enable explicit cross-device sync. Guest/local Workspace remains fully available.';else if(!project)syncStatus.textContent='Choose a local project.';else if(!enabled)syncStatus.textContent='Sync is off. Enabling it changes local sync metadata only; no project content uploads until you choose Sync now.';else syncStatus.textContent=syncStatusMessage(enrollment.status||'not-uploaded',remote);const conflicted=enabled&&enrollment?.status==='conflict',remoteAvailable=Boolean(remote);if(syncRemoteCopyButton){syncRemoteCopyButton.hidden=!authenticated||!project||!enabled||!remoteAvailable;syncRemoteCopyButton.disabled=!remoteAvailable;}if(syncResolveLocalButton){syncResolveLocalButton.hidden=!conflicted;syncResolveLocalButton.disabled=!conflicted;}if(syncResolveCloudButton){syncResolveCloudButton.hidden=!conflicted;syncResolveCloudButton.disabled=!conflicted;}
     }
 
     function activeProject() {
@@ -3172,7 +3336,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.21.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.22.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -3180,7 +3344,7 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.21.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.22.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
     function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
     function renderGuidedWorkflows(project){
       if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
@@ -3303,7 +3467,7 @@
       const head = document.createElement('div'); head.className='scw-knowledge-collection-head';
       const body=document.createElement('div'); const strong=document.createElement('strong');strong.textContent=collection.title;const p=document.createElement('p');p.textContent=collection.description||'No collection description.';body.append(strong,p);
       const acts=document.createElement('div');acts.className='scw-knowledge-actions';
-      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.21.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
+      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.22.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove collection';remove.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Workspace Objects will not be deleted.`))return;state.knowledge.collections=state.knowledge.collections.filter(c=>c.id!==collection.id);state.knowledge.activeCollectionId=state.knowledge.collections[0]?.id||null;touchKnowledge();persist('Knowledge collection removed');renderKnowledge();});acts.append(exp,remove);head.append(body,acts);knowledgeCollectionDetail.appendChild(head);
       const list=document.createElement('div');list.className='scw-knowledge-collection-items';
       if(!collection.items.length)list.innerHTML='<div class="scw-knowledge-empty-note">No objects in this collection yet.</div>';
@@ -3447,6 +3611,7 @@
     function render() {
       renderIdentity();
       renderCloudRecovery();
+      renderAccountSync();
       renderFilters();
       renderList();
       renderActive();
@@ -3530,7 +3695,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.21.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.22.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -3564,7 +3729,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.21.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.22.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -3724,7 +3889,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.21.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.22.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -3739,7 +3904,7 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.21.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.22.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
 
     if(aiRequestForm) aiRequestForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.aiAssistance.sessions.length>=MAX_AI_SESSIONS)return;const data=new FormData(aiRequestForm),title=String(data.get('title')||'').trim().slice(0,200),prompt=String(data.get('prompt')||'').trim().slice(0,MAX_AI_PROMPT),task=AI_TASKS.has(String(data.get('task')))?String(data.get('task')):'general-question',objectIds=selectedValues(aiObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_AI_OBJECT_REFS);if(!title||!prompt)return;const stamp=nowIso(),session={id:id('ai'),title,task,status:'prepared',prompt,objectIds,response:'',responseSource:'manual',citationObjectIds:[],acceptedDocumentObjectId:'',createdAt:stamp,updatedAt:stamp,sentAt:null,respondedAt:null,acceptedAt:null};project.aiAssistance.sessions.unshift(session);project.aiAssistance.activeSessionId=session.id;touchAiAssistance(project);addActivity(project,'ai-request-prepared',`AI assistance request prepared: ${title}`);aiRequestForm.reset();persist('AI assistance request prepared locally');renderAiAssistance(project);});
@@ -3801,6 +3966,94 @@
         persist('Manual account cloud backup saved'); renderCloudRecovery(); cloudStatus.textContent=`Manual account backup saved for ${project.title}.`;
       } catch(error){ cloudStatus.textContent=error.message||'Backup failed.'; }
       finally { renderCloudRecovery(); }
+    });
+
+    if (syncProject) syncProject.addEventListener('change', () => { renderAccountSync(); });
+    if (syncToggleButton) syncToggleButton.addEventListener('click', () => {
+      const project = state.projects.find(item => item.id === String(syncProject?.value || '') && !item.archivedAt);
+      if (!project || !IDENTITY_CONFIG.authenticated) return;
+      const enrollment = syncEnrollment(project.id, true);
+      enrollment.enabled = !enrollment.enabled;
+      enrollment.status = enrollment.enabled ? (enrollment.serverRevision ? 'up-to-date' : 'not-uploaded') : 'disabled';
+      enrollment.updatedAt = nowIso();
+      recordSync(enrollment.enabled ? 'enable' : 'disable', project, enrollment.serverRevision);
+      persist(enrollment.enabled ? 'Cross-device sync enabled locally' : 'Cross-device sync disabled locally');
+      renderAccountSync();
+    });
+    if (syncCheckButton) syncCheckButton.addEventListener('click', async () => {
+      const project = state.projects.find(item => item.id === String(syncProject?.value || '') && !item.archivedAt);
+      if (!project) return;
+      syncCheckButton.disabled = true;
+      syncStatus.textContent = 'Comparing local and cloud revisions…';
+      try {
+        const result = await evaluateSync(project, true);
+        recordSync(result.status === 'conflict' ? 'conflict' : result.status === 'remote-missing' ? 'remote-missing' : 'check', project, result.remote?.revision || result.enrollment?.serverRevision || 0);
+        persist('Cross-device sync status checked');
+        renderCloudRecovery(); renderAccountSync(); syncStatus.textContent = result.message;
+      } catch (error) {
+        const enrollment = syncEnrollment(project.id, true); enrollment.status = 'error';
+        syncStatus.textContent = error.message || 'Sync status check failed.'; renderAccountSync();
+      } finally { syncCheckButton.disabled = false; }
+    });
+    if (syncNowButton) syncNowButton.addEventListener('click', async () => {
+      const project = state.projects.find(item => item.id === String(syncProject?.value || '') && !item.archivedAt);
+      if (!project) return;
+      syncNowButton.disabled = true;
+      syncStatus.textContent = 'Comparing revisions before synchronization…';
+      try {
+        const result = await evaluateSync(project, true);
+        const enrollment = result.enrollment;
+        if (result.status === 'not-uploaded') {
+          const item = await pushSyncHead(project, enrollment, 0); recordSync('push', project, item.revision); syncStatus.textContent = `Created cloud sync revision ${item.revision}.`;
+        } else if (result.status === 'local-ahead') {
+          const item = await pushSyncHead(project, enrollment, enrollment.serverRevision); recordSync('push', project, item.revision); syncStatus.textContent = `Pushed local changes as cloud revision ${item.revision}.`;
+        } else if (result.status === 'remote-ahead') {
+          const source = await applyRemoteInPlace(project, enrollment, result.remote, false); recordSync('pull', source, enrollment.serverRevision); syncStatus.textContent = `Applied cloud revision ${enrollment.serverRevision}; no competing local edits were detected.`;
+        } else if (result.status === 'remote-missing') {
+          if (window.confirm('The previous cloud sync head is missing. Recreate it from this local project?')) {
+            const item = await pushSyncHead(project, enrollment, 0); recordSync('push', project, item.revision); syncStatus.textContent = `Recreated cloud sync head at revision ${item.revision}.`;
+          } else syncStatus.textContent = result.message;
+        } else if (result.status === 'conflict') {
+          recordSync('conflict', project, result.remote?.revision || 0); syncStatus.textContent = result.message;
+        } else syncStatus.textContent = result.message;
+        persist('Cross-device synchronization completed'); render();
+      } catch (error) {
+        const enrollment = syncEnrollment(project.id, true);
+        enrollment.status = /revision conflict/i.test(String(error.message || '')) ? 'conflict' : 'error';
+        recordSync(enrollment.status === 'conflict' ? 'conflict' : 'check', project, enrollment.remoteRevision || enrollment.serverRevision);
+        persist('Cross-device sync state updated'); renderAccountSync(); syncStatus.textContent = error.message || 'Synchronization failed.';
+      } finally { syncNowButton.disabled = false; }
+    });
+    if (syncRemoteCopyButton) syncRemoteCopyButton.addEventListener('click', async () => {
+      const project = state.projects.find(item => item.id === String(syncProject?.value || '') && !item.archivedAt); if (!project) return;
+      try {
+        const remote = remoteCloudRecord(project.id); if (!remote) throw new Error('No cloud revision is available.');
+        const { source } = await fetchRemoteSyncProject(project.id); const copy = cloneProject(source);
+        copy.title = `${source.title} (Cloud copy r${remote.revision})`.slice(0,120);
+        copy.activity.unshift({ id:id('act'), type:'sync-remote-copy', summary:`Opened cloud revision ${remote.revision} as a separate local copy`, at:nowIso() });
+        state.projects.unshift(copy); state.activeProjectId = copy.id; recordSync('remote-copy', project, remote.revision);
+        persist('Cloud revision opened as a local copy'); render(); setWorkspaceView('projects', true);
+      } catch (error) { syncStatus.textContent = error.message || 'Cloud revision could not be opened as a copy.'; }
+    });
+    if (syncResolveLocalButton) syncResolveLocalButton.addEventListener('click', async () => {
+      const project = state.projects.find(item => item.id === String(syncProject?.value || '') && !item.archivedAt); if (!project) return;
+      if (!window.confirm('Keep this local project as the synchronization head? The current cloud head will be replaced by a new revision.')) return;
+      try {
+        await refreshCloudIndexForSync(); const remote = remoteCloudRecord(project.id); if (!remote) throw new Error('The cloud head disappeared; check status again.');
+        const enrollment = syncEnrollment(project.id, true); const item = await pushSyncHead(project, enrollment, remote.revision);
+        recordSync('resolve-local', project, item.revision); persist('Sync conflict resolved with local project'); render();
+        syncStatus.textContent = `Conflict resolved with local project at cloud revision ${item.revision}.`;
+      } catch (error) { syncStatus.textContent = error.message || 'Conflict resolution failed.'; }
+    });
+    if (syncResolveCloudButton) syncResolveCloudButton.addEventListener('click', async () => {
+      const project = state.projects.find(item => item.id === String(syncProject?.value || '') && !item.archivedAt); if (!project) return;
+      if (!window.confirm('Use the cloud revision here? Workspace will preserve your current local changes as a separate conflict copy first.')) return;
+      try {
+        await refreshCloudIndexForSync(); const remote = remoteCloudRecord(project.id); if (!remote) throw new Error('The cloud head disappeared; check status again.');
+        const enrollment = syncEnrollment(project.id, true); const source = await applyRemoteInPlace(project, enrollment, remote, true);
+        recordSync('resolve-cloud', source, enrollment.serverRevision); persist('Sync conflict resolved with cloud revision; local conflict copy preserved'); render();
+        syncStatus.textContent = `Conflict resolved with cloud revision ${enrollment.serverRevision}; local changes were preserved as a separate copy.`;
+      } catch (error) { syncStatus.textContent = error.message || 'Conflict resolution failed.'; }
     });
 
     if(collabProfileForm)collabProfileForm.addEventListener('submit',event=>{event.preventDefault();const data=new FormData(collabProfileForm);state.collaboration.profile={displayName:String(data.get('displayName')||'').trim().slice(0,120),role:COLLAB_ROLES.has(String(data.get('role')))?String(data.get('role')):'owner'};touchCollaboration();persist('Local review identity saved');renderCollaboration();});

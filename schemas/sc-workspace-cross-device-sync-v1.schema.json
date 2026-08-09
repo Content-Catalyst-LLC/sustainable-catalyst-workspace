@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-cross-device-sync-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Cross-Device Sync",
+  "type": "object",
+  "required": [
+    "schema",
+    "enrollments",
+    "history"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-cross-device-sync/1.0"
+    },
+    "enrollments": {
+      "type": "array",
+      "maxItems": 25,
+      "items": {
+        "type": "object",
+        "required": [
+          "projectId",
+          "enabled",
+          "serverRevision",
+          "status"
+        ],
+        "properties": {
+          "projectId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "serverRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastSyncedFingerprint": {
+            "type": "string"
+          },
+          "remoteFingerprint": {
+            "type": "string"
+          },
+          "remoteRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "enum": [
+              "disabled",
+              "not-uploaded",
+              "up-to-date",
+              "local-ahead",
+              "remote-ahead",
+              "conflict",
+              "remote-missing",
+              "error"
+            ]
+          },
+          "lastSyncedAt": {
+            "type": "string"
+          },
+          "lastCheckedAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "type": "object"
+      }
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}
