@@ -2,11 +2,9 @@
 
 Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
-## Current release: **v0.13.0 — Responsible AI Assistance**
+## Current release: **v0.14.0 — Import & Interoperability**
 
-**v0.13.0 — Responsible AI Assistance**
-
-Workspace supports a connected personal workflow across Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, reusable Workspace Objects, Personal Knowledge, and cross-product handoffs. v0.13.0 adds Responsible AI Assistance as an explicit grounding-and-review layer: users select the Workspace Objects that form the request basis, review returned output as a draft, and must explicitly accept it before it can become a canonical Document. Workspace does not automatically send project content to a model or grant AI decision or publication authority.
+Workspace supports Guide, Research, Evidence, Analysis, Decision, Canvas, Traceability, Briefing, Personal Knowledge, Responsible AI Assistance, and cross-product handoffs. v0.14.0 adds a browser-local interoperability boundary for staging external files, reviewing what will be created, preserving imported provenance, and exporting portable structured packages.
 
 ## WordPress shortcodes
 
@@ -18,11 +16,11 @@ Workspace supports a connected personal workflow across Guide, Research, Evidenc
 
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects and the Personal Knowledge index remain device-local. The cross-project index is derived in the browser from existing project objects; collections store only stable project/object references. Optional WordPress authentication identifies the account session only; Workspace does not automatically upload or synchronize project content.
+Workspace remains usable without signing in. Projects, Personal Knowledge, AI review state, and interoperability activity remain device-local. Optional WordPress authentication identifies the account session only; Workspace does not automatically upload or synchronize project content.
 
 ## Contracts
 
-- Project: `sc-workspace-project/10.0`
+- Project: `sc-workspace-project/11.0`
 - Object: `sc-workspace-object/1.0`
 - Research: `sc-workspace-research/1.0`
 - Analysis: `sc-workspace-analysis/1.0`
@@ -32,9 +30,16 @@ Workspace remains usable without signing in. Projects and the Personal Knowledge
 - Briefing: `sc-workspace-briefing/1.0`
 - Guided Workflows: `sc-workspace-guided-workflows/1.0`
 - Personal Knowledge: `sc-workspace-personal-knowledge/1.0`
+- Responsible AI: `sc-workspace-ai-assistance/1.0`
+- Import & Interoperability: `sc-workspace-interoperability/1.0`
+- Portable interchange: `sc-workspace-interchange/1.0`
 - Identity: `sc-workspace-identity/1.0`
-- Storage schema: `13`
+- Storage schema: `15`
 - Handoff: `sc-workspace-handoff/2.0`
+
+## Interoperability boundary
+
+Supported staged imports: JSON, CSV/TSV, Markdown, HTML, and plain text. Imports require explicit target-project selection and human commit. Imported artifacts are draft canonical Workspace Objects with `imported` provenance. Incoming IDs are remapped rather than overwriting existing objects. Interchange packages can carry traceability lineage, which is reconstructed against the new local IDs on commit.
 
 ## Public routes
 
@@ -45,8 +50,4 @@ Workspace remains usable without signing in. Projects and the Personal Knowledge
 
 Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
 
-See `docs/PERSONAL_KNOWLEDGE_ENVIRONMENT_V0120.md`.
-
-
-## v0.13.0 — Responsible AI Assistance
-Prepare grounded AI requests from selected Workspace Objects, review responses locally, and explicitly accept useful output as traceable working Documents. Workspace does not automatically submit project content to a model or delegate decision authority.
+See `docs/IMPORT_INTEROPERABILITY_V0140.md`.

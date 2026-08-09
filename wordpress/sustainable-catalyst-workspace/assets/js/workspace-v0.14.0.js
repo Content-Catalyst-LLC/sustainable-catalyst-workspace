@@ -7,7 +7,7 @@
   const DEVICE_KEY = 'sc_workspace_device_v1';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 14;
+  const STORAGE_VERSION = 15;
   const PROJECT_SCHEMA = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
@@ -59,6 +59,11 @@
   const AI_RESPONSE_KEY = 'sc_workspace_ai_response_v1';
   const AI_RESPONSE_SCHEMA = 'sc-workspace-ai-response/1.0';
   const KNOWLEDGE_COLLECTION_EXPORT_SCHEMA = 'sc-workspace-knowledge-collection-export/1.0';
+  const INTEROPERABILITY_SCHEMA = 'sc-workspace-interoperability/1.0';
+  const INTERCHANGE_EXPORT_SCHEMA = 'sc-workspace-interchange/1.0';
+  const MAX_INTEROP_HISTORY = 60;
+  const MAX_INTEROP_IMPORT_OBJECTS = 100;
+  const INTEROP_FORMATS = new Set(['json','csv','tsv','markdown','html','text']);
   const AI_TASKS = new Set(['grounded-summary','evidence-gaps','compare-alternatives','briefing-draft','method-explanation','general-question']);
   const AI_SESSION_STATUS = new Set(['prepared','sent','response-received','accepted','rejected']);
   const AI_RESPONSE_SOURCES = new Set(['manual','research-librarian','adapter','external']);
@@ -334,9 +339,76 @@
     }).filter(x => x.score >= 3).sort((a,b) => b.score - a.score || String(b.entry.object.updatedAt).localeCompare(String(a.entry.object.updatedAt))).slice(0, 8);
   }
 
+  function interoperabilityTemplate() {
+    const stamp=nowIso();
+    return { schema:INTEROPERABILITY_SCHEMA, history:[], createdAt:stamp, updatedAt:stamp };
+  }
+  function normalizeInteroperability(raw) {
+    const base=interoperabilityTemplate(), value=raw&&typeof raw==='object'?raw:{};
+    base.history=(Array.isArray(value.history)?value.history:[]).map(item=>({
+      id:String(item&&item.id||id('io')).slice(0,160), direction:item&&item.direction==='export'?'export':'import',
+      format:INTEROP_FORMATS.has(item&&item.format)?item.format:'json', projectId:String(item&&item.projectId||'').slice(0,160),
+      projectTitle:String(item&&item.projectTitle||'').slice(0,160), fileName:String(item&&item.fileName||'').slice(0,240),
+      fingerprint:String(item&&item.fingerprint||'').slice(0,128), objectCount:Math.max(0,Math.min(1000,Number(item&&item.objectCount)||0)),
+      at:validIso(item&&item.at)?item.at:nowIso()
+    })).slice(0,MAX_INTEROP_HISTORY);
+    base.createdAt=validIso(value.createdAt)?value.createdAt:base.createdAt; base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt; return base;
+  }
+  function touchInteroperability(){state.interoperability=normalizeInteroperability(state.interoperability);state.interoperability.updatedAt=nowIso();}
+
+  async function sha256Text(text){
+    if(window.crypto&&window.crypto.subtle&&window.TextEncoder){const data=new TextEncoder().encode(String(text||''));const hash=await window.crypto.subtle.digest('SHA-256',data);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+    return '';
+  }
+  function detectInteropFormat(file){
+    const name=String(file&&file.name||'').toLowerCase();
+    if(name.endsWith('.csv'))return 'csv'; if(name.endsWith('.tsv'))return 'tsv'; if(name.endsWith('.md')||name.endsWith('.markdown'))return 'markdown';
+    if(name.endsWith('.html')||name.endsWith('.htm'))return 'html'; if(name.endsWith('.txt'))return 'text'; if(name.endsWith('.json'))return 'json';
+    const type=String(file&&file.type||'').toLowerCase(); if(type.includes('csv'))return 'csv'; if(type.includes('tab-separated'))return 'tsv'; if(type.includes('markdown'))return 'markdown'; if(type.includes('html'))return 'html'; if(type.includes('json'))return 'json'; return 'text';
+  }
+  function csvRows(text, delimiter=','){
+    const rows=[]; let row=[],field='',quoted=false; const src=String(text||'');
+    for(let i=0;i<src.length;i++){const ch=src[i];if(ch==='"'){if(quoted&&src[i+1]==='"'){field+='"';i++;}else quoted=!quoted;}else if(ch===delimiter&&!quoted){row.push(field);field='';}else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&src[i+1]==='\n')i++;row.push(field);field='';if(row.some(v=>String(v).trim()!==''))rows.push(row);row=[];}else field+=ch;}
+    row.push(field);if(row.some(v=>String(v).trim()!==''))rows.push(row);return rows.slice(0,5000);
+  }
+  function htmlToText(html){const doc=new DOMParser().parseFromString(String(html||''),'text/html');return String(doc.body&&doc.body.textContent||'').replace(/\n{3,}/g,'\n\n').trim();}
+  function importObjectDraft(type,title,content,summary,fileName,fingerprint,tags=[]){
+    const obj=objectTemplate(OBJECT_TYPES.has(type)?type:'document',String(title||fileName||'Imported artifact').slice(0,160));
+    obj.summary=String(summary||'Imported into Workspace for local review.').slice(0,1200); obj.content=String(content||'').slice(0,50000); obj.status='draft'; obj.tags=normalizeTags(['imported',...tags]);
+    obj.provenance={sourceType:'imported',sourceTitle:String(fileName||'External import').slice(0,240),sourceUrl:'',capturedAt:nowIso()};
+    obj._importFingerprint=fingerprint||''; return obj;
+  }
+  function stageInterchangePayload(payload,fileName,fingerprint){
+    const objects=[]; const source=payload&&typeof payload==='object'?payload:{};
+    const raws=Array.isArray(source.objects)?source.objects:(source.artifacts&&Array.isArray(source.artifacts)?source.artifacts:[]);
+    raws.slice(0,MAX_INTEROP_IMPORT_OBJECTS).forEach(raw=>{const n=normalizeObject(raw);if(!n)return;const sourceObjectId=String(raw&&raw.id||'').slice(0,160);n.id=id('scwo');n.status='draft';n.tags=normalizeTags(['imported',...(n.tags||[])]);n.provenance={sourceType:'imported',sourceTitle:String(fileName||source.project&&source.project.title||'Interchange package').slice(0,240),sourceUrl:'',capturedAt:nowIso()};n.createdAt=nowIso();n.updatedAt=n.createdAt;n.archivedAt=null;n._importFingerprint=fingerprint||'';n._sourceObjectId=sourceObjectId;objects.push(n);});
+    objects._relationships=(Array.isArray(source.relationships)?source.relationships:[]).map(r=>({relation:TRACE_RELATIONS.has(r&&r.relation)?r.relation:'derived-from',fromObjectId:String(r&&r.fromObjectId||'').slice(0,160),toObjectId:String(r&&r.toObjectId||'').slice(0,160),note:String(r&&r.note||'').slice(0,1000)})).filter(r=>r.fromObjectId&&r.toObjectId&&r.fromObjectId!==r.toObjectId).slice(0,MAX_LINEAGE_RELATIONS);
+    return objects;
+  }
+  function stageExternalContent(format,text,fileName,fingerprint){
+    const stem=String(fileName||'Imported file').replace(/\.[^.]+$/,'');
+    if(format==='csv'||format==='tsv'){const rows=csvRows(text,format==='tsv'?'\t':',');const headers=rows[0]||[];const summary=`Imported ${format.toUpperCase()} dataset · ${Math.max(0,rows.length-1)} data row(s) · ${headers.length} column(s)${headers.length?` · ${headers.slice(0,8).join(', ')}`:''}`;return [importObjectDraft('dataset',stem,text,summary,fileName,fingerprint,[format])];}
+    if(format==='markdown')return [importObjectDraft('document',stem,text,'Imported Markdown document.',fileName,fingerprint,['markdown'])];
+    if(format==='html')return [importObjectDraft('document',stem,htmlToText(text),'Imported HTML document; text content preserved for local review.',fileName,fingerprint,['html'])];
+    if(format==='text')return [importObjectDraft('document',stem,text,'Imported plain-text document.',fileName,fingerprint,['text'])];
+    if(format==='json'){
+      let payload; try{payload=JSON.parse(text);}catch(_){throw new Error('The selected JSON file is not valid JSON.');}
+      if(payload&&['sc-workspace-interchange/1.0','sc-workspace-object-export/1.0'].includes(payload.schema)){
+        const objs=payload.schema==='sc-workspace-object-export/1.0'?[payload.object]:stageInterchangePayload(payload,fileName,fingerprint);return payload.schema==='sc-workspace-object-export/1.0'?objs.map(raw=>{const n=normalizeObject(raw);n._sourceObjectId=String(raw&&raw.id||'').slice(0,160);n.id=id('scwo');n.status='draft';n.tags=normalizeTags(['imported',...(n.tags||[])]);n.provenance={sourceType:'imported',sourceTitle:fileName,sourceUrl:'',capturedAt:nowIso()};n._importFingerprint=fingerprint;return n;}):objs;
+      }
+      if(payload&&payload.project&&Array.isArray(payload.project.objects))return stageInterchangePayload({objects:payload.project.objects},fileName,fingerprint);
+      const pretty=JSON.stringify(payload,null,2); const shape=Array.isArray(payload)?`${payload.length} top-level item(s)`:`${Object.keys(payload||{}).length} top-level field(s)`;return [importObjectDraft('dataset',stem,pretty,`Imported generic JSON dataset · ${shape}.`,fileName,fingerprint,['json'])];
+    }
+    throw new Error('Unsupported import format.');
+  }
+  function interchangePackage(project){
+    const objectIds=new Set(project.objects.filter(o=>!o.archivedAt).map(o=>o.id));
+    return {schema:INTERCHANGE_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),project:{id:project.id,title:project.title,description:project.description},objects:project.objects.filter(o=>!o.archivedAt).map(o=>JSON.parse(JSON.stringify(o))),relationships:(project.traceability&&Array.isArray(project.traceability.lineage)?project.traceability.lineage:[]).filter(r=>objectIds.has(r.fromObjectId)&&objectIds.has(r.toObjectId)).map(r=>({relation:r.relation,fromObjectId:r.fromObjectId,toObjectId:r.toObjectId,note:r.note||''})),boundary:{portableCopy:true,canonicalObjectOverwrite:false,serverUpload:false}};
+  }
+
   function defaultState() {
     const stamp = nowIso();
-    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), createdAt: stamp, updatedAt: stamp };
+    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), interoperability: interoperabilityTemplate(), createdAt: stamp, updatedAt: stamp };
   }
 
   function provenanceTemplate() {
@@ -997,7 +1069,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.13.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.14.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -1179,6 +1251,7 @@
     state.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
     state.activeProjectId = state.projects.some((project) => project.id === raw.activeProjectId && !project.archivedAt) ? raw.activeProjectId : null;
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
+    state.interoperability = normalizeInteroperability(raw.interoperability);
     state.createdAt = validIso(raw.createdAt) ? raw.createdAt : state.createdAt;
     state.updatedAt = nowIso();
     return state;
@@ -1319,6 +1392,10 @@
     state.identity=normalizeIdentity(raw.identity); state.knowledge=normalizeKnowledge(raw.knowledge,state.projects); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
   }
 
+  function migrateV14(raw) {
+    const state=defaultState(); state.projects=Array.isArray(raw.projects)?raw.projects.map(normalizeProject).filter(Boolean):[]; state.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[]; state.activeProjectId=state.projects.some(p=>p.id===raw.activeProjectId&&!p.archivedAt)?raw.activeProjectId:null; state.identity=normalizeIdentity(raw.identity); state.knowledge=normalizeKnowledge(raw.knowledge,state.projects); state.interoperability=interoperabilityTemplate(); state.createdAt=validIso(raw.createdAt)?raw.createdAt:state.createdAt; state.updatedAt=nowIso(); return state;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -1334,6 +1411,7 @@
     if (raw.schemaVersion === 11) return migrateV11(raw);
     if (raw.schemaVersion === 12) return migrateV12(raw);
     if (raw.schemaVersion === 13) return migrateV13(raw);
+    if (raw.schemaVersion === 14) return migrateV14(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -1383,6 +1461,7 @@
     state.schemaVersion = STORAGE_VERSION;
     state.identity = normalizeIdentity(state.identity);
     state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); });
+    state.interoperability = normalizeInteroperability(state.interoperability);
     state.updatedAt = nowIso();
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1494,6 +1573,7 @@
     let state = readState();
     let activeProjectMode = 'overview';
     let workspaceView = 'projects';
+    let stagedInteroperability = null;
     let selectedKnowledgeKey = null;
     let filter = 'active';
     let objectArchiveFilter = 'current';
@@ -1692,6 +1772,16 @@
     const workspaceViewNav = root.querySelector('[data-scw-workspace-view-nav]');
     const projectsSection = root.querySelector('[data-scw-workspace-section="projects"]');
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
+    const interoperabilitySection = root.querySelector('[data-scw-workspace-section="interoperability"]');
+    const interoperabilityForm = root.querySelector('[data-scw-interoperability-form]');
+    const interoperabilityProject = root.querySelector('[data-scw-interoperability-project]');
+    const interoperabilityFile = root.querySelector('[data-scw-interoperability-file]');
+    const interoperabilityStage = root.querySelector('[data-scw-interoperability-stage]');
+    const interoperabilityCommit = root.querySelector('[data-scw-interoperability-commit]');
+    const interoperabilityClear = root.querySelector('[data-scw-interoperability-clear]');
+    const interoperabilityExportProject = root.querySelector('[data-scw-interoperability-export-project]');
+    const interoperabilityExport = root.querySelector('[data-scw-interoperability-export]');
+    const interoperabilityHistory = root.querySelector('[data-scw-interoperability-history]');
     const knowledgeSearch = root.querySelector('[data-scw-knowledge-search]');
     const knowledgeType = root.querySelector('[data-scw-knowledge-type]');
     const knowledgeProject = root.querySelector('[data-scw-knowledge-project]');
@@ -1725,7 +1815,7 @@
       if (identityHeading) identityHeading.textContent = authenticated ? (String(IDENTITY_CONFIG.displayName || 'Workspace account')) : 'Guest Workspace';
       if (identityDetail) identityDetail.textContent = authenticated ? 'Account recognized. Project storage remains local to this device.' : 'Your work is associated only with this browser device.';
       if (identityAccess) identityAccess.textContent = authenticated ? 'Account recognized · no sync' : 'No account required';
-      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.13.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
+      if (identityNote) identityNote.textContent = authenticated ? 'You are signed in, but v0.14.0 does not upload or synchronize Workspace Projects; handoff returns remain local to this browser unless you explicitly export them. Export/import remains the cross-device portability path.' : 'Sign-in establishes the identity boundary only. Project sync and server-side project storage remain disabled.';
       if (deviceIdEl) deviceIdEl.textContent = state.identity.deviceId;
       if (loginLink) { loginLink.hidden = authenticated; loginLink.href = String(IDENTITY_CONFIG.loginUrl || '#'); }
       if (logoutLink) { logoutLink.hidden = !authenticated; logoutLink.href = String(IDENTITY_CONFIG.logoutUrl || '#'); }
@@ -2246,7 +2336,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -2254,7 +2344,7 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
     function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
     function renderGuidedWorkflows(project){
       if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
@@ -2290,7 +2380,7 @@
     }
 
     function setWorkspaceView(view) {
-      workspaceView = view === 'knowledge' ? 'knowledge' : 'projects';
+      workspaceView = ['projects','knowledge','interoperability'].includes(view) ? view : 'projects';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
@@ -2299,8 +2389,10 @@
       if (projectsSection) projectsSection.hidden = workspaceView !== 'projects';
       if (activePanel) activePanel.hidden = workspaceView !== 'projects' || !activeProject();
       if (knowledgeSection) knowledgeSection.hidden = workspaceView !== 'knowledge';
+      if (interoperabilitySection) interoperabilitySection.hidden = workspaceView !== 'interoperability';
       if (connectionsDrawer) connectionsDrawer.hidden = workspaceView !== 'projects';
       if (workspaceView === 'knowledge') renderKnowledge();
+      if (workspaceView === 'interoperability') renderInteroperability();
     }
 
     function openKnowledgeEntry(entry) {
@@ -2328,11 +2420,19 @@
       const head = document.createElement('div'); head.className='scw-knowledge-collection-head';
       const body=document.createElement('div'); const strong=document.createElement('strong');strong.textContent=collection.title;const p=document.createElement('p');p.textContent=collection.description||'No collection description.';body.append(strong,p);
       const acts=document.createElement('div');acts.className='scw-knowledge-actions';
-      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
+      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove collection';remove.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Workspace Objects will not be deleted.`))return;state.knowledge.collections=state.knowledge.collections.filter(c=>c.id!==collection.id);state.knowledge.activeCollectionId=state.knowledge.collections[0]?.id||null;touchKnowledge();persist('Knowledge collection removed');renderKnowledge();});acts.append(exp,remove);head.append(body,acts);knowledgeCollectionDetail.appendChild(head);
       const list=document.createElement('div');list.className='scw-knowledge-collection-items';
       if(!collection.items.length)list.innerHTML='<div class="scw-knowledge-empty-note">No objects in this collection yet.</div>';
       collection.items.forEach(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);if(!e)return;const row=document.createElement('article');const meta=document.createElement('span');meta.textContent=`${OBJECT_LABELS[e.object.type]||e.object.type} · ${e.projectTitle}`;const title=document.createElement('strong');title.textContent=e.object.title;const removeItem=document.createElement('button');removeItem.type='button';removeItem.className='scw-card-action scw-card-action-muted';removeItem.textContent='Remove';removeItem.addEventListener('click',()=>{collection.items=collection.items.filter(x=>!(x.projectId===ref.projectId&&x.objectId===ref.objectId));collection.updatedAt=nowIso();touchKnowledge();persist('Collection updated');renderKnowledge();});row.append(meta,title,removeItem);list.appendChild(row);});knowledgeCollectionDetail.appendChild(list);
+    }
+
+    function renderInteroperability(){
+      const projects=state.projects.filter(p=>!p.archivedAt);
+      [interoperabilityProject,interoperabilityExportProject].forEach(sel=>{if(!sel)return;const current=sel.value;sel.innerHTML='<option value="">Choose project</option>';projects.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.title;sel.appendChild(o);});if(projects.some(p=>p.id===current))sel.value=current;else if(state.activeProjectId&&projects.some(p=>p.id===state.activeProjectId))sel.value=state.activeProjectId;});
+      if(interoperabilityStage){interoperabilityStage.innerHTML='';if(!stagedInteroperability){interoperabilityStage.innerHTML='<span>No file staged.</span>';}else{const head=document.createElement('div');head.className='scw-interoperability-stage-head';head.innerHTML=`<strong>${escapeHtml(stagedInteroperability.fileName)}</strong><span>${escapeHtml(stagedInteroperability.format.toUpperCase())} · ${stagedInteroperability.objects.length} object(s) · SHA-256 ${escapeHtml(stagedInteroperability.fingerprint?stagedInteroperability.fingerprint.slice(0,16)+'…':'unavailable')}</span>`;const list=document.createElement('div');list.className='scw-interoperability-preview-list';stagedInteroperability.objects.slice(0,20).forEach(o=>{const row=document.createElement('article');row.innerHTML=`<span>${escapeHtml(OBJECT_LABELS[o.type]||o.type)}</span><strong>${escapeHtml(o.title)}</strong><small>${escapeHtml(o.summary||'Imported artifact')}</small>`;list.appendChild(row);});if(stagedInteroperability.objects.length>20){const more=document.createElement('small');more.textContent=`+ ${stagedInteroperability.objects.length-20} additional object(s)`;list.appendChild(more);}interoperabilityStage.append(head,list);}}
+      if(interoperabilityCommit)interoperabilityCommit.disabled=!stagedInteroperability||!stagedInteroperability.objects.length;if(interoperabilityClear)interoperabilityClear.disabled=!stagedInteroperability;
+      if(interoperabilityHistory){interoperabilityHistory.innerHTML='';const hist=state.interoperability&&state.interoperability.history||[];if(!hist.length){interoperabilityHistory.innerHTML='<div class="scw-analysis-empty">No import or interchange export activity yet.</div>';}hist.forEach(item=>{const row=document.createElement('article');row.className='scw-interoperability-history-row';row.innerHTML=`<span>${escapeHtml(item.direction.toUpperCase())} · ${escapeHtml(item.format.toUpperCase())}</span><strong>${escapeHtml(item.fileName||item.projectTitle||'Workspace package')}</strong><small>${escapeHtml(item.projectTitle)} · ${item.objectCount} object(s) · ${escapeHtml(formatTime(item.at))}</small>`;interoperabilityHistory.appendChild(row);});}
     }
 
     function renderKnowledge() {
@@ -2494,7 +2594,7 @@
     root.querySelector('[data-scw-export]').addEventListener('click', () => {
       const project = activeProject(); if (!project) return;
       const portable = JSON.parse(JSON.stringify(project)); portable.persistence = { scope: 'device', deviceId: 'scwd-portable', syncState: 'local-only', accountEligible: true, serverStored: false };
-      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.13.0', exportedAt: nowIso(), project: portable };
+      const payload = { schema: EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.14.0', exportedAt: nowIso(), project: portable };
       downloadJson(`${safeFileName(project.title)}.sc-workspace.json`, payload);
       addActivity(project, 'exported', 'Project exported as JSON'); project.updatedAt = nowIso(); persist('Export recorded'); renderActive();
     });
@@ -2528,7 +2628,7 @@
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.13.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.14.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
@@ -2688,7 +2788,7 @@
 
     root.querySelector('[data-scw-object-export]').addEventListener('click', () => {
       const project = activeProject(); const object = activeObject(); if (!project || !object) return;
-      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.13.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
+      const payload = { schema: OBJECT_EXPORT_SCHEMA, workspaceVersion: root.dataset.version || '0.14.0', exportedAt: nowIso(), projectId: project.id, object: JSON.parse(JSON.stringify(object)) };
       downloadJson(`${safeFileName(object.title)}.sc-workspace-object.json`, payload);
       addActivity(project, 'object-exported', `${OBJECT_LABELS[object.type]} exported: ${object.title}`); project.updatedAt = nowIso(); persist('Object export recorded'); renderActive();
     });
@@ -2703,7 +2803,7 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.13.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.14.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
 
     if(aiRequestForm) aiRequestForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.aiAssistance.sessions.length>=MAX_AI_SESSIONS)return;const data=new FormData(aiRequestForm),title=String(data.get('title')||'').trim().slice(0,200),prompt=String(data.get('prompt')||'').trim().slice(0,MAX_AI_PROMPT),task=AI_TASKS.has(String(data.get('task')))?String(data.get('task')):'general-question',objectIds=selectedValues(aiObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_AI_OBJECT_REFS);if(!title||!prompt)return;const stamp=nowIso(),session={id:id('ai'),title,task,status:'prepared',prompt,objectIds,response:'',responseSource:'manual',citationObjectIds:[],acceptedDocumentObjectId:'',createdAt:stamp,updatedAt:stamp,sentAt:null,respondedAt:null,acceptedAt:null};project.aiAssistance.sessions.unshift(session);project.aiAssistance.activeSessionId=session.id;touchAiAssistance(project);addActivity(project,'ai-request-prepared',`AI assistance request prepared: ${title}`);aiRequestForm.reset();persist('AI assistance request prepared locally');renderAiAssistance(project);});
@@ -2745,6 +2845,11 @@
     root.querySelectorAll('[data-scw-project-mode]').forEach((button) => {
       button.addEventListener('click', () => setProjectMode(button.dataset.scwProjectMode || 'overview'));
     });
+
+    if(interoperabilityForm)interoperabilityForm.addEventListener('submit',async(event)=>{event.preventDefault();const projectId=interoperabilityProject&&interoperabilityProject.value;const file=interoperabilityFile&&interoperabilityFile.files&&interoperabilityFile.files[0];if(!projectId){window.alert('Choose a target project first.');return;}if(!file){window.alert('Choose a file to stage.');return;}if(file.size>5*1024*1024){window.alert('For this local release, imports are limited to 5 MB per file.');return;}try{const text=await file.text();const format=detectInteropFormat(file);const fingerprint=await sha256Text(text);const objects=stageExternalContent(format,text,file.name,fingerprint).slice(0,MAX_INTEROP_IMPORT_OBJECTS);if(!objects.length)throw new Error('The file did not contain importable artifacts.');stagedInteroperability={projectId,fileName:file.name,format,fingerprint,objects,relationships:Array.isArray(objects._relationships)?objects._relationships:[]};renderInteroperability();}catch(err){stagedInteroperability=null;renderInteroperability();window.alert(err&&err.message?err.message:'Workspace could not stage this file.');}});
+    if(interoperabilityClear)interoperabilityClear.addEventListener('click',()=>{stagedInteroperability=null;if(interoperabilityFile)interoperabilityFile.value='';renderInteroperability();});
+    if(interoperabilityCommit)interoperabilityCommit.addEventListener('click',()=>{if(!stagedInteroperability)return;const project=state.projects.find(p=>p.id===stagedInteroperability.projectId&&!p.archivedAt);if(!project){window.alert('The target project is no longer available.');return;}const capacity=Math.max(0,MAX_OBJECTS-project.objects.length);const incoming=stagedInteroperability.objects.slice(0,capacity);if(!incoming.length){window.alert('The target project has reached its local object limit.');return;}const sourceMap=new Map();incoming.forEach(obj=>{const stagedId=obj.id,sourceId=String(obj._sourceObjectId||'');const finalId=id('scwo');obj.id=finalId;delete obj._importFingerprint;delete obj._sourceObjectId;const normalized=normalizeObject(obj);project.objects.unshift(normalized);sourceMap.set(stagedId,finalId);if(sourceId)sourceMap.set(sourceId,finalId);});let importedRelations=0;(Array.isArray(stagedInteroperability.relationships)?stagedInteroperability.relationships:[]).forEach(rel=>{if(project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const from=sourceMap.get(rel.fromObjectId),to=sourceMap.get(rel.toObjectId);if(!from||!to||from===to)return;project.traceability.lineage.push({id:id('tl'),relation:TRACE_RELATIONS.has(rel.relation)?rel.relation:'derived-from',fromObjectId:from,toObjectId:to,note:String(rel.note||'Imported interoperability relationship').slice(0,1000),createdAt:nowIso()});importedRelations++;});if(importedRelations)touchTraceability(project);project.updatedAt=nowIso();addActivity(project,'interop-import',`Imported ${incoming.length} artifact(s)${importedRelations?` and ${importedRelations} relationship(s)`:''} from ${stagedInteroperability.fileName}`);state.interoperability.history.unshift({id:id('io'),direction:'import',format:stagedInteroperability.format,projectId:project.id,projectTitle:project.title,fileName:stagedInteroperability.fileName,fingerprint:stagedInteroperability.fingerprint,objectCount:incoming.length,at:nowIso()});state.interoperability.history=state.interoperability.history.slice(0,MAX_INTEROP_HISTORY);touchInteroperability();const message=`Imported ${incoming.length} artifact(s) as draft Workspace Objects. Review provenance before using them as evidence.`;stagedInteroperability=null;if(interoperabilityFile)interoperabilityFile.value='';persist(message);render();setWorkspaceView('interoperability');});
+    if(interoperabilityExport)interoperabilityExport.addEventListener('click',()=>{const project=state.projects.find(p=>p.id===(interoperabilityExportProject&&interoperabilityExportProject.value)&&!p.archivedAt);if(!project){window.alert('Choose a project to export.');return;}const pkg=interchangePackage(project);const name=`${safeFileName(project.title)}.sc-workspace-interchange.json`;downloadJson(name,pkg);state.interoperability.history.unshift({id:id('io'),direction:'export',format:'json',projectId:project.id,projectTitle:project.title,fileName:name,fingerprint:'',objectCount:pkg.objects.length,at:nowIso()});state.interoperability.history=state.interoperability.history.slice(0,MAX_INTEROP_HISTORY);touchInteroperability();persist('Interchange package exported');renderInteroperability();});
 
     root.querySelectorAll('[data-scw-workspace-view]').forEach((button) => {
       button.addEventListener('click', () => setWorkspaceView(button.dataset.scwWorkspaceView));

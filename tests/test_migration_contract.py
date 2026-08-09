@@ -1,13 +1,13 @@
 import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.13.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.14.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 
 class MigrationTests(unittest.TestCase):
     def test_storage_v12_to_v13_migration(self):
         js=JS.read_text()
-        for token in ("const STORAGE_VERSION = 14",'function migrateV13',"if (raw.schemaVersion === 13) return migrateV13(raw)","const PROJECT_SCHEMA = 'sc-workspace-project/11.0'","const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0'","guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects)"):
+        for token in ("const STORAGE_VERSION = 15",'function migrateV14',"if (raw.schemaVersion === 14) return migrateV14(raw)","const PROJECT_SCHEMA = 'sc-workspace-project/11.0'","const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0'","guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects)"):
             self.assertIn(token,js)
     def test_older_migrations_retained(self):
         js=JS.read_text()

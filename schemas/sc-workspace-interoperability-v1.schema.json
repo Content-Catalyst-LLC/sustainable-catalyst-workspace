@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-interoperability-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Interoperability v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "history",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-interoperability/1.0"
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "direction",
+          "format",
+          "projectId",
+          "projectTitle",
+          "fileName",
+          "fingerprint",
+          "objectCount",
+          "at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "direction": {
+            "enum": [
+              "import",
+              "export"
+            ]
+          },
+          "format": {
+            "enum": [
+              "json",
+              "csv",
+              "tsv",
+              "markdown",
+              "html",
+              "text"
+            ]
+          },
+          "projectId": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "projectTitle": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "fileName": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "fingerprint": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "objectCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}
