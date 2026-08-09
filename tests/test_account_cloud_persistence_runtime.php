@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__);
-define('SC_WORKSPACE_VERSION', '0.22.0');
+define('SC_WORKSPACE_VERSION', '0.23.0');
 $GLOBALS['logged_in'] = true;
 $GLOBALS['user_meta'] = array();
 function add_action($a,$b){}

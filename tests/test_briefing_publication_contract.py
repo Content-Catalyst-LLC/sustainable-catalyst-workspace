@@ -2,11 +2,11 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.22.0.js'
-MANIFEST=ROOT/'release-manifest-v0.22.0.json'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.23.0.js'
+MANIFEST=ROOT/'release-manifest-v0.23.0.json'
 class BriefingPublicationContractTests(unittest.TestCase):
     def test_release_and_schema_boundary(self):
-        m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.22.0'); self.assertEqual(m['previous_version'],'0.21.0'); self.assertEqual(m['storage_schema_version'],22); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0'); self.assertEqual(m['briefing_schema'],'sc-workspace-briefing/1.0'); self.assertFalse(m['governance']['automatic_publication']); self.assertFalse(m['governance']['cms_write'])
+        m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.23.0'); self.assertEqual(m['previous_version'],'0.22.0'); self.assertEqual(m['storage_schema_version'],23); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0'); self.assertEqual(m['briefing_schema'],'sc-workspace-briefing/1.0'); self.assertFalse(m['governance']['automatic_publication']); self.assertFalse(m['governance']['cms_write'])
     def test_json_schemas(self):
         b=json.loads((ROOT/'schemas/sc-workspace-briefing-v1.schema.json').read_text()); p=json.loads((ROOT/'schemas/sc-workspace-project-v10.schema.json').read_text()); self.assertEqual(b['properties']['schema']['const'],'sc-workspace-briefing/1.0'); self.assertIn('briefing',p['required']); self.assertEqual(p['properties']['briefing']['$ref'],'sc-workspace-briefing-v1.schema.json')
     def test_rest_contract_and_project_mode(self):

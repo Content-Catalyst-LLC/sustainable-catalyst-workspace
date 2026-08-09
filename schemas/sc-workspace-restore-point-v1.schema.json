@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Restore Point",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "projectId",
+    "label",
+    "createdAt",
+    "fingerprint",
+    "snapshot"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-restore-point/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "projectTitle": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "note": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "source": {
+      "enum": [
+        "manual",
+        "imported",
+        "sync-safety"
+      ]
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "projectUpdatedAt": {
+      "type": "string"
+    },
+    "fingerprint": {
+      "type": "string"
+    },
+    "bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "snapshot": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Version History",
+  "type": "object",
+  "required": [
+    "schema",
+    "restorePoints",
+    "history"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-version-history/1.0"
+    },
+    "selectedProjectId": {
+      "type": "string"
+    },
+    "restorePoints": {
+      "type": "array",
+      "maxItems": 80
+    },
+    "history": {
+      "type": "array",
+      "maxItems": 120
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

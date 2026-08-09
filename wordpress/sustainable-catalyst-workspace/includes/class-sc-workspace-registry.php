@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0220';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0220';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0230';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0230';
+    const LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220';
     const LEGACY_PENDING_KEY_V0210 = 'sc_workspace_registry_pending_v0210';
     const LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200';
     const LEGACY_PENDING_KEY_V0190 = 'sc_workspace_registry_pending_v0190';
@@ -98,6 +99,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0220);
         delete_option(self::LEGACY_PENDING_KEY_V0210);
         delete_option(self::LEGACY_PENDING_KEY_V0200);
         delete_option(self::LEGACY_PENDING_KEY_V0190);
@@ -176,11 +178,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.21.0',
+            'previous_version' => '0.22.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Cross-Device Sync & Conflict-Safe Recovery: adds explicit per-project account synchronization with revision preconditions, fingerprint comparison, and human-controlled conflict recovery while preserving local-first guest use.',
+            'change_summary' => 'Project Version History & Restore Points: adds named local project snapshots, SHA-256 integrity verification, safe restore-as-copy recovery, and workspace-level history without changing the project schema.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.22.0 preserves anonymous local-first use and project schema sc-workspace-project/11.0 while advancing Workspace storage to schema 22 for explicit sync enrollment/history. Signed-in users may enroll a project and choose Sync now; server revision preconditions reject stale pushes, and conflicts require a human choice. Automatic enrollment, automatic upload, background sync, silent last-write-wins, team storage, and institutional permissions remain disabled.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.23.0 preserves anonymous local-first use and project schema sc-workspace-project/11.0 while advancing Workspace storage to schema 23 for a bounded local restore-point ledger. Named snapshots are SHA-256 fingerprinted, restore only as new local copies, and never overwrite the current project. Account backup and explicit conflict-safe sync remain available and independent.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
