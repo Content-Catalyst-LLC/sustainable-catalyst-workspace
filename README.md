@@ -1,19 +1,12 @@
 # Sustainable Catalyst Workspace
 
-Sustainable Catalyst Workspace is the free personal working environment across the Sustainable Catalyst platform.
+Sustainable Catalyst Workspace is the free personal working environment across Sustainable Catalyst.
 
 ## Current release
 
-**v0.9.0 — Advisory Visual Integration & Workspace Editorial Shell**
+**v0.9.0.1 — Closing CTA Cleanup & Action Alignment**
 
-Workspace now supports a connected personal workflow:
-
-- Research — questions, sources, reading queues, evidence, and claims.
-- Analysis — datasets, variables, assumptions, methods, comparisons, and findings.
-- Decision — options, criteria, assessments, risks, rationale, and confidence.
-- Canvas — boards, structured nodes, typed relationships, frames, and synthesis.
-
-The dedicated `/platform/` Workspace experience and reversible administrator-controlled Platform conversion from v0.6.1 remain intact.
+Workspace supports a connected personal workflow across Research, Evidence, Analysis, Decision, Canvas, Traceability, reusable Workspace Objects, and cross-product handoffs. v0.9.0.1 is a focused public-experience micro-release: the redundant bottom **Open Workspace** action is replaced with a functional **New Project** action, while **Explore the Library** uses the canonical `/knowledge-libraries/` route.
 
 ## WordPress shortcodes
 
@@ -25,26 +18,28 @@ The dedicated `/platform/` Workspace experience and reversible administrator-con
 
 ## Persistence boundary
 
-Workspace remains usable without signing in. Projects, objects, research, analysis, decisions, and Canvas boards are stored on the current device. Optional WordPress authentication identifies the account session only; v0.8.2 does not upload, claim, or synchronize local project content; cross-product handoffs remain local-first and privacy-minimized.
+Workspace remains usable without signing in. Projects and their research, analysis, decisions, Canvas boards, traceability records, and reusable objects remain device-local unless explicitly exported. Optional WordPress authentication identifies the account session only; Workspace does not automatically upload or synchronize project content.
 
 ## Contracts
 
-- Project: `sc-workspace-project/6.0`
+- Project: `sc-workspace-project/8.0`
 - Object: `sc-workspace-object/1.0`
 - Research: `sc-workspace-research/1.0`
 - Analysis: `sc-workspace-analysis/1.0`
 - Decision: `sc-workspace-decision/1.0`
 - Canvas: `sc-workspace-canvas/1.0`
+- Traceability: `sc-workspace-traceability/1.0`
 - Identity: `sc-workspace-identity/1.0`
-- Storage schema: `8`
-- Handoff: `sc-workspace-handoff/1.5`
+- Storage schema: `10`
+- Handoff: `sc-workspace-handoff/2.0`
+
+## Public routes
+
+- Workspace: `/platform/`
+- Knowledge Library: `/knowledge-libraries/`
 
 ## Product Registry
 
-Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`, canonical product URL `/platform/`.
+Canonical ID `sustainable-catalyst-workspace`, family `commercial`, free public access, lifecycle `experimental`.
 
-See `docs/CANVAS_STRUCTURED_THINKING_V070.md`.
-
-
-## v0.9.0 — Advisory Visual Integration & Workspace Editorial Shell
-Workspace now records outbound tool handoffs, exposes a stable return contract, and can materialize structured return artifacts into the originating project without introducing cloud storage.
+See `docs/CLOSING_CTA_CLEANUP_ACTION_ALIGNMENT_V0901.md`.

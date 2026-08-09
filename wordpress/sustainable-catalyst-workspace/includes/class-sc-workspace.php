@@ -53,7 +53,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.9.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.9.0.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -425,13 +425,13 @@ final class SC_Workspace {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.9.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.9.0.1.css',
             array(),
             SC_WORKSPACE_VERSION
         );
         wp_enqueue_script(
             'sc-workspace-v082',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.9.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.9.0.1.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -1150,7 +1150,7 @@ final class SC_Workspace {
 
             <footer class="scw-footer">
                 <div><strong>Workspace v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong> · Free public access</div>
-                <div>Projects remain device-local in v0.9.0. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
+                <div>Projects remain device-local in v0.9.0.1. Sign-in is optional; Workspace does not upload or synchronize project content.</div>
             </footer>
         </section>
         <?php
@@ -1227,11 +1227,11 @@ final class SC_Workspace {
                 <h2 id="scw-capability-title">A serious working environment, free to use.</h2>
                 <p class="scw-editorial-deck">Workspace is useful on its own. Institutional capabilities belong in Catalyst Intelligence because the operating context changes, not because the personal product is intentionally weakened.</p>
                 <div class="scw-capability-grid">
-                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.9.0.</p></article>
+                    <article><span>LOCAL FIRST</span><strong>Your work stays with you.</strong><p>Guest and signed-in sessions use the same explicit device-local persistence boundary in v0.9.0.1.</p></article>
                     <article><span>VISIBLE REASONING</span><strong>Keep the basis of the work attached.</strong><p>Sources, evidence, assumptions, methods, findings, options, and rationale remain connected inside the project.</p></article>
                     <article><span>CONNECTED BY DESIGN</span><strong>Use specialized tools when they help.</strong><p>Workspace can pass privacy-minimized context to the wider Sustainable Catalyst system and accept structured returns.</p></article>
                 </div>
-                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.9.0.</p></div>
+                <div class="scw-capability-dark"><div><span>IDENTITY &amp; PERSISTENCE</span><strong>Use Workspace immediately. Add identity when it helps.</strong></div><p>No login wall. Sign-in does not upload or synchronize project content in v0.9.0.1.</p></div>
             </section>
 
             <section class="scw-platform-app-intro" aria-labelledby="scw-app-title">
@@ -1245,7 +1245,7 @@ final class SC_Workspace {
 
             <section class="scw-editorial-closing" aria-label="Workspace closing action">
                 <div><span>FREE PERSONAL WORKSPACE</span><h2>Keep the evidence, analysis, and decisions connected.</h2><p>Start without an account, preserve the reasoning, and use the wider Sustainable Catalyst system when the work calls for it.</p></div>
-                <div class="scw-editorial-closing-actions"><a class="scw-button scw-button-primary" href="#workspace-application">Open Workspace</a><a class="scw-button scw-button-dark-outline" href="<?php echo esc_url(home_url('/knowledge-libraries/')); ?>">Explore the Library</a></div>
+                <div class="scw-editorial-closing-actions"><button class="scw-button scw-button-primary" type="button" data-scw-platform-new-project>New Project</button><a class="scw-button scw-button-dark-outline" href="<?php echo esc_url(home_url('/knowledge-libraries/')); ?>">Explore the Library</a></div>
             </section>
         </section>
         <?php

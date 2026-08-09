@@ -89,7 +89,7 @@ final class SC_Workspace_Platform {
         ?>
         <div class="wrap">
             <h1>Workspace Page Conversion</h1>
-            <p>v0.9.0 keeps <code>/platform/</code> as the stable route while presenting the product publicly as <strong>Workspace</strong>. Page conversion and navigation relabeling remain explicit administrator actions with rollback.</p>
+            <p>v0.9.0.1 keeps <code>/platform/</code> as the stable route while presenting the product publicly as <strong>Workspace</strong>. Page conversion and navigation relabeling remain explicit administrator actions with rollback.</p>
             <?php if ($result === 'converted') : ?><div class="notice notice-success inline"><p>Platform was converted to the dedicated Workspace page. A rollback snapshot was preserved.</p></div><?php endif; ?>
             <?php if ($result === 'restored') : ?><div class="notice notice-success inline"><p>The original Platform page title and content were restored.</p></div><?php endif; ?>
             <?php if ($result === 'missing') : ?><div class="notice notice-error inline"><p>No root page with slug <code>platform</code> was found. Nothing was changed.</p></div><?php endif; ?>

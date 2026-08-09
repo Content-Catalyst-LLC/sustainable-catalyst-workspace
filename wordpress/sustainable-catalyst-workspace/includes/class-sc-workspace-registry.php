@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v090';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v090';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0901';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0901';
+    const LEGACY_PENDING_KEY_V090 = 'sc_workspace_registry_pending_v090';
     const LEGACY_PENDING_KEY_V0831 = 'sc_workspace_registry_pending_v0831';
     const LEGACY_PENDING_KEY_V083 = 'sc_workspace_registry_pending_v083';
     const LEGACY_PENDING_KEY_V082 = 'sc_workspace_registry_pending_v082';
@@ -84,6 +85,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V090);
         delete_option(self::LEGACY_PENDING_KEY_V0831);
         delete_option(self::LEGACY_PENDING_KEY_V083);
         delete_option(self::LEGACY_PENDING_KEY_V082);
@@ -148,11 +150,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.8.3.1',
+            'previous_version' => '0.9.0',
             'release_date' => '2026-08-08',
-            'change_summary' => 'Evidence, Provenance & Reproducibility: adds project-level evidence assessment, object lineage, SHA-256 content fingerprints, reproducibility records, and portable reproduction packages while preserving local-first storage.',
+            'change_summary' => 'Closing CTA Cleanup & Action Alignment: removes the redundant closing Open Workspace link, adds a functional New Project action, and retains the canonical Knowledge Library action.',
             'superseded_by' => '',
-            'manual_notes' => 'Commercial Release governance with free public access. v0.9.0 introduces a project-level traceability system for evidence assessment, provenance lineage, content fingerprints, and reproducibility records. Storage advances to schema 10 and projects to sc-workspace-project/8.0 through non-destructive local migration. Workspace remains device-local with no automatic cloud sync or server project storage.',
+            'manual_notes' => 'Commercial Release governance with free public access. v0.9.0.1 is a presentation/action micro-release only: storage remains schema 10 and projects remain sc-workspace-project/8.0. The bottom closing action now creates a project rather than redundantly reopening Workspace; Explore the Library remains /knowledge-libraries/.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
