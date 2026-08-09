@@ -2,21 +2,19 @@
 
 Free, local-first personal workspace for structured research, evidence, analysis, decisions, visual reasoning, briefing, knowledge, review, recovery, optional account persistence, and conflict-safe sync.
 
-## Current release: **v0.24.0 — Project Diff & Change Review**
+## Current release: **v0.25.0 — Change Gates & Safe Actions**
 
-v0.24.0 adds a deterministic Change Review environment for comparing a named restore point with the current project or another restore point before recovery, synchronization, sharing, or institutional promotion.
+v0.25.0 makes Change Review an explicit preflight before higher-risk Workspace actions. Restore, sync conflict resolution, portable sharing, and institutional promotion now require a visible gate and human acknowledgement before proceeding.
 
-### Change-review model
+### Safe-action model
 
-- explicit Added / Removed / Modified records
-- canonical object changes
-- evidence and provenance changes
-- analysis assumption/method/finding changes
-- decision record changes
-- traceability and Canvas relationship changes
-- transparent attention labels; no hidden score
-- portable JSON review export
-- no automatic merge, restore, sync, share, or promotion
+- explicit change review before protected actions
+- local/cloud diff review for sync conflict resolution
+- restore-point/current-state review for restore, share, and promotion
+- human acknowledgement required before proceed
+- browser-local safe-action decision ledger
+- no hidden risk score
+- no automatic merge, apply, restore, sync, share, or promotion
 
 ## Access boundary
 
@@ -24,9 +22,10 @@ Guest/local Workspace remains first-class. Accounts add optional private recover
 
 ## Data boundary
 
-- Workspace storage schema: **23** (unchanged)
+- Workspace storage schema: **24**
 - Project schema: **sc-workspace-project/11.0** (unchanged)
 - Change Review schema: **sc-workspace-change-review/1.0**
+- Safe Actions schema: **sc-workspace-safe-actions/1.0**
 - Canonical public route: `/platform/`
 - Canonical Knowledge Library route: `/knowledge-libraries/`
 
@@ -34,7 +33,7 @@ Guest/local Workspace remains first-class. Accounts add optional private recover
 
 Shortcodes: `[sc_workspace]`, `[sc_workspace_entry]`, `[sc_workspace_platform]`.
 
-Public contracts include `/wp-json/sc-workspace/v1/health`, `/project-contract`, `/version-history-contract`, and `/change-review-contract`.
+Public contracts include `/wp-json/sc-workspace/v1/health`, `/project-contract`, `/version-history-contract`, `/change-review-contract`, and `/safe-actions-contract`.
 
 ## Release integrity
 
