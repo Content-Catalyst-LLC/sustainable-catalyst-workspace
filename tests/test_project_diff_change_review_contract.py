@@ -2,14 +2,14 @@ import json,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.28.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.29.0.js').read_text()
 HELPER=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-project-diff-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.28.0.css').read_text()
-MAN=json.loads((ROOT/'release-manifest-v0.28.0.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.28.0.json').read_text())
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.29.0.css').read_text()
+MAN=json.loads((ROOT/'release-manifest-v0.29.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.29.0.json').read_text())
 class ProjectDiffChangeReviewContract(unittest.TestCase):
-  def test_lineage(self): self.assertEqual(MAN['version'],'0.28.0'); self.assertEqual(MAN['previous_version'],'0.27.0'); self.assertEqual(MAN['release_name'],'Project Audit Trail & Governance Ledger')
-  def test_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],26); self.assertEqual(MAN['project_schema'],'sc-workspace-project/11.0'); self.assertIn('const STORAGE_VERSION = 26;',JS)
+  def test_lineage(self): self.assertEqual(MAN['version'],'0.29.0'); self.assertEqual(MAN['previous_version'],'0.28.0'); self.assertEqual(MAN['release_name'],'Governance Milestones & Project Lifecycle')
+  def test_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],27); self.assertEqual(MAN['project_schema'],'sc-workspace-project/12.0'); self.assertIn('const STORAGE_VERSION = 27;',JS)
   def test_contract_route(self): self.assertIn("'/change-review-contract'",PHP); self.assertIn('public function change_review_contract()',PHP)
   def test_schema(self): self.assertEqual(MAN['change_review']['schema'],'sc-workspace-change-review/1.0'); json.loads((ROOT/'schemas/sc-workspace-change-review-v1.schema.json').read_text())
   def test_top_level_view(self): self.assertIn('data-scw-workspace-view="changes"',PHP); self.assertIn('data-scw-workspace-section="changes"',PHP)
@@ -22,5 +22,5 @@ class ProjectDiffChangeReviewContract(unittest.TestCase):
   def test_export(self): self.assertTrue(MAN['change_review']['export_json']); self.assertIn('data-scw-change-export',PHP); self.assertIn('change-review-',JS)
   def test_history_bridge(self): self.assertIn("review.textContent='Review changes'",JS); self.assertIn("setWorkspaceView('changes')",JS)
   def test_css(self): self.assertIn('/* v0.24.0 — Project Diff & Change Review */',CSS); self.assertIn('.scw-change-review-results',CSS)
-  def test_registry(self): self.assertEqual(REG['public_version'],'0.28.0'); self.assertEqual(REG['previous_version'],'0.27.0')
+  def test_registry(self): self.assertEqual(REG['public_version'],'0.29.0'); self.assertEqual(REG['previous_version'],'0.28.0')
 if __name__=='__main__':unittest.main()

@@ -10,8 +10,9 @@
   const EMERGENCY_BACKUP_SCHEMA = 'sc-workspace-emergency-backup/1.0';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 26;
-  const PROJECT_SCHEMA = 'sc-workspace-project/11.0';
+  const STORAGE_VERSION = 27;
+  const PROJECT_SCHEMA = 'sc-workspace-project/12.0';
+  const LEGACY_PROJECT_SCHEMA_V12 = 'sc-workspace-project/12.0';
   const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
   const LEGACY_PROJECT_SCHEMA_V9 = 'sc-workspace-project/9.0';
@@ -25,7 +26,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/11.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/12.0';
+  const LEGACY_EXPORT_SCHEMA_V12 = 'sc-workspace-project-export/12.0';
   const LEGACY_EXPORT_SCHEMA_V11 = 'sc-workspace-project-export/11.0';
   const LEGACY_EXPORT_SCHEMA_V10 = 'sc-workspace-project-export/10.0';
   const LEGACY_EXPORT_SCHEMA_V9 = 'sc-workspace-project-export/9.0';
@@ -61,6 +63,10 @@
   const RECONCILIATION_RECEIPT_SCHEMA = 'sc-workspace-reconciliation-receipt/1.0';
   const RECONCILIATION_RECEIPT_EXPORT_SCHEMA = 'sc-workspace-reconciliation-receipt-export/1.0';
   const MAX_RECONCILIATION_RECEIPTS = 80;
+  const PROJECT_LIFECYCLE_SCHEMA = 'sc-workspace-project-lifecycle/1.0';
+  const GOVERNANCE_MILESTONE_SCHEMA = 'sc-workspace-governance-milestone/1.0';
+  const LIFECYCLE_STAGES = new Set(['draft','evidence-ready','analysis-ready','decision-ready','review-ready','publication-ready','institutional-ready']);
+  const MAX_LIFECYCLE_MILESTONES = 80;
   const MAX_RESTORE_POINTS = 80;
   const MAX_RESTORE_POINTS_PER_PROJECT = 20;
   const MAX_RESTORE_POINT_BYTES = 1572864;
@@ -1555,7 +1561,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.28.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.29.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -1572,6 +1578,62 @@
     const allowed=new Set(session.objectIds); session.response=response; session.responseSource='adapter'; session.citationObjectIds=Array.isArray(raw.citationObjectIds)?[...new Set(raw.citationObjectIds.map(v=>String(v).slice(0,160)).filter(v=>allowed.has(v)))].slice(0,MAX_AI_OBJECT_REFS):[]; session.status='response-received'; session.respondedAt=validIso(raw.returnedAt)?raw.returnedAt:nowIso(); session.updatedAt=nowIso(); project.aiAssistance.activeSessionId=session.id; touchAiAssistance(project); addActivity(project,'ai-response-returned',`AI response returned for review: ${session.title}`); return {ok:true,message:'AI response returned for human review.',projectId:project.id,requestId:session.id};
   }
   function checkAiResponseInbox(showMessage=false){try{const raw=window.sessionStorage.getItem(AI_RESPONSE_KEY);if(!raw)return false;const result=ingestAiResponsePacket(state,JSON.parse(raw));if(!result.ok){if(showMessage)window.alert(result.message);return false;}window.sessionStorage.removeItem(AI_RESPONSE_KEY);state.activeProjectId=result.projectId;activeProjectMode='assist';persist(result.message);render();return true;}catch(_){if(showMessage)window.alert('Workspace could not read the AI response inbox.');return false;}}
+
+  function lifecycleTemplate() {
+    return { schema: PROJECT_LIFECYCLE_SCHEMA, state: 'draft', milestones: [], updatedAt: nowIso() };
+  }
+
+  function normalizeLifecycleReadiness(raw) {
+    const value=raw&&typeof raw==='object'?raw:{};
+    return {
+      schema: PROJECT_LIFECYCLE_SCHEMA,
+      stage: LIFECYCLE_STAGES.has(value.stage)?value.stage:'draft',
+      label: String(value.label||'').slice(0,120),
+      generatedAt: validIso(value.generatedAt)?value.generatedAt:nowIso(),
+      totalCount: Math.max(0,Number(value.totalCount)||0),
+      metCount: Math.max(0,Number(value.metCount)||0),
+      unmetCount: Math.max(0,Number(value.unmetCount)||0),
+      ready: Boolean(value.ready),
+      checks: (Array.isArray(value.checks)?value.checks:[]).map(c=>({id:String(c?.id||'').slice(0,120),label:String(c?.label||'').slice(0,240),met:Boolean(c?.met),detail:String(c?.detail||'').slice(0,1200),source:String(c?.source||'').slice(0,120),required:c?.required!==false})).filter(c=>c.id).slice(0,30),
+      governance: { score:null, automaticAdvance:false, humanDeclarationRequired:true, readinessIsCertification:false }
+    };
+  }
+
+  function normalizeLifecycle(raw) {
+    const value=raw&&typeof raw==='object'?raw:{}, base=lifecycleTemplate();
+    base.state=LIFECYCLE_STAGES.has(value.state)?value.state:'draft';
+    base.milestones=(Array.isArray(value.milestones)?value.milestones:[]).map(item=>{
+      if(!item||typeof item!=='object')return null;
+      const milestone={schema:GOVERNANCE_MILESTONE_SCHEMA,id:String(item.id||id('glm')).slice(0,160),fromState:LIFECYCLE_STAGES.has(item.fromState)?item.fromState:'draft',toState:LIFECYCLE_STAGES.has(item.toState)?item.toState:'draft',rationale:String(item.rationale||'').trim().slice(0,4000),acknowledged:Boolean(item.acknowledged),readiness:normalizeLifecycleReadiness(item.readiness),declaredAt:validIso(item.declaredAt)?item.declaredAt:nowIso()};
+      return milestone;
+    }).filter(Boolean).slice(0,MAX_LIFECYCLE_MILESTONES);
+    base.updatedAt=validIso(value.updatedAt)?value.updatedAt:base.updatedAt;
+    return base;
+  }
+
+  function lifecycleAssessment(project,stage){
+    const helper=window.SCWorkspaceProjectLifecycle;
+    if(!helper||typeof helper.assess!=='function')return {stage,label:stage,checks:[],totalCount:0,metCount:0,unmetCount:0,ready:false,governance:{score:null,automaticAdvance:false,humanDeclarationRequired:true,readinessIsCertification:false}};
+    return helper.assess(project,state,stage);
+  }
+
+  function lifecycleLabel(stage){
+    const helper=window.SCWorkspaceProjectLifecycle;
+    return helper&&typeof helper.labelFor==='function'?helper.labelFor(stage):String(stage||'draft').replaceAll('-',' ').replace(/\b\w/g,m=>m.toUpperCase());
+  }
+
+  function recordLifecycleMilestone(project,targetState,rationale,assessment){
+    if(!project||!LIFECYCLE_STAGES.has(targetState))return null;
+    project.lifecycle=normalizeLifecycle(project.lifecycle);
+    const milestone={schema:GOVERNANCE_MILESTONE_SCHEMA,id:id('glm'),fromState:project.lifecycle.state,toState:targetState,rationale:String(rationale||'').trim().slice(0,4000),acknowledged:true,readiness:normalizeLifecycleReadiness(assessment),declaredAt:nowIso()};
+    project.lifecycle.state=targetState;
+    project.lifecycle.milestones.unshift(milestone);
+    project.lifecycle.milestones=project.lifecycle.milestones.slice(0,MAX_LIFECYCLE_MILESTONES);
+    project.lifecycle.updatedAt=milestone.declaredAt;
+    project.updatedAt=milestone.declaredAt;
+    addActivity(project,'lifecycle',`Lifecycle declared ${lifecycleLabel(targetState)}${assessment?.ready?'':' with unmet readiness conditions'}`);
+    return milestone;
+  }
 
   function projectTemplate(title, description = '') {
     const stamp = nowIso();
@@ -1599,7 +1661,8 @@
       traceability: traceabilityTemplate(),
       briefing: briefingTemplate(),
       guidedWorkflows: guidedWorkflowsTemplate(),
-      aiAssistance: aiAssistanceTemplate()
+      aiAssistance: aiAssistanceTemplate(),
+      lifecycle: lifecycleTemplate()
     };
     addActivity(project, 'created', 'Project created');
     return project;
@@ -1704,7 +1767,8 @@
       traceability: normalizeTraceability(raw.traceability, objects),
       briefing: normalizeBriefing(raw.briefing, objects),
       guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects),
-      aiAssistance: normalizeAiAssistance(raw.aiAssistance, objects)
+      aiAssistance: normalizeAiAssistance(raw.aiAssistance, objects),
+      lifecycle: normalizeLifecycle(raw.lifecycle)
     };
   }
 
@@ -2048,6 +2112,29 @@
     next.knowledge=normalizeKnowledge(raw.knowledge,next.projects); next.knowledgeGraph=normalizeKnowledgeGraph(raw.knowledgeGraph,next.projects); next.activityIntelligence=normalizeActivityIntelligence(raw.activityIntelligence,next.projects); next.interoperability=normalizeInteroperability(raw.interoperability); next.share=normalizeShare(raw.share); next.collaboration=normalizeCollaboration(raw.collaboration,next.projects); next.institutional=normalizeInstitutional(raw.institutional,next.projects); next.createdAt=validIso(raw.createdAt)?raw.createdAt:next.createdAt; next.updatedAt=nowIso(); return next;
   }
 
+  function migrateV26(raw) {
+    const next=defaultState();
+    next.projects=Array.isArray(raw.projects)?raw.projects.map(project=>{const normalized=normalizeProject(project);if(normalized&&project?.schema===LEGACY_PROJECT_SCHEMA_V11)addActivity(normalized,'migrated','Project upgraded to Governance Milestones & Project Lifecycle');return normalized;}).filter(Boolean):[];
+    next.recentTools=Array.isArray(raw.recentTools)?raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0,MAX_RECENT_TOOLS):[];
+    next.activeProjectId=next.projects.some(p=>p.id===raw.activeProjectId&&!p.archivedAt)?raw.activeProjectId:null;
+    next.identity=normalizeIdentity(raw.identity);
+    next.accountPersistence=normalizeAccountPersistence(raw.accountPersistence,next.projects);
+    next.crossDeviceSync=normalizeCrossDeviceSync(raw.crossDeviceSync,next.projects);
+    next.versionHistory=normalizeVersionHistory(raw.versionHistory,next.projects);
+    next.safeActions=normalizeSafeActions(raw.safeActions,next.projects);
+    next.reconciliation=normalizeReconciliation(raw.reconciliation,next.projects);
+    next.knowledge=normalizeKnowledge(raw.knowledge,next.projects);
+    next.knowledgeGraph=normalizeKnowledgeGraph(raw.knowledgeGraph,next.projects);
+    next.activityIntelligence=normalizeActivityIntelligence(raw.activityIntelligence,next.projects);
+    next.interoperability=normalizeInteroperability(raw.interoperability);
+    next.share=normalizeShare(raw.share);
+    next.collaboration=normalizeCollaboration(raw.collaboration,next.projects);
+    next.institutional=normalizeInstitutional(raw.institutional,next.projects);
+    next.createdAt=validIso(raw.createdAt)?raw.createdAt:next.createdAt;
+    next.updatedAt=nowIso();
+    return next;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -2075,6 +2162,7 @@
     if (raw.schemaVersion === 23) return migrateV23(raw);
     if (raw.schemaVersion === 24) return migrateV24(raw);
     if (raw.schemaVersion === 25) return migrateV25(raw);
+    if (raw.schemaVersion === 26) return migrateV26(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -2169,7 +2257,7 @@
   function writeState(state) {
     state.schemaVersion = STORAGE_VERSION;
     state.identity = normalizeIdentity(state.identity);
-    state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); });
+    state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); project.lifecycle = normalizeLifecycle(project.lifecycle); project.schema = PROJECT_SCHEMA; });
     state.activityIntelligence = normalizeActivityIntelligence(state.activityIntelligence, state.projects);
     state.interoperability = normalizeInteroperability(state.interoperability);
     state.share = normalizeShare(state.share);
@@ -2592,6 +2680,16 @@
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
     const graphSection = root.querySelector('[data-scw-workspace-section="graph"]');
     const activityIntelligenceSection = root.querySelector('[data-scw-workspace-section="activity"]');
+    const lifecycleSection = root.querySelector('[data-scw-workspace-section="lifecycle"]');
+    const lifecycleProject = root.querySelector('[data-scw-lifecycle-project]');
+    const lifecycleCurrent = root.querySelector('[data-scw-lifecycle-current]');
+    const lifecycleCurrentMeta = root.querySelector('[data-scw-lifecycle-current-meta]');
+    const lifecycleStages = root.querySelector('[data-scw-lifecycle-stages]');
+    const lifecycleTarget = root.querySelector('[data-scw-lifecycle-target]');
+    const lifecycleReadiness = root.querySelector('[data-scw-lifecycle-readiness]');
+    const lifecycleStatus = root.querySelector('[data-scw-lifecycle-status]');
+    const lifecycleForm = root.querySelector('[data-scw-lifecycle-form]');
+    const lifecycleHistory = root.querySelector('[data-scw-lifecycle-history]');
     const interoperabilitySection = root.querySelector('[data-scw-workspace-section="interoperability"]');
     const shareSection = root.querySelector('[data-scw-workspace-section="share"]');
     const versionHistorySection = root.querySelector('[data-scw-workspace-section="history"]');
@@ -3074,7 +3172,7 @@
       top.className = 'scw-project-card-top';
       const meta = document.createElement('span');
       meta.className = 'scw-project-card-meta';
-      meta.textContent = project.archivedAt ? 'ARCHIVED' : project.status.toUpperCase();
+      meta.textContent = project.archivedAt ? 'ARCHIVED' : `${project.status.toUpperCase()} · ${lifecycleLabel(project.lifecycle?.state||'draft').toUpperCase()}`;
       const pin = document.createElement('span');
       pin.className = 'scw-project-card-pin';
       pin.textContent = project.pinned ? 'PINNED' : '';
@@ -3526,7 +3624,7 @@
       traceEvidenceList.innerHTML=''; if(!t.evidenceAssessments.length)traceEvidenceList.innerHTML='<div class="scw-trace-empty">No evidence assessments yet.</div>';
       t.evidenceAssessments.forEach((item)=>{const object=objectById(project,item.objectId);if(!object)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=object.title;const p=document.createElement('p');p.textContent=`Relevance ${item.relevance}/4 · Source quality ${item.sourceQuality}/4 · Independence ${item.independence}/4 · Recency ${item.recency}/4${item.note?` · ${item.note}`:''}`;const fp=document.createElement('small');fp.className=`scw-fingerprint ${item.fingerprintState==='changed'?'is-changed':item.fingerprintState==='match'?'is-match':''}`;fp.textContent=item.fingerprint?`SHA-256 ${item.fingerprint.slice(0,16)}… · ${item.fingerprintState}`:'Fingerprint unavailable';body.append(strong,p,fp);const acts=document.createElement('div');acts.className='scw-trace-actions';const review=document.createElement('button');review.type='button';review.className='scw-card-action';review.textContent='Review changes';review.addEventListener('click',()=>{setWorkspaceView('changes');populateChangeReviewSelectors(point.projectId,point.id,'current');activeChangeReview=null;renderChangeReview();if(changeStatus)changeStatus.textContent='Restore point selected as the base. Choose Review changes to compare it with the current project.';});const verify=document.createElement('button');verify.type='button';verify.className='scw-card-action';verify.textContent='Verify';verify.addEventListener('click',async()=>{const next=await sha256Object(object);item.fingerprintState=next&&item.fingerprint&&next===item.fingerprint?'match':'changed';item.updatedAt=nowIso();touchTraceability(project);persist('Evidence fingerprint checked');renderTraceability(project);});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.evidenceAssessments=t.evidenceAssessments.filter(x=>x.id!==item.id);touchTraceability(project);persist('Evidence assessment removed');renderTraceability(project);});acts.append(verify,remove);row.append(body,acts);traceEvidenceList.appendChild(row);});
       traceLineageList.innerHTML=''; if(!t.lineage.length)traceLineageList.innerHTML='<div class="scw-trace-empty">No lineage links yet.</div>'; t.lineage.forEach((item)=>{const from=objectById(project,item.fromObjectId),to=objectById(project,item.toObjectId);if(!from||!to)return;const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=`${from.title} → ${to.title}`;const p=document.createElement('p');p.textContent=`${item.relation.replaceAll('-',' ')}${item.note?` · ${item.note}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.lineage=t.lineage.filter(x=>x.id!==item.id);touchTraceability(project);persist('Lineage link removed');renderTraceability(project);});acts.append(remove);row.append(body,acts);traceLineageList.appendChild(row);});
-      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.26.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
+      traceReproList.innerHTML=''; if(!t.reproducibility.length)traceReproList.innerHTML='<div class="scw-trace-empty">No reproduction records yet.</div>'; t.reproducibility.forEach((item)=>{const row=document.createElement('article');row.className='scw-trace-record';const body=document.createElement('div');const strong=document.createElement('strong');strong.textContent=item.title;const p=document.createElement('p');p.textContent=`${item.status.toUpperCase()} · ${item.datasetObjectIds.length} dataset(s) · ${item.evidenceObjectIds.length} evidence input(s)${item.lastVerifiedAt?` · verified ${formatTime(item.lastVerifiedAt)}`:''}`;body.append(strong,p);const acts=document.createElement('div');acts.className='scw-trace-actions';const status=document.createElement('select');['draft','ready','verified','stale'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v[0].toUpperCase()+v.slice(1);status.appendChild(o)});status.value=item.status;status.addEventListener('change',()=>{item.status=REPRO_STATUS.has(status.value)?status.value:'draft';if(item.status==='verified')item.lastVerifiedAt=nowIso();item.updatedAt=nowIso();touchTraceability(project);persist('Reproduction status saved');renderTraceability(project);});const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export package';exp.addEventListener('click',()=>{const ids=new Set([item.analysisObjectId,...item.datasetObjectIds,...item.evidenceObjectIds,...item.resultObjectIds].filter(Boolean));const payload={schema:REPRO_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),project:{id:project.id,title:project.title},record:JSON.parse(JSON.stringify(item)),referencedObjects:project.objects.filter(o=>ids.has(o.id)).map(o=>JSON.parse(JSON.stringify(o)))};downloadJson(`${safeFileName(item.title)}.sc-workspace-repro.json`,payload);addActivity(project,'repro-export',`Reproduction package exported: ${item.title}`);persist('Reproduction export recorded');});const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{t.reproducibility=t.reproducibility.filter(x=>x.id!==item.id);touchTraceability(project);persist('Reproduction record removed');renderTraceability(project);});acts.append(status,exp,remove);row.append(body,acts);traceReproList.appendChild(row);});
     }
 
 
@@ -3534,7 +3632,7 @@
     function briefingCitationLines(project,draft){ return draft.objectIds.map(idv=>objectById(project,idv)).filter(Boolean).map((o,i)=>{const src=o.provenance||{};const origin=src.sourceTitle||src.sourceUrl||src.sourceType||'Workspace';return `${i+1}. ${o.title} — ${origin}`;}); }
     function briefingMarkdown(project,draft){ const lines=[`# ${draft.title}`,'',draft.audience?`**Audience:** ${draft.audience}`:'',draft.purpose?`**Purpose:** ${draft.purpose}`:'',`**Format:** ${draft.format.replaceAll('-',' ')}`,'']; draft.sections.forEach(sec=>{lines.push(`## ${sec.heading}`,'',sec.body||'','');}); const cites=briefingCitationLines(project,draft); if(cites.length)lines.push('## Basis','',...cites,''); return lines.filter((v,i,a)=>!(v===''&&a[i-1]==='')).join('\n')+'\n'; }
     function briefingHtml(project,draft){ const sections=draft.sections.map(sec=>`<section><h2>${escapeHtml(sec.heading)}</h2><p>${escapeHtml(sec.body).replaceAll('\n','<br>')}</p></section>`).join(''); const cites=briefingCitationLines(project,draft); const basis=cites.length?`<section><h2>Basis</h2><ol>${cites.map(x=>`<li>${escapeHtml(x.replace(/^\\d+\\.\\s*/,''))}</li>`).join('')}</ol></section>`:''; return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(draft.title)}</title></head><body><main><h1>${escapeHtml(draft.title)}</h1>${draft.audience?`<p><strong>Audience:</strong> ${escapeHtml(draft.audience)}</p>`:''}${draft.purpose?`<p><strong>Purpose:</strong> ${escapeHtml(draft.purpose)}</p>`:''}${sections}${basis}</main></body></html>`; }
-    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.26.0',exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
+    function publicationPackage(project,draft){ const refs=new Set(draft.objectIds); draft.sections.forEach(sec=>sec.objectIds.forEach(v=>refs.add(v))); return {schema:PUBLICATION_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),automaticPublication:false,project:{id:project.id,title:project.title},draft:JSON.parse(JSON.stringify(draft)),referencedObjects:project.objects.filter(o=>refs.has(o.id)).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,status:o.status,tags:o.tags,provenance:o.provenance}))}; }
     function activeWorkflowRun(project){return project&&project.guidedWorkflows?project.guidedWorkflows.runs.find(r=>r.id===project.guidedWorkflows.activeRunId)||null:null;}
     function renderGuidedWorkflows(project){
       if(!workflowTemplateList)return;const defs=guidedWorkflowDefinitions(),g=project.guidedWorkflows||guidedWorkflowsTemplate(),run=activeWorkflowRun(project);const allSteps=g.runs.flatMap(r=>r.steps);
@@ -3667,6 +3765,27 @@
       if(actionGateReview){if(review){const flags=(review.attention||[]).map(flag=>`<li>${escapeHtml(flag)}</li>`).join('');actionGateReview.innerHTML=`<div class="scw-action-gate-summary"><strong>${escapeHtml(review.summary.total)} explicit changes</strong><span>${escapeHtml(review.summary.added)} added · ${escapeHtml(review.summary.removed)} removed · ${escapeHtml(review.summary.modified)} modified · ${escapeHtml(review.summary.relationshipsChanged)} relationship changes</span></div>${flags?`<ul>${flags}</ul>`:'<p>No attention labels were triggered.</p>'}<small>${escapeHtml(gate.baseline.label)} → ${escapeHtml(gate.target.label)}</small>`;}else actionGateReview.innerHTML=`<div class="scw-action-gate-summary"><strong>No prior comparison state</strong><span>This action can still proceed only after explicit acknowledgement. Create named restore points to make future preflights more informative.</span></div>`;}
       if(actionGateAck)actionGateAck.checked=false;if(actionGateProceed)actionGateProceed.disabled=true;if(actionGate){actionGate.hidden=false;actionGate.setAttribute('aria-hidden','false');}setTimeout(()=>actionGateAck?.focus(),0);return gate;
     }
+    function renderProjectLifecycle(){
+      if(!lifecycleSection)return;
+      const helper=window.SCWorkspaceProjectLifecycle;
+      const projects=state.projects.filter(project=>!project.archivedAt).sort(projectSort);
+      if(lifecycleProject){const current=lifecycleProject.value||activeProject()?.id||'';lifecycleProject.innerHTML='<option value="">Choose project</option>';projects.forEach(project=>{const option=document.createElement('option');option.value=project.id;option.textContent=project.title;lifecycleProject.appendChild(option);});if(projects.some(project=>project.id===current))lifecycleProject.value=current;}
+      const project=state.projects.find(item=>item.id===(lifecycleProject?.value||''))||null;
+      if(!project){if(lifecycleCurrent)lifecycleCurrent.textContent='Draft';if(lifecycleCurrentMeta)lifecycleCurrentMeta.textContent='Choose a project to inspect its lifecycle.';if(lifecycleStages)lifecycleStages.innerHTML='';if(lifecycleReadiness)lifecycleReadiness.innerHTML='<div class="scw-project-lifecycle-empty">Choose a project to inspect lifecycle readiness.</div>';if(lifecycleHistory)lifecycleHistory.innerHTML='<div class="scw-project-lifecycle-empty">No project selected.</div>';if(lifecycleForm)Array.from(lifecycleForm.elements).forEach(el=>el.disabled=true);return;}
+      project.lifecycle=normalizeLifecycle(project.lifecycle);
+      if(lifecycleForm)Array.from(lifecycleForm.elements).forEach(el=>el.disabled=false);
+      if(lifecycleCurrent)lifecycleCurrent.textContent=lifecycleLabel(project.lifecycle.state);
+      if(lifecycleCurrentMeta){const latest=project.lifecycle.milestones[0];lifecycleCurrentMeta.textContent=latest?`Declared ${formatTime(latest.declaredAt)} · ${latest.readiness?.metCount||0}/${latest.readiness?.totalCount||0} visible conditions met`:'Default state; no explicit milestone declaration yet.';}
+      const stages=helper?.STAGES||[];
+      if(lifecycleStages){lifecycleStages.innerHTML='';stages.forEach((stage,index)=>{const assessment=lifecycleAssessment(project,stage.key),card=document.createElement('button');card.type='button';card.className=`scw-project-lifecycle-stage${project.lifecycle.state===stage.key?' is-current':''}${lifecycleTarget?.value===stage.key?' is-target':''}`;card.innerHTML=`<span>${String(index+1).padStart(2,'0')} / ${escapeHtml(stage.label.toUpperCase())}</span><strong>${escapeHtml(stage.label)}</strong><small>${assessment.metCount}/${assessment.totalCount} conditions met${assessment.ready?' · ready conditions visible':' · attention remains'}</small>`;card.addEventListener('click',()=>{if(lifecycleTarget)lifecycleTarget.value=stage.key;renderProjectLifecycle();});lifecycleStages.appendChild(card);});}
+      const target=LIFECYCLE_STAGES.has(lifecycleTarget?.value)?lifecycleTarget.value:project.lifecycle.state;
+      if(lifecycleTarget&&!LIFECYCLE_STAGES.has(lifecycleTarget.value))lifecycleTarget.value=target;
+      const assessment=lifecycleAssessment(project,target);
+      if(lifecycleReadiness){lifecycleReadiness.innerHTML='';const summary=document.createElement('div');summary.className=`scw-project-lifecycle-readiness-summary${assessment.ready?' is-ready':''}`;summary.innerHTML=`<strong>${assessment.ready?'All listed conditions are currently met':'Readiness conditions need review'}</strong><span>${assessment.metCount} of ${assessment.totalCount} visible condition(s) met for ${escapeHtml(lifecycleLabel(target))}.</span><small>This is a checklist, not a score or certification.</small>`;lifecycleReadiness.appendChild(summary);assessment.checks.forEach(item=>{const row=document.createElement('article');row.className=`scw-project-lifecycle-check${item.met?' is-met':' is-unmet'}`;row.innerHTML=`<span>${item.met?'MET':'NEEDS ATTENTION'} · ${escapeHtml(item.source||'Workspace')}</span><strong>${escapeHtml(item.label)}</strong><p>${escapeHtml(item.detail||'')}</p>`;lifecycleReadiness.appendChild(row);});}
+      if(lifecycleStatus)lifecycleStatus.textContent=assessment.ready?'Readiness conditions are currently satisfied. Workspace will still wait for an explicit human declaration.':`${assessment.unmetCount} condition(s) remain unmet. You may still declare the milestone after reviewing them and recording your rationale.`;
+      if(lifecycleHistory){lifecycleHistory.innerHTML='';if(!project.lifecycle.milestones.length)lifecycleHistory.innerHTML='<div class="scw-project-lifecycle-empty">No lifecycle milestones have been recorded yet.</div>';project.lifecycle.milestones.forEach(milestone=>{const row=document.createElement('article');row.className='scw-project-lifecycle-event';row.innerHTML=`<div><span>${escapeHtml(lifecycleLabel(milestone.fromState))} → ${escapeHtml(lifecycleLabel(milestone.toState))}</span><strong>${escapeHtml(lifecycleLabel(milestone.toState))}</strong><p>${escapeHtml(milestone.rationale||'No rationale recorded.')}</p><small>${escapeHtml(formatTime(milestone.declaredAt))} · ${Number(milestone.readiness?.metCount||0)}/${Number(milestone.readiness?.totalCount||0)} conditions met at declaration${milestone.readiness?.ready?'':' · unmet conditions retained in receipt'}</small></div>`;lifecycleHistory.appendChild(row);});}
+    }
+
     function renderAuditTrail(){
       if(!auditTrailSection)return;
       const helper=window.SCWorkspaceAuditTrail;if(!helper){if(auditStatus)auditStatus.textContent='Audit Trail helper is unavailable.';return;}
@@ -3680,7 +3799,7 @@
     async function gateFromLatestRestore(action,project,perform){const point=latestRestorePoint(project.id);return openSafeActionGate({action,project,baseProject:point?.snapshot||null,baseMeta:point?{kind:'restore-point',restorePointId:point.id,id:point.id,label:point.label}:{kind:'none',label:'No named restore point'},targetProject:project,targetMeta:{kind:'current-project',id:project.id,label:'Current project'},perform});}
 
     function setWorkspaceView(view, moveFocus = false) {
-      workspaceView = ['projects','knowledge','graph','activity','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share'].includes(view) ? view : 'projects';
+      workspaceView = ['projects','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share'].includes(view) ? view : 'projects';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
@@ -3691,6 +3810,7 @@
       if (knowledgeSection) knowledgeSection.hidden = workspaceView !== 'knowledge';
       if (graphSection) graphSection.hidden = workspaceView !== 'graph';
       if (activityIntelligenceSection) activityIntelligenceSection.hidden = workspaceView !== 'activity';
+      if (lifecycleSection) lifecycleSection.hidden = workspaceView !== 'lifecycle';
       if (versionHistorySection) versionHistorySection.hidden = workspaceView !== 'history';
       if (changeReviewSection) changeReviewSection.hidden = workspaceView !== 'changes';
       if (reconciliationSection) reconciliationSection.hidden = workspaceView !== 'reconcile';
@@ -3704,6 +3824,7 @@
       if (workspaceView === 'knowledge') renderKnowledge();
       if (workspaceView === 'graph') renderKnowledgeGraph();
       if (workspaceView === 'activity') renderActivityIntelligence();
+      if (workspaceView === 'lifecycle') renderProjectLifecycle();
       if (workspaceView === 'history') renderVersionHistory();
       if (workspaceView === 'changes') renderChangeReview();
       if (workspaceView === 'reconcile') renderReconciliation();
@@ -3749,7 +3870,7 @@
       const head = document.createElement('div'); head.className='scw-knowledge-collection-head';
       const body=document.createElement('div'); const strong=document.createElement('strong');strong.textContent=collection.title;const p=document.createElement('p');p.textContent=collection.description||'No collection description.';body.append(strong,p);
       const acts=document.createElement('div');acts.className='scw-knowledge-actions';
-      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:root.dataset.version||'0.26.0',exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
+      const exp=document.createElement('button');exp.type='button';exp.className='scw-card-action';exp.textContent='Export JSON';exp.addEventListener('click',()=>{const payload={schema:KNOWLEDGE_COLLECTION_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),collection:JSON.parse(JSON.stringify(collection)),objects:collection.items.map(ref=>{const e=index.find(x=>x.projectId===ref.projectId&&x.objectId===ref.objectId);return e?{project:{id:e.projectId,title:e.projectTitle},object:JSON.parse(JSON.stringify(e.object))}:null;}).filter(Boolean)};downloadJson(`${safeFileName(collection.title)}.sc-workspace-knowledge.json`,payload);});
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove collection';remove.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Workspace Objects will not be deleted.`))return;state.knowledge.collections=state.knowledge.collections.filter(c=>c.id!==collection.id);state.knowledge.activeCollectionId=state.knowledge.collections[0]?.id||null;touchKnowledge();persist('Knowledge collection removed');renderKnowledge();});acts.append(exp,remove);head.append(body,acts);knowledgeCollectionDetail.appendChild(head);
       const list=document.createElement('div');list.className='scw-knowledge-collection-items';
       if(!collection.items.length)list.innerHTML='<div class="scw-knowledge-empty-note">No objects in this collection yet.</div>';
@@ -4002,9 +4123,9 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V10 || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V11 || payload.schema === LEGACY_EXPORT_SCHEMA_V10 || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V11 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
@@ -4186,7 +4307,7 @@
     if(traceEvidenceForm) traceEvidenceForm.addEventListener('submit',async(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.evidenceAssessments.length>=MAX_EVIDENCE_ASSESSMENTS)return;const data=new FormData(traceEvidenceForm),objectId=String(data.get('objectId')||''),object=objectById(project,objectId);if(!object||!['source','evidence'].includes(object.type))return;const existing=project.traceability.evidenceAssessments.find(x=>x.objectId===objectId);const stamp=nowIso(),fingerprint=await sha256Object(object);const item=existing||{id:id('tea'),objectId,createdAt:stamp};Object.assign(item,{relevance:clampScore(data.get('relevance')),sourceQuality:clampScore(data.get('sourceQuality')),independence:clampScore(data.get('independence')),recency:clampScore(data.get('recency')),note:String(data.get('note')||'').slice(0,2000),fingerprint,fingerprintAlgorithm:'SHA-256',fingerprintState:fingerprint?'match':'unverified',updatedAt:stamp});if(!existing)project.traceability.evidenceAssessments.push(item);touchTraceability(project);addActivity(project,'evidence-assessed',`Evidence assessed: ${object.title}`);traceEvidenceForm.reset();persist('Evidence assessment saved');renderTraceability(project);});
     if(traceLineageForm) traceLineageForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.lineage.length>=MAX_LINEAGE_RELATIONS)return;const data=new FormData(traceLineageForm),fromObjectId=String(data.get('fromObjectId')||''),toObjectId=String(data.get('toObjectId')||'');if(!objectById(project,fromObjectId)||!objectById(project,toObjectId)||fromObjectId===toObjectId)return;project.traceability.lineage.push({id:id('tl'),fromObjectId,toObjectId,relation:TRACE_RELATIONS.has(String(data.get('relation')))?String(data.get('relation')):'derived-from',note:String(data.get('note')||'').slice(0,500),createdAt:nowIso()});touchTraceability(project);addActivity(project,'lineage-added','Object lineage link added');traceLineageForm.reset();persist('Lineage link saved');renderTraceability(project);});
     if(traceReproForm) traceReproForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.traceability.reproducibility.length>=MAX_REPRO_RECORDS)return;const data=new FormData(traceReproForm),title=String(data.get('title')||'').trim().slice(0,200);if(!title)return;const stamp=nowIso(),analysisObjectId=String(data.get('analysisObjectId')||'');project.traceability.reproducibility.push({id:id('trr'),title,analysisObjectId:objectById(project,analysisObjectId)?.type==='analysis'?analysisObjectId:'',datasetObjectIds:selectedValues(traceReproDatasets).filter(v=>objectById(project,v)?.type==='dataset'),evidenceObjectIds:selectedValues(traceReproEvidence).filter(v=>objectById(project,v)?.type==='evidence'),resultObjectIds:[],method:String(data.get('method')||'').slice(0,4000),parameters:String(data.get('parameters')||'').slice(0,5000),environment:String(data.get('environment')||'').slice(0,3000),steps:String(data.get('steps')||'').slice(0,8000),status:'draft',createdAt:stamp,updatedAt:stamp,lastVerifiedAt:null});touchTraceability(project);addActivity(project,'repro-created',`Reproduction record created: ${title}`);traceReproForm.reset();persist('Reproduction record saved');renderTraceability(project);});
-    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:root.dataset.version||'0.26.0',exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
+    if(traceExportButton) traceExportButton.addEventListener('click',()=>{const project=activeProject();if(!project)return;const payload={schema:'sc-workspace-traceability-export/1.0',workspaceVersion:rootVersion(),exportedAt:nowIso(),project:{id:project.id,title:project.title},traceability:JSON.parse(JSON.stringify(project.traceability))};downloadJson(`${safeFileName(project.title)}.traceability.json`,payload);addActivity(project,'traceability-export','Traceability package exported');persist('Traceability export recorded');});
 
 
     if(aiRequestForm) aiRequestForm.addEventListener('submit',(event)=>{event.preventDefault();const project=activeProject();if(!project||project.aiAssistance.sessions.length>=MAX_AI_SESSIONS)return;const data=new FormData(aiRequestForm),title=String(data.get('title')||'').trim().slice(0,200),prompt=String(data.get('prompt')||'').trim().slice(0,MAX_AI_PROMPT),task=AI_TASKS.has(String(data.get('task')))?String(data.get('task')):'general-question',objectIds=selectedValues(aiObjectSelect).filter(v=>objectById(project,v)).slice(0,MAX_AI_OBJECT_REFS);if(!title||!prompt)return;const stamp=nowIso(),session={id:id('ai'),title,task,status:'prepared',prompt,objectIds,response:'',responseSource:'manual',citationObjectIds:[],acceptedDocumentObjectId:'',createdAt:stamp,updatedAt:stamp,sentAt:null,respondedAt:null,acceptedAt:null};project.aiAssistance.sessions.unshift(session);project.aiAssistance.activeSessionId=session.id;touchAiAssistance(project);addActivity(project,'ai-request-prepared',`AI assistance request prepared: ${title}`);aiRequestForm.reset();persist('AI assistance request prepared locally');renderAiAssistance(project);});
@@ -4359,6 +4480,9 @@
     if(actionGateProceed)actionGateProceed.addEventListener('click',async()=>{if(!activeSafeGate||!activeSafeAction||!window.SCWorkspaceSafeActions?.canProceed(activeSafeGate,Boolean(actionGateAck?.checked)))return;actionGateProceed.disabled=true;if(actionGateStatus)actionGateStatus.textContent='Proceeding with the acknowledged action…';const gate=activeSafeGate,action=activeSafeAction;try{await action();recordSafeAction(gate,'proceeded');persist('Safe action proceeded after explicit preflight');activeSafeGate=null;activeSafeAction=null;if(actionGate)actionGate.hidden=true;renderSafeActions();}catch(err){recordSafeAction(gate,'blocked');persist('Safe action blocked after preflight');if(actionGateStatus)actionGateStatus.textContent=err?.message||'The action was blocked.';renderSafeActions();}});
     root.querySelectorAll('[data-scw-action-gate-cancel]').forEach(el=>el.addEventListener('click',()=>closeSafeActionGate('cancelled')));
 
+    if(lifecycleProject)lifecycleProject.addEventListener('change',()=>{if(lifecycleTarget){const project=state.projects.find(item=>item.id===lifecycleProject.value);lifecycleTarget.value=project?.lifecycle?.state||'draft';}renderProjectLifecycle();});
+    if(lifecycleTarget)lifecycleTarget.addEventListener('change',renderProjectLifecycle);
+    if(lifecycleForm)lifecycleForm.addEventListener('submit',(event)=>{event.preventDefault();const project=state.projects.find(item=>item.id===(lifecycleProject?.value||''));if(!project)return;const target=LIFECYCLE_STAGES.has(lifecycleTarget?.value)?lifecycleTarget.value:'draft',data=new FormData(lifecycleForm),rationale=String(data.get('rationale')||'').trim().slice(0,4000),acknowledged=data.get('acknowledged')==='on';if(!rationale){if(lifecycleStatus)lifecycleStatus.textContent='A rationale is required before recording a lifecycle milestone.';return;}if(!acknowledged){if(lifecycleStatus)lifecycleStatus.textContent='Review and acknowledge the lifecycle declaration boundary before continuing.';return;}const assessment=lifecycleAssessment(project,target),milestone=recordLifecycleMilestone(project,target,rationale,assessment);if(!milestone)return;persist(`Lifecycle milestone recorded: ${lifecycleLabel(target)}`);lifecycleForm.reset();render();setWorkspaceView('lifecycle');if(lifecycleProject)lifecycleProject.value=project.id;if(lifecycleTarget)lifecycleTarget.value=target;renderProjectLifecycle();});
     if(auditProject)auditProject.addEventListener('change',renderAuditTrail);
     if(auditSource)auditSource.addEventListener('change',renderAuditTrail);
     if(auditExport)auditExport.addEventListener('click',()=>{const helper=window.SCWorkspaceAuditTrail;if(!helper)return;const projectId=auditProject?.value||'',source=auditSource?.value||'',events=helper.derive(state,{projectId,sources:source?[source]:helper.SOURCES,limit:1000}),pkg=helper.exportPackage(events,{projectId,source});downloadJson(`workspace-audit-trail-${new Date().toISOString().slice(0,10)}.json`,pkg);if(auditStatus)auditStatus.textContent='Portable audit JSON exported. Project/object content was not included.';});

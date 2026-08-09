@@ -1,0 +1,15 @@
+const assert=require('assert');
+const helper=require(process.argv[2]);
+const project={id:'p1',description:'A sufficiently defined research purpose for testing.',objects:[{id:'e1',type:'evidence',provenance:{sourceTitle:'Source A',sourceUrl:'',capturedAt:'2026-08-09T00:00:00Z'}}],research:{questions:[{priority:'normal',status:'open'}],evidenceLinks:[{id:'el1'}]},analysis:{questions:[{id:'aq1'}],methods:[{id:'m1'}],assumptions:[],findings:[{id:'f1',status:'supported'}]},decision:{decisions:[{id:'d1',status:'decided'}],options:[{id:'o1'},{id:'o2'}],criteria:[{id:'c1'}]},traceability:{lineage:[{id:'l1'}],reproducibility:[]},briefing:{drafts:[{id:'b1',status:'ready',sections:[{heading:'Summary',body:'Ready'}]}]}};
+const state={collaboration:{sessions:[]},institutional:{handoffs:[]}};
+assert.equal(helper.STAGES.length,7);
+assert.equal(helper.assess(project,state,'evidence-ready').ready,true);
+assert.equal(helper.assess(project,state,'analysis-ready').ready,true);
+assert.equal(helper.assess(project,state,'decision-ready').ready,true);
+assert.equal(helper.assess(project,state,'publication-ready').ready,true);
+const blocked=JSON.parse(JSON.stringify(project));blocked.research.questions=[{priority:'high',status:'open'}];
+assert.equal(helper.assess(blocked,state,'evidence-ready').ready,false);
+assert.equal(helper.assess(blocked,state,'institutional-ready').ready,false);
+const normalized=helper.normalizeLifecycle({state:'decision-ready',milestones:[{id:'m1',fromState:'analysis-ready',toState:'decision-ready',rationale:'Reviewed.',acknowledged:true,declaredAt:'2026-08-09T00:00:00Z'}]});
+assert.equal(normalized.state,'decision-ready');assert.equal(normalized.milestones.length,1);
+console.log('PASS - project lifecycle runtime');

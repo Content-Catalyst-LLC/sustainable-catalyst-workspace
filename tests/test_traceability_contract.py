@@ -2,13 +2,13 @@ import json,re,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.28.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.29.0.js'
 SCHEMA=ROOT/'schemas/sc-workspace-traceability-v1.schema.json'
 PROJECT=ROOT/'schemas/sc-workspace-project-v8.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.28.0.json'
+MANIFEST=ROOT/'release-manifest-v0.29.0.json'
 class TraceabilityContract(unittest.TestCase):
     def test_release_contract(self):
-        m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.28.0'); self.assertEqual(m['previous_version'],'0.27.0'); self.assertEqual(m['storage_schema_version'],26); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0'); self.assertEqual(m['traceability_schema'],'sc-workspace-traceability/1.0')
+        m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.29.0'); self.assertEqual(m['previous_version'],'0.28.0'); self.assertEqual(m['storage_schema_version'],27); self.assertEqual(m['project_schema'],'sc-workspace-project/12.0'); self.assertEqual(m['traceability_schema'],'sc-workspace-traceability/1.0')
     def test_schema(self):
         s=json.loads(SCHEMA.read_text()); self.assertEqual(s['properties']['schema']['const'],'sc-workspace-traceability/1.0'); self.assertEqual(s['properties']['evidenceAssessments']['maxItems'],250); self.assertEqual(s['properties']['lineage']['maxItems'],1000); self.assertEqual(s['properties']['reproducibility']['maxItems'],100)
     def test_project_references_traceability(self):

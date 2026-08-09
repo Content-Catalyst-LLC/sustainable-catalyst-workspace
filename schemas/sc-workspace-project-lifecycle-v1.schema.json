@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-project-lifecycle-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Project Lifecycle v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "state",
+    "milestones",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-project-lifecycle/1.0"
+    },
+    "state": {
+      "enum": [
+        "draft",
+        "evidence-ready",
+        "analysis-ready",
+        "decision-ready",
+        "review-ready",
+        "publication-ready",
+        "institutional-ready"
+      ]
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "milestones": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "$ref": "sc-workspace-governance-milestone-v1.schema.json"
+      }
+    }
+  }
+}

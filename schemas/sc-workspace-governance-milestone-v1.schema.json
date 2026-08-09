@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-governance-milestone-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Governance Milestone v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "fromState",
+    "toState",
+    "rationale",
+    "acknowledged",
+    "readiness",
+    "declaredAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-governance-milestone/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "fromState": {
+      "enum": [
+        "draft",
+        "evidence-ready",
+        "analysis-ready",
+        "decision-ready",
+        "review-ready",
+        "publication-ready",
+        "institutional-ready"
+      ]
+    },
+    "toState": {
+      "enum": [
+        "draft",
+        "evidence-ready",
+        "analysis-ready",
+        "decision-ready",
+        "review-ready",
+        "publication-ready",
+        "institutional-ready"
+      ]
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "acknowledged": {
+      "const": true
+    },
+    "declaredAt": {
+      "type": "string"
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "stage",
+        "label",
+        "generatedAt",
+        "totalCount",
+        "metCount",
+        "unmetCount",
+        "ready",
+        "checks",
+        "governance"
+      ],
+      "properties": {
+        "schema": {
+          "const": "sc-workspace-project-lifecycle/1.0"
+        },
+        "stage": {
+          "enum": [
+            "draft",
+            "evidence-ready",
+            "analysis-ready",
+            "decision-ready",
+            "review-ready",
+            "publication-ready",
+            "institutional-ready"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "generatedAt": {
+          "type": "string"
+        },
+        "totalCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "metCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "unmetCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "met",
+              "detail",
+              "source",
+              "required"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "met": {
+                "type": "boolean"
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 1200
+              },
+              "source": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "required": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "governance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "score",
+            "automaticAdvance",
+            "humanDeclarationRequired",
+            "readinessIsCertification"
+          ],
+          "properties": {
+            "score": {
+              "type": "null"
+            },
+            "automaticAdvance": {
+              "const": false
+            },
+            "humanDeclarationRequired": {
+              "const": true
+            },
+            "readinessIsCertification": {
+              "const": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

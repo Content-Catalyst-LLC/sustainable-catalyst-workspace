@@ -7,9 +7,9 @@
   const TRAIL_SCHEMA='sc-workspace-audit-trail/1.0';
   const EVENT_SCHEMA='sc-workspace-audit-event/1.0';
   const EXPORT_SCHEMA='sc-workspace-audit-export/1.0';
-  const SOURCES=['project-activity','version-history','account-recovery','cross-device-sync','safe-actions','reconciliation','collaboration','institutional-handoff','share','interoperability'];
+  const SOURCES=['project-activity','project-lifecycle','version-history','account-recovery','cross-device-sync','safe-actions','reconciliation','collaboration','institutional-handoff','share','interoperability'];
   const SOURCE_LABELS={
-    'project-activity':'Project activity','version-history':'Version history','account-recovery':'Account recovery','cross-device-sync':'Cross-device sync','safe-actions':'Safe Actions','reconciliation':'Reconciliation','collaboration':'Collaboration','institutional-handoff':'Institutional handoff','share':'Share & portability','interoperability':'Import & interoperability'
+    'project-activity':'Project activity','project-lifecycle':'Project lifecycle','version-history':'Version history','account-recovery':'Account recovery','cross-device-sync':'Cross-device sync','safe-actions':'Safe Actions','reconciliation':'Reconciliation','collaboration':'Collaboration','institutional-handoff':'Institutional handoff','share':'Share & portability','interoperability':'Import & interoperability'
   };
   const iso=(v)=>{try{const d=new Date(v);return Number.isNaN(d.getTime())?'':d.toISOString();}catch(_){return '';}};
   const text=(v,n=240)=>String(v==null?'':v).slice(0,n);
@@ -36,7 +36,8 @@
     const wanted=new Set(Array.isArray(options.sources)&&options.sources.length?options.sources:SOURCES);
     const projectId=text(options.projectId||'',160);
     const push=(source,raw)=>{if(!wanted.has(source))return;const e=event(source,raw);if(projectId&&e.projectId!==projectId)return;out.push(e);};
-    if(wanted.has('project-activity'))(s.projects||[]).forEach(p=>(p.activity||[]).forEach(a=>push('project-activity',{id:a.id,action:a.type,title:a.summary,projectId:p.id,projectTitle:p.title,at:a.at,sourceRef:a.id})));
+    if(wanted.has('project-activity'))(s.projects||[]).forEach(p=>(p.activity||[]).filter(a=>a?.type!=='lifecycle').forEach(a=>push('project-activity',{id:a.id,action:a.type,title:a.summary,projectId:p.id,projectTitle:p.title,at:a.at,sourceRef:a.id})));
+    if(wanted.has('project-lifecycle'))(s.projects||[]).forEach(p=>(p.lifecycle?.milestones||[]).forEach(m=>push('project-lifecycle',{id:m.id,action:'lifecycle-declared',title:`Lifecycle declared: ${String(m.toState||'draft').replaceAll('-',' ')}`,detail:`${m.rationale||''}${m.readiness?` · ${Number(m.readiness.metCount||0)}/${Number(m.readiness.totalCount||0)} readiness conditions met`:''}`,projectId:p.id,projectTitle:p.title,outcome:m.readiness?.ready?'conditions-met':'conditions-unmet',at:m.declaredAt,sourceRef:m.id})));
     (s.versionHistory?.history||[]).forEach(h=>push('version-history',{id:h.id,action:h.action,title:`${h.action==='create'?'Restore point created':h.action==='restore-copy'?'Restore point restored as copy':h.action==='verify'?'Restore point verified':h.action==='export'?'Restore point exported':h.action==='delete'?'Restore point deleted':'Version-history event'}${h.label?`: ${h.label}`:''}`,detail:h.label?`Restore point: ${h.label}`:'',projectId:h.projectId,projectTitle:h.projectTitle||projects.get(h.projectId)||'',at:h.at,sourceRef:h.restorePointId||h.id}));
     (s.accountPersistence?.history||[]).forEach(h=>push('account-recovery',{id:h.id,action:h.action,title:h.action==='backup'?'Account backup created':h.action==='restore'?'Account backup restored as copy':h.action==='delete'?'Account backup deleted':'Account backup index refreshed',projectId:h.projectId,projectTitle:h.projectTitle||projects.get(h.projectId)||'',at:h.at,sourceRef:h.id}));
     (s.crossDeviceSync?.history||[]).forEach(h=>push('cross-device-sync',{id:h.id,action:h.action,title:`Sync: ${String(h.action||'event').replaceAll('-',' ')}`,detail:h.revision?`Server revision ${h.revision}`:'',projectId:h.projectId,projectTitle:h.projectTitle||projects.get(h.projectId)||'',outcome:h.action==='conflict'?'conflict':'',at:h.at,sourceRef:h.id}));

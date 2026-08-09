@@ -2,16 +2,16 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.28.0.js'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.28.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.29.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.29.0.css'
 SCHEMA=ROOT/'schemas/sc-workspace-personal-knowledge-v1.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.28.0.json'
+MANIFEST=ROOT/'release-manifest-v0.29.0.json'
 
 class PersonalKnowledgeContractTests(unittest.TestCase):
     def test_release_boundary(self):
         m=json.loads(MANIFEST.read_text())
-        self.assertEqual(m['version'],'0.28.0'); self.assertEqual(m['previous_version'],'0.27.0')
-        self.assertEqual(m['storage_schema_version'],26); self.assertEqual(m['project_schema'],'sc-workspace-project/11.0')
+        self.assertEqual(m['version'],'0.29.0'); self.assertEqual(m['previous_version'],'0.28.0')
+        self.assertEqual(m['storage_schema_version'],27); self.assertEqual(m['project_schema'],'sc-workspace-project/12.0')
         self.assertEqual(m['personal_knowledge_schema'],'sc-workspace-personal-knowledge/1.0')
         self.assertTrue(m['migration']['non_destructive']); self.assertTrue(m['migration']['preserves_existing_objects'])
 
@@ -28,7 +28,7 @@ class PersonalKnowledgeContractTests(unittest.TestCase):
         self.assertIn('data-scw-workspace-view="projects"',p); self.assertIn('data-scw-workspace-view="knowledge"',p)
         self.assertIn('data-scw-workspace-section="knowledge"',p)
         self.assertNotIn("personalKnowledge: knowledgeTemplate()",j)
-        project=json.loads((ROOT/'schemas/sc-workspace-project-v11.schema.json').read_text())
+        project=json.loads((ROOT/'schemas/sc-workspace-project-v12.schema.json').read_text())
         self.assertNotIn('personalKnowledge',project['properties'])
 
     def test_derived_index_single_source_of_truth(self):
@@ -89,7 +89,7 @@ class PersonalKnowledgeContractTests(unittest.TestCase):
 
     def test_migration_from_v011(self):
         j=JS.read_text()
-        for token in ("const STORAGE_VERSION = 26","const PROJECT_SCHEMA = 'sc-workspace-project/11.0'",'function migrateV14(raw)','function migrateV15(raw)',"if (raw.schemaVersion === 15) return migrateV15(raw)",'state.knowledge = normalizeKnowledge(raw.knowledge, state.projects)'):
+        for token in ("const STORAGE_VERSION = 27","const PROJECT_SCHEMA = 'sc-workspace-project/12.0'",'function migrateV14(raw)','function migrateV15(raw)',"if (raw.schemaVersion === 15) return migrateV15(raw)",'state.knowledge = normalizeKnowledge(raw.knowledge, state.projects)'):
             self.assertIn(token,j)
 
 if __name__=='__main__': unittest.main()
