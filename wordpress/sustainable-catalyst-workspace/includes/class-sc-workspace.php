@@ -91,7 +91,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.55.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.56.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -243,6 +243,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/api-embed-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'api_embed_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/research-automation-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'research_automation_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -1078,7 +1083,7 @@ final class SC_Workspace {
                 'start' => array('start'),
                 'projects' => array('projects'),
                 'research' => array('research','notebook','knowledge','graph'),
-                'review' => array('activity','lifecycle','history','changes','reconcile','safety','audit'),
+                'review' => array('activity','lifecycle','history','changes','reconcile','safety','audit','automation'),
                 'exchange' => array('interoperability','collaboration','api-embed','institutional','share'),
             ),
             'derived_from_existing_surfaces' => true,
@@ -1241,6 +1246,31 @@ public function research_templates_contract() {
             'automatic_publication' => false,
             'automatic_refresh' => false,
             'automatic_canonical_mutation' => false,
+            'schema_migration' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
+    public function research_automation_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-research-automation-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'library_schema' => 'sc-workspace-research-automation/1.0',
+            'routine_schema' => 'sc-workspace-research-automation-routine/1.0',
+            'run_schema' => 'sc-workspace-research-automation-run/1.0',
+            'export_schema' => 'sc-workspace-research-automation-export/1.0',
+            'storage' => 'browser-local',
+            'routine_types' => array('recurring-import','source-review','verification-check','synthesis-refresh','workflow-action'),
+            'cadences' => array('on-demand','daily','weekly','monthly'),
+            'schedule_is_declaration' => true,
+            'manual_execution_only' => true,
+            'background_execution' => false,
+            'automatic_network_request' => false,
+            'automatic_canonical_mutation' => false,
+            'automatic_task_creation' => false,
+            'automatic_ai' => false,
+            'review_required' => true,
             'schema_migration' => false,
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
@@ -2076,8 +2106,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0550',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.55.0.css',
+            'sc-workspace-v0560',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.56.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2285,6 +2315,20 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-research-automation-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-automation-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-research-automation-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-automation-ui-v1.js',
+            array('sc-workspace-research-automation-v1', 'sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2292,9 +2336,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0540',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.55.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0560',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.56.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2302,7 +2346,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0540', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0560', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2487,7 +2531,7 @@ public function research_templates_contract() {
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -3221,6 +3265,31 @@ public function research_templates_contract() {
                     <div class="scw-institutional-history" data-scw-institutional-history></div>
                 </section>
                 <div class="scw-institutional-governance" role="note"><strong>Workspace does not become the institution.</strong><span>v0.25.0 preserves the governed handoff contract for Catalyst Intelligence while hardening the surrounding Workspace runtime. It does not create organization membership, server permissions, shared cloud storage, automatic ingestion, or an institutional tenant inside Workspace.</span></div>
+            </section>
+
+            <section class="scw-research-automation" data-scw-workspace-section="automation" data-scw-research-automation hidden aria-labelledby="scw-research-automation-title">
+                <div class="scw-auto-head">
+                    <div><div class="scw-editorial-kicker">RESEARCH AUTOMATION FRAMEWORK</div><h2 id="scw-research-automation-title">Schedule the reminder. Execute the research action yourself.</h2><p>Create local routines for import review, source review, verification, synthesis refresh, and workflow follow-up. Cadence is declarative: Workspace never runs these jobs in the background or silently changes canonical research.</p></div>
+                    <div class="scw-auto-boundary"><strong>Manual execution only</strong><span>A routine becomes due locally, but nothing runs until you choose Run now or Run due routines. Every result is a draft receipt for human review.</span></div>
+                </div>
+                <div class="scw-auto-metrics" data-scw-auto-metrics></div>
+                <div class="scw-auto-grid">
+                    <section class="scw-auto-panel"><div class="scw-knowledge-panel-head"><span>01 / DEFINE</span><h3>Create a reusable research routine</h3></div>
+                        <label><span>Routine name</span><input type="text" data-scw-auto-name placeholder="Weekly source verification"></label>
+                        <div class="scw-auto-fields"><label><span>Routine type</span><select data-scw-auto-type><option value="source-review">Source review</option><option value="verification-check">Verification check</option><option value="recurring-import">Recurring import review</option><option value="synthesis-refresh">Synthesis refresh</option><option value="workflow-action">Workflow action</option></select></label><label><span>Cadence</span><select data-scw-auto-cadence><option value="on-demand">On demand</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></label></div>
+                        <label><span>Canonical target (optional)</span><select data-scw-auto-target><option value="">No canonical target</option></select></label>
+                        <label><span>Instructions</span><textarea rows="4" data-scw-auto-instructions placeholder="What should be checked or prepared when this routine is run?"></textarea></label>
+                        <label class="scw-auto-check"><input type="checkbox" data-scw-auto-enabled checked> Enabled for due-date calculation</label>
+                        <button class="scw-button scw-button-primary" type="button" data-scw-auto-create>Save routine</button>
+                    </section>
+                    <section class="scw-auto-panel"><div class="scw-knowledge-panel-head"><span>02 / RUN</span><h3>Execute explicitly</h3></div>
+                        <div class="scw-auto-toolbar"><button class="scw-button scw-button-primary" type="button" data-scw-auto-run-due>Run due routines</button><button class="scw-button" type="button" data-scw-auto-export>Export automation library</button><button class="scw-button" type="button" data-scw-auto-import>Import automation library</button><input type="file" accept="application/json,.json" data-scw-auto-file hidden></div>
+                        <div class="scw-auto-routines" data-scw-auto-routines></div>
+                    </section>
+                </div>
+                <section class="scw-auto-results"><div class="scw-knowledge-panel-head"><span>03 / REVIEW</span><h3>Automation run receipts</h3></div><div data-scw-auto-runs></div></section>
+                <p class="scw-auto-status" data-scw-auto-status role="status" aria-live="polite">No automation has executed. Due schedules are local reminders only.</p>
+                <div class="scw-auto-governance" role="note"><strong>Automation prepares work; it does not decide or mutate.</strong><span>No routine performs background network requests, automatic imports, automatic AI calls, automatic task creation, source verification, synthesis replacement, or canonical data mutation. Imported routines never execute automatically.</span></div>
             </section>
 
             <section class="scw-api-embed" data-scw-workspace-section="api-embed" data-scw-api-embed data-renderer-url="<?php echo esc_url(sc_workspace_api_embed_script_url()); ?>" hidden aria-labelledby="scw-api-embed-title">

@@ -1,0 +1,12 @@
+const assert=require('assert');
+const A=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-automation-v1.js');
+const times=['2026-08-01T00:00:00.000Z','2026-08-08T00:00:00.000Z','2026-08-08T01:00:00.000Z'];let ti=0;const now=()=>times[Math.min(ti++,times.length-1)];let seq=0;const id=p=>`${p}-${++seq}`;
+const entry={key:'project:p1/object:s1',projectId:'p1',projectTitle:'P1',kind:'object',subtype:'source',id:'s1',title:'Source 1',origin:'workspace',provenance:{url:'https://example.com/source'}};
+let r=A.createRoutine({name:'Weekly verify',type:'verification-check',cadence:'weekly',enabled:true,instructions:'Check provenance.'},entry,id,now);
+assert.equal(r.schema,A.ROUTINE_SCHEMA);assert.equal(A.isDue(r,'2026-08-07T23:59:59.000Z'),false);assert.equal(A.isDue(r,'2026-08-08T00:00:00.000Z'),true);
+let out=A.runRoutine(r,[entry],id,now);assert.equal(out.run.state,'draft');assert.equal(out.run.governance.automaticCanonicalMutation,false);assert.equal(out.run.governance.automaticNetworkRequest,false);assert.equal(out.routine.runCount,1);assert(out.run.findings.some(x=>x.includes('source URL')));
+let reviewed=A.transitionRun(out.run,'reviewed',now);assert(reviewed.ok);assert.equal(reviewed.run.state,'reviewed');
+let unresolved=A.runRoutine(A.createRoutine({name:'Missing',type:'source-review',cadence:'on-demand'},{...entry,key:'missing'},id,now),[],id,now);assert(unresolved.run.findings.some(x=>x.includes('unresolved')));
+let lib=A.normalizeLibrary({routines:[out.routine],runs:[reviewed.run]});let pkg=A.exportLibrary(lib);let imp=A.importLibrary(pkg);assert(imp.ok);assert.equal(imp.library.routines.length,1);pkg.fingerprint='bad';assert.equal(A.importLibrary(pkg).ok,false);
+let g=A.governance();assert.equal(g.manualExecutionOnly,true);assert.equal(g.backgroundExecution,false);assert.equal(g.automaticAI,false);assert.equal(g.automaticTaskCreation,false);
+console.log('PASS - Workspace v0.56.0 Research Automation runtime');

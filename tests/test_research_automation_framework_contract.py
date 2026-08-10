@@ -1,0 +1,26 @@
+import json, unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+MAN=json.loads((ROOT/'release-manifest-v0.56.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.56.0.json').read_text())
+MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
+PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
+REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
+HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-automation-v1.js').read_text()
+UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-automation-ui-v1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.56.0.css').read_text()
+class TestResearchAutomationFramework(unittest.TestCase):
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.56.0','0.55.0','Research Automation Framework')); self.assertIn('Version: 0.56.0',MAIN)
+ def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['research_automation']['schema_migration'])
+ def test_03_route(self): self.assertIn('/wp-json/sc-workspace/v1/research-automation-contract',MAN['rest_routes']); self.assertIn("'/research-automation-contract'",PHP)
+ def test_04_types(self): self.assertEqual(MAN['research_automation']['routine_types'],['recurring-import','source-review','verification-check','synthesis-refresh','workflow-action'])
+ def test_05_manual_execution(self): self.assertTrue(MAN['research_automation']['manual_execution_only']); self.assertFalse(MAN['research_automation']['background_execution']); self.assertIn('Run due routines',PHP)
+ def test_06_no_mutation(self): self.assertFalse(MAN['research_automation']['automatic_canonical_mutation']); self.assertFalse(MAN['research_automation']['automatic_task_creation']); self.assertIn('automaticCanonicalMutation:false',HELP)
+ def test_07_no_network_ai(self): self.assertFalse(MAN['research_automation']['automatic_network_request']); self.assertFalse(MAN['research_automation']['automatic_ai']); self.assertIn('automaticNetworkRequest:false',HELP)
+ def test_08_due_logic(self): self.assertIn('function isDue',HELP); self.assertIn("cadence==='weekly'",HELP); self.assertIn('scheduleIsDeclaration',HELP.replace('schedule_is_declaration','scheduleIsDeclaration'))
+ def test_09_review_receipts(self): self.assertIn("RUN_STATES=new Set(['draft','reviewed','dismissed'])",HELP); self.assertIn('Mark reviewed',UI)
+ def test_10_portability(self): self.assertIn('sc-workspace-research-automation-export/1.0',HELP); self.assertIn('fingerprint mismatch',HELP)
+ def test_11_unresolved_visible(self): self.assertIn('currently unresolved',HELP); self.assertTrue(MAN['research_automation']['unresolved_targets_visible'])
+ def test_12_header_rule(self): self.assertIn('.scw-auto-head{',CSS); self.assertIn('border-top:4px solid #000',CSS)
+ def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.56.0','0.55.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0560'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0550',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.55.0.json').exists())
+if __name__=='__main__': unittest.main()

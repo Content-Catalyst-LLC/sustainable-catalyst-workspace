@@ -1,16 +1,16 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.55.0.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.55.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.56.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.56.0.json').read_text())
 MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.55.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.56.0.js').read_text()
 REF=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-reference-library-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.55.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.56.0.css').read_text()
 class CitationLibraryReferenceManagement(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.55.0','0.54.0','Workspace API & Embed Foundation')); self.assertIn('Version: 0.55.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.56.0','0.55.0','Research Automation Framework')); self.assertIn('Version: 0.56.0',MAIN)
  def test_02_schema_stable(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertFalse(MAN['schema_migration_required']); self.assertTrue(MAN['migration']['schema_stable']); self.assertTrue(json.loads((ROOT/'history/release-manifest-v0.45.0.json').read_text())['migration']['composition_studio_only_release']); self.assertFalse(MAN['migration']['canonical_data_rewrite'])
  def test_03_rest_contract(self): self.assertIn('/wp-json/sc-workspace/v1/citation-library-contract',MAN['rest_routes']); self.assertIn("'/citation-library-contract'",PHP); self.assertIn('public function citation_library_contract()',PHP)
  def test_04_schemas(self):
@@ -25,5 +25,5 @@ class CitationLibraryReferenceManagement(unittest.TestCase):
   g=MAN['governance']; self.assertTrue(g['citation_library_browser_local']); self.assertFalse(g['citation_library_mutates_projects']); self.assertFalse(g['citation_library_metadata_lookup']); self.assertFalse(g['citation_library_metadata_inference']); self.assertFalse(g['citation_library_automatic_merge']); self.assertFalse(g['citation_library_automatic_ai']); self.assertTrue(g['citation_library_missing_fields_remain_missing']); self.assertTrue(g['citation_library_duplicate_reasons_visible'])
  def test_11_v043_collections_retained(self):
   prev=json.loads((ROOT/'history/release-manifest-v0.43.0.json').read_text()); self.assertTrue(prev['migration']['collections_views_only_release']); self.assertIn('sc-workspace-research-collections-v1.js',PHP); self.assertIn('function researchCollectionsApi()',JS)
- def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.55.0','0.54.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0550'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0430',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.43.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.43.0.json').exists())
+ def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.56.0','0.55.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0560'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0430',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.43.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.43.0.json').exists())
 if __name__=='__main__': unittest.main()
