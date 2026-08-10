@@ -1,13 +1,13 @@
 const assert=require('assert');
-const nb=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v6.js');
+const nb=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v7.js');
 let n=0;const id=p=>`${p}-${++n}`;const now=()=>`2026-08-09T21:00:${String(n).padStart(2,'0')}Z`;
-assert.strictEqual(nb.WORKSPACE_SCHEMA,'sc-workspace-notebook-workspace/6.0');assert.strictEqual(nb.EXPORT_SCHEMA,'sc-workspace-notebook-export/6.0');
+assert.strictEqual(nb.WORKSPACE_SCHEMA,'sc-workspace-notebook-workspace/7.0');assert.strictEqual(nb.EXPORT_SCHEMA,'sc-workspace-notebook-export/7.0');
 const ws=nb.workspace(null,id,now),a=nb.createNotebook('A','',id,now),b=nb.createNotebook('B','',id,now);ws.notebooks.push(a,b);ws.activeNotebookId=a.id;
 const blockA=nb.createBlock('note',{title:'A note',content:'alpha'},id,now),blockB=nb.createBlock('source',{title:'B source'},id,now);a.sections[0].blocks.push(blockA);b.sections[0].blocks.push(blockB);
 const refA=nb.nodeRef({kind:'block',id:blockA.id,notebookId:a.id,sectionId:a.sections[0].id,label:blockA.title});const refB=nb.nodeRef({kind:'block',id:blockB.id,notebookId:b.id,sectionId:b.sections[0].id,label:blockB.title});
 const link=nb.createLink(refA,refB,'supports','evidence relationship',id,now);ws.links.push(link);assert.strictEqual(nb.backlinksForRef(ws,refB).length,1);assert.strictEqual(nb.linksForRef(ws,refA).length,1);
 const col=nb.createCollection('Core evidence','',id,now);ws.collections.push(col);assert.strictEqual(nb.addCollectionItem(col,refA,now),true);assert.strictEqual(nb.addCollectionItem(col,refA,now),false);assert.strictEqual(col.items.length,1);
 const objRef=nb.nodeRef({kind:'object',id:'obj-1',label:'Evidence object'});assert.strictEqual(nb.refExists(objRef,ws,['obj-1']),true);assert.strictEqual(nb.refExists(objRef,ws,[]),false);
-const pkg=nb.exportNotebook(a,{id:'p1',title:'Project'},'0.34.0',ws);assert.strictEqual(pkg.schema,'sc-workspace-notebook-export/6.0');assert.strictEqual(pkg.links.length,1);assert.strictEqual(pkg.collections.length,1);assert.strictEqual(pkg.governance.backlinksDerivedFromExplicitLinks,true);
-const migrated=nb.workspace({schema:'sc-workspace-notebook-workspace/2.0',notebooks:[a],activeNotebookId:a.id,createdAt:now(),updatedAt:now()},id,now);assert.strictEqual(migrated.schema,'sc-workspace-notebook-workspace/6.0');assert.deepStrictEqual(migrated.collections,[]);assert.deepStrictEqual(migrated.links,[]);
+const pkg=nb.exportNotebook(a,{id:'p1',title:'Project'},'0.34.0',ws);assert.strictEqual(pkg.schema,'sc-workspace-notebook-export/7.0');assert.strictEqual(pkg.links.length,1);assert.strictEqual(pkg.collections.length,1);assert.strictEqual(pkg.governance.backlinksDerivedFromExplicitLinks,true);
+const migrated=nb.workspace({schema:'sc-workspace-notebook-workspace/2.0',notebooks:[a],activeNotebookId:a.id,createdAt:now(),updatedAt:now()},id,now);assert.strictEqual(migrated.schema,'sc-workspace-notebook-workspace/7.0');assert.deepStrictEqual(migrated.collections,[]);assert.deepStrictEqual(migrated.links,[]);
 console.log('PASS - v0.34 Notebook Collections retained under Workspace v0.35.0');

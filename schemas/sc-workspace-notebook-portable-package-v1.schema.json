@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-portable-package-v1.schema.json",
+  "title": "Workspace Notebook Portable Package",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "exportedAt",
+    "sourceProject",
+    "notebook",
+    "related",
+    "governance",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-portable-package/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "sourceProject": {
+      "type": "object"
+    },
+    "notebook": {
+      "$ref": "sc-workspace-notebook-v3.schema.json"
+    },
+    "related": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    },
+    "integrity": {
+      "type": "object"
+    }
+  }
+}

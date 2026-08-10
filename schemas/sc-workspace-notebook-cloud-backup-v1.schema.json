@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-cloud-backup-v1.schema.json",
+  "title": "Workspace Notebook Cloud Backup",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "sourceNotebookId",
+    "notebookTitle",
+    "notebookFingerprint",
+    "transport",
+    "notebook"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-cloud-backup/1.0"
+    },
+    "sourceNotebookId": {
+      "type": "string"
+    },
+    "sourceProjectId": {
+      "type": "string"
+    },
+    "notebookTitle": {
+      "type": "string"
+    },
+    "notebookFingerprint": {
+      "type": "string"
+    },
+    "transport": {
+      "type": "object"
+    },
+    "notebook": {
+      "$ref": "sc-workspace-notebook-v3.schema.json"
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-workspace-v7.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Workspace v7.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "notebooks",
+    "activeNotebookId",
+    "collections",
+    "activeCollectionId",
+    "links",
+    "promotions",
+    "syntheses",
+    "activeSynthesisId",
+    "assistances",
+    "activeAssistanceId",
+    "portability",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-workspace/7.0"
+    },
+    "notebooks": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "$ref": "sc-workspace-notebook-v3.schema.json"
+      }
+    },
+    "activeNotebookId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "collections": {
+      "type": "array",
+      "maxItems": 40,
+      "items": {
+        "$ref": "sc-workspace-notebook-collection-v1.schema.json"
+      }
+    },
+    "activeCollectionId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "links": {
+      "type": "array",
+      "maxItems": 400,
+      "items": {
+        "$ref": "sc-workspace-notebook-link-v1.schema.json"
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "promotions": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "$ref": "sc-workspace-notebook-promotion-v1.schema.json"
+      }
+    },
+    "syntheses": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "$ref": "sc-workspace-notebook-synthesis-v1.schema.json"
+      }
+    },
+    "activeSynthesisId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "assistances": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "$ref": "sc-workspace-notebook-assistance-v1.schema.json"
+      }
+    },
+    "activeAssistanceId": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 160
+    },
+    "portability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "restorePoints",
+        "importHistory",
+        "syncEnrollments",
+        "updatedAt"
+      ],
+      "properties": {
+        "restorePoints": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "$ref": "sc-workspace-notebook-restore-point-v1.schema.json"
+          }
+        },
+        "importHistory": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "object"
+          }
+        },
+        "syncEnrollments": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "$ref": "sc-workspace-notebook-sync-enrollment-v1.schema.json"
+          }
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

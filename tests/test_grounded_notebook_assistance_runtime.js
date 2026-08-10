@@ -1,15 +1,15 @@
  'use strict';
 const assert=require('assert');
-const nb=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v6.js');
+const nb=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v7.js');
 let seq=0;const id=p=>`${p}-${++seq}`;const now=()=> '2026-08-09T22:13:00.000Z';
-assert.strictEqual(nb.WORKSPACE_SCHEMA,'sc-workspace-notebook-workspace/6.0');
-assert.strictEqual(nb.EXPORT_SCHEMA,'sc-workspace-notebook-export/6.0');
+assert.strictEqual(nb.WORKSPACE_SCHEMA,'sc-workspace-notebook-workspace/7.0');
+assert.strictEqual(nb.EXPORT_SCHEMA,'sc-workspace-notebook-export/7.0');
 assert.strictEqual(nb.ASSISTANCE_SCHEMA,'sc-workspace-notebook-assistance/1.0');
 const source=nb.createBlock('excerpt',{title:'Measured result',content:'The observed value increased by ten units.',sourceTitle:'Study A',sourceUrl:'https://example.org/a',bibliography:{authors:['A. Researcher'],publicationDate:'2026'}},id,now);
 const note=nb.createBlock('note',{title:'Interpretation',content:'Mechanism remains uncertain.'},id,now);
 const notebook=nb.notebook({id:'nb-1',title:'Field Notebook',sections:[{id:'sec-1',title:'Evidence',blocks:[source,note]}]},id,now);
 let ws=nb.workspace({schema:'sc-workspace-notebook-workspace/5.0',notebooks:[notebook],activeNotebookId:'nb-1',collections:[],links:[],promotions:[],syntheses:[]},id,now);
-assert.strictEqual(ws.schema,'sc-workspace-notebook-workspace/6.0');assert.deepStrictEqual(ws.assistances,[]);
+assert.strictEqual(ws.schema,'sc-workspace-notebook-workspace/7.0');assert.deepStrictEqual(ws.assistances,[]);
 const refs=[nb.nodeRef({kind:'block',id:source.id,notebookId:'nb-1',sectionId:'sec-1'}),nb.nodeRef({kind:'block',id:note.id,notebookId:'nb-1',sectionId:'sec-1'})];
 const a=nb.prepareAssistance('What changed?','What does the selected material establish?',refs,ws,[],id,now);assert.strictEqual(a.selectedRefs.length,2);assert.strictEqual(a.entries[0].number,1);assert.ok(nb.assistancePrompt(a).includes('[1] Measured result'));
 let bad=nb.applyAssistanceResponse(a,'The result increased.', 'manual',id,now);assert.strictEqual(bad.ok,false);
@@ -18,5 +18,5 @@ const good=nb.applyAssistanceResponse(a,'The observed value increased by ten uni
 ws.assistances.unshift(good.record);assert.strictEqual(nb.assistancesForRef(ws,refs[0]).length,1);
 const req=nb.exportAssistanceRequest(good.record,{id:'p1',title:'Project'},'0.37.0',ws,[]);assert.strictEqual(req.schema,'sc-workspace-notebook-assistance-request-export/1.0');assert.strictEqual(req.groundingPolicy.citationsRequired,true);assert.strictEqual(req.groundingPolicy.automaticSubmission,false);
 const resp=nb.exportAssistanceResponse(good.record,{id:'p1',title:'Project'},'0.37.0');assert.strictEqual(resp.schema,'sc-workspace-notebook-assistance-response-export/1.0');assert.strictEqual(resp.governance.reviewableDraft,true);
-const exp=nb.exportNotebook(ws.notebooks[0],{id:'p1',title:'Project'},'0.37.0',ws);assert.strictEqual(exp.schema,'sc-workspace-notebook-export/6.0');assert.strictEqual(exp.assistances.length,1);assert.strictEqual(exp.governance.groundedAssistanceCitationsRequired,true);
+const exp=nb.exportNotebook(ws.notebooks[0],{id:'p1',title:'Project'},'0.37.0',ws);assert.strictEqual(exp.schema,'sc-workspace-notebook-export/7.0');assert.strictEqual(exp.assistances.length,1);assert.strictEqual(exp.governance.groundedAssistanceCitationsRequired,true);
 console.log('PASS - v0.37.0 grounded notebook assistance runtime');

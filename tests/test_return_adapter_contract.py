@@ -1,7 +1,7 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.37.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.38.0.js'
 HELPER=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-return-adapter-v1.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
 class ReturnAdapterTests(unittest.TestCase):
@@ -42,9 +42,9 @@ class ReturnAdapterTests(unittest.TestCase):
         ):
             self.assertIn(token,t)
     def test_manifest_preserves_adapter_during_traceability_migration(self):
-        m=json.loads((ROOT/'release-manifest-v0.37.0.json').read_text())
-        self.assertEqual(m['storage_schema_version'],33)
-        self.assertEqual(m['project_schema'],'sc-workspace-project/18.0')
+        m=json.loads((ROOT/'release-manifest-v0.38.0.json').read_text())
+        self.assertEqual(m['storage_schema_version'],34)
+        self.assertEqual(m['project_schema'],'sc-workspace-project/19.0')
         self.assertEqual(m['handoff_adapter_schema'],'sc-workspace-return-adapter/1.0')
         self.assertEqual(m['cloud_sync'],'explicit-project-enrollment')
         self.assertEqual(m['server_project_storage'],'manual-backup-plus-explicit-sync-head')

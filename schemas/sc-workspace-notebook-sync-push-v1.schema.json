@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-sync-push-v1.schema.json",
+  "title": "Workspace Notebook Sync Push",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "sourceNotebookId",
+    "notebookFingerprint",
+    "expectedRevision",
+    "transport",
+    "notebook"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-sync-push/1.0"
+    },
+    "sourceNotebookId": {
+      "type": "string"
+    },
+    "sourceProjectId": {
+      "type": "string"
+    },
+    "notebookTitle": {
+      "type": "string"
+    },
+    "notebookFingerprint": {
+      "type": "string"
+    },
+    "expectedRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "transport": {
+      "type": "object"
+    },
+    "notebook": {
+      "$ref": "sc-workspace-notebook-v3.schema.json"
+    }
+  }
+}

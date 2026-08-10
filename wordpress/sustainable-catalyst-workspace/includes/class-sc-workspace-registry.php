@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0370';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0370';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0380';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0380';
+    const LEGACY_PENDING_KEY_V0370 = 'sc_workspace_registry_pending_v0370';
     const LEGACY_PENDING_KEY_V0360 = 'sc_workspace_registry_pending_v0360';
     const LEGACY_PENDING_KEY_V0350 = 'sc_workspace_registry_pending_v0350';
     const LEGACY_PENDING_KEY_V0340 = 'sc_workspace_registry_pending_v0340';
@@ -113,6 +114,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0370);
         delete_option(self::LEGACY_PENDING_KEY_V0360);
         delete_option(self::LEGACY_PENDING_KEY_V0350);
         delete_option(self::LEGACY_PENDING_KEY_V0340);
@@ -206,11 +208,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.36.0',
+            'previous_version' => '0.37.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Grounded Notebook Assistance: explicit selected-material questions, citation-required answer review, provider-neutral request/response portability, and reviewable draft materialization without automatic source mutation.',
+            'change_summary' => 'Portable & Synced Notebooks: integrity-checked notebook import/export, notebook restore points, explicit account backup, opt-in revision-preconditioned sync, and preserve-both conflict recovery.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.37.0 advances storage 32→33 and project schema 17.0→18.0. Grounded Notebook Assistance uses only explicitly selected local material; returned answers require valid selected-material citation markers and remain reviewable drafts until explicit user action.',
+            'manual_notes' => 'Free public Workspace. v0.38.0 advances storage 33→34 and project schema 18.0→19.0. Notebook portability stays explicit: import/restore create new copies, account backup is manual, sync is opt-in per notebook, server revision preconditions reject stale writes, and conflicts preserve both copies.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

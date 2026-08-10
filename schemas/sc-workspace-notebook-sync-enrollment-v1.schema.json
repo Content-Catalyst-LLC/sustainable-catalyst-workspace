@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-sync-enrollment-v1.schema.json",
+  "title": "Workspace Notebook Sync Enrollment",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "notebookId",
+    "enabled",
+    "serverRevision",
+    "status"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-sync-enrollment/1.0"
+    },
+    "notebookId": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "serverRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastSyncedFingerprint": {
+      "type": "string"
+    },
+    "remoteFingerprint": {
+      "type": "string"
+    },
+    "remoteRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "disabled",
+        "not-uploaded",
+        "up-to-date",
+        "local-ahead",
+        "remote-ahead",
+        "conflict",
+        "remote-missing",
+        "error"
+      ]
+    },
+    "lastSyncedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lastCheckedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}
