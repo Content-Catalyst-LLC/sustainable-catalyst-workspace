@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-audit-event-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Audit Event v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "source",
+    "type",
+    "label",
+    "notebookId",
+    "recordId",
+    "at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-audit-event/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "notebookId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "recordId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "at": {
+      "type": "string"
+    }
+  }
+}

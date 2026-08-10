@@ -3,10 +3,10 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAN = json.loads((ROOT / 'release-manifest-v0.38.0.json').read_text())
-REG = json.loads((ROOT / 'registry/workspace-product-record-v0.38.0.json').read_text())
-JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.38.0.js').read_text()
-NB = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v7.js').read_text()
+MAN = json.loads((ROOT / 'release-manifest-v0.39.0.json').read_text())
+REG = json.loads((ROOT / 'registry/workspace-product-record-v0.39.0.json').read_text())
+JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.39.0.js').read_text()
+NB = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text()
 PHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN = (ROOT / 'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 REGPHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
@@ -16,22 +16,22 @@ TARGETS = ['source','evidence','dataset','analysis','decision','document','canva
 class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
     def test_01_release_lineage(self):
         self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']),
-                         ('0.38.0', '0.37.0', 'Portable & Synced Notebooks'))
-        self.assertIn('Version: 0.38.0', MAIN)
+                         ('0.39.0', '0.38.0', 'Notebook Review & Provenance'))
+        self.assertIn('Version: 0.39.0', MAIN)
 
     def test_02_storage_and_project_migration(self):
         self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']),
-                         (34, 'sc-workspace-project/19.0', 'sc-workspace-project-export/19.0'))
-        self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(33,34))
-        self.assertEqual((MAN['migration']['project_schema_from'],MAN['migration']['project_schema_to']),('sc-workspace-project/18.0','sc-workspace-project/19.0'))
+                         (35, 'sc-workspace-project/20.0', 'sc-workspace-project-export/20.0'))
+        self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(34,35))
+        self.assertEqual((MAN['migration']['project_schema_from'],MAN['migration']['project_schema_to']),('sc-workspace-project/19.0','sc-workspace-project/20.0'))
         self.assertIn('function migrateV32(raw)', JS)
         self.assertIn('if (raw.schemaVersion === 32) return migrateV32(raw);', JS)
 
     def test_03_notebook_promotion_schemas(self):
-        self.assertEqual(MAN['notebook_workspace_schema'], 'sc-workspace-notebook-workspace/7.0')
+        self.assertEqual(MAN['notebook_workspace_schema'], 'sc-workspace-notebook-workspace/8.0')
         self.assertEqual(MAN['notebook_schema'], 'sc-workspace-notebook/3.0')
         self.assertEqual(MAN['notebook_block_schema'], 'sc-workspace-notebook-block/3.0')
-        self.assertEqual(MAN['notebook_export_schema'], 'sc-workspace-notebook-export/7.0')
+        self.assertEqual(MAN['notebook_export_schema'], 'sc-workspace-notebook-export/8.0')
         self.assertEqual(MAN['notebook_promotion_schema'], 'sc-workspace-notebook-promotion/1.0')
         for name in (
             'sc-workspace-notebook-block-v3.schema.json',
@@ -96,8 +96,8 @@ class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
         self.assertIn("'promotion_lineage_visible' => true", PHP)
 
     def test_10_project_and_account_contracts_advance(self):
-        self.assertIn("'schema' => 'sc-workspace-project-contract/19.0'", PHP)
-        self.assertIn("'export_schema' => 'sc-workspace-project-export/19.0'", PHP)
+        self.assertIn("'schema' => 'sc-workspace-project-contract/20.0'", PHP)
+        self.assertIn("'export_schema' => 'sc-workspace-project-export/20.0'", PHP)
         self.assertIn("array('sc-workspace-project/19.0','sc-workspace-project/18.0','sc-workspace-project/17.0'", PHP)
 
     def test_11_v034_knowledge_links_preserved(self):
@@ -110,8 +110,8 @@ class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
         self.assertTrue((ROOT / 'history/workspace-product-record-v0.34.0.json').exists())
 
     def test_12_registry_lineage(self):
-        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.38.0','0.37.0'))
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0380'", REGPHP)
+        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.39.0','0.38.0'))
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0390'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0360', REGPHP)
 
 if __name__ == '__main__':

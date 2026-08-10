@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-lineage-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Lineage View v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generatedAt",
+    "subject",
+    "events",
+    "edges",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-lineage/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "object"
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object"
+      }
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

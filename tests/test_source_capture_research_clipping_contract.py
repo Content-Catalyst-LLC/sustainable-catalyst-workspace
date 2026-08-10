@@ -3,24 +3,24 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAN = json.loads((ROOT / 'release-manifest-v0.38.0.json').read_text())
-REG = json.loads((ROOT / 'registry/workspace-product-record-v0.38.0.json').read_text())
-JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.38.0.js').read_text()
+MAN = json.loads((ROOT / 'release-manifest-v0.39.0.json').read_text())
+REG = json.loads((ROOT / 'registry/workspace-product-record-v0.39.0.json').read_text())
+JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.39.0.js').read_text()
 PHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN = (ROOT / 'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 REGPHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 CAPTURE = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-source-capture-v1.js').read_text()
-NOTEBOOK = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v7.js').read_text()
+NOTEBOOK = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text()
 
 class SourceCaptureResearchClippingContract(unittest.TestCase):
     def test_01_release_lineage(self):
-        self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.38.0','0.37.0','Portable & Synced Notebooks'))
-        self.assertIn('Version: 0.38.0', MAIN)
+        self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.39.0','0.38.0','Notebook Review & Provenance'))
+        self.assertIn('Version: 0.39.0', MAIN)
 
     def test_02_schema_migration(self):
-        self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']), (34,'sc-workspace-project/19.0','sc-workspace-project-export/19.0'))
-        self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(33,34))
-        self.assertEqual((MAN['migration']['project_schema_from'],MAN['migration']['project_schema_to']),('sc-workspace-project/18.0','sc-workspace-project/19.0'))
+        self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']), (35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'))
+        self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(34,35))
+        self.assertEqual((MAN['migration']['project_schema_from'],MAN['migration']['project_schema_to']),('sc-workspace-project/19.0','sc-workspace-project/20.0'))
         self.assertFalse(MAN['migration']['project_schema_unchanged'])
 
     def test_03_source_capture_contract_schemas(self):
@@ -87,7 +87,7 @@ class SourceCaptureResearchClippingContract(unittest.TestCase):
         self.assertFalse(sc['automatic_upload'])
 
     def test_12_notebook_v2_preserves_capture_context(self):
-        for token in ('sc-workspace-notebook-workspace/7.0','sc-workspace-notebook-block/3.0','blockFromCapture','citationLine','bibliography','capture'):
+        for token in ('sc-workspace-notebook-workspace/8.0','sc-workspace-notebook-block/3.0','blockFromCapture','citationLine','bibliography','capture'):
             self.assertIn(token, NOTEBOOK)
         self.assertTrue(MAN['migration']['upgrades_notebook_blocks_to_v2'])
         self.assertTrue(MAN['migration']['preserves_existing_notebooks'])
@@ -103,7 +103,7 @@ class SourceCaptureResearchClippingContract(unittest.TestCase):
         self.assertIn('sc_workspace_source_capture_adapter_script_url', MAIN)
         self.assertIn('sc-workspace-source-capture-v1.js', MAIN)
         self.assertIn("'sc-workspace-source-capture-v1'", PHP)
-        self.assertIn("'sc-workspace-research-notebook-v7'", PHP)
+        self.assertIn("'sc-workspace-research-notebook-v8'", PHP)
 
     def test_15_library_and_research_librarian_are_contract_surfaces(self):
         self.assertIn('knowledge-library', MAN['source_capture']['source_surfaces'])
@@ -112,9 +112,9 @@ class SourceCaptureResearchClippingContract(unittest.TestCase):
         self.assertIn('/knowledge-libraries/', PHP)
 
     def test_16_registry_and_history(self):
-        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.38.0','0.37.0'))
-        self.assertIn('Portable & Synced Notebooks', REG['change_summary'])
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0380'", REGPHP)
+        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.39.0','0.38.0'))
+        self.assertIn('Notebook Review & Provenance', REG['change_summary'])
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0390'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0320', REGPHP)
         self.assertTrue((ROOT / 'history/release-manifest-v0.32.0.json').exists())
         self.assertTrue((ROOT / 'history/workspace-product-record-v0.32.0.json').exists())

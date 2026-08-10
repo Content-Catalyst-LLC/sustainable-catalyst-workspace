@@ -1,20 +1,20 @@
 import json, re, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MANIFEST=ROOT/'release-manifest-v0.38.0.json'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.38.0.js'
+MANIFEST=ROOT/'release-manifest-v0.39.0.json'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.39.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.38.0.css'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.39.0.css'
 REG=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php'
 class InstitutionalHandoffContract(unittest.TestCase):
  def test_release_metadata(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.38.0');self.assertEqual(m['previous_version'],'0.37.0');self.assertEqual(m['release_name'],'Portable & Synced Notebooks');self.assertEqual(m['storage_schema_version'],34);self.assertEqual(m['project_schema'],'sc-workspace-project/19.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.39.0');self.assertEqual(m['previous_version'],'0.38.0');self.assertEqual(m['release_name'],'Notebook Review & Provenance');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0')
  def test_contracts(self):
   m=json.loads(MANIFEST.read_text());self.assertEqual(m['institutional_handoff_schema'],'sc-workspace-institutional-handoff/1.0');self.assertEqual(m['institutional_handoff_package_schema'],'sc-workspace-institutional-handoff-package/1.0');self.assertEqual(m['institutional_handoff_receipt_schema'],'sc-workspace-institutional-handoff-receipt/1.0')
  def test_schema_json(self):
   for f in ('sc-workspace-institutional-handoff-v1.schema.json','sc-workspace-institutional-handoff-package-v1.schema.json','sc-workspace-institutional-handoff-receipt-v1.schema.json'): json.loads((ROOT/'schemas'/f).read_text())
  def test_storage_only_migration(self):
-  j=JS.read_text();self.assertIn('const STORAGE_VERSION = 34',j);self.assertIn('function migrateV19(raw)',j);self.assertIn('if (raw.schemaVersion === 19) return migrateV19(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/19.0'",j)
+  j=JS.read_text();self.assertIn('const STORAGE_VERSION = 35',j);self.assertIn('function migrateV19(raw)',j);self.assertIn('if (raw.schemaVersion === 19) return migrateV19(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/20.0'",j)
  def test_top_level_view(self):
   p=PHP.read_text();self.assertIn('data-scw-workspace-view="institutional"',p);self.assertIn('data-scw-workspace-section="institutional"',p);self.assertIn('INSTITUTIONAL HANDOFF',p)
  def test_explicit_scope(self):
@@ -39,9 +39,9 @@ class InstitutionalHandoffContract(unittest.TestCase):
  def test_activity_signal(self):
   j=JS.read_text();p=PHP.read_text();self.assertIn("'institutional'",j);self.assertIn('Institutional handoff awaiting institutional receipt',j);self.assertIn('<option value="institutional">Institutional handoff</option>',p)
  def test_rest_contract(self):
-  p=PHP.read_text();self.assertIn("'/institutional-handoff-contract'",p);self.assertIn('institutional_handoff_contract',p);self.assertIn("'storage_schema_version' => 34",p)
+  p=PHP.read_text();self.assertIn("'/institutional-handoff-contract'",p);self.assertIn('institutional_handoff_contract',p);self.assertIn("'storage_schema_version' => 35",p)
  def test_registry_lineage(self):
-  r=REG.read_text();self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0380'",r);self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0380'",r);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",r);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",r)
+  r=REG.read_text();self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0390'",r);self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0390'",r);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",r);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",r)
  def test_css(self):
   c=CSS.read_text();self.assertIn('/* v0.21.0 — Institutional Handoff */',c);self.assertIn('.scw-institutional-boundary',c);self.assertIn('.scw-institutional-readiness',c)
 if __name__=='__main__': unittest.main()

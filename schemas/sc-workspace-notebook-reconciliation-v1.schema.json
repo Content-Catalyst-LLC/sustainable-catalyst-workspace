@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-reconciliation-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Reconciliation v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "reviewId",
+    "projectId",
+    "notebookId",
+    "reviewerLabel",
+    "rationale",
+    "selectedKeys",
+    "selectedChangeCount",
+    "availableChangeCount",
+    "outputNotebookId",
+    "outputNotebookTitle",
+    "status",
+    "createdAt",
+    "appliedAt",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-reconciliation/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "reviewId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "projectId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "notebookId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "reviewerLabel": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "selectedKeys": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 1000
+    },
+    "selectedChangeCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "availableChangeCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "outputNotebookId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "outputNotebookTitle": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "status": {
+      "enum": [
+        "prepared",
+        "applied",
+        "declined",
+        "blocked"
+      ]
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "appliedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceNotebookId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "targetNotebookId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

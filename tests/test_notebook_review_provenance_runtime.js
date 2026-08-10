@@ -1,0 +1,16 @@
+const assert=require('assert');
+const R=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-notebook-review-provenance-v1.js');
+const now='2026-08-10T04:15:00.000Z';
+let seq=0;const id=p=>`${p}-${++seq}`, clock=()=>now;
+const block=(idValue,title,content)=>({schema:'sc-workspace-notebook-block/3.0',id:idValue,type:'note',title,content,sourceObjectId:'',sourceTitle:'',sourceUrl:'',referenceObjectId:'',tags:[],capture:{schema:'sc-workspace-source-capture/1.0',sourceSurface:'manual',sourceId:'',sourceKind:'',contentType:'',selectionKind:'',locator:'',capturedAt:now,captureMode:'manual'},bibliography:{schema:'sc-workspace-bibliographic-context/1.0',authors:[],publisher:'',containerTitle:'',publicationDate:'',accessedAt:null,identifier:'',doi:'',locator:'',edition:'',volume:'',issue:'',license:''},promotion:{status:'none',targetKind:'',targetType:'',targetId:'',promotedAt:null},createdAt:now,updatedAt:now});
+const base={schema:'sc-workspace-notebook/3.0',id:'nb-1',title:'Research',description:'Base',sections:[{id:'s1',title:'Notes',blocks:[block('b1','Finding','Old')],createdAt:now,updatedAt:now}],activeSectionId:'s1',createdAt:now,updatedAt:now};
+const target=JSON.parse(JSON.stringify(base));target.description='Current';target.sections[0].blocks[0].content='New';target.sections[0].blocks.push(block('b2','Source','Added'));target.updatedAt='2026-08-10T04:20:00.000Z';
+const beforeBase=JSON.stringify(base),beforeTarget=JSON.stringify(target);
+const review=R.buildReview(base,target,{projectId:'p1',baseRevision:'rp1',targetRevision:target.updatedAt},id,clock);
+assert.equal(review.schema,R.REVIEW_SCHEMA);assert.equal(review.summary.total,3);assert.equal(review.summary.added,1);assert.equal(review.summary.modified,2);assert.equal(review.governance.hiddenChangeScore,false);
+const selected=review.changes.filter(x=>x.category==='Blocks').map(x=>x.key);
+const plan=R.buildReconciliation(review,selected,{reviewerLabel:'Owner',rationale:'Carry block changes forward.'},id,clock);
+const result=R.applyReconciliation(base,target,plan,id,clock);assert.equal(result.ok,true);assert.notEqual(result.notebook.id,base.id);assert.ok(result.notebook.title.includes('reconciled copy'));assert.equal(result.receipt.status,'applied');assert.equal(JSON.stringify(base),beforeBase);assert.equal(JSON.stringify(target),beforeTarget);
+const ws={notebooks:[target],links:[{id:'l1',source:{kind:'block',id:'b1',notebookId:'nb-1'},target:{kind:'object',id:'o1'},relation:'supports',createdAt:now}],promotions:[],syntheses:[],assistances:[],portability:{restorePoints:[{id:'rp1',notebookId:'nb-1',label:'Before',createdAt:now}],importHistory:[],syncEnrollments:[]},governance:{reviews:[review],reconciliations:[result.receipt]}};
+const lineage=R.lineage({kind:'block',id:'b1',notebookId:'nb-1'},ws,[]);assert.equal(lineage.schema,R.LINEAGE_SCHEMA);assert.ok(lineage.events.length>=3);assert.ok(lineage.edges.some(x=>x.relation==='supports'));assert.equal(lineage.governance.shadowProvenanceDatabase,false);
+const audit=R.auditEvents(ws);assert.ok(audit.some(x=>x.source==='change-review'));assert.ok(audit.some(x=>x.source==='reconciliation'));console.log('PASS - v0.39.0 notebook review & provenance runtime');

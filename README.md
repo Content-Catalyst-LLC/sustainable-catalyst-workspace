@@ -1,12 +1,12 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.37.0 — Grounded Notebook Assistance**
+Current release: **v0.39.0 — Notebook Review & Provenance**
 
 Sustainable Catalyst Workspace is a free, public, local-first environment for research, evidence, analysis, decisions, notebooks, briefings, provenance, change review, reconciliation, and governance-aware project work.
 
-v0.37.0 adds Grounded Notebook Assistance. Users explicitly select notebook blocks or existing Workspace objects, prepare a question against that material, and review a returned draft whose numbered citations must resolve to the selected grounding set. Requests and responses are portable and provider-neutral, and a reviewed answer can be deliberately materialized as a normal Document object.
+v0.39.0 applies Change Review and provenance directly to Research Notebooks. Users can compare a named notebook restore point with the current notebook, inspect specific metadata/section/block changes, and selectively reconcile reviewed changes into a new notebook copy. Notebook audit history and source lineage are derived from authoritative Workspace records rather than maintained as a shadow database.
 
-The source notebook and Workspace material remain canonical. Assistance does not automatically select research, submit to an AI provider, accept answers, guess or expand citations, mutate sources, create evidence, materialize documents, fetch remote material, or publish content.
+The source notebooks remain canonical and unchanged by review. Reconciliation requires explicit selection, refuses stale reviews, and preserves both source states. No hidden change score, automatic merge, automatic lineage inference, silent last-write-wins, or background notebook synchronization is introduced.
 
 Canonical public Workspace route: `/platform/`
 

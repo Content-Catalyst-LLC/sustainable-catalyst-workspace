@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-export-v8.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Export v8.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "exportedAt",
+    "project",
+    "notebook",
+    "links",
+    "collections",
+    "promotions",
+    "syntheses",
+    "assistances",
+    "portability",
+    "reviewProvenance",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-export/8.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object"
+    },
+    "notebook": {
+      "$ref": "sc-workspace-notebook-v3.schema.json"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "$ref": "sc-workspace-notebook-link-v1.schema.json"
+      }
+    },
+    "collections": {
+      "type": "array",
+      "items": {
+        "$ref": "sc-workspace-notebook-collection-v1.schema.json"
+      }
+    },
+    "governance": {
+      "type": "object"
+    },
+    "promotions": {
+      "type": "array",
+      "items": {
+        "$ref": "sc-workspace-notebook-promotion-v1.schema.json"
+      }
+    },
+    "syntheses": {
+      "type": "array",
+      "items": {
+        "$ref": "sc-workspace-notebook-synthesis-v1.schema.json"
+      }
+    },
+    "assistances": {
+      "type": "array",
+      "items": {
+        "$ref": "sc-workspace-notebook-assistance-v1.schema.json"
+      }
+    },
+    "portability": {
+      "type": "object"
+    },
+    "reviewProvenance": {
+      "type": "object",
+      "required": [
+        "reviews",
+        "reconciliations"
+      ],
+      "properties": {
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "sc-workspace-notebook-change-review-v1.schema.json"
+          }
+        },
+        "reconciliations": {
+          "type": "array",
+          "items": {
+            "$ref": "sc-workspace-notebook-reconciliation-v1.schema.json"
+          }
+        }
+      }
+    }
+  }
+}

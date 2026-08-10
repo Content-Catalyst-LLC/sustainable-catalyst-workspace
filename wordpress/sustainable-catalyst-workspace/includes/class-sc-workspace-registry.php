@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0380';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0380';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0390';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0390';
+    const LEGACY_PENDING_KEY_V0380 = 'sc_workspace_registry_pending_v0380';
     const LEGACY_PENDING_KEY_V0370 = 'sc_workspace_registry_pending_v0370';
     const LEGACY_PENDING_KEY_V0360 = 'sc_workspace_registry_pending_v0360';
     const LEGACY_PENDING_KEY_V0350 = 'sc_workspace_registry_pending_v0350';
@@ -114,6 +115,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0380);
         delete_option(self::LEGACY_PENDING_KEY_V0370);
         delete_option(self::LEGACY_PENDING_KEY_V0360);
         delete_option(self::LEGACY_PENDING_KEY_V0350);
@@ -208,11 +210,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.37.0',
+            'previous_version' => '0.38.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Portable & Synced Notebooks: integrity-checked notebook import/export, notebook restore points, explicit account backup, opt-in revision-preconditioned sync, and preserve-both conflict recovery.',
+            'change_summary' => 'Notebook Review & Provenance: notebook-level Change Review, selective reconciliation into new notebook copies, derived audit history, and inspectable source lineage.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.38.0 advances storage 33→34 and project schema 18.0→19.0. Notebook portability stays explicit: import/restore create new copies, account backup is manual, sync is opt-in per notebook, server revision preconditions reject stale writes, and conflicts preserve both copies.',
+            'manual_notes' => 'Free public Workspace. v0.39.0 advances storage 34→35 and project schema 19.0→20.0. Notebook review is explicit; reconciliation applies only selected changes into a new notebook copy; audit history is derived from authoritative notebook records; lineage inspection does not create a shadow provenance database.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-governance-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Governance v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "reviews",
+    "reconciliations",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-governance/1.0"
+    },
+    "reviews": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "$ref": "sc-workspace-notebook-change-review-v1.schema.json"
+      }
+    },
+    "reconciliations": {
+      "type": "array",
+      "maxItems": 80,
+      "items": {
+        "$ref": "sc-workspace-notebook-reconciliation-v1.schema.json"
+      }
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}
