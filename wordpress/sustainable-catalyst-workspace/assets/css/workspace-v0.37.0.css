@@ -387,3 +387,21 @@
 .scw-notebook-synthesis-card-head small{font-size:12px;opacity:.7}
 .scw-notebook-synthesis-preview{margin:12px 0 0;max-height:320px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;background:rgba(0,0,0,.035);padding:12px;border:0}
 @media (max-width:760px){.scw-notebook-synthesis-form{grid-template-columns:1fr}.scw-notebook-synthesis-material-label{grid-column:auto}.scw-notebook-synthesis-card-head{display:grid}}
+
+/* v0.37.0 — Grounded Notebook Assistance */
+.scw-notebook-assistance{margin-top:28px;padding-top:28px;border-top:1px solid rgba(0,0,0,.16)}
+.scw-notebook-assistance-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:18px 0}
+.scw-notebook-assistance-form>label:nth-child(2),.scw-notebook-assistance-form>.scw-notebook-synthesis-material-label{grid-column:1/-1}
+.scw-notebook-assistance-list{display:grid;gap:14px}
+.scw-notebook-assistance-card{border:1px solid rgba(0,0,0,.18);padding:16px;background:#fff}
+.scw-notebook-assistance-card-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.scw-notebook-assistance-card-head>div:first-child{display:grid;gap:4px;min-width:0}
+.scw-notebook-assistance-card-head span,.scw-notebook-assistance-materials span{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.scw-notebook-assistance-card-head p{margin:8px 0 0;max-width:80ch}
+.scw-notebook-assistance-materials{display:grid;gap:8px;margin:14px 0;padding:12px;border-top:1px solid rgba(0,0,0,.12);border-bottom:1px solid rgba(0,0,0,.12)}
+.scw-notebook-assistance-materials>div{display:grid;grid-template-columns:42px minmax(0,1fr);gap:4px 10px}
+.scw-notebook-assistance-materials small{grid-column:2;color:rgba(0,0,0,.65);overflow-wrap:anywhere}
+.scw-notebook-assistance-review{display:grid;gap:10px}
+.scw-notebook-assistance-review textarea{width:100%;resize:vertical}
+.scw-notebook-assistance-status{font-size:12px;color:rgba(0,0,0,.68)}
+@media (max-width:760px){.scw-notebook-assistance-form{grid-template-columns:1fr}.scw-notebook-assistance-form>label{grid-column:1}.scw-notebook-assistance-card-head{display:grid}}

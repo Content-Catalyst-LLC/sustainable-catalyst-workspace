@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-assistance-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Assistance v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "question",
+    "selectedRefs",
+    "entries",
+    "status",
+    "response",
+    "responseSource",
+    "citations",
+    "acceptedDocumentObjectId",
+    "createdAt",
+    "updatedAt",
+    "respondedAt",
+    "reviewedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-assistance/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "question": {
+      "type": "string",
+      "maxLength": 5000
+    },
+    "selectedRefs": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "$ref": "sc-workspace-notebook-ref-v1.schema.json"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "number",
+          "ref",
+          "kind",
+          "type",
+          "label",
+          "excerpt",
+          "citation",
+          "sourceTitle",
+          "sourceUrl"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 48
+          },
+          "ref": {
+            "$ref": "sc-workspace-notebook-ref-v1.schema.json"
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "citation": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "sourceTitle": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "prepared",
+        "response-received",
+        "accepted",
+        "rejected"
+      ]
+    },
+    "response": {
+      "type": "string",
+      "maxLength": 30000
+    },
+    "responseSource": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "citations": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "number",
+          "ref",
+          "label",
+          "citation"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 48
+          },
+          "ref": {
+            "$ref": "sc-workspace-notebook-ref-v1.schema.json"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "citation": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        }
+      }
+    },
+    "acceptedDocumentObjectId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "respondedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviewedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

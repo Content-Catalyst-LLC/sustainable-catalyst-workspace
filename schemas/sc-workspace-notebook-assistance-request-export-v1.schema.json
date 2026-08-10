@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-assistance-request-export-v1.schema.json",
+  "title": "Notebook Assistance Request Export v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "exportedAt",
+    "project",
+    "request",
+    "selectedMaterials",
+    "groundingPolicy"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-assistance-request-export/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object"
+    },
+    "request": {
+      "$ref": "sc-workspace-notebook-assistance-v1.schema.json"
+    },
+    "selectedMaterials": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "type": "object"
+      }
+    },
+    "groundingPolicy": {
+      "type": "object"
+    }
+  }
+}
