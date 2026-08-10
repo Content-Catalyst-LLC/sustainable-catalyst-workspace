@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-research-view-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Research View",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "criteria",
+    "presentation",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-view/1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "criteria": {
+      "$ref": "sc-workspace-knowledge-search-v1.schema.json"
+    },
+    "presentation": {
+      "type": "object",
+      "required": [
+        "groupBy",
+        "density",
+        "limit"
+      ],
+      "properties": {
+        "groupBy": {
+          "enum": [
+            "none",
+            "project",
+            "kind",
+            "subtype",
+            "origin"
+          ]
+        },
+        "density": {
+          "enum": [
+            "compact",
+            "comfortable"
+          ]
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "builtin": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

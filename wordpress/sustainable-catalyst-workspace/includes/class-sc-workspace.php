@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0420, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0390, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0380, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0370, '') === '1' ||
@@ -84,7 +85,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.42.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.43.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -176,6 +177,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/knowledge-search-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'knowledge_search_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/research-collections-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'research_collections_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/navigation-contract', array(
@@ -913,6 +919,34 @@ final class SC_Workspace {
             'semantic_embeddings' => false,
             'automatic_ai' => false,
             'automatic_relationship_inference' => false,
+            'canonical_record_mutation' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
+
+    public function research_collections_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-research-collections-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'collection_schema' => 'sc-workspace-research-collection/1.0',
+            'view_schema' => 'sc-workspace-research-view/1.0',
+            'corpus' => 'derived-integrated-knowledge-index',
+            'membership' => 'dynamic-query-evaluation',
+            'storage' => 'browser-local-definitions-only',
+            'max_smart_collections' => 30,
+            'max_saved_views' => 30,
+            'builtin_views' => array('sources','evidence','decisions','analysis','notebooks','documented'),
+            'groupings' => array('none','project','kind','subtype','origin'),
+            'densities' => array('compact','comfortable'),
+            'dashboard_derived' => true,
+            'project_lens_preserved' => true,
+            'canonical_records_copied' => false,
+            'membership_snapshots_stored' => false,
+            'server_collection_index' => false,
+            'semantic_inference' => false,
+            'automatic_ai' => false,
             'canonical_record_mutation' => false,
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
@@ -1702,8 +1736,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0420',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.42.0.css',
+            'sc-workspace-v0430',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.43.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1813,9 +1847,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0420',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.42.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1'),
+            'sc-workspace-research-collections-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-collections-v1.js',
+            array('sc-workspace-knowledge-search-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0430',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.43.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1823,7 +1864,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0420', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0430', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2106,6 +2147,19 @@ final class SC_Workspace {
                         <label><span>Sort</span><select data-scw-retrieval-sort><option value="relevance">Explainable relevance</option><option value="updated-desc">Recently updated</option><option value="updated-asc">Oldest updated</option><option value="title-asc">Title A–Z</option><option value="project-asc">Project A–Z</option></select></label>
                     </div>
                     <div class="scw-saved-search-bar"><label><span>Saved search</span><select data-scw-saved-search><option value="">Choose saved search</option></select></label><button type="button" class="scw-button" data-scw-save-search>Save current search</button><button type="button" class="scw-button" data-scw-delete-search disabled>Delete saved search</button><button type="button" class="scw-button" data-scw-clear-search>Clear filters</button><p data-scw-search-status role="status" aria-live="polite"></p></div>
+                </section>
+                <section class="scw-research-collections" data-scw-research-collections aria-labelledby="scw-research-collections-title">
+                    <div class="scw-research-collections-head"><div><span>DYNAMIC RESEARCH VIEWS</span><h3 id="scw-research-collections-title">Organize retrieval without copying research.</h3><p>Smart collections store explicit retrieval definitions. Saved views add grouping and density. Membership, dashboards, and project lenses are recalculated from canonical records whenever the Research workspace renders.</p></div><div class="scw-collection-metrics"><div><strong data-scw-collection-count>0</strong><span>smart collections</span></div><div><strong data-scw-view-count>0</strong><span>saved views</span></div></div></div>
+                    <div class="scw-research-dashboard" aria-label="Derived research dashboard"><div><strong data-scw-dashboard-sources>0</strong><span>Sources</span></div><div><strong data-scw-dashboard-evidence>0</strong><span>Evidence</span></div><div><strong data-scw-dashboard-decisions>0</strong><span>Decisions</span></div><div><strong data-scw-dashboard-documented>0</strong><span>Documented</span></div><div><strong data-scw-dashboard-projects>0</strong><span>Projects</span></div><div><strong data-scw-dashboard-records>0</strong><span>Records</span></div></div>
+                    <div class="scw-builtin-views" aria-label="Project-aware dynamic views"><button type="button" data-scw-dynamic-view="sources">Sources</button><button type="button" data-scw-dynamic-view="evidence">Evidence</button><button type="button" data-scw-dynamic-view="decisions">Decisions</button><button type="button" data-scw-dynamic-view="analysis">Analysis</button><button type="button" data-scw-dynamic-view="notebooks">Notebooks</button><button type="button" data-scw-dynamic-view="documented">Documented</button></div>
+                    <div class="scw-collection-controls">
+                        <label><span>Smart collection</span><select data-scw-smart-collection><option value="">Choose collection</option></select></label><button type="button" class="scw-button" data-scw-save-collection>Save current retrieval as collection</button><button type="button" class="scw-button" data-scw-delete-collection disabled>Delete collection</button>
+                        <label><span>Saved view</span><select data-scw-research-view><option value="">Choose view</option></select></label><button type="button" class="scw-button" data-scw-save-view>Save current view</button><button type="button" class="scw-button" data-scw-delete-view disabled>Delete view</button>
+                        <label><span>Group by</span><select data-scw-view-group><option value="project">Project</option><option value="kind">Kind</option><option value="subtype">Subtype</option><option value="origin">Origin</option><option value="none">None</option></select></label><label><span>Density</span><select data-scw-view-density><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+                        <p data-scw-collection-status role="status" aria-live="polite"></p>
+                    </div>
+                    <div class="scw-dynamic-preview" data-scw-dynamic-preview><div class="scw-knowledge-empty-note">Dynamic view preview will appear here.</div></div>
+                    <div class="scw-notebook-boundary" role="note"><strong>Definitions, not duplicate records.</strong><span>Smart collections and saved views are browser-local preferences. Their membership is recomputed from the v0.42 Advanced Retrieval corpus. No canonical research content is copied into this layer.</span></div>
                 </section>
                 <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
                 <div class="scw-notebook-boundary" role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>

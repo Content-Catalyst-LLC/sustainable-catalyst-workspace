@@ -1,10 +1,10 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.42.0 — Knowledge Search & Advanced Retrieval**
+Current release: **v0.43.0 — Research Collections & Dynamic Views**
 
 Sustainable Catalyst Workspace is a free, public, local-first environment for research, evidence, analysis, decisions, notebooks, briefings, provenance, change review, reconciliation, and governance-aware project work.
 
-v0.42.0 adds fielded, cross-project retrieval over the derived Integrated Knowledge corpus, local saved searches, explainable provenance-aware ordering, and related-material navigation based on recorded relationships and provenance. The release remains schema-stable at storage 35 / Project 20.0 and creates no server search index or duplicate canonical knowledge store.
+v0.43.0 adds browser-local smart research collections, saved dynamic views, project-aware Sources/Evidence/Decisions lenses, and a derived research dashboard on top of the v0.42 Advanced Retrieval layer. The release remains schema-stable at storage 35 / Project 20.0; collection membership is recalculated from canonical records and no duplicate collection store is created.
 
 The source notebooks remain canonical and unchanged by review. Reconciliation requires explicit selection, refuses stale reviews, and preserves both source states. No hidden change score, automatic merge, automatic lineage inference, silent last-write-wins, or background notebook synchronization is introduced.
 

@@ -1,0 +1,27 @@
+import json, unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+MAN=json.loads((ROOT/'release-manifest-v0.43.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.43.0.json').read_text())
+MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
+PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
+REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.43.0.js').read_text()
+COLL=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-collections-v1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.43.0.css').read_text()
+class ResearchCollectionsDynamicViews(unittest.TestCase):
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.43.0','0.42.0','Research Collections & Dynamic Views')); self.assertIn('Version: 0.43.0',MAIN)
+ def test_02_schema_stable(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertFalse(MAN['schema_migration_required']); self.assertTrue(MAN['migration']['schema_stable']); self.assertTrue(MAN['migration']['collections_views_only_release']); self.assertFalse(MAN['migration']['canonical_data_rewrite'])
+ def test_03_rest_contract(self): self.assertIn('/wp-json/sc-workspace/v1/research-collections-contract',MAN['rest_routes']); self.assertIn("'/research-collections-contract'",PHP); self.assertIn('public function research_collections_contract()',PHP)
+ def test_04_schemas(self): self.assertEqual(MAN['research_collection_schema'],'sc-workspace-research-collection/1.0'); self.assertEqual(MAN['research_view_schema'],'sc-workspace-research-view/1.0'); json.loads((ROOT/'schemas/sc-workspace-research-collection-v1.schema.json').read_text()); json.loads((ROOT/'schemas/sc-workspace-research-view-v1.schema.json').read_text())
+ def test_05_dynamic_membership(self): self.assertEqual(MAN['research_collections']['membership'],'dynamic-query-evaluation'); self.assertEqual(MAN['research_collections']['storage'],'browser-local-definitions-only'); self.assertFalse(MAN['research_collections']['canonical_records_copied']); self.assertFalse(MAN['research_collections']['membership_snapshots_stored']); self.assertIn('function evaluate(entries,collection,state,searchApi)',COLL)
+ def test_06_builtins(self): self.assertEqual(MAN['research_collections']['builtin_views'],['sources','evidence','decisions','analysis','notebooks','documented']); self.assertTrue(MAN['research_collections']['project_lens_preserved_when_applying_builtin_view']); self.assertIn("{id:'sources'",COLL); self.assertIn("{id:'evidence'",COLL); self.assertIn("{id:'decisions'",COLL)
+ def test_07_saved_views(self): self.assertIn("COLLECTION_STORAGE_KEY='sc_workspace_research_collections_v1'",COLL); self.assertIn("VIEW_STORAGE_KEY='sc_workspace_research_views_v1'",COLL); self.assertIn('loadResearchCollections',JS); self.assertIn('persistResearchViews',JS); self.assertIn('data-scw-smart-collection',PHP); self.assertIn('data-scw-research-view',PHP)
+ def test_08_dashboard(self): self.assertTrue(MAN['governance']['research_collections_dashboard_derived']); self.assertFalse(MAN['governance']['research_collections_hidden_dashboard_score']); self.assertIn('function dashboard(entries,state,searchApi,current={})',COLL); self.assertIn('data-scw-dashboard-sources',PHP); self.assertIn('data-scw-dashboard-evidence',PHP); self.assertIn('data-scw-dashboard-decisions',PHP)
+ def test_09_presentation(self): self.assertIn('data-scw-view-group',PHP); self.assertIn('data-scw-view-density',PHP); self.assertIn('data-scw-dynamic-preview',PHP); self.assertIn('.scw-research-collections{',CSS); self.assertIn('.scw-dynamic-preview',CSS); self.assertIn('@media(forced-colors:active)',CSS)
+ def test_10_governance(self):
+  g=MAN['governance']; self.assertTrue(g['research_collections_derived_from_knowledge_search']); self.assertTrue(g['research_collections_browser_local_definitions']); self.assertFalse(g['research_collections_duplicate_canonical_content']); self.assertFalse(g['research_collections_automatic_membership_mutation']); self.assertTrue(g['research_collections_saved_views_local_only']); self.assertFalse(g['research_collections_saved_views_mutate_projects']); self.assertFalse(g['research_collections_automatic_ai']); self.assertFalse(g['research_collections_semantic_inference'])
+ def test_11_v042_retrieval_retained(self):
+  prev=json.loads((ROOT/'history/release-manifest-v0.42.0.json').read_text()); self.assertTrue(prev['migration']['retrieval_only_release']); self.assertIn('sc-workspace-knowledge-search-v1.js',PHP); self.assertIn('function knowledgeSearchApi()',JS)
+ def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.43.0','0.42.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0430'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0420',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.42.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.42.0.json').exists())
+if __name__=='__main__': unittest.main()
