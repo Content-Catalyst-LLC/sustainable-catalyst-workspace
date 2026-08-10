@@ -10,8 +10,9 @@
   const EMERGENCY_BACKUP_SCHEMA = 'sc-workspace-emergency-backup/1.0';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 28;
-  const PROJECT_SCHEMA = 'sc-workspace-project/13.0';
+  const STORAGE_VERSION = 29;
+  const PROJECT_SCHEMA = 'sc-workspace-project/14.0';
+  const LEGACY_PROJECT_SCHEMA_V13 = 'sc-workspace-project/13.0';
   const LEGACY_PROJECT_SCHEMA_V12 = 'sc-workspace-project/12.0';
   const LEGACY_PROJECT_SCHEMA_V11 = 'sc-workspace-project/11.0';
   const LEGACY_PROJECT_SCHEMA_V10 = 'sc-workspace-project/10.0';
@@ -26,7 +27,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/13.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/14.0';
+  const LEGACY_EXPORT_SCHEMA_V13 = 'sc-workspace-project-export/13.0';
   const LEGACY_EXPORT_SCHEMA_V12 = 'sc-workspace-project-export/12.0';
   const LEGACY_EXPORT_SCHEMA_V11 = 'sc-workspace-project-export/11.0';
   const LEGACY_EXPORT_SCHEMA_V10 = 'sc-workspace-project-export/10.0';
@@ -47,10 +49,16 @@
   const RETURN_ADAPTER_SCHEMA = 'sc-workspace-return-adapter/1.0';
   const PROCESSED_RETURN_KEY = 'sc_workspace_processed_returns_v1';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
-  const NOTEBOOK_WORKSPACE_SCHEMA = 'sc-workspace-notebook-workspace/1.0';
-  const NOTEBOOK_SCHEMA = 'sc-workspace-notebook/1.0';
-  const NOTEBOOK_BLOCK_SCHEMA = 'sc-workspace-notebook-block/1.0';
-  const NOTEBOOK_EXPORT_SCHEMA = 'sc-workspace-notebook-export/1.0';
+  const NOTEBOOK_WORKSPACE_SCHEMA = 'sc-workspace-notebook-workspace/2.0';
+  const NOTEBOOK_SCHEMA = 'sc-workspace-notebook/2.0';
+  const NOTEBOOK_BLOCK_SCHEMA = 'sc-workspace-notebook-block/2.0';
+  const NOTEBOOK_EXPORT_SCHEMA = 'sc-workspace-notebook-export/2.0';
+  const SOURCE_CAPTURE_INBOX_SCHEMA = 'sc-workspace-source-capture-inbox/1.0';
+  const SOURCE_CAPTURE_REQUEST_SCHEMA = 'sc-workspace-notebook-capture-request/1.0';
+  const SOURCE_CAPTURE_SCHEMA = 'sc-workspace-source-capture/1.0';
+  const BIBLIOGRAPHY_SCHEMA = 'sc-workspace-bibliographic-context/1.0';
+  const SOURCE_CAPTURE_SESSION_KEY = 'sc_workspace_notebook_capture_v1';
+  const SOURCE_CAPTURE_MESSAGE_TYPE = 'sc-workspace-notebook-capture';
   const IDENTITY_SCHEMA = 'sc-workspace-identity/1.0';
   const ACCOUNT_PERSISTENCE_SCHEMA = 'sc-workspace-account-persistence/1.0';
   const CLOUD_BACKUP_SCHEMA = 'sc-workspace-cloud-backup/1.0';
@@ -148,6 +156,7 @@
   const MAX_NOTEBOOK_SECTIONS = 40;
   const MAX_NOTEBOOK_BLOCKS_PER_NOTEBOOK = 300;
   const MAX_NOTEBOOK_BLOCKS_PER_PROJECT = 600;
+  const MAX_SOURCE_CAPTURE_INBOX = 100;
   const MAX_ANALYSIS_QUESTIONS = 100;
   const MAX_ANALYSIS_VARIABLES = 120;
   const MAX_ANALYSIS_ASSUMPTIONS = 120;
@@ -948,9 +957,42 @@
     return nb.sections.find(section => section.id === nb.activeSectionId) || nb.sections[0] || null;
   }
 
+  function sourceCaptureHelper() { return window.SCWorkspaceSourceCapture || null; }
+
+  function sourceCaptureTemplate() {
+    const helper = sourceCaptureHelper();
+    if (helper && typeof helper.inbox === 'function') return helper.inbox(null);
+    return { schema: SOURCE_CAPTURE_INBOX_SCHEMA, requests: [], updatedAt: nowIso() };
+  }
+
+  function normalizeSourceCapture(raw) {
+    const helper = sourceCaptureHelper();
+    if (helper && typeof helper.inbox === 'function') return helper.inbox(raw);
+    return sourceCaptureTemplate();
+  }
+
+  function enqueueSourceCapture(raw) {
+    const helper = sourceCaptureHelper();
+    if (!helper || typeof helper.request !== 'function') return null;
+    const request = helper.request(raw);
+    state.sourceCapture = normalizeSourceCapture(state.sourceCapture);
+    if (!state.sourceCapture.requests.some(item => item.id === request.id)) {
+      state.sourceCapture.requests.unshift(request);
+      state.sourceCapture.requests = state.sourceCapture.requests.slice(0, MAX_SOURCE_CAPTURE_INBOX);
+      state.sourceCapture.updatedAt = nowIso();
+    }
+    return request;
+  }
+
+  function removeSourceCapture(requestId) {
+    state.sourceCapture = normalizeSourceCapture(state.sourceCapture);
+    state.sourceCapture.requests = state.sourceCapture.requests.filter(item => item.id !== requestId);
+    state.sourceCapture.updatedAt = nowIso();
+  }
+
   function defaultState() {
     const stamp = nowIso();
-    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), accountPersistence: accountPersistenceTemplate(), crossDeviceSync: crossDeviceSyncTemplate(), versionHistory: versionHistoryTemplate(), safeActions: safeActionsTemplate(), reconciliation: reconciliationTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), knowledgeGraph: knowledgeGraphTemplate(), activityIntelligence: activityIntelligenceTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), collaboration: collaborationTemplate(), institutional: institutionalTemplate(), createdAt: stamp, updatedAt: stamp };
+    return { schemaVersion: STORAGE_VERSION, identity: identityTemplate(), accountPersistence: accountPersistenceTemplate(), crossDeviceSync: crossDeviceSyncTemplate(), versionHistory: versionHistoryTemplate(), safeActions: safeActionsTemplate(), reconciliation: reconciliationTemplate(), sourceCapture: sourceCaptureTemplate(), activeProjectId: null, projects: [], recentTools: [], knowledge: knowledgeTemplate(), knowledgeGraph: knowledgeGraphTemplate(), activityIntelligence: activityIntelligenceTemplate(), interoperability: interoperabilityTemplate(), share: shareTemplate(), collaboration: collaborationTemplate(), institutional: institutionalTemplate(), createdAt: stamp, updatedAt: stamp };
   }
 
   function provenanceTemplate() {
@@ -2214,6 +2256,34 @@
     return next;
   }
 
+  function migrateV28(raw) {
+    const next = defaultState();
+    next.projects = Array.isArray(raw.projects) ? raw.projects.map(project => {
+      const normalized = normalizeProject(project);
+      if (normalized && project?.schema === LEGACY_PROJECT_SCHEMA_V13) addActivity(normalized, 'migrated', 'Project upgraded to Source Capture & Research Clipping');
+      return normalized;
+    }).filter(Boolean) : [];
+    next.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    next.activeProjectId = next.projects.some(p => p.id === raw.activeProjectId && !p.archivedAt) ? raw.activeProjectId : null;
+    next.identity = normalizeIdentity(raw.identity);
+    next.accountPersistence = normalizeAccountPersistence(raw.accountPersistence, next.projects);
+    next.crossDeviceSync = normalizeCrossDeviceSync(raw.crossDeviceSync, next.projects);
+    next.versionHistory = normalizeVersionHistory(raw.versionHistory, next.projects);
+    next.safeActions = normalizeSafeActions(raw.safeActions, next.projects);
+    next.reconciliation = normalizeReconciliation(raw.reconciliation, next.projects);
+    next.sourceCapture = sourceCaptureTemplate();
+    next.knowledge = normalizeKnowledge(raw.knowledge, next.projects);
+    next.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, next.projects);
+    next.activityIntelligence = normalizeActivityIntelligence(raw.activityIntelligence, next.projects);
+    next.interoperability = normalizeInteroperability(raw.interoperability);
+    next.share = normalizeShare(raw.share);
+    next.collaboration = normalizeCollaboration(raw.collaboration, next.projects);
+    next.institutional = normalizeInstitutional(raw.institutional, next.projects);
+    next.createdAt = validIso(raw.createdAt) ? raw.createdAt : next.createdAt;
+    next.updatedAt = nowIso();
+    return next;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -2243,6 +2313,7 @@
     if (raw.schemaVersion === 25) return migrateV25(raw);
     if (raw.schemaVersion === 26) return migrateV26(raw);
     if (raw.schemaVersion === 27) return migrateV27(raw);
+    if (raw.schemaVersion === 28) return migrateV28(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -2253,6 +2324,7 @@
     state.versionHistory = normalizeVersionHistory(raw.versionHistory, state.projects);
     state.safeActions = normalizeSafeActions(raw.safeActions, state.projects);
     state.reconciliation = normalizeReconciliation(raw.reconciliation, state.projects);
+    state.sourceCapture = normalizeSourceCapture(raw.sourceCapture);
     state.knowledge = normalizeKnowledge(raw.knowledge, state.projects);
     state.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, state.projects);
     state.activityIntelligence = normalizeActivityIntelligence(raw.activityIntelligence, state.projects);
@@ -2346,6 +2418,7 @@
     state.accountPersistence = normalizeAccountPersistence(state.accountPersistence, state.projects);
     state.crossDeviceSync = normalizeCrossDeviceSync(state.crossDeviceSync, state.projects);
     state.versionHistory = normalizeVersionHistory(state.versionHistory, state.projects);
+    state.sourceCapture = normalizeSourceCapture(state.sourceCapture);
     state.updatedAt = nowIso();
     try {
       const serialized = JSON.stringify(state);
@@ -2546,6 +2619,12 @@
     root.dataset.scwReady = '1';
 
     let state = readState();
+    const sourceCaptureApi = sourceCaptureHelper();
+    if (sourceCaptureApi?.consumeStaged) {
+      const staged = sourceCaptureApi.consumeStaged();
+      staged.forEach(item => enqueueSourceCapture(item));
+      if (staged.length) writeState(state);
+    }
     let activeProjectMode = 'overview';
     let workspaceView = 'start';
     let stagedInteroperability = null;
@@ -2804,6 +2883,11 @@
     const notebookBlockList = root.querySelector('[data-scw-notebook-block-list]');
     const notebookStatus = root.querySelector('[data-scw-notebook-status]');
     const notebookExport = root.querySelector('[data-scw-notebook-export]');
+    const notebookCaptureForm = root.querySelector('[data-scw-notebook-capture-form]');
+    const notebookCaptureInbox = root.querySelector('[data-scw-notebook-capture-inbox]');
+    const notebookCaptureCount = root.querySelector('[data-scw-notebook-metric-captures]');
+    const notebookCaptureImport = root.querySelector('[data-scw-notebook-capture-import]');
+    const notebookCaptureFile = root.querySelector('[data-scw-notebook-capture-file]');
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
     const graphSection = root.querySelector('[data-scw-workspace-section="graph"]');
     const activityIntelligenceSection = root.querySelector('[data-scw-workspace-section="activity"]');
@@ -3998,6 +4082,8 @@
       const body = document.createElement('div'); body.className = 'scw-notebook-block-body';
       if (block.content) { const p = document.createElement('p'); p.textContent = block.content; body.appendChild(p); }
       if (block.sourceTitle || block.sourceUrl) { const small = document.createElement('small'); small.textContent = [block.sourceTitle, block.sourceUrl].filter(Boolean).join(' · '); body.appendChild(small); }
+      if (block.capture?.sourceSurface && block.capture.sourceSurface !== 'manual') { const cap = document.createElement('small'); cap.className='scw-notebook-capture-meta'; cap.textContent = `CAPTURED FROM · ${String(block.capture.sourceSurface).replaceAll('-',' ').toUpperCase()}${block.capture.locator?` · ${block.capture.locator}`:''}`; body.appendChild(cap); }
+      const citation = notebookHelper()?.citationLine?.(block) || ''; if (citation) { const cite = document.createElement('small'); cite.className='scw-notebook-citation'; cite.textContent=citation; body.appendChild(cite); }
       if (block.referenceObjectId) { const object = objectById(project, block.referenceObjectId); const ref = document.createElement('button'); ref.type='button'; ref.className='scw-notebook-reference'; ref.textContent = object ? `REFERENCE · ${object.title}` : 'REFERENCE · unavailable object'; ref.disabled = !object; ref.addEventListener('click',()=>{if(!object)return;state.activeProjectId=project.id;project.activeObjectId=object.id;persist('Notebook reference opened');setWorkspaceView('projects');setProjectMode('objects');render();objectEditor.scrollIntoView({behavior:prefersReducedMotion()?'auto':'smooth',block:'start'});}); body.appendChild(ref); }
       if (block.tags.length) { const tags = document.createElement('div'); tags.className='scw-notebook-tags'; block.tags.forEach(tag=>{const t=document.createElement('span');t.textContent=tag;tags.appendChild(t);});body.appendChild(tags); }
       if (block.promotion?.status === 'promoted') { const promoted=document.createElement('div');promoted.className='scw-notebook-promoted';promoted.textContent=`PROMOTED · ${String(block.promotion.targetKind||'artifact').replaceAll('-',' ').toUpperCase()} · ${formatTime(block.promotion.promotedAt)}`;body.appendChild(promoted); }
@@ -4021,7 +4107,7 @@
       let targetId='';
       if(target==='object'){
         if(project.objects.length>=MAX_OBJECTS){window.alert(`This project has reached the ${MAX_OBJECTS}-object local limit.`);return;}
-        const objectType=helper.promotionObjectType(block.type)||'document';const object=objectTemplate(objectType,block.title||`${block.type} from Notebook`);object.summary=String(block.content||'').slice(0,1200);object.content=String(block.content||'').slice(0,50000);object.tags=normalizeTags(block.tags);object.status='working';object.provenance.sourceType=block.sourceUrl?'web':'manual';object.provenance.sourceTitle=block.sourceTitle||notebook.title;object.provenance.sourceUrl=block.sourceUrl||'';object.provenance.capturedAt=nowIso();project.objects.push(object);project.activeObjectId=object.id;targetId=object.id;
+        const objectType=helper.promotionObjectType(block.type)||'document';const object=objectTemplate(objectType,block.title||`${block.type} from Notebook`);object.summary=String(block.content||'').slice(0,1200);const citation=helper.citationLine?.(block)||'';object.content=[String(block.content||''),citation?`\n\nSource context: ${citation}`:''].join('').slice(0,50000);object.tags=normalizeTags(block.tags);object.status='working';object.provenance.sourceType=block.sourceUrl?'web':'manual';object.provenance.sourceTitle=block.sourceTitle||notebook.title;object.provenance.sourceUrl=block.sourceUrl||'';object.provenance.capturedAt=block.capture?.capturedAt||nowIso();project.objects.push(object);project.activeObjectId=object.id;targetId=object.id;
         if(objectType==='source'&&project.research.readingQueue.length<MAX_READING_QUEUE)project.research.readingQueue.push({id:id('rr'),objectId:object.id,status:'unread',note:'Promoted from Research Notebook',addedAt:nowIso(),updatedAt:nowIso()});
       } else if(target==='research-question'){
         if(project.research.questions.length>=MAX_RESEARCH_QUESTIONS){window.alert('Research question limit reached.');return;}const q={id:id('rq'),text:String(block.content||block.title||'').trim().slice(0,1000),status:'open',priority:'normal',createdAt:nowIso(),updatedAt:nowIso()};if(!q.text)return;project.research.questions.push(q);project.research.activeQuestionId=q.id;targetId=q.id;touchResearch(project);
@@ -4031,11 +4117,54 @@
       block.promotion={status:'promoted',targetKind:target,targetId,promotedAt:nowIso()};block.updatedAt=nowIso();section.updatedAt=notebook.updatedAt=block.updatedAt;touchNotebooks(project);addActivity(project,'notebook-promoted',`Notebook ${block.type} promoted to ${target.replaceAll('-',' ')}`);persist('Notebook block promoted');render();setWorkspaceView('notebook');
     }
 
+    function saveCaptureToActiveSection(request, project = notebookSelectedProject()) {
+      const helper = notebookHelper(), capture = sourceCaptureHelper();
+      if (!project || !helper || !capture) { window.alert('Choose a project before saving captured research.'); return false; }
+      project.notebooks = normalizeNotebooks(project.notebooks, project.objects);
+      let notebook = activeNotebookFor(project);
+      if (!notebook) {
+        if (project.notebooks.notebooks.length >= MAX_NOTEBOOKS) { window.alert('Notebook limit reached.'); return false; }
+        notebook = helper.createNotebook(request.suggestedNotebookTitle || 'Research Notebook', 'Captured research and working notes.', id, nowIso);
+        project.notebooks.notebooks.push(notebook); project.notebooks.activeNotebookId = notebook.id;
+      }
+      let section = activeNotebookSectionFor(project, notebook);
+      if (request.suggestedSectionTitle) {
+        const found = notebook.sections.find(item => item.title.toLowerCase() === request.suggestedSectionTitle.toLowerCase());
+        if (found) { section = found; notebook.activeSectionId = found.id; }
+      }
+      if (!section) { section = helper.createSection(request.suggestedSectionTitle || 'Captured Sources', id, nowIso); notebook.sections.push(section); notebook.activeSectionId = section.id; }
+      const total = notebookAllBlocks(project).length;
+      if (total >= MAX_NOTEBOOK_BLOCKS_PER_PROJECT || notebook.sections.reduce((sum,s)=>sum+s.blocks.length,0) >= MAX_NOTEBOOK_BLOCKS_PER_NOTEBOOK) { window.alert('Notebook block limit reached.'); return false; }
+      const block = helper.blockFromCapture(request, id, nowIso);
+      section.blocks.push(block); section.updatedAt = notebook.updatedAt = nowIso(); touchNotebooks(project);
+      addActivity(project, 'source-capture', `Captured ${block.type}: ${block.title || block.sourceTitle || 'research material'}`);
+      removeSourceCapture(request.id);
+      return true;
+    }
+
+    function renderSourceCaptureInbox(project) {
+      state.sourceCapture = normalizeSourceCapture(state.sourceCapture);
+      if (notebookCaptureCount) notebookCaptureCount.textContent = String(state.sourceCapture.requests.length);
+      if (!notebookCaptureInbox) return;
+      notebookCaptureInbox.innerHTML = '';
+      if (!state.sourceCapture.requests.length) { notebookCaptureInbox.innerHTML = '<div class="scw-notebook-empty">No incoming captures. Compatible Sustainable Catalyst research surfaces can stage material here without putting research content in a URL.</div>'; return; }
+      state.sourceCapture.requests.forEach(request => {
+        const row=document.createElement('article'); row.className='scw-capture-inbox-card';
+        const body=document.createElement('div'); const citation=[...(request.bibliography?.authors||[]),request.bibliography?.publicationDate,request.bibliography?.publisher].filter(Boolean).join(' · ');
+        body.innerHTML=`<span>${escapeHtml(String(request.capture?.sourceSurface||'manual').replaceAll('-',' ').toUpperCase())} · ${escapeHtml(request.blockType.toUpperCase())}</span><strong>${escapeHtml(request.title||request.sourceTitle||'Untitled capture')}</strong><p>${escapeHtml(String(request.content||'').slice(0,280))}</p>${citation?`<small>${escapeHtml(citation)}</small>`:''}`;
+        const actions=document.createElement('div'); actions.className='scw-capture-inbox-actions';
+        const save=document.createElement('button'); save.type='button'; save.className='scw-button scw-button-primary'; save.textContent='Save to active section'; save.disabled=!project; save.addEventListener('click',()=>{if(saveCaptureToActiveSection(request,project)){persist('Captured research saved to Notebook');renderNotebook();}});
+        const dismiss=document.createElement('button'); dismiss.type='button'; dismiss.className='scw-button'; dismiss.textContent='Dismiss'; dismiss.addEventListener('click',()=>{removeSourceCapture(request.id);persist('Capture dismissed');renderNotebook();});
+        actions.append(save,dismiss); row.append(body,actions); notebookCaptureInbox.appendChild(row);
+      });
+    }
+
     function renderNotebook() {
       if(!notebookSection)return;
       const projects=state.projects.filter(project=>!project.archivedAt).sort(projectSort);const current=String(notebookProject?.value||state.activeProjectId||'');
       if(notebookProject){notebookProject.innerHTML='<option value="">Choose project</option>';projects.forEach(project=>{const o=document.createElement('option');o.value=project.id;o.textContent=project.title;notebookProject.appendChild(o);});if(projects.some(project=>project.id===current))notebookProject.value=current;else if(activeProject())notebookProject.value=activeProject().id;}
       const project=notebookSelectedProject();
+      renderSourceCaptureInbox(project);
       if(!project){if(notebookList)notebookList.innerHTML='<div class="scw-notebook-empty">Create or choose a project before starting a notebook.</div>';if(notebookActive)notebookActive.innerHTML='<div class="scw-notebook-empty">Notebook work belongs to a Workspace Project.</div>';if(notebookSectionList)notebookSectionList.innerHTML='';if(notebookBlockList)notebookBlockList.innerHTML='';[notebookMetricNotebooks,notebookMetricSections,notebookMetricBlocks,notebookMetricPromoted].forEach(el=>{if(el)el.textContent='0';});if(notebookStatus)notebookStatus.textContent='No active project selected.';return;}
       project.notebooks=normalizeNotebooks(project.notebooks,project.objects);const all=notebookAllBlocks(project);if(notebookMetricNotebooks)notebookMetricNotebooks.textContent=String(project.notebooks.notebooks.length);if(notebookMetricSections)notebookMetricSections.textContent=String(project.notebooks.notebooks.reduce((sum,n)=>sum+n.sections.length,0));if(notebookMetricBlocks)notebookMetricBlocks.textContent=String(all.length);if(notebookMetricPromoted)notebookMetricPromoted.textContent=String(all.filter(block=>block.promotion?.status==='promoted').length);
       const active=activeNotebookFor(project);if(notebookList){notebookList.innerHTML='';if(!project.notebooks.notebooks.length)notebookList.innerHTML='<div class="scw-notebook-empty">No notebooks yet. Create one for notes, excerpts, questions, or working claims.</div>';project.notebooks.notebooks.forEach((nb,index)=>{const row=document.createElement('article');row.className=`scw-notebook-card${nb.id===active?.id?' is-active':''}`;const body=document.createElement('button');body.type='button';body.className='scw-notebook-card-open';body.innerHTML=`<span>NOTEBOOK ${String(index+1).padStart(2,'0')}</span><strong>${escapeHtml(nb.title)}</strong><small>${nb.sections.length} section${nb.sections.length===1?'':'s'} · ${nb.sections.reduce((sum,sec)=>sum+sec.blocks.length,0)} block${nb.sections.reduce((sum,sec)=>sum+sec.blocks.length,0)===1?'':'s'}</small>`;body.addEventListener('click',()=>{project.notebooks.activeNotebookId=nb.id;touchNotebooks(project);persist('Active notebook saved');renderNotebook();});const del=document.createElement('button');del.type='button';del.className='scw-card-action scw-card-action-muted';del.textContent='Remove';del.addEventListener('click',()=>{if(!window.confirm(`Remove notebook “${nb.title}”? Promoted Workspace artifacts will remain.`))return;project.notebooks.notebooks=project.notebooks.notebooks.filter(item=>item.id!==nb.id);project.notebooks.activeNotebookId=project.notebooks.notebooks[0]?.id||null;touchNotebooks(project);addActivity(project,'notebook','Notebook removed');persist('Notebook removed');renderNotebook();});row.append(body,del);notebookList.appendChild(row);});}
@@ -4397,27 +4526,41 @@
           const payload = JSON.parse(String(reader.result || ''));
           const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V11 || payload.schema === LEGACY_EXPORT_SCHEMA_V10 || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V12 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V11 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V13 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V12 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V11 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
           project.archivedAt = null; project.activeObjectId = null; project.updatedAt = nowIso(); addActivity(project, 'imported', 'Project imported on this device');
           state.projects.push(project); state.activeProjectId = project.id; activeProjectMode = 'overview'; persist('Imported project saved'); render();
         } catch (_) {
-          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.32.0, or a compatible future release.');
+          window.alert('Workspace could not import this file. Use a Workspace project JSON export from v0.2.0 through v0.33.0, or a compatible future release.');
         } finally { importFile.value = ''; }
       };
       reader.readAsText(file);
     });
 
 
+    window.addEventListener('message', event => {
+      if (event.origin !== window.location.origin || event.data?.type !== SOURCE_CAPTURE_MESSAGE_TYPE) return;
+      const request=enqueueSourceCapture(event.data.payload); if(!request)return; persist('Incoming research capture staged'); renderNotebook(); setWorkspaceView('notebook', true);
+    });
+
     if (notebookProject) notebookProject.addEventListener('change',()=>{const project=state.projects.find(item=>item.id===String(notebookProject.value||'')&&!item.archivedAt);if(project){state.activeProjectId=project.id;persist('Notebook project selected');}renderNotebook();});
     if (notebookCreateForm) notebookCreateForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject();if(!project){window.alert('Choose a project first.');return;}project.notebooks=normalizeNotebooks(project.notebooks,project.objects);if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS){window.alert(`This project has reached the ${MAX_NOTEBOOKS}-notebook limit.`);return;}const data=new FormData(notebookCreateForm);const nb=notebookHelper()?.createNotebook(String(data.get('title')||'Research Notebook'),String(data.get('description')||''),id,nowIso);if(!nb)return;project.notebooks.notebooks.unshift(nb);project.notebooks.activeNotebookId=nb.id;touchNotebooks(project);addActivity(project,'notebook',`Notebook created: ${nb.title}`);notebookCreateForm.reset();persist('Notebook created');renderNotebook();});
     if (notebookSectionForm) notebookSectionForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),nb=activeNotebookFor(project);if(!project||!nb)return;if(nb.sections.length>=MAX_NOTEBOOK_SECTIONS){window.alert(`This notebook has reached the ${MAX_NOTEBOOK_SECTIONS}-section limit.`);return;}const data=new FormData(notebookSectionForm),title=String(data.get('title')||'Notes').trim().slice(0,160)||'Notes';const section=notebookHelper()?.createSection(title,id,nowIso);if(!section)return;nb.sections.push(section);nb.activeSectionId=section.id;nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-section',`Notebook section added: ${title}`);notebookSectionForm.reset();persist('Notebook section added');renderNotebook();});
-    if (notebookBlockForm) notebookBlockForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),nb=activeNotebookFor(project),section=activeNotebookSectionFor(project,nb);if(!project||!nb||!section){window.alert('Choose a notebook section first.');return;}const total=notebookAllBlocks(project).length;if(total>=MAX_NOTEBOOK_BLOCKS_PER_PROJECT||nb.sections.reduce((sum,s)=>sum+s.blocks.length,0)>=MAX_NOTEBOOK_BLOCKS_PER_NOTEBOOK){window.alert('This notebook has reached its local block limit.');return;}const data=new FormData(notebookBlockForm),type=String(data.get('type')||'note'),title=String(data.get('title')||'').trim().slice(0,240),content=String(data.get('content')||'').slice(0,50000),referenceObjectId=String(data.get('referenceObjectId')||'').slice(0,160),reference=objectById(project,referenceObjectId);const block=notebookHelper()?.createBlock(type,{title,content,sourceUrl:String(data.get('sourceUrl')||'').trim().slice(0,2000),sourceObjectId:reference?.type==='source'?reference.id:'',sourceTitle:reference?.title||'',referenceObjectId:reference?.id||'',tags:normalizeTags(data.get('tags'))},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-block',`Notebook ${type} added${title?`: ${title}`:''}`);notebookBlockForm.reset();if(notebookBlockObject)notebookBlockObject.value='';persist('Notebook block added');renderNotebook();});
+    if (notebookBlockForm) notebookBlockForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),nb=activeNotebookFor(project),section=activeNotebookSectionFor(project,nb);if(!project||!nb||!section){window.alert('Choose a notebook section first.');return;}const total=notebookAllBlocks(project).length;if(total>=MAX_NOTEBOOK_BLOCKS_PER_PROJECT||nb.sections.reduce((sum,s)=>sum+s.blocks.length,0)>=MAX_NOTEBOOK_BLOCKS_PER_NOTEBOOK){window.alert('This notebook has reached its local block limit.');return;}const data=new FormData(notebookBlockForm),type=String(data.get('type')||'note'),title=String(data.get('title')||'').trim().slice(0,240),content=String(data.get('content')||'').slice(0,50000),referenceObjectId=String(data.get('referenceObjectId')||'').slice(0,160),reference=objectById(project,referenceObjectId);const block=notebookHelper()?.createBlock(type,{title,content,sourceUrl:String(data.get('sourceUrl')||'').trim().slice(0,2000),sourceObjectId:reference?.type==='source'?reference.id:'',sourceTitle:reference?.title||'',referenceObjectId:reference?.id||'',tags:normalizeTags(data.get('tags')),capture:{sourceSurface:'manual',sourceKind:type==='attachment'?'document-reference':type,selectionKind:type==='excerpt'?'pasted-excerpt':'manual-entry',captureMode:'manual',capturedAt:nowIso()},bibliography:{}},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-block',`Notebook ${type} added${title?`: ${title}`:''}`);notebookBlockForm.reset();if(notebookBlockObject)notebookBlockObject.value='';persist('Notebook block added');renderNotebook();});
     if (notebookExport) notebookExport.addEventListener('click',()=>{const project=notebookSelectedProject(),nb=activeNotebookFor(project);if(!project||!nb)return;const pkg=notebookHelper()?.exportNotebook(nb,project,rootVersion());if(!pkg)return;downloadJson(`${safeFileName(project.title)}-${safeFileName(nb.title)}.sc-workspace-notebook.json`,pkg);addActivity(project,'notebook-export',`Notebook exported: ${nb.title}`);touchNotebooks(project);persist('Notebook export recorded');renderNotebook();});
     const objectToNotebook = root.querySelector('[data-scw-object-to-notebook]');
-    if (objectToNotebook) objectToNotebook.addEventListener('click',()=>{const project=activeProject(),object=activeObject();if(!project||!object)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);let nb=activeNotebookFor(project);if(!nb){if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS)return;nb=notebookHelper()?.createNotebook('Research Notebook','Working notes and captured project material.',id,nowIso);if(!nb)return;project.notebooks.notebooks.push(nb);project.notebooks.activeNotebookId=nb.id;}let section=activeNotebookSectionFor(project,nb);if(!section){section=notebookHelper()?.createSection('Notes',id,nowIso);nb.sections.push(section);nb.activeSectionId=section.id;}const type=object.type==='source'?'source':object.type==='evidence'?'excerpt':'reference';const block=notebookHelper()?.createBlock(type,{title:object.title,content:object.type==='evidence'?(object.content||object.summary):(object.summary||''),sourceObjectId:object.type==='source'?object.id:'',sourceTitle:object.provenance?.sourceTitle||object.title,sourceUrl:object.provenance?.sourceUrl||'',referenceObjectId:object.id,tags:object.tags},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-capture',`Added object to Notebook: ${object.title}`);persist('Object added to Research Notebook');render();setWorkspaceView('notebook',true);});
+    if (objectToNotebook) objectToNotebook.addEventListener('click',()=>{const project=activeProject(),object=activeObject();if(!project||!object)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);let nb=activeNotebookFor(project);if(!nb){if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS)return;nb=notebookHelper()?.createNotebook('Research Notebook','Working notes and captured project material.',id,nowIso);if(!nb)return;project.notebooks.notebooks.push(nb);project.notebooks.activeNotebookId=nb.id;}let section=activeNotebookSectionFor(project,nb);if(!section){section=notebookHelper()?.createSection('Notes',id,nowIso);nb.sections.push(section);nb.activeSectionId=section.id;}const type=object.type==='source'?'source':object.type==='evidence'?'excerpt':'reference';const block=notebookHelper()?.createBlock(type,{title:object.title,content:object.type==='evidence'?(object.content||object.summary):(object.summary||''),sourceObjectId:object.type==='source'?object.id:'',sourceTitle:object.provenance?.sourceTitle||object.title,sourceUrl:object.provenance?.sourceUrl||'',referenceObjectId:object.id,tags:object.tags,capture:{sourceSurface:'workspace-object',sourceId:object.id,sourceKind:object.type,selectionKind:'object-reference',captureMode:'workspace-object',capturedAt:nowIso()},bibliography:{}},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-capture',`Added object to Notebook: ${object.title}`);persist('Object added to Research Notebook');render();setWorkspaceView('notebook',true);});
+
+    if (notebookCaptureForm) notebookCaptureForm.addEventListener('submit', event => {
+      event.preventDefault(); const project=notebookSelectedProject(); if(!project){window.alert('Choose a project first.');return;}
+      const helper=sourceCaptureHelper(); if(!helper)return; const data=new FormData(notebookCaptureForm);
+      const request=helper.request({blockType:String(data.get('blockType')||'source'),title:String(data.get('title')||''),content:String(data.get('content')||''),sourceTitle:String(data.get('title')||''),sourceUrl:String(data.get('sourceUrl')||''),sourceSurface:String(data.get('sourceSurface')||'manual'),sourceKind:String(data.get('sourceKind')||''),selectionKind:String(data.get('blockType'))==='excerpt'?'pasted-excerpt':'source-record',locator:String(data.get('locator')||''),authors:String(data.get('authors')||''),publisher:String(data.get('publisher')||''),containerTitle:String(data.get('containerTitle')||''),publicationDate:String(data.get('publicationDate')||''),identifier:String(data.get('identifier')||''),doi:String(data.get('doi')||''),license:String(data.get('license')||''),tags:normalizeTags(data.get('tags')),captureMode:'manual'});
+      if(saveCaptureToActiveSection(request,project)){notebookCaptureForm.reset();persist('Source capture saved to Notebook');renderNotebook();}
+    });
+    if (notebookCaptureImport && notebookCaptureFile) notebookCaptureImport.addEventListener('click',()=>notebookCaptureFile.click());
+    if (notebookCaptureFile) notebookCaptureFile.addEventListener('change',()=>{const file=notebookCaptureFile.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(String(reader.result||'')),helper=sourceCaptureHelper();if(!helper||raw?.schema!==SOURCE_CAPTURE_REQUEST_SCHEMA)throw new Error('unsupported');enqueueSourceCapture(raw);persist('Portable capture request imported');renderNotebook();}catch(_){window.alert('Workspace could not import this capture request. Use sc-workspace-notebook-capture-request/1.0 JSON.');}finally{notebookCaptureFile.value='';}};reader.readAsText(file);});
 
     researchQuestionForm.addEventListener('submit', (event) => {
       event.preventDefault();

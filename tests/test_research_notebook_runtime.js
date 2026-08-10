@@ -1,13 +1,14 @@
+'use strict';
 const assert = require('assert');
-const nb = require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v1.js');
+const nb = require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v2.js');
 let n = 0;
 const id = prefix => `${prefix}-${++n}`;
 const now = () => '2026-08-09T23:30:00.000Z';
 
-assert.strictEqual(nb.WORKSPACE_SCHEMA, 'sc-workspace-notebook-workspace/1.0');
-assert.strictEqual(nb.NOTEBOOK_SCHEMA, 'sc-workspace-notebook/1.0');
-assert.strictEqual(nb.BLOCK_SCHEMA, 'sc-workspace-notebook-block/1.0');
-assert.strictEqual(nb.EXPORT_SCHEMA, 'sc-workspace-notebook-export/1.0');
+assert.strictEqual(nb.WORKSPACE_SCHEMA, 'sc-workspace-notebook-workspace/2.0');
+assert.strictEqual(nb.NOTEBOOK_SCHEMA, 'sc-workspace-notebook/2.0');
+assert.strictEqual(nb.BLOCK_SCHEMA, 'sc-workspace-notebook-block/2.0');
+assert.strictEqual(nb.EXPORT_SCHEMA, 'sc-workspace-notebook-export/2.0');
 assert.deepStrictEqual(nb.BLOCK_TYPES, ['note','source','excerpt','question','claim','reference','checklist','divider','attachment']);
 assert.deepStrictEqual(nb.LIMITS, { notebooksPerProject:30, sectionsPerNotebook:40, blocksPerNotebook:300, blocksPerProject:600 });
 
@@ -18,7 +19,11 @@ assert.strictEqual(notebook.sections.length, 1);
 assert.strictEqual(notebook.sections[0].title, 'Notes');
 const section = nb.createSection('Core Sources', id, now);
 notebook.sections.push(section);
-const block = nb.createBlock('excerpt', {title:'Reliability finding', content:'Quoted research passage', sourceUrl:'https://example.org/report', tags:['grid','reliability']}, id, now);
+const block = nb.createBlock('excerpt', {
+  title:'Reliability finding', content:'Quoted research passage', sourceUrl:'https://example.org/report', tags:['grid','reliability'],
+  capture:{sourceSurface:'external-web',sourceKind:'report',selectionKind:'selected-text',locator:'p. 9'},
+  bibliography:{authors:['A. Author'],publisher:'Institute',publicationDate:'2026',doi:'10.1000/grid'}
+}, id, now);
 section.blocks.push(block);
 ws.notebooks.push(notebook); ws.activeNotebookId = notebook.id;
 assert.strictEqual(nb.blockCount(ws), 1);
@@ -27,13 +32,17 @@ assert.strictEqual(nb.promotionObjectType('excerpt'), 'evidence');
 assert.strictEqual(nb.promotionTarget('question'), 'research-question');
 assert.strictEqual(nb.promotionTarget('claim'), 'research-claim');
 assert.strictEqual(nb.promotionTarget('reference'), '');
+assert(nb.citationLine(block).includes('A. Author'));
+assert(nb.citationLine(block).includes('DOI 10.1000/grid'));
 const original = JSON.stringify(ws);
-const exported = nb.exportNotebook(notebook, {id:'scwp-1',title:'Grid Project'}, '0.32.0');
-assert.strictEqual(exported.schema, 'sc-workspace-notebook-export/1.0');
+const exported = nb.exportNotebook(notebook, {id:'scwp-1',title:'Grid Project'}, '0.33.0');
+assert.strictEqual(exported.schema, 'sc-workspace-notebook-export/2.0');
 assert.strictEqual(exported.project.id, 'scwp-1');
 assert.strictEqual(exported.notebook.title, 'Grid Research');
+assert.strictEqual(exported.notebook.sections[1].blocks[0].capture.sourceSurface,'external-web');
+assert.strictEqual(exported.notebook.sections[1].blocks[0].bibliography.publisher,'Institute');
 assert.strictEqual(JSON.stringify(ws), original, 'export must not mutate notebook state');
 const arr=['a','b','c']; assert.strictEqual(nb.move(arr,1,-1),true); assert.deepStrictEqual(arr,['b','a','c']);
 const normalized = nb.workspace(JSON.parse(JSON.stringify(ws)), id, now);
 assert.strictEqual(normalized.notebooks[0].sections[1].blocks[0].type, 'excerpt');
-console.log('PASS - Workspace v0.32.0 Research Notebook runtime');
+console.log('PASS - Workspace v0.33.0 Research Notebook v2 runtime');

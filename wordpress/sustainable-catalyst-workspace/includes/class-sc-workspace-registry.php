@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0320';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0320';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0330';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0330';
+    const LEGACY_PENDING_KEY_V0320 = 'sc_workspace_registry_pending_v0320';
     const LEGACY_PENDING_KEY_V0310 = 'sc_workspace_registry_pending_v0310';
     const LEGACY_PENDING_KEY_V0300 = 'sc_workspace_registry_pending_v0300';
     const LEGACY_PENDING_KEY_V0290 = 'sc_workspace_registry_pending_v0290';
@@ -108,6 +109,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0320);
         delete_option(self::LEGACY_PENDING_KEY_V0310);
         delete_option(self::LEGACY_PENDING_KEY_V0300);
         delete_option(self::LEGACY_PENDING_KEY_V0290);
@@ -196,11 +198,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.31.0',
+            'previous_version' => '0.32.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Research Notebook Foundation: adds project-bound notebooks, sections, reorderable working blocks, canonical object references, portable notebook export, and explicit promotion into Source, Evidence, Document, Research Question, and Research Claim artifacts.',
+            'change_summary' => 'Source Capture & Research Clipping: adds a reviewable capture inbox, retained bibliographic context, same-origin capture handoffs, portable capture-request import, and explicit saving of sources and excerpts into Research Notebook.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.32.0 adds a project-bound Research Notebook as low-friction working memory. Storage advances to schema 28 and projects to schema 13.0. Promotions are explicit; Notebook does not run AI, publish, or upload content automatically.',
+            'manual_notes' => 'Free public Workspace. v0.33.0 adds explicit Source Capture & Research Clipping. Storage advances 28→29 and project schema 13.0→14.0. Capture does not fetch remote pages, infer metadata, run AI, publish, or upload automatically.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

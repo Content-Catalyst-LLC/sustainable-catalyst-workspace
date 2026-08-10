@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-source-capture-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Source Capture Provenance v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "sourceSurface",
+    "sourceId",
+    "sourceKind",
+    "contentType",
+    "selectionKind",
+    "locator",
+    "capturedAt",
+    "captureMode"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-source-capture/1.0"
+    },
+    "sourceSurface": {
+      "enum": [
+        "manual",
+        "knowledge-library",
+        "research-librarian",
+        "external-web",
+        "document",
+        "workspace-object",
+        "other"
+      ]
+    },
+    "sourceId": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "sourceKind": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "contentType": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "selectionKind": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "locator": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "capturedAt": {
+      "type": "string"
+    },
+    "captureMode": {
+      "type": "string",
+      "maxLength": 80
+    }
+  }
+}

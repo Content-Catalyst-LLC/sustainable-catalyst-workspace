@@ -1,32 +1,13 @@
 # Sustainable Catalyst Workspace
 
-Free, public, local-first working environment for research, evidence, analysis, decisions, structured thinking, briefing, portable projects, recovery, governance, and project-bound research notebooks.
+Current release: **v0.33.0 — Source Capture & Research Clipping**
 
-## Current release
+Sustainable Catalyst Workspace is a free, public, local-first environment for research, evidence, analysis, decisions, notebooks, briefings, provenance, change review, reconciliation, and governance-aware project work.
 
-**v0.32.0 — Research Notebook Foundation**
+v0.33.0 extends Research Notebook with explicit source capture and research clipping, retained bibliographic context, a local capture inbox, and a same-origin producer adapter for Sustainable Catalyst research surfaces. It does not automatically fetch source pages, infer citation metadata, upload research, or run AI.
 
-v0.32.0 adds the low-friction thinking layer between reading and structured Workspace objects. Projects can hold multiple notebooks with reorderable sections and working blocks for notes, sources, excerpts, questions, claims, references, checklists, dividers, and attachment references. Notebook material stays useful as working memory and moves into canonical Workspace objects only through an explicit promotion action.
+Canonical public Workspace route: `/platform/`
 
-The migration is non-destructive: storage advances from 27 to **28** and the project schema from `sc-workspace-project/12.0` to **`sc-workspace-project/13.0`**. Existing projects receive an empty notebook workspace while preserving objects, provenance, account backup, cross-device sync, restore points, Safe Actions, reconciliation receipts, collaboration, institutional handoffs, audit sources, and lifecycle history.
+Canonical Knowledge Library route: `/knowledge-libraries/`
 
-Notebook does not require AI, does not automatically run AI over notes, does not upload because a user signs in, and does not automatically promote material. Account backup, sync, restore points, and portable project export inherit the existing project boundary.
-
-## Public product boundary
-
-- Guest use remains fully functional and device-local.
-- Accounts are optional; backup and sync remain explicit human actions.
-- Research Notebook is working memory, not a second authoritative object store.
-- Promoted Source, Evidence, Document, Research Question, and Research Claim records remain authoritative after promotion.
-- The canonical Knowledge Library route is `/knowledge-libraries/`.
-- Catalyst Intelligence remains the institutional environment for organization identity, permissions, governance, audit, shared knowledge, connectors, and deployment.
-
-## Current schemas
-
-- Workspace storage: **28**
-- Project: **`sc-workspace-project/13.0`**
-- Project export: **`sc-workspace-project-export/13.0`**
-- Notebook workspace: **`sc-workspace-notebook-workspace/1.0`**
-- Notebook: **`sc-workspace-notebook/1.0`**
-- Notebook block: **`sc-workspace-notebook-block/1.0`**
-- Notebook export: **`sc-workspace-notebook-export/1.0`**
+Repository: `git@github.com:Content-Catalyst-LLC/sustainable-catalyst-workspace.git`

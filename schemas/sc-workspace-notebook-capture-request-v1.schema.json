@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-capture-request-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Capture Request v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "requestedAt",
+    "blockType",
+    "title",
+    "content",
+    "sourceTitle",
+    "sourceUrl",
+    "tags",
+    "capture",
+    "bibliography",
+    "suggestedNotebookTitle",
+    "suggestedSectionTitle"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-capture-request/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "requestedAt": {
+      "type": "string"
+    },
+    "blockType": {
+      "enum": [
+        "source",
+        "excerpt",
+        "note",
+        "question",
+        "claim",
+        "reference",
+        "attachment"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "content": {
+      "type": "string",
+      "maxLength": 50000
+    },
+    "sourceTitle": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "sourceUrl": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 48
+      }
+    },
+    "capture": {
+      "$ref": "sc-workspace-source-capture-v1.schema.json"
+    },
+    "bibliography": {
+      "$ref": "sc-workspace-bibliographic-context-v1.schema.json"
+    },
+    "suggestedNotebookTitle": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "suggestedSectionTitle": {
+      "type": "string",
+      "maxLength": 160
+    }
+  }
+}

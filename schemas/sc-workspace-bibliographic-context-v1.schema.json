@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-bibliographic-context-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Bibliographic Context v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authors",
+    "publisher",
+    "containerTitle",
+    "publicationDate",
+    "accessedAt",
+    "identifier",
+    "doi",
+    "locator",
+    "edition",
+    "volume",
+    "issue",
+    "license"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-bibliographic-context/1.0"
+    },
+    "authors": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 120
+      }
+    },
+    "publisher": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "containerTitle": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "publicationDate": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "accessedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "identifier": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "doi": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "locator": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "edition": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "volume": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "issue": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "license": {
+      "type": "string",
+      "maxLength": 240
+    }
+  }
+}

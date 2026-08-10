@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-source-capture-inbox-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Source Capture Inbox v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "requests",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-source-capture-inbox/1.0"
+    },
+    "requests": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "sc-workspace-notebook-capture-request-v1.schema.json"
+      }
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}
