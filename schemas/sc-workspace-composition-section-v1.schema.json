@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-composition-section-v1.schema.json",
+  "title": "Workspace Composition Section",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "kind",
+    "title",
+    "body",
+    "sourceRefs",
+    "citationRefs",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-composition-section/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "introduction",
+        "question",
+        "sources",
+        "evidence",
+        "analysis",
+        "decision",
+        "discussion",
+        "conclusion",
+        "bibliography",
+        "custom"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "body": {
+      "type": "string",
+      "maxLength": 20000
+    },
+    "sourceRefs": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "type": "object"
+      }
+    },
+    "citationRefs": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "type": "object"
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

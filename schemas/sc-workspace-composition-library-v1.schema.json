@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-composition-library-v1.schema.json",
+  "title": "Workspace Composition Library",
+  "type": "object",
+  "required": [
+    "schema",
+    "drafts",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-composition-library/1.0"
+    },
+    "drafts": {
+      "type": "array",
+      "maxItems": 80
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

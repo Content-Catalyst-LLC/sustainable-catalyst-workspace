@@ -85,7 +85,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.44.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.45.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -187,6 +187,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/citation-library-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'citation_library_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/composition-studio-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'composition_studio_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/navigation-contract', array(
@@ -984,6 +989,32 @@ final class SC_Workspace {
     }
 
 
+    public function composition_studio_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-composition-studio-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'section_schema' => 'sc-workspace-composition-section/1.0',
+            'draft_schema' => 'sc-workspace-composition-draft/1.0',
+            'library_schema' => 'sc-workspace-composition-library/1.0',
+            'export_schema' => 'sc-workspace-composition-export/1.0',
+            'storage' => 'browser-local-composition-library',
+            'max_drafts' => 80,
+            'max_sections_per_draft' => 80,
+            'canonical_inputs' => array('workspace-object','notebook','notebook-block','research-question','research-claim'),
+            'citation_source' => 'citation-library-explicit-reference-selection',
+            'document_materialization' => 'explicit-human-action',
+            'materialized_object_type' => 'document',
+            'source_records_copied' => false,
+            'automatic_document_creation' => false,
+            'automatic_ai' => false,
+            'citation_inference' => false,
+            'canonical_source_mutation' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
+
     public function navigation_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-navigation-contract/1.0',
@@ -1766,8 +1797,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0440',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.44.0.css',
+            'sc-workspace-v0450',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.45.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1891,9 +1922,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0440',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.44.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1'),
+            'sc-workspace-composition-studio-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-composition-studio-v1.js',
+            array('sc-workspace-reference-library-v1', 'sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0450',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.45.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1901,7 +1939,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0440', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0450', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2207,6 +2245,19 @@ final class SC_Workspace {
                         <aside class="scw-reference-detail" data-scw-reference-detail><div class="scw-knowledge-empty-note">Select a reference to inspect its citation, normalized identifiers, origin links, and duplicate candidates.</div></aside>
                     </div>
                     <div class="scw-notebook-boundary" role="note"><strong>Recorded bibliography only.</strong><span>The Citation Library is browser-local Workspace data. It can normalize what you enter, but it does not query DOI services, scrape pages, infer missing metadata, automatically merge duplicates, or mutate Project records.</span></div>
+                </section>
+
+                <section class="scw-composition-studio" data-scw-composition-studio aria-labelledby="scw-composition-studio-title">
+                    <div class="scw-composition-head"><div><span>DOCUMENT / RESEARCH COMPOSITION</span><h3 id="scw-composition-studio-title">Compose structured research documents without copying canonical source records.</h3><p>Build ordered sections, attach selected Workspace research and Citation Library references, preview the resulting document, and materialize it into a canonical Workspace Document only when you explicitly choose to do so.</p></div><div class="scw-composition-metrics"><div><strong data-scw-composition-draft-count>0</strong><span>drafts</span></div><div><strong data-scw-composition-input-count>0</strong><span>inputs</span></div></div></div>
+                    <div class="scw-composition-toolbar"><label><span>Composition</span><select data-scw-composition-draft><option value="">Choose composition</option></select></label><button class="scw-button" type="button" data-scw-composition-new>New composition</button><button class="scw-button" type="button" data-scw-composition-delete disabled>Delete draft</button><button class="scw-button" type="button" data-scw-composition-export disabled>Export draft</button><button class="scw-button" type="button" data-scw-composition-import>Import draft</button><input type="file" accept="application/json,.json" data-scw-composition-import-file hidden><p data-scw-composition-status-message role="status" aria-live="polite"></p></div>
+                    <div class="scw-composition-layout">
+                        <div class="scw-composition-editor"><div class="scw-knowledge-panel-head"><span>01 / DOCUMENT</span><h4>Structure and authorship</h4></div><label><span>Title</span><input type="text" maxlength="240" data-scw-composition-title disabled></label><label><span>Abstract / purpose</span><textarea rows="3" maxlength="5000" data-scw-composition-abstract disabled></textarea></label><label><span>Status</span><select data-scw-composition-status disabled><option value="draft">Draft</option><option value="review">Review</option><option value="ready">Ready</option></select></label>
+                            <form class="scw-composition-section-form" data-scw-composition-section-form><div class="scw-knowledge-panel-head"><span>02 / SECTION</span><h4>Add authored section</h4></div><label><span>Section kind</span><select name="kind"><option value="introduction">Introduction</option><option value="question">Question</option><option value="sources">Sources</option><option value="evidence">Evidence</option><option value="analysis">Analysis</option><option value="decision">Decision</option><option value="discussion">Discussion</option><option value="conclusion">Conclusion</option><option value="bibliography">Bibliography</option><option value="custom">Custom</option></select></label><label><span>Section title</span><input name="title" maxlength="240" required></label><label><span>Authored text</span><textarea name="body" rows="6" maxlength="20000" placeholder="Write the section here. Workspace does not generate or infer the prose automatically."></textarea></label><button class="scw-button" type="submit">Add section</button></form>
+                        </div>
+                        <div class="scw-composition-structure"><div class="scw-knowledge-panel-head"><span>03 / INPUTS</span><h4>Attach research and references</h4></div><div class="scw-composition-attach"><button class="scw-button" type="button" data-scw-composition-attach-research disabled>Attach selected research result</button><button class="scw-button" type="button" data-scw-composition-attach-reference disabled>Attach selected Citation Library reference</button></div><p class="scw-composition-note">Select a section below before attaching inputs. Research attachments store canonical pointers, not copies of source content.</p><div data-scw-composition-section-list></div></div>
+                        <aside class="scw-composition-preview"><div class="scw-knowledge-panel-head"><span>04 / PREVIEW</span><h4>Document preview</h4></div><pre data-scw-composition-preview>Select or create a composition to preview it.</pre><button class="scw-button scw-button-primary" type="button" data-scw-composition-materialize disabled>Create Workspace Document</button></aside>
+                    </div>
+                    <div class="scw-notebook-boundary" role="note"><strong>Composition remains reviewable until you materialize it.</strong><span>Drafts are browser-local. Canonical research is referenced, not copied. Citation metadata comes only from the Citation Library. Workspace never creates a Document automatically, rewrites a source record, or invents citations.</span></div>
                 </section>
                 <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
                 <div class="scw-notebook-boundary" role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>

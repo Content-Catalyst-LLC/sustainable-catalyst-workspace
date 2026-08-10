@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0440';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0440';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0450';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0450';
+    const LEGACY_PENDING_KEY_V0440 = 'sc_workspace_registry_pending_v0440';
     const LEGACY_PENDING_KEY_V0430 = 'sc_workspace_registry_pending_v0430';
     const LEGACY_PENDING_KEY_V0420 = 'sc_workspace_registry_pending_v0420';
     const LEGACY_PENDING_KEY_V0410 = 'sc_workspace_registry_pending_v0410';
@@ -120,6 +121,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0440);
         delete_option(self::LEGACY_PENDING_KEY_V0430);
         delete_option(self::LEGACY_PENDING_KEY_V0420);
         delete_option(self::LEGACY_PENDING_KEY_V0410);
@@ -220,11 +222,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.43.0',
+            'previous_version' => '0.44.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Citation Library & Reference Management: reusable browser-local references, normalization, deterministic duplicate review, collision-safe citation keys, style previews, and portable reference-library exchange.',
+            'change_summary' => 'Document & Research Composition Studio: browser-local structured composition drafts, explicit canonical research and citation attachments, deterministic preview/export, and deliberate Workspace Document materialization.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.44.0 remains schema-stable at storage 35 / project 20.0. The Citation Library is browser-local Workspace data; missing metadata is not inferred, duplicate candidates are not automatically merged, and canonical Project research is not mutated.',
+            'manual_notes' => 'Free public Workspace. v0.45.0 remains schema-stable at storage 35 / project 20.0. Composition drafts are browser-local, canonical inputs are referenced rather than copied, citations are explicit, and Document creation is human-triggered.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -1,9 +1,9 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.44.0.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.44.0.json').read_text())
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.44.0.js').read_text()
+MAN=json.loads((ROOT/'release-manifest-v0.45.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.45.0.json').read_text())
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.45.0.js').read_text()
 NB=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
@@ -11,7 +11,7 @@ REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspa
 KINDS=['outline','citation-pack','source-matrix','evidence-summary','research-synthesis']
 class NotebookSynthesisCitationWorkspaceContract(unittest.TestCase):
  def test_01_lineage(self):
-  self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.44.0','0.43.0','Citation Library & Reference Management')); self.assertIn('Version: 0.44.0',MAIN)
+  self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.45.0','0.44.0','Document & Research Composition Studio')); self.assertIn('Version: 0.45.0',MAIN)
  def test_02_schema_migration(self):
   self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35)); self.assertEqual((MAN['migration']['project_schema_from'],MAN['migration']['project_schema_to']),('sc-workspace-project/20.0','sc-workspace-project/20.0')); self.assertIn('function migrateV32(raw)',JS); self.assertIn('if (raw.schemaVersion === 32) return migrateV32(raw);',JS)
  def test_03_synthesis_schemas(self):
@@ -31,5 +31,5 @@ class NotebookSynthesisCitationWorkspaceContract(unittest.TestCase):
  def test_09_prior_research_state_preserved(self):
   mig=MAN['migration']; self.assertTrue(mig['preserves_notebook_promotions']); self.assertTrue(mig['preserves_notebook_collections']); self.assertTrue(mig['preserves_notebook_links']); self.assertTrue(mig['preserves_source_capture']); self.assertTrue((ROOT/'history/release-manifest-v0.35.0.json').exists())
  def test_10_registry(self):
-  self.assertEqual((REG['public_version'],REG['previous_version']),('0.44.0','0.43.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0440'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0360',REGPHP)
+  self.assertEqual((REG['public_version'],REG['previous_version']),('0.45.0','0.44.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0450'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0360',REGPHP)
 if __name__=='__main__': unittest.main()
