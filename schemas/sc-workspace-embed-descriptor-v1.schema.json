@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-embed-descriptor-v1.schema.json",
+  "title": "Workspace Embed Descriptor v1",
+  "type": "object",
+  "required": ["schema", "renderer", "rendererUrl", "payload", "fingerprint", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-embed-descriptor/1.0"},
+    "renderer": {"const": "sc-workspace-api-embed-v1"},
+    "rendererUrl": {"type": "string"},
+    "payload": {"$ref": "sc-workspace-readonly-api-envelope-v1.schema.json"},
+    "fingerprint": {"type": "string"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": false
+}

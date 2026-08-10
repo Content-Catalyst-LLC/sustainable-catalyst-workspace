@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-readonly-api-envelope-v1.schema.json",
+  "title": "Workspace Read-only API Envelope v1",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "readOnly", "generatedAt", "reference", "projection", "links", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-readonly-api-envelope/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "readOnly": {"const": true},
+    "generatedAt": {"type": "string"},
+    "reference": {"$ref": "sc-workspace-durable-reference-v1.schema.json"},
+    "projection": {"$ref": "sc-workspace-readonly-projection-v1.schema.json"},
+    "links": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": false
+}

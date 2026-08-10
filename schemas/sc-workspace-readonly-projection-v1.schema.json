@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-readonly-projection-v1.schema.json",
+  "title": "Workspace Read-only Projection v1",
+  "type": "object",
+  "required": ["schema", "id", "createdAt", "exposure", "durableRef", "fields", "data", "sourceRevision", "fingerprint", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-readonly-projection/1.0"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 180},
+    "createdAt": {"type": "string"},
+    "exposure": {"const": "public-readonly"},
+    "durableRef": {"$ref": "sc-workspace-durable-reference-v1.schema.json"},
+    "fields": {"type": "object", "required": ["summary", "tags", "provenance", "content"], "properties": {"summary": {"type": "boolean"}, "tags": {"type": "boolean"}, "provenance": {"type": "boolean"}, "content": {"type": "boolean"}}, "additionalProperties": false},
+    "data": {"type": "object", "required": ["title", "projectTitle", "kind", "subtype", "origin", "updatedAt"], "additionalProperties": true},
+    "sourceRevision": {"type": "string"},
+    "fingerprint": {"type": "string"},
+    "governance": {"type": "object", "required": ["explicitDisclosure", "readOnly", "canonicalSourceUnchanged", "durableReferenceIsAuthorization", "liveServerRead", "automaticPublication", "automaticRefresh"], "additionalProperties": {"type": "boolean"}}
+  },
+  "additionalProperties": false
+}

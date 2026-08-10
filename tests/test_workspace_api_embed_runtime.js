@@ -1,0 +1,12 @@
+const assert=require('assert');
+const A=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-api-embed-v1.js');
+const entry={key:'object:p 1:o/1',kind:'object',subtype:'source',projectId:'p 1',projectTitle:'Project One',id:'o/1',title:'Public Research Title',summary:'Bounded summary',content:'FULL PRIVATE-CANDIDATE CONTENT',tags:['climate','evidence'],updatedAt:'2026-08-10T21:00:00Z',origin:'Workspace Object',provenance:{sourceTitle:'Recorded source',sourceUrl:'https://example.com/source',bibliography:{author:'A'}}};
+const original=JSON.stringify(entry);
+const ref=A.durableReference(entry);assert(ref);assert.equal(ref.uri,'scw://project/p%201/object/o%2F1');assert.equal(ref.authorization,false);assert.deepEqual(A.parseDurableReference(ref.uri).projectId,'p 1');assert.equal(A.parseDurableReference(ref.uri).id,'o/1');
+let p=A.createProjection(entry,{fields:{summary:true}},()=> '2026-08-10T21:15:00Z',()=> 'proj-1');assert(p);assert.equal(p.exposure,'public-readonly');assert.equal(p.data.summary,'Bounded summary');assert.equal('content' in p.data,false);assert.equal('provenance' in p.data,false);assert.equal(p.governance.canonicalSourceUnchanged,true);assert.equal(JSON.stringify(entry),original);
+p=A.withFingerprint(p,'sha256:abc');assert(A.validateProjection(p).ok);const env=A.apiEnvelope(p,'0.55.0');assert.equal(env.readOnly,true);assert.equal(env.governance.serverDataEndpoint,false);assert.equal(env.governance.authenticationByReference,false);
+const d=A.embedDescriptor(p,'0.55.0','https://sustainablecatalyst.com/plugin/sc-workspace-api-embed-v1.js');assert.equal(d.governance.noLiveDataFetch,true);const html=A.embedHtml(d,d.rendererUrl);assert(html.includes('data-sc-workspace-embed'));assert(html.includes('sc-workspace-api-embed-v1.js'));
+const p2=A.createProjection(entry,{fields:{summary:false,tags:true,provenance:true,content:true}},()=> '2026-08-10T21:16:00Z',()=> 'proj-2');assert.equal(p2.data.content,'FULL PRIVATE-CANDIDATE CONTENT');assert.deepEqual(p2.data.tags,['climate','evidence']);assert.equal(p2.data.provenance.sourceTitle,'Recorded source');
+let ledger=A.normalizeLedger({});ledger=A.upsert(ledger,p);ledger=A.upsert(ledger,p2);assert.equal(ledger.projections.length,2);ledger=A.remove(ledger,'proj-1');assert.equal(ledger.projections.length,1);assert.equal(ledger.projections[0].id,'proj-2');
+assert.equal(A.resolve([entry],ref).id,'o/1');assert.equal(A.resolve([],ref),null);
+console.log('PASS - v0.55.0 Workspace API & Embed runtime');

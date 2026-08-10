@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-durable-reference-v1.schema.json",
+  "title": "Workspace Durable Reference v1",
+  "type": "object",
+  "required": ["schema", "uri", "projectId", "kind", "id", "authorization"],
+  "properties": {
+    "schema": {"const": "sc-workspace-durable-reference/1.0"},
+    "uri": {"type": "string", "pattern": "^scw://project/"},
+    "projectId": {"type": "string", "minLength": 1, "maxLength": 160},
+    "kind": {"enum": ["object", "notebook", "notebook-block", "research-question", "research-claim"]},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "notebookId": {"type": "string", "maxLength": 160},
+    "sectionId": {"type": "string", "maxLength": 160},
+    "authorization": {"const": false}
+  },
+  "additionalProperties": false
+}

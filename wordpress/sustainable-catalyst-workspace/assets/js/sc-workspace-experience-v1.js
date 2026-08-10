@@ -23,6 +23,7 @@
     {id:'audit',area:'review',label:'Audit',description:'Inspect authoritative audit and governance records.',keywords:'review audit governance provenance'},
     {id:'interoperability',area:'exchange',label:'Import & Interoperability',description:'Stage and review research/project interchange.',keywords:'exchange import export interoperability markdown csv zotero obsidian notion'},
     {id:'collaboration',area:'exchange',label:'Collaborate',description:'Prepare and exchange structured asynchronous reviews.',keywords:'exchange collaborate review comments'},
+    {id:'api-embed',area:'exchange',label:'API & Embed',description:'Create explicit static read-only projections and durable references.',keywords:'exchange api embed reference readonly projection integration'},
     {id:'institutional',area:'exchange',label:'Institutional',description:'Prepare explicit institutional handoff packages.',keywords:'exchange institutional handoff promotion'},
     {id:'share',area:'exchange',label:'Share',description:'Create portable project or static review copies.',keywords:'exchange share portable package'}
   ];
@@ -55,7 +56,7 @@
       {term:'Notebook',meaning:'A working research surface for notes, source captures, links, synthesis, and grounded questions.'},
       {term:'Knowledge',meaning:'A derived view over canonical Workspace records for finding and reusing existing work.'},
       {term:'Review',meaning:'Activity, lifecycle, history, change comparison, reconciliation, safety, and audit.'},
-      {term:'Exchange',meaning:'Deliberate import, collaboration, institutional handoff, and portable sharing.'}
+      {term:'Exchange',meaning:'Deliberate import, collaboration, read-only API/embed projections, institutional handoff, and portable sharing.'}
     ];
   }
   function governanceState(){
