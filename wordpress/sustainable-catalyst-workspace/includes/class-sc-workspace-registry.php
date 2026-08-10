@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0510';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0510';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0520';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0520';
+    const LEGACY_PENDING_KEY_V0510 = 'sc_workspace_registry_pending_v0510';
     const LEGACY_PENDING_KEY_V0500 = 'sc_workspace_registry_pending_v0500';
     const LEGACY_PENDING_KEY_V0490 = 'sc_workspace_registry_pending_v0490';
     const LEGACY_PENDING_KEY_V0480 = 'sc_workspace_registry_pending_v0480';
@@ -128,6 +129,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0510);
         delete_option(self::LEGACY_PENDING_KEY_V0500);
         delete_option(self::LEGACY_PENDING_KEY_V0490);
         delete_option(self::LEGACY_PENDING_KEY_V0480);
@@ -236,11 +238,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.50.0',
+            'previous_version' => '0.51.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Grounded Research Assistant II extends explicit citation-enforced assistance across Integrated Knowledge.',
+            'change_summary' => 'Research Tasks & Workflow State adds explicit workflow tasks around canonical research references.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Grounding scope is explicit and frozen into provider-neutral request packets. Responses require citations and remain drafts until human review and explicit materialization. No automatic AI invocation, scope expansion, metadata invention, or canonical mutation. The 4px editorial header rule is retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Tasks are browser-local canonical pointers with explicit status history. Task transitions never mutate referenced research. Unresolved targets remain visible. No automatic task creation, completion, AI action, or canonical mutation. The 4px editorial header rule is retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

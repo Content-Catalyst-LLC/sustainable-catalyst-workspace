@@ -221,6 +221,11 @@ final class SC_Workspace {
             'callback' => array($this, 'grounded_research_assistant_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/research-tasks-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'research_tasks_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'knowledge_graph_contract'),
@@ -1119,6 +1124,31 @@ public function research_templates_contract() {
         ));
     }
 
+
+    public function research_tasks_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-research-tasks-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'task_schema' => 'sc-workspace-research-task/1.0',
+            'library_schema' => 'sc-workspace-research-task-library/1.0',
+            'export_schema' => 'sc-workspace-research-task-export/1.0',
+            'target_corpus' => 'derived-integrated-knowledge-index',
+            'storage' => 'browser-local',
+            'task_types' => array('review-needed', 'verify-claim', 'source-required', 'citation-incomplete', 'ready-for-synthesis', 'follow-up', 'custom'),
+            'states' => array('open', 'in-progress', 'blocked', 'done', 'dismissed'),
+            'priorities' => array('low', 'normal', 'high', 'critical'),
+            'explicit_history' => true,
+            'unresolved_references_visible' => true,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration' => false,
+            'automatic_task_creation' => false,
+            'automatic_completion' => false,
+            'automatic_ai' => false,
+            'automatic_canonical_mutation' => false,
+        ));
+    }
+
     public function grounded_research_assistant_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-grounded-research-assistant-contract/1.0',
@@ -1948,8 +1978,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0510',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.51.0.css',
+            'sc-workspace-v0520',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.52.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2115,6 +2145,13 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-research-tasks-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-tasks-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2122,9 +2159,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0510',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.51.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0520',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.52.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2132,7 +2169,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0510', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0520', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2465,6 +2502,15 @@ public function research_templates_contract() {
                     <div class="scw-cross-project-list" data-scw-cross-project-list><div class="scw-knowledge-empty-note">No cross-project references yet.</div></div>
                     <div class="scw-notebook-boundary" role="note"><strong>Reference, do not duplicate.</strong><span>Cross-project knowledge is a browser-local ledger of canonical pointers. It never copies source content into the target project, silently changes project ownership, infers relationships, or mutates either project. Missing source/target records remain visibly unresolved.</span></div>
                 </section>
+                <section class="scw-research-tasks" data-scw-research-tasks aria-labelledby="scw-research-tasks-title">
+                    <div class="scw-research-tasks-head"><div><span>RESEARCH TASKS / WORKFLOW STATE</span><h3 id="scw-research-tasks-title">Track what research needs next without changing the research itself.</h3><p>Create explicit tasks around selected Integrated Knowledge records. Task state, priority, ownership labels, due dates, and history stay separate from the canonical record so “done” never silently changes a claim, source, citation, Notebook block, or Document.</p></div><div class="scw-research-task-metrics"><div><strong data-scw-task-open>0</strong><span>open</span></div><div><strong data-scw-task-progress>0</strong><span>in progress</span></div><div><strong data-scw-task-blocked>0</strong><span>blocked</span></div><div><strong data-scw-task-unresolved>0</strong><span>unresolved</span></div></div></div>
+                    <div class="scw-research-task-layout">
+                        <form class="scw-research-task-form" data-scw-task-form><div class="scw-knowledge-panel-head"><span>01 / CREATE</span><h4>Task for selected research</h4></div><p data-scw-task-selected>No research result selected.</p><label><span>Task type</span><select name="type"><option value="review-needed">Review needed</option><option value="verify-claim">Verify claim</option><option value="source-required">Source required</option><option value="citation-incomplete">Citation incomplete</option><option value="ready-for-synthesis">Ready for synthesis</option><option value="follow-up">Follow-up</option><option value="custom">Custom</option></select></label><div class="scw-research-task-form-row"><label><span>Priority</span><select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option><option value="low">Low</option></select></label><label><span>Due date</span><input type="date" name="dueDate"></label></div><label><span>Owner label</span><input name="owner" maxlength="160" placeholder="Self, editor, reviewer"></label><label><span>Task note</span><textarea name="note" rows="3" maxlength="4000" placeholder="What needs to happen next?"></textarea></label><button class="scw-button scw-button-primary" type="submit" data-scw-task-create disabled>Create task for selected research</button></form>
+                        <div class="scw-research-task-board"><div class="scw-knowledge-panel-head"><span>02 / WORKFLOW</span><h4>Research task ledger</h4></div><div class="scw-research-task-filters"><label><span>Status</span><select data-scw-task-filter-status><option value="all">All states</option><option value="open">Open</option><option value="in-progress">In progress</option><option value="blocked">Blocked</option><option value="done">Done</option><option value="dismissed">Dismissed</option></select></label><label><span>Type</span><select data-scw-task-filter-type><option value="all">All types</option><option value="review-needed">Review needed</option><option value="verify-claim">Verify claim</option><option value="source-required">Source required</option><option value="citation-incomplete">Citation incomplete</option><option value="ready-for-synthesis">Ready for synthesis</option><option value="follow-up">Follow-up</option><option value="custom">Custom</option></select></label><label><span>Project</span><select data-scw-task-filter-project><option value="all">All projects</option></select></label><label><span>Resolution</span><select data-scw-task-filter-resolution><option value="all">All targets</option><option value="resolved">Resolved targets</option><option value="unresolved">Unresolved targets</option></select></label></div><div class="scw-research-task-list" data-scw-task-list><div class="scw-knowledge-empty-note">No research tasks yet.</div></div><div class="scw-research-task-actions"><button class="scw-button" type="button" data-scw-task-export>Export task library</button><button class="scw-button" type="button" data-scw-task-import>Import task library</button><input type="file" accept="application/json,.json" data-scw-task-import-file hidden><p data-scw-task-status role="status" aria-live="polite"></p></div></div>
+                    </div>
+                    <div class="scw-notebook-boundary" role="note"><strong>Workflow state is not research state.</strong><span>Research Tasks are browser-local canonical pointers. Completing, blocking, dismissing, importing, exporting, or deleting a task never edits the record it references. Workspace does not generate tasks automatically or infer that research is complete.</span></div>
+                </section>
+
                 <section class="scw-grounded-research-assistant" data-scw-grounded-research-assistant aria-labelledby="scw-grounded-research-assistant-title">
                     <div class="scw-grounded-research-head"><div><span>GROUNDED RESEARCH ASSISTANT II</span><h3 id="scw-grounded-research-assistant-title">Ask across Integrated Knowledge without expanding the scope behind your back.</h3><p>Build an explicit multi-record grounding set from the research results on this page. Preparing a request freezes the selected records into an inspectable packet. Returned prose is accepted only when its citation markers resolve to that frozen set, and every substantive segment cites at least one selected record.</p></div><div class="scw-grounded-research-metrics"><div><strong data-scw-grounded-session-count>0</strong><span>draft sessions</span></div><div><strong data-scw-grounded-scope-count>0</strong><span>next-request scope</span></div></div></div>
                     <div class="scw-grounded-research-toolbar"><label><span>Saved request</span><select data-scw-grounded-session><option value="">Choose grounded request</option></select></label><button type="button" class="scw-button" data-scw-grounded-add-selected disabled>Add selected research to scope</button><button type="button" class="scw-button" data-scw-grounded-clear-scope>Clear next scope</button><button type="button" class="scw-button" data-scw-grounded-delete disabled>Delete request</button><p data-scw-grounded-status role="status" aria-live="polite"></p></div>

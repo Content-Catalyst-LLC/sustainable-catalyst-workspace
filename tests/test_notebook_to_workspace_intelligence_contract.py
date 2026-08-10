@@ -3,9 +3,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAN = json.loads((ROOT / 'release-manifest-v0.51.0.json').read_text())
-REG = json.loads((ROOT / 'registry/workspace-product-record-v0.51.0.json').read_text())
-JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.51.0.js').read_text()
+MAN = json.loads((ROOT / 'release-manifest-v0.52.0.json').read_text())
+REG = json.loads((ROOT / 'registry/workspace-product-record-v0.52.0.json').read_text())
+JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.52.0.js').read_text()
 NB = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text()
 PHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN = (ROOT / 'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
@@ -16,8 +16,8 @@ TARGETS = ['source','evidence','dataset','analysis','decision','document','canva
 class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
     def test_01_release_lineage(self):
         self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']),
-                         ('0.51.0', '0.50.0', 'Grounded Research Assistant II'))
-        self.assertIn('Version: 0.51.0', MAIN)
+                         ('0.52.0', '0.51.0', 'Research Tasks & Workflow State'))
+        self.assertIn('Version: 0.52.0', MAIN)
 
     def test_02_storage_and_project_migration(self):
         self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']),
@@ -110,8 +110,8 @@ class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
         self.assertTrue((ROOT / 'history/workspace-product-record-v0.34.0.json').exists())
 
     def test_12_registry_lineage(self):
-        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.51.0','0.50.0'))
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0510'", REGPHP)
+        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.52.0','0.51.0'))
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0520'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0360', REGPHP)
 
 if __name__ == '__main__':

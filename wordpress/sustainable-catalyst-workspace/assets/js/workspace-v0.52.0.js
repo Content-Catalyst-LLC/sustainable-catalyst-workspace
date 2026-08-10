@@ -3181,6 +3181,23 @@ const researchTemplateCustomList = root.querySelector('[data-scw-research-templa
     const crossProjectExport = root.querySelector('[data-scw-cross-project-export]');
     const crossProjectImport = root.querySelector('[data-scw-cross-project-import]');
     const crossProjectImportFile = root.querySelector('[data-scw-cross-project-import-file]');
+    const researchTasksSection = root.querySelector('[data-scw-research-tasks]');
+    const researchTaskForm = root.querySelector('[data-scw-task-form]');
+    const researchTaskSelected = root.querySelector('[data-scw-task-selected]');
+    const researchTaskCreate = root.querySelector('[data-scw-task-create]');
+    const researchTaskList = root.querySelector('[data-scw-task-list]');
+    const researchTaskFilterStatus = root.querySelector('[data-scw-task-filter-status]');
+    const researchTaskFilterType = root.querySelector('[data-scw-task-filter-type]');
+    const researchTaskFilterProject = root.querySelector('[data-scw-task-filter-project]');
+    const researchTaskFilterResolution = root.querySelector('[data-scw-task-filter-resolution]');
+    const researchTaskExport = root.querySelector('[data-scw-task-export]');
+    const researchTaskImport = root.querySelector('[data-scw-task-import]');
+    const researchTaskImportFile = root.querySelector('[data-scw-task-import-file]');
+    const researchTaskStatus = root.querySelector('[data-scw-task-status]');
+    const researchTaskOpen = root.querySelector('[data-scw-task-open]');
+    const researchTaskProgress = root.querySelector('[data-scw-task-progress]');
+    const researchTaskBlocked = root.querySelector('[data-scw-task-blocked]');
+    const researchTaskUnresolved = root.querySelector('[data-scw-task-unresolved]');
     const groundedResearchSection = root.querySelector('[data-scw-grounded-research-assistant]');
     const groundedSessionSelect = root.querySelector('[data-scw-grounded-session]');
     const groundedAddSelected = root.querySelector('[data-scw-grounded-add-selected]');
@@ -3216,6 +3233,7 @@ const researchTemplateCustomList = root.querySelector('[data-scw-research-templa
     let referenceLibrary={schema:'sc-workspace-reference-library/1.0',references:[],updatedAt:''}; let citationPreferences={schema:'sc-workspace-citation-preferences/1.0',style:'apa7',showUrls:true,updatedAt:''}; let selectedReferenceId=''; let referenceQuery='';
     let compositionLibrary={schema:'sc-workspace-composition-library/1.0',drafts:[],updatedAt:''}; let activeCompositionId=''; let activeCompositionSectionId='';
     let crossProjectKnowledge={schema:'sc-workspace-cross-project-knowledge/1.0',references:[],updatedAt:''};
+    let researchTaskLibrary={schema:'sc-workspace-research-task-library/1.0',tasks:[],updatedAt:''}; let researchTaskFilters={status:'all',type:'all',projectId:'all',resolution:'all'};
     let groundedResearchLibrary={schema:'sc-workspace-grounded-research-assistant-library/1.0',sessions:[],updatedAt:''}; let groundedScopeKeys=[]; let activeGroundedSessionId='';
     const betaProjects = root.querySelector('[data-scw-beta-projects]');
     const betaObjects = root.querySelector('[data-scw-beta-objects]');
@@ -4893,6 +4911,11 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
     }
 
     function integratedApi(){return window.SCWorkspaceIntegratedKnowledge||null;}
+    function researchTasksApi(){return window.SCWorkspaceResearchTasks||null;}
+    function loadResearchTaskLibrary(){const api=researchTasksApi();if(!api)return {schema:'sc-workspace-research-task-library/1.0',tasks:[],updatedAt:''};try{return api.normalizeLibrary(JSON.parse(localStorage.getItem(api.STORAGE_KEY)||'{}'));}catch(_){return api.normalizeLibrary({});}}
+    function persistResearchTaskLibrary(){const api=researchTasksApi();if(!api)return false;researchTaskLibrary=api.normalizeLibrary(researchTaskLibrary);researchTaskLibrary.updatedAt=nowIso();try{localStorage.setItem(api.STORAGE_KEY,JSON.stringify(researchTaskLibrary));return true;}catch(_){return false;}}
+    function renderResearchTasks(){if(!researchTasksSection)return;const api=researchTasksApi(),ik=integratedApi();if(!api||!ik)return;researchTaskLibrary=api.normalizeLibrary(researchTaskLibrary);const entries=ik.derive(state),entryMap=new Map(entries.map(e=>[e.key,e])),selected=entryMap.get(selectedIntegratedKey)||null,metrics=api.stats(researchTaskLibrary.tasks,entries);if(researchTaskSelected)researchTaskSelected.textContent=selected?`${selected.title} · ${selected.projectTitle}`:'No research result selected.';if(researchTaskCreate)researchTaskCreate.disabled=!selected;if(researchTaskOpen)researchTaskOpen.textContent=String(metrics.open);if(researchTaskProgress)researchTaskProgress.textContent=String(metrics.inProgress);if(researchTaskBlocked)researchTaskBlocked.textContent=String(metrics.blocked);if(researchTaskUnresolved)researchTaskUnresolved.textContent=String(metrics.unresolved);if(researchTaskFilterProject){const cur=researchTaskFilters.projectId||'all';researchTaskFilterProject.innerHTML='<option value="all">All projects</option>';state.projects.slice().sort(projectSort).forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.title;researchTaskFilterProject.appendChild(o);});researchTaskFilterProject.value=[...researchTaskFilterProject.options].some(o=>o.value===cur)?cur:'all';}if(researchTaskList){researchTaskList.innerHTML='';const tasks=api.filterTasks(researchTaskLibrary.tasks,researchTaskFilters,entries);if(!tasks.length)researchTaskList.innerHTML='<div class="scw-knowledge-empty-note">No research tasks match these filters.</div>';tasks.forEach(task=>{const resolved=api.resolveTask(task,entries),row=document.createElement('article');row.className='scw-research-task-row'+(resolved.resolved?'':' is-unresolved');const due=task.dueDate?` · due ${escapeHtml(task.dueDate)}`:'';row.innerHTML=`<div class="scw-research-task-row-head"><span>${escapeHtml(task.type.replaceAll('-',' '))}</span><strong>${escapeHtml(task.target.title)}</strong><em>${escapeHtml(task.priority)} · ${escapeHtml(task.status.replaceAll('-',' '))}</em></div><small>${escapeHtml(task.target.projectTitle)}${due}${task.owner?` · ${escapeHtml(task.owner)}`:''}${resolved.resolved?'':' · UNRESOLVED TARGET'}</small>${task.note?`<p>${escapeHtml(task.note)}</p>`:''}<div class="scw-research-task-row-actions"></div>`;const actions=row.querySelector('.scw-research-task-row-actions');const action=(label,fn,disabled=false)=>{const b=document.createElement('button');b.type='button';b.className='scw-card-action';b.textContent=label;b.disabled=disabled;b.addEventListener('click',fn);actions.appendChild(b);};if(resolved.resolved)action('Open research',()=>{selectedIntegratedKey=task.target.key;renderIntegratedKnowledge();renderResearchTasks();});if(task.status!=='in-progress'&&task.status!=='done'&&task.status!=='dismissed')action('Start',()=>moveResearchTask(task.id,'in-progress'));if(task.status!=='blocked'&&task.status!=='done'&&task.status!=='dismissed')action('Block',()=>moveResearchTask(task.id,'blocked'));if(task.status!=='done'&&task.status!=='dismissed')action('Done',()=>moveResearchTask(task.id,'done'));if(task.status==='done'||task.status==='dismissed')action('Reopen',()=>moveResearchTask(task.id,'open'));if(task.status!=='dismissed')action('Dismiss',()=>moveResearchTask(task.id,'dismissed'));action('Delete',()=>{researchTaskLibrary.tasks=researchTaskLibrary.tasks.filter(x=>x.id!==task.id);persistResearchTaskLibrary();renderResearchTasks();if(researchTaskStatus)researchTaskStatus.textContent='Task deleted. Referenced research was unchanged.';});researchTaskList.appendChild(row);});}}
+    function moveResearchTask(taskId,nextStatus){const api=researchTasksApi(),task=researchTaskLibrary.tasks.find(t=>t.id===taskId);if(!api||!task)return;const result=api.transition(task,nextStatus,'',nowIso);if(!result.ok)return;researchTaskLibrary.tasks=researchTaskLibrary.tasks.map(t=>t.id===taskId?result.task:t);persistResearchTaskLibrary();renderResearchTasks();if(researchTaskStatus)researchTaskStatus.textContent=`Task moved to ${nextStatus.replaceAll('-',' ')}. Canonical research was unchanged.`;}
     function groundedResearchApi(){return window.SCWorkspaceGroundedResearchAssistant||null;}
     function loadGroundedResearchLibrary(){const api=groundedResearchApi();if(!api)return {schema:'sc-workspace-grounded-research-assistant-library/1.0',sessions:[],updatedAt:''};try{return api.normalizeLibrary(JSON.parse(localStorage.getItem(api.STORAGE_KEY)||'{}'));}catch(_){return api.normalizeLibrary({});}}
     function persistGroundedResearchLibrary(){const api=groundedResearchApi();if(!api)return false;groundedResearchLibrary=api.normalizeLibrary(groundedResearchLibrary);groundedResearchLibrary.updatedAt=nowIso();try{localStorage.setItem(api.STORAGE_KEY,JSON.stringify(groundedResearchLibrary));return true;}catch(_){return false;}}
@@ -4972,7 +4995,8 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
       renderResearchCollections(all);
       renderReferenceLibrary();
       renderCrossProjectKnowledge();
-      renderGroundedResearchAssistant();
+      renderResearchTasks();
+    renderGroundedResearchAssistant();
     }
 
     function renderKnowledge() {
@@ -5737,6 +5761,11 @@ if(researchTemplateImportFile)researchTemplateImportFile.addEventListener('chang
     if(crossProjectExport)crossProjectExport.addEventListener('click',()=>{const api=crossProjectApi();if(!api)return;downloadJson('workspace-cross-project-knowledge.json',api.exportPackage(crossProjectKnowledge));if(crossProjectStatus)crossProjectStatus.textContent='Cross-project reference ledger exported. Canonical research content is not embedded in the package.';});
     if(crossProjectImport)crossProjectImport.addEventListener('click',()=>crossProjectImportFile?.click());
     if(crossProjectImportFile)crossProjectImportFile.addEventListener('change',()=>{const file=crossProjectImportFile.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{const api=crossProjectApi();try{const verification=api?.verifyPackage(JSON.parse(String(reader.result||'')));if(!verification?.ok)throw new Error('Cross-project reference package verification failed.');let next=api.normalizeLedger(crossProjectKnowledge);for(const incoming of verification.ledger.references){const result=api.addReference(next,{...incoming,id:''},()=>id('xpk'));next=result.ledger;}crossProjectKnowledge=next;persistCrossProjectKnowledge();renderCrossProjectKnowledge();renderKnowledgeGraph();if(crossProjectStatus)crossProjectStatus.textContent='Reference package imported. References that cannot resolve on this device remain visibly unresolved.';}catch(err){if(crossProjectStatus)crossProjectStatus.textContent=err?.message||'Cross-project reference import failed.';}finally{crossProjectImportFile.value='';}};reader.readAsText(file);});
+    if(researchTaskForm)researchTaskForm.addEventListener('submit',event=>{event.preventDefault();const api=researchTasksApi(),ik=integratedApi();if(!api||!ik||!selectedIntegratedKey)return;const entry=ik.derive(state).find(e=>e.key===selectedIntegratedKey);if(!entry){if(researchTaskStatus)researchTaskStatus.textContent='Selected research can no longer be resolved.';renderResearchTasks();return;}if(researchTaskLibrary.tasks.length>=api.MAX_TASKS){if(researchTaskStatus)researchTaskStatus.textContent='The browser-local research task limit has been reached.';return;}const fd=new FormData(researchTaskForm),task=api.createTask({type:String(fd.get('type')||'review-needed'),priority:String(fd.get('priority')||'normal'),dueDate:String(fd.get('dueDate')||''),owner:String(fd.get('owner')||''),note:String(fd.get('note')||'')},entry,id,nowIso);if(!task)return;researchTaskLibrary.tasks.unshift(task);persistResearchTaskLibrary();researchTaskForm.reset();renderResearchTasks();if(researchTaskStatus)researchTaskStatus.textContent='Research task created. Canonical research was unchanged.';});
+    [researchTaskFilterStatus,researchTaskFilterType,researchTaskFilterProject,researchTaskFilterResolution].forEach(el=>{if(el)el.addEventListener('change',()=>{researchTaskFilters={status:researchTaskFilterStatus?.value||'all',type:researchTaskFilterType?.value||'all',projectId:researchTaskFilterProject?.value||'all',resolution:researchTaskFilterResolution?.value||'all'};renderResearchTasks();});});
+    if(researchTaskExport)researchTaskExport.addEventListener('click',()=>{const api=researchTasksApi();if(!api)return;downloadJson(`workspace-research-tasks-${new Date().toISOString().slice(0,10)}.json`,api.exportLibrary(researchTaskLibrary));if(researchTaskStatus)researchTaskStatus.textContent='Research task library exported. Canonical research content is not copied into the package.';});
+    if(researchTaskImport)researchTaskImport.addEventListener('click',()=>researchTaskImportFile?.click());
+    if(researchTaskImportFile)researchTaskImportFile.addEventListener('change',async()=>{const file=researchTaskImportFile.files?.[0];researchTaskImportFile.value='';if(!file)return;try{const api=researchTasksApi(),pkg=JSON.parse(await file.text()),result=api.importLibrary(pkg);if(!result.ok){if(researchTaskStatus)researchTaskStatus.textContent=result.message;return;}const byId=new Map(researchTaskLibrary.tasks.map(t=>[t.id,t]));result.library.tasks.forEach(t=>{if(!byId.has(t.id))byId.set(t.id,t);});researchTaskLibrary={schema:api.LIBRARY_SCHEMA,tasks:[...byId.values()].slice(0,api.MAX_TASKS),updatedAt:nowIso()};persistResearchTaskLibrary();renderResearchTasks();if(researchTaskStatus)researchTaskStatus.textContent='Research task package imported. Referenced research was not created or overwritten.';}catch(_){if(researchTaskStatus)researchTaskStatus.textContent='Could not read that Research Tasks package.';}});
     if(groundedAddSelected)groundedAddSelected.addEventListener('click',()=>{if(!selectedIntegratedKey)return;if(!groundedScopeKeys.includes(selectedIntegratedKey))groundedScopeKeys.push(selectedIntegratedKey);renderGroundedResearchAssistant();if(groundedStatus)groundedStatus.textContent='Selected canonical research added to the next request scope.';});
     if(groundedClearScope)groundedClearScope.addEventListener('click',()=>{groundedScopeKeys=[];renderGroundedResearchAssistant();if(groundedStatus)groundedStatus.textContent='Next-request grounding scope cleared. Prepared request packets are unchanged.';});
     if(groundedSessionSelect)groundedSessionSelect.addEventListener('change',()=>{activeGroundedSessionId=groundedSessionSelect.value||'';renderGroundedResearchAssistant();});
@@ -5767,6 +5796,7 @@ if(researchTemplateImportFile)researchTemplateImportFile.addEventListener('chang
     referenceLibrary=loadReferenceLibrary();
     citationPreferences=loadCitationPreferences();
     crossProjectKnowledge=loadCrossProjectKnowledge();
+    researchTaskLibrary=loadResearchTaskLibrary();
     groundedResearchLibrary=loadGroundedResearchLibrary();
     activeGroundedSessionId=groundedResearchLibrary.sessions[0]?.id||'';
     compositionLibrary=loadCompositionLibrary();
@@ -5776,6 +5806,7 @@ if(researchTemplateImportFile)researchTemplateImportFile.addEventListener('chang
     renderResearchCollectionControls();
     renderReferenceLibrary();
     renderCrossProjectKnowledge();
+    renderResearchTasks();
     renderGroundedResearchAssistant();
     renderCompositionStudio();
     setProjectMode('overview');

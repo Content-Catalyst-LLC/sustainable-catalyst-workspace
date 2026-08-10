@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Research Task v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "type",
+    "status",
+    "priority",
+    "target",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-task/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "review-needed",
+        "verify-claim",
+        "source-required",
+        "citation-incomplete",
+        "ready-for-synthesis",
+        "follow-up",
+        "custom"
+      ]
+    },
+    "status": {
+      "enum": [
+        "open",
+        "in-progress",
+        "blocked",
+        "done",
+        "dismissed"
+      ]
+    },
+    "priority": {
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "critical"
+      ]
+    },
+    "owner": {
+      "type": "string"
+    },
+    "dueDate": {
+      "type": "string"
+    },
+    "note": {
+      "type": "string"
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "key",
+        "projectId",
+        "title"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "projectId": {
+          "type": "string"
+        },
+        "projectTitle": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "subtype": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "ref": {}
+      },
+      "additionalProperties": true
+    },
+    "history": {
+      "type": "array"
+    },
+    "completedAt": {
+      "type": "string"
+    },
+    "fingerprint": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

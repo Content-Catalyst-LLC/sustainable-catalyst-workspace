@@ -1,0 +1,12 @@
+const assert=require('assert');
+const api=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-tasks-v1.js');
+let tick=0;const now=()=>`2026-08-10T20:1${tick++}:00Z`;const id=()=>`task-${tick}`;
+const entry={key:'object:p1:o1',kind:'object',subtype:'evidence',projectId:'p1',projectTitle:'Project One',id:'o1',title:'Evidence record',origin:'workspace-object',content:'SHOULD NOT COPY'};
+const task=api.createTask({type:'verify-claim',priority:'high',owner:'reviewer',dueDate:'2026-08-20',note:'Check the source.'},entry,id,now);
+assert(task);assert.equal(task.target.key,entry.key);assert.equal(task.target.title,'Evidence record');assert(!JSON.stringify(task).includes('SHOULD NOT COPY'));
+assert.equal(task.status,'open');let moved=api.transition(task,'in-progress','',now);assert(moved.ok);assert.equal(moved.task.status,'in-progress');moved=api.transition(moved.task,'done','',now);assert.equal(moved.task.status,'done');assert(moved.task.completedAt);assert(moved.task.history.length>=3);
+const stats=api.stats([moved.task],[]);assert.equal(stats.unresolved,1);assert.equal(stats.done,1);
+const filtered=api.filterTasks([moved.task],{status:'done',resolution:'unresolved'},[]);assert.equal(filtered.length,1);
+const lib={schema:api.LIBRARY_SCHEMA,tasks:[moved.task],updatedAt:now()};const pkg=api.exportLibrary(lib);assert.equal(pkg.schema,api.EXPORT_SCHEMA);const imported=api.importLibrary(pkg);assert(imported.ok);assert.equal(imported.library.tasks.length,1);
+const gov=api.governance();assert.equal(gov.automaticTaskCreation,false);assert.equal(gov.automaticCompletion,false);assert.equal(gov.automaticCanonicalMutation,false);assert.equal(gov.taskStateSeparateFromResearchState,true);
+console.log('PASS - v0.52.0 Research Tasks runtime');

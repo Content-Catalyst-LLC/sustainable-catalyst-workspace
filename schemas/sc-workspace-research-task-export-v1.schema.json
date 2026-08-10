@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Research Task Export v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "library"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-task-export/1.0"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "library": {
+      "$ref": "sc-workspace-research-task-library-v1.schema.json"
+    },
+    "fingerprint": {
+      "type": "string"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
