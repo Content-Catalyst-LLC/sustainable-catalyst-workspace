@@ -370,3 +370,20 @@
 .scw-notebook-promotion-row strong{font-size:14px;line-height:1.25}
 .scw-notebook-promotion-row small{font-size:11px;opacity:.7}
 @media (max-width:760px){.scw-notebook-promotion-row{align-items:flex-start;flex-direction:column}.scw-notebook-promote-control{width:100%}.scw-notebook-promote-select{max-width:none;flex:1}}
+
+/* v0.36.0 — Notebook Synthesis & Citation Workspace */
+.scw-notebook-synthesis{margin-top:24px;border-top:1px solid rgba(0,0,0,.14);padding-top:24px}
+.scw-notebook-synthesis-form{display:grid;grid-template-columns:minmax(150px,.7fr) minmax(220px,1fr);gap:12px;align-items:end;margin:16px 0 20px}
+.scw-notebook-synthesis-form label{display:grid;gap:6px}
+.scw-notebook-synthesis-form label>span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.scw-notebook-synthesis-material-label{grid-column:1/-1}
+.scw-notebook-synthesis-material-label select{min-height:170px}
+.scw-notebook-synthesis-material-label small{font-size:12px;opacity:.72}
+.scw-notebook-synthesis-list{display:grid;gap:12px}
+.scw-notebook-synthesis-card{border:1px solid rgba(0,0,0,.14);background:#fff;padding:14px}
+.scw-notebook-synthesis-card-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.scw-notebook-synthesis-card-head>div:first-child{display:grid;gap:4px}
+.scw-notebook-synthesis-card-head span{font-size:10px;font-weight:700;letter-spacing:.09em}
+.scw-notebook-synthesis-card-head small{font-size:12px;opacity:.7}
+.scw-notebook-synthesis-preview{margin:12px 0 0;max-height:320px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace;background:rgba(0,0,0,.035);padding:12px;border:0}
+@media (max-width:760px){.scw-notebook-synthesis-form{grid-template-columns:1fr}.scw-notebook-synthesis-material-label{grid-column:auto}.scw-notebook-synthesis-card-head{display:grid}}

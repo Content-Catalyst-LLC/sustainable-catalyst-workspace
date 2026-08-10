@@ -1,12 +1,12 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.35.0 — Notebook-to-Workspace Intelligence**
+Current release: **v0.36.0 — Notebook Synthesis & Citation Workspace**
 
 Sustainable Catalyst Workspace is a free, public, local-first environment for research, evidence, analysis, decisions, notebooks, briefings, provenance, change review, reconciliation, and governance-aware project work.
 
-v0.35.0 turns Research Notebook material into deliberately reusable Workspace artifacts. A user can explicitly promote notebook material into Source, Evidence, Dataset, Analysis, Decision, Document, or Canvas derivatives. The original notebook block remains in place, each derivative is recorded in a visible promotion ledger, and the same block may produce more than one derivative. Existing v0.34 collections, links, backlinks, source capture, bibliographic context, and provenance are preserved.
+v0.36.0 adds a reviewable synthesis layer to Research Notebook. Users explicitly select notebook blocks or existing Workspace objects and create an outline, citation pack, source matrix, evidence summary, or research-synthesis draft. Every synthesis preserves its selected references, carries only citation facts already present in the source material, and can be exported portably or deliberately materialized as a normal Document object.
 
-Promotion remains human-directed. Workspace does not automatically classify notebook material, infer a destination, run AI, overwrite notebook originals, fetch source pages, publish, or upload research.
+The source notebook and Workspace material remain canonical. Synthesis does not automatically choose research, infer evidence strength, guess citation metadata, run AI, fetch source pages, upload research, publish content, or overwrite source material.
 
 Canonical public Workspace route: `/platform/`
 

@@ -1,19 +1,19 @@
 from pathlib import Path
 import json, unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.35.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.36.0.js').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.35.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.36.0.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-MANIFEST=json.loads((ROOT/'release-manifest-v0.35.0.json').read_text())
+MANIFEST=json.loads((ROOT/'release-manifest-v0.36.0.json').read_text())
 
 class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
     def test_release_metadata_and_schema_stability(self):
-        self.assertEqual(MANIFEST['version'],'0.35.0')
-        self.assertEqual(MANIFEST['previous_version'],'0.34.0')
-        self.assertEqual(MANIFEST['release_name'],'Notebook-to-Workspace Intelligence')
-        self.assertEqual(MANIFEST['storage_schema_version'],31)
-        self.assertEqual(MANIFEST['project_schema'],'sc-workspace-project/16.0')
+        self.assertEqual(MANIFEST['version'],'0.36.0')
+        self.assertEqual(MANIFEST['previous_version'],'0.35.0')
+        self.assertEqual(MANIFEST['release_name'],'Notebook Synthesis & Citation Workspace')
+        self.assertEqual(MANIFEST['storage_schema_version'],32)
+        self.assertEqual(MANIFEST['project_schema'],'sc-workspace-project/17.0')
         self.assertTrue(MANIFEST['schema_migration_required'])
     def test_public_readiness_contract(self):
         self.assertIn("'/readiness-contract'",PHP)
@@ -74,12 +74,12 @@ class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
         self.assertFalse(MANIFEST['governance']['behavioral_telemetry'])
         self.assertFalse(MANIFEST['governance']['productivity_score'])
     def test_registry_lineage_advances_with_safe_actions_storage_migration(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0350'",REG)
-        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0350'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0360'",REG)
+        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0360'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200'",REG)
-        self.assertIn("'previous_version' => '0.34.0'",REG)
+        self.assertIn("'previous_version' => '0.35.0'",REG)
     def test_canonical_library_route_is_unchanged(self):
         self.assertEqual(MANIFEST['canonical_library_path'],'/knowledge-libraries/')
         self.assertIn('/knowledge-libraries/',PHP)

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-synthesis-export-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Synthesis Export v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "exportedAt",
+    "project",
+    "synthesis",
+    "selectedMaterials",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-synthesis-export/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object"
+    },
+    "synthesis": {
+      "$ref": "sc-workspace-notebook-synthesis-v1.schema.json"
+    },
+    "selectedMaterials": {
+      "type": "array",
+      "maxItems": 120,
+      "items": {
+        "type": "object"
+      }
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}
