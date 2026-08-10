@@ -1,15 +1,15 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.1.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.48.0.js'
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.1.css'
-MANIFEST=ROOT/'release-manifest-v0.46.1.json'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.48.0.css'
+MANIFEST=ROOT/'release-manifest-v0.48.0.json'
 class KnowledgeGraphContract(unittest.TestCase):
  def test_manifest(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.46.1');self.assertEqual(m['previous_version'],'0.46.0');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0');self.assertEqual(m['knowledge_graph_schema'],'sc-workspace-knowledge-graph/1.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.48.0');self.assertEqual(m['previous_version'],'0.47.0');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0');self.assertEqual(m['knowledge_graph_schema'],'sc-workspace-knowledge-graph/2.0')
  def test_graph_schema(self):
-  s=json.loads((ROOT/'schemas/sc-workspace-knowledge-graph-v1.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-knowledge-graph/1.0')
+  s=json.loads((ROOT/'schemas/sc-workspace-knowledge-graph-v2.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-knowledge-graph/2.0')
  def test_graph_engine(self):
   j=JS.read_text();self.assertIn('function buildKnowledgeGraph()',j);self.assertIn('function graphNeighborhood',j);self.assertIn('MAX_GRAPH_NODES = 1600',j)
  def test_node_types(self):
@@ -24,7 +24,7 @@ class KnowledgeGraphContract(unittest.TestCase):
  def test_storage_migration(self):
   j=JS.read_text();self.assertIn('const STORAGE_VERSION = 35',j);self.assertIn('function migrateV16(raw)',j);self.assertIn('if (raw.schemaVersion === 16) return migrateV16(raw)',j);self.assertIn("const PROJECT_SCHEMA = 'sc-workspace-project/20.0'",j)
  def test_ui(self):
-  p=PHP.read_text();self.assertIn('data-scw-workspace-view="graph"',p);self.assertIn('WORKSPACE SEARCH &amp; KNOWLEDGE GRAPH',p);self.assertIn('data-scw-graph-svg',p)
+  p=PHP.read_text();self.assertIn('data-scw-workspace-view="graph"',p);self.assertIn('RESEARCH GRAPH &amp; RELATIONSHIP EXPLORER',p);self.assertIn('data-scw-graph-svg',p)
  def test_accessible_parallel_relationships(self):
   p=PHP.read_text();self.assertIn('Why this node is connected',p);self.assertIn('aria-label="Focused Workspace knowledge graph neighborhood"',p)
  def test_style(self):

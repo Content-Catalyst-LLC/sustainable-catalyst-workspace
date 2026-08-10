@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-cross-project-knowledge/1.0",
+  "title": "Workspace Cross-Project Knowledge",
+  "type": "object",
+  "required": ["schema", "references"],
+  "properties": {
+    "schema": {"const": "sc-workspace-cross-project-knowledge/1.0"},
+    "references": {"type": "array", "maxItems": 500, "items": {"$ref": "sc-workspace-cross-project-reference/1.0"}},
+    "createdAt": {"type": "string"},
+    "updatedAt": {"type": "string"}
+  },
+  "additionalProperties": false
+}

@@ -5,8 +5,10 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0461';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0461';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0480';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0480';
+    const LEGACY_PENDING_KEY_V0470 = 'sc_workspace_registry_pending_v0470';
+    const LEGACY_PENDING_KEY_V0461 = 'sc_workspace_registry_pending_v0461';
     const LEGACY_PENDING_KEY_V0460 = 'sc_workspace_registry_pending_v0460';
     const LEGACY_PENDING_KEY_V0450 = 'sc_workspace_registry_pending_v0450';
     const LEGACY_PENDING_KEY_V0440 = 'sc_workspace_registry_pending_v0440';
@@ -123,6 +125,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0470);
+        delete_option(self::LEGACY_PENDING_KEY_V0461);
         delete_option(self::LEGACY_PENDING_KEY_V0460);
         delete_option(self::LEGACY_PENDING_KEY_V0450);
         delete_option(self::LEGACY_PENDING_KEY_V0440);
@@ -226,11 +230,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.46.0',
+            'previous_version' => '0.47.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Workspace Import & Interchange retained; editorial header rule corrected from 2px to the site-standard 4px treatment.',
+            'change_summary' => 'Cross-Project Knowledge adds explicit, browser-local references from a target project to canonical research owned by another project, with visible project boundaries and Research Graph integration.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.46.1 remains schema-stable at storage 35 / project 20.0, retains the complete v0.46.0 interchange feature set, and aligns the editorial top rule to the site-standard 4px treatment on desktop and mobile.',
+            'manual_notes' => 'Free public Workspace. v0.48.0 remains schema-stable at storage 35 / project 20.0. Cross-project knowledge stores only explicit canonical pointers, target project context, relationship labels, and notes in browser-local storage; no content copy, ownership transfer, or inferred links.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

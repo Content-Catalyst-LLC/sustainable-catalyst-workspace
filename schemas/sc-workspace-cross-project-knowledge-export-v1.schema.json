@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-cross-project-knowledge-export/1.0",
+  "title": "Workspace Cross-Project Knowledge Export",
+  "type": "object",
+  "required": ["schema", "exportedAt", "ledger", "integrity"],
+  "properties": {
+    "schema": {"const": "sc-workspace-cross-project-knowledge-export/1.0"},
+    "exportedAt": {"type": "string"},
+    "ledger": {"$ref": "sc-workspace-cross-project-knowledge/1.0"},
+    "integrity": {"type": "object"}
+  },
+  "additionalProperties": false
+}

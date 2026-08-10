@@ -1,16 +1,16 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.46.1.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.46.1.json').read_text())
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.1.js').read_text()
+MAN=json.loads((ROOT/'release-manifest-v0.48.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.48.0.json').read_text())
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.48.0.js').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.1.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.48.0.css').read_text()
 AUDIT=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-audit-trail-v1.js').read_text()
 HELPER=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-project-lifecycle-v1.js').read_text()
 class LifecycleGovernanceContract(unittest.TestCase):
  def test_release_lineage(self):
-  self.assertEqual(MAN['version'],'0.46.1'); self.assertEqual(MAN['previous_version'],'0.46.0'); self.assertEqual(MAN['release_name'],'Workspace Import & Interchange')
+  self.assertEqual(MAN['version'],'0.48.0'); self.assertEqual(MAN['previous_version'],'0.47.0'); self.assertEqual(MAN['release_name'],'Cross-Project Knowledge')
  def test_schema_migration(self):
   self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['schema_migration_required']); self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35)); self.assertTrue(MAN['migration']['project_schema_unchanged'])
  def test_lifecycle_schemas(self):
@@ -31,7 +31,7 @@ class LifecycleGovernanceContract(unittest.TestCase):
  def test_audit_integration(self): self.assertIn('project-lifecycle',MAN['audit_trail']['event_sources']); self.assertIn("'project-lifecycle'",AUDIT); self.assertIn('p.lifecycle?.milestones',AUDIT)
  def test_portability(self): self.assertTrue(MAN['project_lifecycle']['milestone_history_portable_with_project']); self.assertIn('lifecycle: normalizeLifecycle(raw.lifecycle)',JS)
  def test_visual_layer(self): self.assertIn('/* v0.29.0 — Governance Milestones & Project Lifecycle */',CSS); self.assertIn('.scw-project-lifecycle-stage.is-current',CSS)
- def test_registry(self): self.assertEqual(REG['public_version'],'0.46.1'); self.assertEqual(REG['previous_version'],'0.46.0')
+ def test_registry(self): self.assertEqual(REG['public_version'],'0.48.0'); self.assertEqual(REG['previous_version'],'0.47.0')
  def test_v028_history_preserved(self): self.assertTrue((ROOT/'history/release-manifest-v0.28.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.28.0.json').exists())
  def test_library_route(self): self.assertEqual(MAN['canonical_library_path'],'/knowledge-libraries/'); self.assertIn('/knowledge-libraries/',PHP)
 if __name__=='__main__': unittest.main()

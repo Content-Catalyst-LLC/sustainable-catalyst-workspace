@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-knowledge-graph-v2.schema.json",
+  "title": "Workspace Knowledge Graph v2",
+  "type": "object",
+  "required": [
+    "schema",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-knowledge-graph/2.0"
+    },
+    "explorerSchema": {
+      "const": "sc-workspace-relationship-explorer/1.0"
+    },
+    "nodes": {
+      "type": "array"
+    },
+    "edges": {
+      "type": "array"
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

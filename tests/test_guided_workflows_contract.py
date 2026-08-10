@@ -2,14 +2,14 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.1.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.48.0.js'
 SCHEMA=ROOT/'schemas/sc-workspace-guided-workflows-v1.schema.json'
 PROJECT=ROOT/'schemas/sc-workspace-project-v10.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.46.1.json'
+MANIFEST=ROOT/'release-manifest-v0.48.0.json'
 class GuidedWorkflowContractTests(unittest.TestCase):
     def test_release_boundary(self):
         m=json.loads(MANIFEST.read_text())
-        self.assertEqual(m['version'],'0.46.1'); self.assertEqual(m['previous_version'],'0.46.0')
+        self.assertEqual(m['version'],'0.48.0'); self.assertEqual(m['previous_version'],'0.47.0')
         self.assertEqual(m['storage_schema_version'],35); self.assertEqual(m['project_schema'],'sc-workspace-project/20.0')
         self.assertEqual(m['guided_workflows_schema'],'sc-workspace-guided-workflows/1.0')
         self.assertTrue(m['workflow_principles']['blank_projects_supported']); self.assertFalse(m['workflow_principles']['automatic_step_completion'])

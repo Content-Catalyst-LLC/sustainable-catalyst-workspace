@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-cross-project-reference/1.0",
+  "title": "Workspace Cross-Project Reference",
+  "type": "object",
+  "required": ["schema", "id", "targetProjectId", "source", "relation", "createdAt", "updatedAt"],
+  "properties": {
+    "schema": {"const": "sc-workspace-cross-project-reference/1.0"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "targetProjectId": {"type": "string", "minLength": 1, "maxLength": 160},
+    "source": {
+      "type": "object",
+      "required": ["kind", "projectId", "id"],
+      "properties": {
+        "kind": {"enum": ["object", "notebook", "notebook-block", "research-question", "research-claim"]},
+        "projectId": {"type": "string", "minLength": 1, "maxLength": 160},
+        "id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "notebookId": {"type": "string", "maxLength": 160},
+        "sectionId": {"type": "string", "maxLength": 160}
+      },
+      "additionalProperties": false
+    },
+    "relation": {"enum": ["references", "supports", "contrasts", "extends", "related", "informs"]},
+    "note": {"type": "string", "maxLength": 3000},
+    "createdAt": {"type": "string"},
+    "updatedAt": {"type": "string"}
+  },
+  "additionalProperties": false
+}

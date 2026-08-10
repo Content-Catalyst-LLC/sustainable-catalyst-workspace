@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-relationship-explorer-v1.schema.json",
+  "title": "Workspace Relationship Explorer v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "nodes",
+    "edges",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-relationship-explorer/1.0"
+    },
+    "nodes": {
+      "type": "array"
+    },
+    "edges": {
+      "type": "array"
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

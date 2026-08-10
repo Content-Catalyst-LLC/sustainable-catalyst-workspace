@@ -1,0 +1,16 @@
+const assert=require('assert');
+const X=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-cross-project-knowledge-v1.js');
+const I=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-integrated-knowledge-v1.js');
+const G=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-relationship-explorer-v1.js');
+const source={kind:'object',projectId:'p1',id:'o1'};
+let ledger=X.normalizeLedger({references:[]});
+let r=X.addReference(ledger,{targetProjectId:'p2',source,relation:'supports',note:'Use this evidence in project two'},()=> 'x1');
+assert.equal(r.added,true); ledger=r.ledger; assert.equal(ledger.references.length,1); assert.equal(ledger.references[0].targetProjectId,'p2');
+assert.equal(X.addReference(ledger,{targetProjectId:'p1',source,relation:'references'},()=> 'bad').added,false);
+assert.equal(X.addReference(ledger,{targetProjectId:'p2',source,relation:'supports'},()=> 'dup').reason,'duplicate');
+const state={projects:[{id:'p1',title:'Source Project',objects:[{id:'o1',type:'evidence',title:'Shared Evidence',summary:'Evidence',content:'',tags:[],updatedAt:'2026-08-10T00:00:00Z',provenance:{}}],research:{questions:[],claims:[],evidenceLinks:[]},notebooks:{notebooks:[],links:[],promotions:[],syntheses:[]},traceability:{lineage:[]},analysis:{methods:[],findings:[]},decision:{decisions:[],options:[]}},{id:'p2',title:'Target Project',objects:[],research:{questions:[],claims:[],evidenceLinks:[]},notebooks:{notebooks:[],links:[],promotions:[],syntheses:[]},traceability:{lineage:[]},analysis:{methods:[],findings:[]},decision:{decisions:[],options:[]}}]};
+const entries=I.derive(state),rows=X.resolvedRows(ledger,entries,state.projects);assert.equal(rows[0].resolved,true);assert.equal(rows[0].source.title,'Shared Evidence');assert.equal(rows[0].target.title,'Target Project');
+const graph=G.build(state,{crossProjectReferences:ledger.references});assert(graph.edges.some(e=>e.source==='cross-project-knowledge-reference'&&e.from==='project:p2'&&e.to==='object:p1:o1'&&e.relation==='supports'));
+const pkg=X.exportPackage(ledger),verify=X.verifyPackage(pkg);assert.equal(verify.ok,true);pkg.integrity.references[0].fingerprint='bad';assert.equal(X.verifyPackage(pkg).ok,false);
+const unresolved=X.resolvedRows(ledger,entries,[state.projects[0]]);assert.equal(unresolved[0].targetMissing,true);assert.equal(X.governance().copiesCanonicalContent,false);assert.equal(X.governance().automaticRelationshipInference,false);
+console.log('PASS - v0.48.0 Cross-Project Knowledge runtime');

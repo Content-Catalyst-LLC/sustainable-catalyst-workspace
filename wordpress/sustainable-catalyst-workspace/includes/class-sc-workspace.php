@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0461, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0420, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0390, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0380, '') === '1' ||
@@ -85,7 +86,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.46.1 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.48.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -197,6 +198,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/navigation-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'navigation_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/cross-project-knowledge-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'cross_project_knowledge_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -362,7 +368,9 @@ final class SC_Workspace {
             'integrated_knowledge_schema' => 'sc-workspace-integrated-knowledge/1.0',
             'knowledge_search_schema' => 'sc-workspace-knowledge-search/1.0',
             'saved_search_schema' => 'sc-workspace-saved-search/1.0',
-            'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/1.0',
+            'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/2.0',
+            'relationship_explorer_schema' => 'sc-workspace-relationship-explorer/1.0',
+            'cross_project_knowledge_schema' => 'sc-workspace-cross-project-knowledge/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
@@ -929,6 +937,8 @@ final class SC_Workspace {
             'semantic_embeddings' => false,
             'automatic_ai' => false,
             'automatic_relationship_inference' => false,
+            'automatic_semantic_similarity_edges' => false,
+            'graph_persistence' => 'derived-at-runtime',
             'canonical_record_mutation' => false,
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
@@ -1039,20 +1049,50 @@ final class SC_Workspace {
         ));
     }
 
+    public function cross_project_knowledge_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-cross-project-knowledge-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'cross_project_knowledge_schema' => 'sc-workspace-cross-project-knowledge/1.0',
+            'cross_project_reference_schema' => 'sc-workspace-cross-project-reference/1.0',
+            'cross_project_export_schema' => 'sc-workspace-cross-project-knowledge-export/1.0',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'browser_local_reference_ledger' => true,
+            'canonical_source_pointers_only' => true,
+            'explicit_target_project_required' => true,
+            'same_project_reference_rejected' => true,
+            'unresolved_references_remain_visible' => true,
+            'integrates_with_research_graph' => true,
+            'copies_canonical_content' => false,
+            'automatic_relationship_inference' => false,
+            'automatic_content_copy' => false,
+            'automatic_canonical_mutation' => false,
+            'local_first' => true,
+        ));
+    }
+
     public function knowledge_graph_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-knowledge-graph-contract/1.0',
+            'schema' => 'sc-workspace-knowledge-graph-contract/2.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/1.0',
+            'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/2.0',
+            'relationship_explorer_schema' => 'sc-workspace-relationship-explorer/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
-            'node_types' => array('project','provenance','source','evidence','dataset','analysis','decision','document','export'),
-            'relationship_types' => array('contains','sourced-from','same-source','evidence-from','uses','informs','supports','contradicts','derived-from','produced-by','supersedes','cites'),
+            'node_types' => array('project','provenance','source','evidence','dataset','analysis','decision','document','export','notebook','notebook-block','research-question','research-claim','reference','synthesis','canvas-node'),
+            'relationship_types' => array('contains','sourced-from','same-source','evidence-from','uses','informs','supports','contrasts','extends','related','references','contradicts','derived-from','produced-by','supersedes','cites','cited-as','promoted-to','synthesized-into','supports-claim','captured-from'),
             'derived_from_canonical_objects' => true,
+            'includes_notebook_material' => true,
+            'includes_citation_library_origins' => true,
+            'includes_cross_project_references' => true,
+            'includes_promotion_lineage' => true,
+            'includes_synthesis_usage' => true,
+            'backlinks_from_explicit_notebook_links' => true,
             'duplicates_object_content' => false,
             'focus_neighborhood_depths' => array(1,2),
             'transparent_relationship_labels' => true,
@@ -1060,6 +1100,8 @@ final class SC_Workspace {
             'server_graph_database' => false,
             'server_search_index' => false,
             'automatic_relationship_inference' => false,
+            'automatic_semantic_similarity_edges' => false,
+            'graph_persistence' => 'derived-at-runtime',
             'local_first' => true,
         ));
     }
@@ -1807,8 +1849,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0460',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.46.1.css',
+            'sc-workspace-v0480',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.48.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1946,9 +1988,23 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0460',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.46.1.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2'),
+            'sc-workspace-cross-project-knowledge-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-cross-project-knowledge-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-relationship-explorer-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-relationship-explorer-v1.js',
+            array('sc-workspace-integrated-knowledge-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-cross-project-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0480',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.48.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1956,7 +2012,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0460', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0480', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2253,6 +2309,12 @@ final class SC_Workspace {
                     <div class="scw-dynamic-preview" data-scw-dynamic-preview><div class="scw-knowledge-empty-note">Dynamic view preview will appear here.</div></div>
                     <div class="scw-notebook-boundary" role="note"><strong>Definitions, not duplicate records.</strong><span>Smart collections and saved views are browser-local preferences. Their membership is recomputed from the v0.42 Advanced Retrieval corpus. No canonical research content is copied into this layer.</span></div>
                 </section>
+                <section class="scw-cross-project-knowledge" data-scw-cross-project-knowledge aria-labelledby="scw-cross-project-knowledge-title">
+                    <div class="scw-cross-project-head"><div><span>CROSS-PROJECT KNOWLEDGE</span><h3 id="scw-cross-project-knowledge-title">Reuse research across projects without copying the record.</h3><p>Select a canonical research result above, choose a different project as the context that needs it, and record an explicit relationship. The source stays owned by its original project; Workspace stores only the pointer, target project, relationship, and your note.</p></div><div class="scw-cross-project-metrics"><div><strong data-scw-cross-project-count>0</strong><span>references</span></div><div><strong data-scw-cross-project-projects>0</strong><span>target projects</span></div><div><strong data-scw-cross-project-unresolved>0</strong><span>unresolved</span></div></div></div>
+                    <div class="scw-cross-project-toolbar"><label><span>Target project</span><select data-scw-cross-project-target><option value="">Choose target project</option></select></label><label><span>Relationship</span><select data-scw-cross-project-relation><option value="references">References</option><option value="supports">Supports</option><option value="informs">Informs</option><option value="extends">Extends</option><option value="contrasts">Contrasts</option><option value="related">Related</option></select></label><label class="scw-cross-project-note"><span>Context note</span><input type="text" maxlength="3000" data-scw-cross-project-note placeholder="Why this research matters in the target project"></label><button type="button" class="scw-button scw-button-primary" data-scw-cross-project-add disabled>Reference selected research</button><button type="button" class="scw-button" data-scw-cross-project-export>Export reference ledger</button><button type="button" class="scw-button" data-scw-cross-project-import>Import reference ledger</button><input type="file" accept="application/json,.json" data-scw-cross-project-import-file hidden><p data-scw-cross-project-status role="status" aria-live="polite"></p></div>
+                    <div class="scw-cross-project-list" data-scw-cross-project-list><div class="scw-knowledge-empty-note">No cross-project references yet.</div></div>
+                    <div class="scw-notebook-boundary" role="note"><strong>Reference, do not duplicate.</strong><span>Cross-project knowledge is a browser-local ledger of canonical pointers. It never copies source content into the target project, silently changes project ownership, infers relationships, or mutates either project. Missing source/target records remain visibly unresolved.</span></div>
+                </section>
                 <section class="scw-reference-library" data-scw-reference-library aria-labelledby="scw-reference-library-title">
                     <div class="scw-reference-library-head"><div><span>CITATION LIBRARY / REFERENCE MANAGEMENT</span><h3 id="scw-reference-library-title">Manage reusable references without inventing metadata.</h3><p>Normalize recorded bibliographic fields, detect likely duplicates, assign citation keys, preview common citation styles, and reuse references across projects. Missing authors, dates, publishers, identifiers, and DOI metadata remain missing until you enter them.</p></div><div class="scw-reference-metrics"><div><strong data-scw-reference-count>0</strong><span>references</span></div><div><strong data-scw-reference-duplicates>0</strong><span>duplicate groups</span></div></div></div>
                     <div class="scw-reference-toolbar"><label><span>Citation style</span><select data-scw-citation-style><option value="apa7">APA 7</option><option value="chicago-author-date">Chicago author-date</option><option value="mla9">MLA 9</option><option value="ieee">IEEE</option></select></label><label class="scw-reference-search"><span>Find reference</span><input type="search" maxlength="240" data-scw-reference-search placeholder="Title, author, DOI, citation key"></label><button type="button" class="scw-button" data-scw-reference-add-selected disabled>Add selected research result</button><button type="button" class="scw-button" data-scw-reference-export>Export library</button><button type="button" class="scw-button" data-scw-reference-import>Import library</button><input type="file" accept="application/json,.json" data-scw-reference-import-file hidden><p data-scw-reference-status role="status" aria-live="polite"></p></div>
@@ -2461,7 +2523,7 @@ final class SC_Workspace {
                 </div>
                 <div class="scw-knowledge-searchbar">
                     <label class="scw-knowledge-search"><span>Search local knowledge</span><input type="search" maxlength="240" data-scw-knowledge-search placeholder="Search titles, summaries, content, tags, and provenance"></label>
-                    <label><span>Type</span><select data-scw-knowledge-type><option value="all">All types</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option></select></label>
+                    <label><span>Type</span><select data-scw-knowledge-type><option value="all">All types</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option><option value="reference">Citation references</option><option value="synthesis">Syntheses</option><option value="canvas-node">Canvas nodes</option></select></label>
                     <label><span>Project</span><select data-scw-knowledge-project><option value="all">All projects</option></select></label>
                     <label><span>Tag</span><input type="text" maxlength="80" data-scw-knowledge-tag placeholder="Filter by tag"></label>
                     <label><span>Scope</span><select data-scw-knowledge-scope><option value="active">Active projects</option><option value="all">Active + archived</option></select></label>
@@ -2493,15 +2555,15 @@ final class SC_Workspace {
 
             <section class="scw-knowledge-graph" data-scw-workspace-section="graph" hidden aria-labelledby="scw-graph-title">
                 <div class="scw-graph-head">
-                    <div><div class="scw-editorial-kicker">WORKSPACE SEARCH &amp; KNOWLEDGE GRAPH</div><h2 id="scw-graph-title">See how projects, evidence, analysis, decisions, and provenance connect.</h2><p>The graph is derived from canonical Workspace Objects and explicit relationships already present in your device-local work. Search the graph, focus a node, and inspect why two things are connected.</p></div>
+                    <div><div class="scw-editorial-kicker">RESEARCH GRAPH &amp; RELATIONSHIP EXPLORER</div><h2 id="scw-graph-title">Trace how research moves from sources and notebook material through evidence, analysis, decisions, documents, citations, and synthesis.</h2><p>The graph is derived at runtime from canonical Workspace records, Notebook links and backlinks, recorded provenance, promotions, synthesis selections, research evidence relationships, and Citation Library origins. Every edge remains inspectable.</p></div>
                 </div>
                 <div class="scw-graph-metrics" aria-label="Knowledge graph metrics">
                     <div><strong data-scw-graph-metric-nodes>0</strong><span>Nodes</span></div><div><strong data-scw-graph-metric-edges>0</strong><span>Relationships</span></div><div><strong data-scw-graph-metric-projects>0</strong><span>Projects</span></div><div><strong data-scw-graph-metric-provenance>0</strong><span>Provenance sources</span></div>
                 </div>
                 <div class="scw-graph-controls">
                     <label class="scw-graph-search"><span>Search graph</span><input type="search" maxlength="240" data-scw-graph-search placeholder="Search projects, objects, provenance, tags"></label>
-                    <label><span>Node type</span><select data-scw-graph-node-type><option value="all">All nodes</option><option value="project">Projects</option><option value="provenance">Provenance</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option></select></label>
-                    <label><span>Relationship</span><select data-scw-graph-relation><option value="all">All relationships</option><option value="contains">Contains</option><option value="sourced-from">Sourced from</option><option value="same-source">Same source</option><option value="evidence-from">Evidence from</option><option value="uses">Uses</option><option value="informs">Informs</option><option value="supports">Supports</option><option value="contradicts">Contradicts</option><option value="derived-from">Derived from</option><option value="produced-by">Produced by</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
+                    <label><span>Node type</span><select data-scw-graph-node-type><option value="all">All nodes</option><option value="project">Projects</option><option value="provenance">Provenance</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option><option value="reference">Citation references</option><option value="synthesis">Syntheses</option><option value="canvas-node">Canvas nodes</option></select></label>
+                    <label><span>Relationship</span><select data-scw-graph-relation><option value="all">All relationships</option><option value="contains">Contains</option><option value="sourced-from">Sourced from</option><option value="same-source">Same source</option><option value="evidence-from">Evidence from</option><option value="uses">Uses</option><option value="informs">Informs</option><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="derived-from">Derived from</option><option value="produced-by">Produced by</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
                     <label><span>Project</span><select data-scw-graph-project><option value="all">All projects</option></select></label>
                     <label><span>Scope</span><select data-scw-graph-scope><option value="active">Active projects</option><option value="all">Active + archived</option></select></label>
                     <label><span>Depth</span><select data-scw-graph-depth><option value="1">1 hop</option><option value="2">2 hops</option></select></label>
@@ -2511,7 +2573,7 @@ final class SC_Workspace {
                     <section class="scw-graph-canvas-panel" aria-labelledby="scw-graph-canvas-heading"><div class="scw-knowledge-panel-head"><span>02 / FOCUS</span><h3 id="scw-graph-canvas-heading">Relationship neighborhood</h3></div><svg class="scw-graph-svg" data-scw-graph-svg role="img" aria-label="Focused Workspace knowledge graph neighborhood"></svg><div class="scw-graph-detail" data-scw-graph-detail></div></section>
                     <aside class="scw-graph-relations-panel" aria-labelledby="scw-graph-relations-heading"><div class="scw-knowledge-panel-head"><span>03 / RELATIONSHIPS</span><h3 id="scw-graph-relations-heading">Why this node is connected</h3></div><div class="scw-graph-relations" data-scw-graph-relations></div></aside>
                 </div>
-                <div class="scw-knowledge-boundary" role="note"><strong>Inspectable graph, not inferred truth</strong><span>Workspace builds this graph locally from explicit project containment, provenance, traceability, research evidence links, analysis inputs, decision inputs, and same-source matches. It does not use semantic embeddings, a server graph database, or hidden relationship inference.</span></div>
+                <div class="scw-knowledge-boundary" role="note"><strong>Inspectable graph, not inferred truth</strong><span>Workspace builds this graph locally from explicit project containment, Notebook links/backlinks, recorded provenance, promotion records, synthesis selections, Citation Library origins, traceability, research evidence links, analysis inputs, decision inputs, and deterministic same-source matches. It does not use semantic embeddings, a server graph database, or hidden relationship inference.</span></div>
             </section>
 
             <section class="scw-activity-intelligence" data-scw-workspace-section="activity" hidden aria-labelledby="scw-activity-intelligence-title">
@@ -3209,7 +3271,7 @@ final class SC_Workspace {
                         <section class="scw-canvas-panel" aria-labelledby="scw-canvas-rel-heading">
                             <div class="scw-canvas-panel-head"><span>03 / RELATIONSHIPS</span><h4 id="scw-canvas-rel-heading">Typed relationships</h4></div>
                             <form class="scw-canvas-form" data-scw-canvas-edge-form>
-                                <div class="scw-canvas-form-row"><label><span>From</span><select name="fromNodeId" data-scw-canvas-edge-from><option value="">Choose node</option></select></label><label><span>Relationship</span><select name="relation"><option value="supports">Supports</option><option value="contradicts">Contradicts</option><option value="depends-on">Depends on</option><option value="influences">Influences</option><option value="contains">Contains</option><option value="causes">Causes</option><option value="relates-to">Relates to</option><option value="sequence">Sequence</option></select></label></div>
+                                <div class="scw-canvas-form-row"><label><span>From</span><select name="fromNodeId" data-scw-canvas-edge-from><option value="">Choose node</option></select></label><label><span>Relationship</span><select name="relation"><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="depends-on">Depends on</option><option value="influences">Influences</option><option value="contains">Contains</option><option value="causes">Causes</option><option value="relates-to">Relates to</option><option value="sequence">Sequence</option></select></label></div>
                                 <div class="scw-canvas-form-row"><label><span>To</span><select name="toNodeId" data-scw-canvas-edge-to><option value="">Choose node</option></select></label><label><span>Label</span><input type="text" name="label" maxlength="240" placeholder="Optional nuance"></label></div>
                                 <button class="scw-button" type="submit">Connect nodes</button>
                             </form>
@@ -3265,7 +3327,7 @@ final class SC_Workspace {
                             <div class="scw-trace-panel-head"><span>02 / LINEAGE</span><h4 id="scw-trace-lineage-heading">Connect how artifacts relate.</h4></div>
                             <form class="scw-trace-form" data-scw-lineage-form>
                                 <label><span>From object</span><select name="fromObjectId" data-scw-lineage-from required><option value="">Choose an object</option></select></label>
-                                <label><span>Relationship</span><select name="relation"><option value="derived-from">Derived from</option><option value="supports">Supports</option><option value="contradicts">Contradicts</option><option value="uses">Uses</option><option value="produced-by">Produced by</option><option value="informs">Informs</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
+                                <label><span>Relationship</span><select name="relation"><option value="derived-from">Derived from</option><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="uses">Uses</option><option value="produced-by">Produced by</option><option value="informs">Informs</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
                                 <label><span>To object</span><select name="toObjectId" data-scw-lineage-to required><option value="">Choose an object</option></select></label>
                                 <label><span>Note</span><input type="text" name="note" maxlength="500" placeholder="Optional relationship context"></label>
                                 <button class="scw-button" type="submit">Add lineage link</button>
