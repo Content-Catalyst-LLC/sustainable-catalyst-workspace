@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-promotion-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Promotion v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "source",
+    "targetType",
+    "targetKind",
+    "targetId",
+    "title",
+    "createdAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-promotion/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "source": {
+      "$ref": "sc-workspace-notebook-ref-v1.schema.json"
+    },
+    "targetType": {
+      "enum": [
+        "source",
+        "evidence",
+        "dataset",
+        "analysis",
+        "decision",
+        "document",
+        "canvas",
+        "question",
+        "claim"
+      ]
+    },
+    "targetKind": {
+      "enum": [
+        "object",
+        "canvas-node",
+        "research-question",
+        "research-claim"
+      ]
+    },
+    "targetId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 240
+    },
+    "createdAt": {
+      "type": "string"
+    }
+  }
+}

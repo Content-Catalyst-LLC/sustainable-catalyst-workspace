@@ -10,8 +10,9 @@
   const EMERGENCY_BACKUP_SCHEMA = 'sc-workspace-emergency-backup/1.0';
   const HANDOFF_KEY = 'sc_workspace_handoff_v2';
   const HANDOFF_RETURN_KEY = 'sc_workspace_handoff_return_v1';
-  const STORAGE_VERSION = 30;
-  const PROJECT_SCHEMA = 'sc-workspace-project/15.0';
+  const STORAGE_VERSION = 31;
+  const PROJECT_SCHEMA = 'sc-workspace-project/16.0';
+  const LEGACY_PROJECT_SCHEMA_V15 = 'sc-workspace-project/15.0';
   const LEGACY_PROJECT_SCHEMA_V14 = 'sc-workspace-project/14.0';
   const LEGACY_PROJECT_SCHEMA_V13 = 'sc-workspace-project/13.0';
   const LEGACY_PROJECT_SCHEMA_V12 = 'sc-workspace-project/12.0';
@@ -28,7 +29,8 @@
   const LEGACY_PROJECT_SCHEMA_V2 = 'sc-workspace-project/2.0';
   const LEGACY_PROJECT_SCHEMA_V1 = 'sc-workspace-project/1.0';
   const OBJECT_SCHEMA = 'sc-workspace-object/1.0';
-  const EXPORT_SCHEMA = 'sc-workspace-project-export/15.0';
+  const EXPORT_SCHEMA = 'sc-workspace-project-export/16.0';
+  const LEGACY_EXPORT_SCHEMA_V15 = 'sc-workspace-project-export/15.0';
   const LEGACY_EXPORT_SCHEMA_V14 = 'sc-workspace-project-export/14.0';
   const LEGACY_EXPORT_SCHEMA_V13 = 'sc-workspace-project-export/13.0';
   const LEGACY_EXPORT_SCHEMA_V12 = 'sc-workspace-project-export/12.0';
@@ -51,13 +53,14 @@
   const RETURN_ADAPTER_SCHEMA = 'sc-workspace-return-adapter/1.0';
   const PROCESSED_RETURN_KEY = 'sc_workspace_processed_returns_v1';
   const RESEARCH_SCHEMA = 'sc-workspace-research/1.0';
-  const NOTEBOOK_WORKSPACE_SCHEMA = 'sc-workspace-notebook-workspace/3.0';
-  const NOTEBOOK_SCHEMA = 'sc-workspace-notebook/2.0';
-  const NOTEBOOK_BLOCK_SCHEMA = 'sc-workspace-notebook-block/2.0';
-  const NOTEBOOK_EXPORT_SCHEMA = 'sc-workspace-notebook-export/3.0';
+  const NOTEBOOK_WORKSPACE_SCHEMA = 'sc-workspace-notebook-workspace/4.0';
+  const NOTEBOOK_SCHEMA = 'sc-workspace-notebook/3.0';
+  const NOTEBOOK_BLOCK_SCHEMA = 'sc-workspace-notebook-block/3.0';
+  const NOTEBOOK_EXPORT_SCHEMA = 'sc-workspace-notebook-export/4.0';
   const NOTEBOOK_LINK_SCHEMA = 'sc-workspace-notebook-link/1.0';
   const NOTEBOOK_COLLECTION_SCHEMA = 'sc-workspace-notebook-collection/1.0';
   const NOTEBOOK_REF_SCHEMA = 'sc-workspace-notebook-ref/1.0';
+  const NOTEBOOK_PROMOTION_SCHEMA = 'sc-workspace-notebook-promotion/1.0';
   const SOURCE_CAPTURE_INBOX_SCHEMA = 'sc-workspace-source-capture-inbox/1.0';
   const SOURCE_CAPTURE_REQUEST_SCHEMA = 'sc-workspace-notebook-capture-request/1.0';
   const SOURCE_CAPTURE_SCHEMA = 'sc-workspace-source-capture/1.0';
@@ -926,37 +929,47 @@
     const helper = notebookHelper();
     if (helper && typeof helper.workspace === 'function') return helper.workspace(null, id, nowIso);
     const stamp = nowIso();
-    return { schema: NOTEBOOK_WORKSPACE_SCHEMA, notebooks: [], activeNotebookId: null, collections: [], activeCollectionId: null, links: [], createdAt: stamp, updatedAt: stamp };
+    return { schema: NOTEBOOK_WORKSPACE_SCHEMA, notebooks: [], activeNotebookId: null, collections: [], activeCollectionId: null, links: [], promotions: [], createdAt: stamp, updatedAt: stamp };
   }
 
-  function normalizeNotebooks(raw, objects = []) {
+  function normalizeNotebooks(raw, objects = [], canvas = null) {
     const helper = notebookHelper();
     const next = helper && typeof helper.workspace === 'function' ? helper.workspace(raw, id, nowIso) : notebookWorkspaceTemplate();
     const objectIds = new Set(objects.map(object => object.id));
+    const canvasNodeIds = new Set(Array.isArray(canvas?.nodes) ? canvas.nodes.map(node => node.id) : []);
     next.notebooks.forEach(notebook => notebook.sections.forEach(section => section.blocks.forEach(block => {
       if (block.sourceObjectId && !objectIds.has(block.sourceObjectId)) block.sourceObjectId = '';
       if (block.referenceObjectId && !objectIds.has(block.referenceObjectId)) block.referenceObjectId = '';
       if (block.promotion?.targetKind === 'object' && block.promotion.targetId && !objectIds.has(block.promotion.targetId)) {
-        block.promotion = { status: 'none', targetKind: '', targetId: '', promotedAt: null };
+        block.promotion = { status: 'none', targetKind: '', targetType: '', targetId: '', promotedAt: null };
+      }
+      if (block.promotion?.targetKind === 'canvas-node' && block.promotion.targetId && !canvasNodeIds.has(block.promotion.targetId)) {
+        block.promotion = { status: 'none', targetKind: '', targetType: '', targetId: '', promotedAt: null };
       }
     })));
     if (helper?.refExists) {
       next.links = (Array.isArray(next.links) ? next.links : []).filter(link => helper.refExists(link.source, next, objectIds) && helper.refExists(link.target, next, objectIds));
       next.collections = (Array.isArray(next.collections) ? next.collections : []).map(collection => ({...collection, items:(Array.isArray(collection.items)?collection.items:[]).filter(ref=>helper.refExists(ref,next,objectIds))}));
     }
+    next.promotions = (Array.isArray(next.promotions) ? next.promotions : []).filter(item => {
+      if (!helper?.refExists || !helper.refExists(item.source, next, objectIds)) return false;
+      if (item.targetKind === 'object') return objectIds.has(item.targetId);
+      if (item.targetKind === 'canvas-node') return canvasNodeIds.has(item.targetId);
+      return item.targetKind === 'research-question' || item.targetKind === 'research-claim';
+    });
     return next;
   }
 
   function touchNotebooks(project) {
     if (!project) return;
-    project.notebooks = normalizeNotebooks(project.notebooks, project.objects);
+    project.notebooks = normalizeNotebooks(project.notebooks, project.objects, project.canvas);
     project.notebooks.updatedAt = nowIso();
     project.updatedAt = project.notebooks.updatedAt;
   }
 
   function activeNotebookFor(project) {
     if (!project) return null;
-    project.notebooks = normalizeNotebooks(project.notebooks, project.objects);
+    project.notebooks = normalizeNotebooks(project.notebooks, project.objects, project.canvas);
     return project.notebooks.notebooks.find(notebook => notebook.id === project.notebooks.activeNotebookId) || project.notebooks.notebooks[0] || null;
   }
 
@@ -1871,7 +1884,7 @@
       guidedWorkflows: normalizeGuidedWorkflows(raw.guidedWorkflows, objects),
       aiAssistance: normalizeAiAssistance(raw.aiAssistance, objects),
       lifecycle: normalizeLifecycle(raw.lifecycle),
-      notebooks: normalizeNotebooks(raw.notebooks, objects)
+      notebooks: normalizeNotebooks(raw.notebooks, objects, canvas)
     };
   }
 
@@ -2321,6 +2334,34 @@
     return next;
   }
 
+  function migrateV30(raw) {
+    const next = defaultState();
+    next.projects = Array.isArray(raw.projects) ? raw.projects.map(project => {
+      const normalized = normalizeProject(project);
+      if (normalized && project?.schema === LEGACY_PROJECT_SCHEMA_V15) addActivity(normalized, 'migrated', 'Project upgraded to Notebook-to-Workspace Intelligence');
+      return normalized;
+    }).filter(Boolean) : [];
+    next.recentTools = Array.isArray(raw.recentTools) ? raw.recentTools.map(normalizeRecentTool).filter(Boolean).slice(0, MAX_RECENT_TOOLS) : [];
+    next.activeProjectId = next.projects.some(p => p.id === raw.activeProjectId && !p.archivedAt) ? raw.activeProjectId : null;
+    next.identity = normalizeIdentity(raw.identity);
+    next.accountPersistence = normalizeAccountPersistence(raw.accountPersistence, next.projects);
+    next.crossDeviceSync = normalizeCrossDeviceSync(raw.crossDeviceSync, next.projects);
+    next.versionHistory = normalizeVersionHistory(raw.versionHistory, next.projects);
+    next.safeActions = normalizeSafeActions(raw.safeActions, next.projects);
+    next.reconciliation = normalizeReconciliation(raw.reconciliation, next.projects);
+    next.sourceCapture = normalizeSourceCapture(raw.sourceCapture);
+    next.knowledge = normalizeKnowledge(raw.knowledge, next.projects);
+    next.knowledgeGraph = normalizeKnowledgeGraph(raw.knowledgeGraph, next.projects);
+    next.activityIntelligence = normalizeActivityIntelligence(raw.activityIntelligence, next.projects);
+    next.interoperability = normalizeInteroperability(raw.interoperability);
+    next.share = normalizeShare(raw.share);
+    next.collaboration = normalizeCollaboration(raw.collaboration, next.projects);
+    next.institutional = normalizeInstitutional(raw.institutional, next.projects);
+    next.createdAt = validIso(raw.createdAt) ? raw.createdAt : next.createdAt;
+    next.updatedAt = nowIso();
+    return next;
+  }
+
   function normalizeState(raw) {
     if (!raw || typeof raw !== 'object') return defaultState();
     if (raw.schemaVersion === 1 || raw.schema === 1) return migrateLegacyV1(raw);
@@ -2352,6 +2393,7 @@
     if (raw.schemaVersion === 27) return migrateV27(raw);
     if (raw.schemaVersion === 28) return migrateV28(raw);
     if (raw.schemaVersion === 29) return migrateV29(raw);
+    if (raw.schemaVersion === 30) return migrateV30(raw);
     const state = defaultState();
     state.identity = normalizeIdentity(raw.identity);
     state.projects = Array.isArray(raw.projects) ? raw.projects.map(normalizeProject).filter(Boolean) : [];
@@ -2447,7 +2489,7 @@
   function writeState(state) {
     state.schemaVersion = STORAGE_VERSION;
     state.identity = normalizeIdentity(state.identity);
-    state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); project.lifecycle = normalizeLifecycle(project.lifecycle); project.notebooks = normalizeNotebooks(project.notebooks, project.objects); project.schema = PROJECT_SCHEMA; });
+    state.projects.forEach((project) => { project.persistence = normalizeProjectPersistence(project.persistence); project.lifecycle = normalizeLifecycle(project.lifecycle); project.notebooks = normalizeNotebooks(project.notebooks, project.objects, project.canvas); project.schema = PROJECT_SCHEMA; });
     state.activityIntelligence = normalizeActivityIntelligence(state.activityIntelligence, state.projects);
     state.interoperability = normalizeInteroperability(state.interoperability);
     state.share = normalizeShare(state.share);
@@ -2938,6 +2980,7 @@
     const notebookLinkSource = root.querySelector('[data-scw-notebook-link-source]');
     const notebookLinkTarget = root.querySelector('[data-scw-notebook-link-target]');
     const notebookLinkList = root.querySelector('[data-scw-notebook-link-list]');
+    const notebookPromotionList = root.querySelector('[data-scw-notebook-promotion-list]');
     const knowledgeSection = root.querySelector('[data-scw-workspace-section="knowledge"]');
     const graphSection = root.querySelector('[data-scw-workspace-section="graph"]');
     const activityIntelligenceSection = root.querySelector('[data-scw-workspace-section="activity"]');
@@ -4120,13 +4163,13 @@
 
     function notebookAllBlocks(project) {
       if (!project) return [];
-      project.notebooks = normalizeNotebooks(project.notebooks, project.objects);
+      project.notebooks = normalizeNotebooks(project.notebooks, project.objects, project.canvas);
       return project.notebooks.notebooks.flatMap(notebook => notebook.sections.flatMap(section => section.blocks));
     }
 
     function notebookRefOptions(project) {
       const helper=notebookHelper(); if(!project||!helper?.nodeRef)return [];
-      project.notebooks=normalizeNotebooks(project.notebooks,project.objects); const out=[];
+      project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas); const out=[];
       project.notebooks.notebooks.forEach(nb=>{out.push({ref:helper.nodeRef({kind:'notebook',id:nb.id,label:nb.title}),label:`Notebook · ${nb.title}`});nb.sections.forEach(sec=>{out.push({ref:helper.nodeRef({kind:'section',id:sec.id,notebookId:nb.id,label:sec.title}),label:`Section · ${nb.title} / ${sec.title}`});sec.blocks.forEach(block=>out.push({ref:helper.nodeRef({kind:'block',id:block.id,notebookId:nb.id,sectionId:sec.id,label:block.title||block.type}),label:`${block.type.replaceAll('-',' ')} · ${block.title||'Untitled'} · ${nb.title}`}));});});
       project.objects.filter(o=>!o.archivedAt).forEach(o=>out.push({ref:helper.nodeRef({kind:'object',id:o.id,label:o.title}),label:`Object · ${OBJECT_LABELS[o.type]||o.type} · ${o.title}`})); return out.filter(x=>x.ref);
     }
@@ -4134,13 +4177,27 @@
     function notebookRefFromValue(project,value){const [kind,refId]=String(value||'').split('|',2);return notebookRefOptions(project).map(x=>x.ref).find(ref=>ref.kind===kind&&ref.id===refId)||null;}
     function populateNotebookRefSelect(select,project,placeholder='Choose item'){if(!select)return;const current=select.value;select.innerHTML=`<option value="">${escapeHtml(placeholder)}</option>`;notebookRefOptions(project).forEach(item=>{const o=document.createElement('option');o.value=notebookRefValue(item.ref);o.textContent=item.label;select.appendChild(o);});if([...select.options].some(o=>o.value===current))select.value=current;}
     function notebookRefLabel(project,ref){const helper=notebookHelper(),key=helper?.refKey?.(ref)||'';const item=notebookRefOptions(project).find(x=>helper?.refKey?.(x.ref)===key);return item?.label||ref?.label||`${ref?.kind||'item'} · unavailable`;}
-    function openNotebookRef(project,ref){if(!project||!ref)return;if(ref.kind==='object'){const object=objectById(project,ref.id);if(!object)return;state.activeProjectId=project.id;project.activeObjectId=object.id;persist('Linked Workspace object opened');setWorkspaceView('projects');setProjectMode('objects');render();objectEditor.scrollIntoView({behavior:prefersReducedMotion()?'auto':'smooth',block:'start'});return;}project.notebooks=normalizeNotebooks(project.notebooks,project.objects);if(ref.kind==='notebook'){if(project.notebooks.notebooks.some(n=>n.id===ref.id))project.notebooks.activeNotebookId=ref.id;}else if(ref.kind==='section'){const nb=project.notebooks.notebooks.find(n=>n.sections.some(s=>s.id===ref.id));if(nb){project.notebooks.activeNotebookId=nb.id;nb.activeSectionId=ref.id;}}else if(ref.kind==='block'){const loc=notebookHelper()?.findBlockLocation?.(project.notebooks,ref.id);if(loc){project.notebooks.activeNotebookId=loc.notebook.id;loc.notebook.activeSectionId=loc.section.id;}}touchNotebooks(project);persist('Notebook link target opened');renderNotebook();}
-    function renderNotebookKnowledgeLinks(project){const helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);const ws=project.notebooks;
+    function openNotebookRef(project,ref){if(!project||!ref)return;if(ref.kind==='object'){const object=objectById(project,ref.id);if(!object)return;state.activeProjectId=project.id;project.activeObjectId=object.id;persist('Linked Workspace object opened');setWorkspaceView('projects');setProjectMode('objects');render();objectEditor.scrollIntoView({behavior:prefersReducedMotion()?'auto':'smooth',block:'start'});return;}project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);if(ref.kind==='notebook'){if(project.notebooks.notebooks.some(n=>n.id===ref.id))project.notebooks.activeNotebookId=ref.id;}else if(ref.kind==='section'){const nb=project.notebooks.notebooks.find(n=>n.sections.some(s=>s.id===ref.id));if(nb){project.notebooks.activeNotebookId=nb.id;nb.activeSectionId=ref.id;}}else if(ref.kind==='block'){const loc=notebookHelper()?.findBlockLocation?.(project.notebooks,ref.id);if(loc){project.notebooks.activeNotebookId=loc.notebook.id;loc.notebook.activeSectionId=loc.section.id;}}touchNotebooks(project);persist('Notebook link target opened');renderNotebook();}
+    function renderNotebookKnowledgeLinks(project){const helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);const ws=project.notebooks;
       if(notebookMetricCollections)notebookMetricCollections.textContent=String(ws.collections?.length||0);if(notebookMetricLinks)notebookMetricLinks.textContent=String(ws.links?.length||0);if(notebookMetricBacklinks){const targets=new Set((ws.links||[]).map(l=>helper.refKey(l.target)).filter(Boolean));notebookMetricBacklinks.textContent=String(targets.size);}
       if(notebookCollectionSelect){const cur=notebookCollectionSelect.value;notebookCollectionSelect.innerHTML='<option value="">Choose collection</option>';ws.collections.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.title;notebookCollectionSelect.appendChild(o);});if(ws.collections.some(c=>c.id===cur))notebookCollectionSelect.value=cur;else if(ws.activeCollectionId)notebookCollectionSelect.value=ws.activeCollectionId;}
       populateNotebookRefSelect(notebookCollectionItem,project,'Choose notebook, note, source, or object');populateNotebookRefSelect(notebookLinkSource,project,'Choose source item');populateNotebookRefSelect(notebookLinkTarget,project,'Choose target item');
       if(notebookCollectionList){notebookCollectionList.innerHTML='';if(!ws.collections.length)notebookCollectionList.innerHTML='<div class="scw-notebook-empty">No notebook collections yet.</div>';ws.collections.forEach(collection=>{const card=document.createElement('article');card.className='scw-notebook-collection-card';const head=document.createElement('div');head.className='scw-notebook-collection-head';const textWrap=document.createElement('div');const strong=document.createElement('strong');strong.textContent=collection.title;const small=document.createElement('small');small.textContent=collection.description||`${collection.items.length} linked item${collection.items.length===1?'':'s'}`;textWrap.append(strong,small);const del=document.createElement('button');del.type='button';del.className='scw-card-action scw-card-action-muted';del.textContent='Remove';del.addEventListener('click',()=>{if(!window.confirm(`Remove collection “${collection.title}”? Linked notes and objects will not be deleted.`))return;ws.collections=ws.collections.filter(c=>c.id!==collection.id);if(ws.activeCollectionId===collection.id)ws.activeCollectionId=ws.collections[0]?.id||null;touchNotebooks(project);persist('Notebook collection removed');renderNotebook();});head.append(textWrap,del);card.appendChild(head);const items=document.createElement('div');items.className='scw-notebook-collection-items';if(!collection.items.length)items.innerHTML='<span>No items yet.</span>';collection.items.forEach(ref=>{const row=document.createElement('div');row.className='scw-notebook-link-row';const open=document.createElement('button');open.type='button';open.className='scw-notebook-link-open';open.textContent=notebookRefLabel(project,ref);open.addEventListener('click',()=>openNotebookRef(project,ref));const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='×';remove.setAttribute('aria-label','Remove item from collection');remove.addEventListener('click',()=>{helper.removeCollectionItem(collection,ref,nowIso);touchNotebooks(project);persist('Collection item removed');renderNotebook();});row.append(open,remove);items.appendChild(row);});card.appendChild(items);notebookCollectionList.appendChild(card);});}
       if(notebookLinkList){notebookLinkList.innerHTML='';if(!ws.links.length)notebookLinkList.innerHTML='<div class="scw-notebook-empty">No explicit notebook links yet.</div>';ws.links.slice().sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt))).forEach(link=>{const row=document.createElement('article');row.className='scw-notebook-link-card';const body=document.createElement('div');const rel=document.createElement('span');rel.textContent=link.relation.toUpperCase();const strong=document.createElement('strong');strong.textContent=`${notebookRefLabel(project,link.source)} → ${notebookRefLabel(project,link.target)}`;const small=document.createElement('small');small.textContent=link.note||'Explicit research relationship';body.append(rel,strong,small);const acts=document.createElement('div');acts.className='scw-notebook-block-actions';const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open target';open.addEventListener('click',()=>openNotebookRef(project,link.target));const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Remove';remove.addEventListener('click',()=>{ws.links=ws.links.filter(x=>x.id!==link.id);touchNotebooks(project);persist('Notebook link removed');renderNotebook();});acts.append(open,remove);row.append(body,acts);notebookLinkList.appendChild(row);});}
+    }
+
+    function renderNotebookPromotions(project) {
+      if(!notebookPromotionList)return;notebookPromotionList.innerHTML='';
+      const helper=notebookHelper(),items=Array.isArray(project?.notebooks?.promotions)?project.notebooks.promotions:[];
+      if(!items.length){notebookPromotionList.innerHTML='<div class="scw-notebook-empty">No notebook material has been promoted into Workspace artifacts yet.</div>';return;}
+      items.slice(0,80).forEach(item=>{
+        const row=document.createElement('article');row.className='scw-notebook-promotion-row';
+        const loc=helper?.findBlockLocation?helper.findBlockLocation(project.notebooks,item.source?.id):null;
+        const targetLabel=item.targetType==='canvas'?'Canvas node':`${String(item.targetType||'artifact').charAt(0).toUpperCase()}${String(item.targetType||'artifact').slice(1)} object`;
+        const body=document.createElement('div');body.innerHTML=`<span>${escapeHtml(targetLabel.toUpperCase())}</span><strong>${escapeHtml(item.title||loc?.block?.title||'Notebook material')}</strong><small>${escapeHtml(loc?`${loc.notebook.title} / ${loc.section.title}`:'Source block retained in notebook')} · ${escapeHtml(formatTime(item.createdAt))}</small>`;
+        const open=document.createElement('button');open.type='button';open.className='scw-card-action';open.textContent='Open derivative';open.addEventListener('click',()=>{if(item.targetKind==='object'&&objectById(project,item.targetId)){state.activeProjectId=project.id;project.activeObjectId=item.targetId;persist('Notebook promotion derivative opened');render();setWorkspaceView('projects');setProjectMode('objects');return;}if(item.targetKind==='canvas-node'&&project.canvas.nodes.some(node=>node.id===item.targetId)){state.activeProjectId=project.id;const node=project.canvas.nodes.find(n=>n.id===item.targetId),board=node?project.canvas.boards.find(b=>b.id===node.boardId):null;if(board)project.canvas.activeBoardId=board.id;persist('Notebook promotion Canvas derivative opened');render();setWorkspaceView('projects');setProjectMode('canvas');}});
+        row.append(body,open);notebookPromotionList.appendChild(row);
+      });
     }
 
     function renderNotebookBlock(project, notebook, section, block, index) {
@@ -4165,32 +4222,49 @@
       editor.elements.title.value=block.title;editor.elements.content.value=block.content;editor.elements.url.value=block.sourceUrl;editor.elements.tags.value=block.tags.join(', ');
       edit.addEventListener('click',()=>{editor.hidden=false;edit.disabled=true;editor.elements.title.focus();}); editor.querySelector('[data-cancel]').addEventListener('click',()=>{editor.hidden=true;edit.disabled=false;});
       editor.addEventListener('submit',event=>{event.preventDefault();block.title=String(editor.elements.title.value||'').trim().slice(0,240);block.content=String(editor.elements.content.value||'').slice(0,50000);block.sourceUrl=String(editor.elements.url.value||'').trim().slice(0,2000);block.tags=normalizeTags(editor.elements.tags.value);block.updatedAt=nowIso();section.updatedAt=notebook.updatedAt=block.updatedAt;touchNotebooks(project);addActivity(project,'notebook-block','Notebook block edited');persist('Notebook block saved');renderNotebook();});
-      const helper=notebookHelper();const promotionKind=helper?.promotionTarget(block.type)||'';
-      const promote=document.createElement('button');promote.type='button';promote.className='scw-card-action';promote.textContent=block.promotion?.status==='promoted'?'Promoted':'Promote';promote.disabled=!promotionKind||block.promotion?.status==='promoted';promote.addEventListener('click',()=>promoteNotebookBlock(project,notebook,section,block));
+      const helper=notebookHelper();
+      const destinations=helper?.promotionDestinations?helper.promotionDestinations(block.type):[];
+      const promotionWrap=document.createElement('span');promotionWrap.className='scw-notebook-promote-control';
+      const promotionSelect=document.createElement('select');promotionSelect.className='scw-notebook-promote-select';promotionSelect.setAttribute('aria-label','Promote notebook block to');
+      destinations.forEach(type=>{const option=document.createElement('option');option.value=type;option.textContent=`${type.charAt(0).toUpperCase()}${type.slice(1)}`;promotionSelect.appendChild(option);});
+      const suggested=helper?.suggestedPromotionType?helper.suggestedPromotionType(block.type):'';if(suggested&&destinations.includes(suggested))promotionSelect.value=suggested;
+      const promote=document.createElement('button');promote.type='button';promote.className='scw-card-action';promote.textContent='Promote';promote.disabled=!destinations.length;promote.addEventListener('click',()=>promoteNotebookBlock(project,notebook,section,block,promotionSelect.value));
+      if(destinations.length)promotionWrap.append(promotionSelect,promote);else promotionWrap.append(promote);
       const remove=document.createElement('button');remove.type='button';remove.className='scw-card-action scw-card-action-muted';remove.textContent='Delete';remove.addEventListener('click',()=>{if(!window.confirm('Delete this notebook block? Structured artifacts already promoted from it will not be deleted.'))return;section.blocks=section.blocks.filter(item=>item.id!==block.id);section.updatedAt=notebook.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-block','Notebook block deleted');persist('Notebook block deleted');renderNotebook();});
-      actions.append(up,down,edit,promote,remove); head.append(meta,title,actions);article.append(head,body,editor);return article;
+      actions.append(up,down,edit,promotionWrap,remove); head.append(meta,title,actions);article.append(head,body,editor);return article;
     }
 
-    function promoteNotebookBlock(project, notebook, section, block) {
-      const helper=notebookHelper();if(!helper)return;const target=helper.promotionTarget(block.type);if(!target)return;
-      if(!window.confirm(`Promote this ${block.type} into structured Workspace work? The notebook block will remain in place.`))return;
-      let targetId='';
-      if(target==='object'){
+    function promoteNotebookBlock(project, notebook, section, block, targetType) {
+      const helper=notebookHelper();if(!helper||!helper.promotionDestinations)return;
+      const destinations=helper.promotionDestinations(block.type);if(!destinations.includes(targetType))return;
+      if(!window.confirm(`Promote this ${block.type} to ${targetType}? The notebook block will remain in place and the derivative will be recorded in the promotion ledger.`))return;
+      const stamp=nowIso(),sourceRef=helper.nodeRef({kind:'block',id:block.id,notebookId:notebook.id,sectionId:section.id,label:block.title||block.type});
+      let targetId='',targetKind='';
+      if(targetType==='canvas'){
+        if(project.canvas.nodes.length>=MAX_CANVAS_NODES){window.alert(`This project has reached the ${MAX_CANVAS_NODES}-node Canvas limit.`);return;}
+        let board=project.canvas.boards.find(item=>item.id===project.canvas.activeBoardId)||project.canvas.boards[0]||null;
+        if(!board){if(project.canvas.boards.length>=MAX_CANVAS_BOARDS){window.alert('Create or select a Canvas board before promoting this notebook block.');return;}board={id:id('cb'),title:'Notebook Promotions',description:'Canvas material explicitly promoted from Research Notebook blocks.',status:'working',createdAt:stamp,updatedAt:stamp};project.canvas.boards.push(board);project.canvas.activeBoardId=board.id;}
+        const existing=project.canvas.nodes.filter(node=>node.boardId===board.id).length;
+        const linkedObjectId=[block.referenceObjectId,block.sourceObjectId].find(value=>value&&objectById(project,value))||'';
+        const node={id:id('cn'),boardId:board.id,type:helper.canvasNodeType?helper.canvasNodeType(block.type):'note',title:String(block.title||`${block.type} from Notebook`).trim().slice(0,240)||'Notebook material',body:String(block.content||'').slice(0,4000),objectId:linkedObjectId,x:24+(existing%4)*205,y:24+(Math.floor(existing/4)%5)*95,tags:normalizeTags(block.tags),createdAt:stamp,updatedAt:stamp};
+        project.canvas.nodes.push(node);board.updatedAt=stamp;touchCanvas(project);targetId=node.id;targetKind='canvas-node';
+      }else{
         if(project.objects.length>=MAX_OBJECTS){window.alert(`This project has reached the ${MAX_OBJECTS}-object local limit.`);return;}
-        const objectType=helper.promotionObjectType(block.type)||'document';const object=objectTemplate(objectType,block.title||`${block.type} from Notebook`);object.summary=String(block.content||'').slice(0,1200);const citation=helper.citationLine?.(block)||'';object.content=[String(block.content||''),citation?`\n\nSource context: ${citation}`:''].join('').slice(0,50000);object.tags=normalizeTags(block.tags);object.status='working';object.provenance.sourceType=block.sourceUrl?'web':'manual';object.provenance.sourceTitle=block.sourceTitle||notebook.title;object.provenance.sourceUrl=block.sourceUrl||'';object.provenance.capturedAt=block.capture?.capturedAt||nowIso();project.objects.push(object);project.activeObjectId=object.id;targetId=object.id;
-        if(objectType==='source'&&project.research.readingQueue.length<MAX_READING_QUEUE)project.research.readingQueue.push({id:id('rr'),objectId:object.id,status:'unread',note:'Promoted from Research Notebook',addedAt:nowIso(),updatedAt:nowIso()});
-      } else if(target==='research-question'){
-        if(project.research.questions.length>=MAX_RESEARCH_QUESTIONS){window.alert('Research question limit reached.');return;}const q={id:id('rq'),text:String(block.content||block.title||'').trim().slice(0,1000),status:'open',priority:'normal',createdAt:nowIso(),updatedAt:nowIso()};if(!q.text)return;project.research.questions.push(q);project.research.activeQuestionId=q.id;targetId=q.id;touchResearch(project);
-      } else if(target==='research-claim'){
-        if(project.research.claims.length>=MAX_RESEARCH_CLAIMS){window.alert('Research claim limit reached.');return;}const c={id:id('rc'),text:String(block.content||block.title||'').trim().slice(0,2000),status:'exploratory',evidenceObjectIds:[],createdAt:nowIso(),updatedAt:nowIso()};if(!c.text)return;project.research.claims.push(c);project.research.activeClaimId=c.id;targetId=c.id;touchResearch(project);
+        const object=objectTemplate(targetType,block.title||`${block.type} from Notebook`);const citation=helper.citationLine?.(block)||'';
+        object.summary=String(block.content||block.title||'').slice(0,1200);object.content=[String(block.content||''),citation?`\n\nSource context: ${citation}`:''].join('').slice(0,50000);object.tags=normalizeTags([...block.tags,'notebook-promoted']);object.status='working';object.provenance.sourceType=block.sourceUrl?'web':'manual';object.provenance.sourceTitle=block.sourceTitle||notebook.title;object.provenance.sourceUrl=block.sourceUrl||'';object.provenance.capturedAt=block.capture?.capturedAt||stamp;project.objects.push(object);project.activeObjectId=object.id;targetId=object.id;targetKind='object';
+        if(targetType==='source'&&project.research.readingQueue.length<MAX_READING_QUEUE)project.research.readingQueue.push({id:id('rr'),objectId:object.id,status:'unread',note:'Promoted from Research Notebook',addedAt:stamp,updatedAt:stamp});
+        if(targetType==='evidence'&&block.sourceObjectId&&objectById(project,block.sourceObjectId)&&project.research.evidenceLinks.length<MAX_EVIDENCE_LINKS&&!project.research.evidenceLinks.some(link=>link.evidenceObjectId===object.id&&link.sourceObjectId===block.sourceObjectId))project.research.evidenceLinks.push({id:id('rel'),evidenceObjectId:object.id,sourceObjectId:block.sourceObjectId,createdAt:stamp});
+        touchResearch(project);
       }
-      block.promotion={status:'promoted',targetKind:target,targetId,promotedAt:nowIso()};block.updatedAt=nowIso();section.updatedAt=notebook.updatedAt=block.updatedAt;touchNotebooks(project);addActivity(project,'notebook-promoted',`Notebook ${block.type} promoted to ${target.replaceAll('-',' ')}`);persist('Notebook block promoted');render();setWorkspaceView('notebook');
+      const record=helper.createPromotion?.(sourceRef,targetType,targetKind,targetId,block.title||`${block.type} from Notebook`,id,()=>stamp);
+      if(record){project.notebooks.promotions=Array.isArray(project.notebooks.promotions)?project.notebooks.promotions:[];project.notebooks.promotions.unshift(record);project.notebooks.promotions=project.notebooks.promotions.slice(0,helper.MAX_PROMOTIONS||500);}
+      block.promotion={status:'promoted',targetKind,targetType,targetId,promotedAt:stamp};block.updatedAt=stamp;section.updatedAt=notebook.updatedAt=stamp;touchNotebooks(project);addActivity(project,'notebook-promoted',`Notebook ${block.type} promoted to ${targetType}`);persist(`Notebook block promoted to ${targetType}`);render();setWorkspaceView('notebook');
     }
 
     function saveCaptureToActiveSection(request, project = notebookSelectedProject()) {
       const helper = notebookHelper(), capture = sourceCaptureHelper();
       if (!project || !helper || !capture) { window.alert('Choose a project before saving captured research.'); return false; }
-      project.notebooks = normalizeNotebooks(project.notebooks, project.objects);
+      project.notebooks = normalizeNotebooks(project.notebooks, project.objects, project.canvas);
       let notebook = activeNotebookFor(project);
       if (!notebook) {
         if (project.notebooks.notebooks.length >= MAX_NOTEBOOKS) { window.alert('Notebook limit reached.'); return false; }
@@ -4235,8 +4309,8 @@
       if(notebookProject){notebookProject.innerHTML='<option value="">Choose project</option>';projects.forEach(project=>{const o=document.createElement('option');o.value=project.id;o.textContent=project.title;notebookProject.appendChild(o);});if(projects.some(project=>project.id===current))notebookProject.value=current;else if(activeProject())notebookProject.value=activeProject().id;}
       const project=notebookSelectedProject();
       renderSourceCaptureInbox(project);
-      if(!project){if(notebookList)notebookList.innerHTML='<div class="scw-notebook-empty">Create or choose a project before starting a notebook.</div>';if(notebookActive)notebookActive.innerHTML='<div class="scw-notebook-empty">Notebook work belongs to a Workspace Project.</div>';if(notebookSectionList)notebookSectionList.innerHTML='';if(notebookBlockList)notebookBlockList.innerHTML='';[notebookMetricNotebooks,notebookMetricSections,notebookMetricBlocks,notebookMetricPromoted,notebookMetricCollections,notebookMetricLinks,notebookMetricBacklinks].forEach(el=>{if(el)el.textContent='0';});if(notebookCollectionList)notebookCollectionList.innerHTML='<div class="scw-notebook-empty">Choose a project to manage research collections.</div>';if(notebookLinkList)notebookLinkList.innerHTML='<div class="scw-notebook-empty">Choose a project to manage explicit links.</div>';if(notebookStatus)notebookStatus.textContent='No active project selected.';return;}
-      project.notebooks=normalizeNotebooks(project.notebooks,project.objects);const all=notebookAllBlocks(project);if(notebookMetricNotebooks)notebookMetricNotebooks.textContent=String(project.notebooks.notebooks.length);if(notebookMetricSections)notebookMetricSections.textContent=String(project.notebooks.notebooks.reduce((sum,n)=>sum+n.sections.length,0));if(notebookMetricBlocks)notebookMetricBlocks.textContent=String(all.length);if(notebookMetricPromoted)notebookMetricPromoted.textContent=String(all.filter(block=>block.promotion?.status==='promoted').length);renderNotebookKnowledgeLinks(project);
+      if(!project){if(notebookList)notebookList.innerHTML='<div class="scw-notebook-empty">Create or choose a project before starting a notebook.</div>';if(notebookActive)notebookActive.innerHTML='<div class="scw-notebook-empty">Notebook work belongs to a Workspace Project.</div>';if(notebookSectionList)notebookSectionList.innerHTML='';if(notebookBlockList)notebookBlockList.innerHTML='';[notebookMetricNotebooks,notebookMetricSections,notebookMetricBlocks,notebookMetricPromoted,notebookMetricCollections,notebookMetricLinks,notebookMetricBacklinks].forEach(el=>{if(el)el.textContent='0';});if(notebookCollectionList)notebookCollectionList.innerHTML='<div class="scw-notebook-empty">Choose a project to manage research collections.</div>';if(notebookLinkList)notebookLinkList.innerHTML='<div class="scw-notebook-empty">Choose a project to manage explicit links.</div>';if(notebookPromotionList)notebookPromotionList.innerHTML='<div class="scw-notebook-empty">Choose a project to inspect promotion lineage.</div>';if(notebookStatus)notebookStatus.textContent='No active project selected.';return;}
+      project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);const all=notebookAllBlocks(project);if(notebookMetricNotebooks)notebookMetricNotebooks.textContent=String(project.notebooks.notebooks.length);if(notebookMetricSections)notebookMetricSections.textContent=String(project.notebooks.notebooks.reduce((sum,n)=>sum+n.sections.length,0));if(notebookMetricBlocks)notebookMetricBlocks.textContent=String(all.length);if(notebookMetricPromoted)notebookMetricPromoted.textContent=String((project.notebooks.promotions||[]).length);renderNotebookKnowledgeLinks(project);renderNotebookPromotions(project);
       const active=activeNotebookFor(project);if(notebookList){notebookList.innerHTML='';if(!project.notebooks.notebooks.length)notebookList.innerHTML='<div class="scw-notebook-empty">No notebooks yet. Create one for notes, excerpts, questions, or working claims.</div>';project.notebooks.notebooks.forEach((nb,index)=>{const row=document.createElement('article');row.className=`scw-notebook-card${nb.id===active?.id?' is-active':''}`;const body=document.createElement('button');body.type='button';body.className='scw-notebook-card-open';body.innerHTML=`<span>NOTEBOOK ${String(index+1).padStart(2,'0')}</span><strong>${escapeHtml(nb.title)}</strong><small>${nb.sections.length} section${nb.sections.length===1?'':'s'} · ${nb.sections.reduce((sum,sec)=>sum+sec.blocks.length,0)} block${nb.sections.reduce((sum,sec)=>sum+sec.blocks.length,0)===1?'':'s'}</small>`;body.addEventListener('click',()=>{project.notebooks.activeNotebookId=nb.id;touchNotebooks(project);persist('Active notebook saved');renderNotebook();});const del=document.createElement('button');del.type='button';del.className='scw-card-action scw-card-action-muted';del.textContent='Remove';del.addEventListener('click',()=>{if(!window.confirm(`Remove notebook “${nb.title}”? Promoted Workspace artifacts will remain.`))return;project.notebooks.notebooks=project.notebooks.notebooks.filter(item=>item.id!==nb.id);project.notebooks.activeNotebookId=project.notebooks.notebooks[0]?.id||null;touchNotebooks(project);addActivity(project,'notebook','Notebook removed');persist('Notebook removed');renderNotebook();});row.append(body,del);notebookList.appendChild(row);});}
       if(!active){if(notebookActive)notebookActive.innerHTML='<div class="scw-notebook-empty">Create a notebook to begin.</div>';if(notebookSectionList)notebookSectionList.innerHTML='';if(notebookBlockList)notebookBlockList.innerHTML='';if(notebookStatus)notebookStatus.textContent='Notebook is ready when you are.';if(notebookExport)notebookExport.disabled=true;return;}
       if(notebookExport)notebookExport.disabled=false;
@@ -4594,9 +4668,9 @@
       reader.onload = () => {
         try {
           const payload = JSON.parse(String(reader.result || ''));
-          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V14 || payload.schema === LEGACY_EXPORT_SCHEMA_V13 || payload.schema === LEGACY_EXPORT_SCHEMA_V12 || payload.schema === LEGACY_EXPORT_SCHEMA_V11 || payload.schema === LEGACY_EXPORT_SCHEMA_V10 || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
+          const supportedExport = payload && (payload.schema === EXPORT_SCHEMA || payload.schema === LEGACY_EXPORT_SCHEMA_V15 || payload.schema === LEGACY_EXPORT_SCHEMA_V14 || payload.schema === LEGACY_EXPORT_SCHEMA_V13 || payload.schema === LEGACY_EXPORT_SCHEMA_V12 || payload.schema === LEGACY_EXPORT_SCHEMA_V11 || payload.schema === LEGACY_EXPORT_SCHEMA_V10 || payload.schema === LEGACY_EXPORT_SCHEMA_V9 || payload.schema === LEGACY_EXPORT_SCHEMA_V8 || payload.schema === LEGACY_EXPORT_SCHEMA_V7 || payload.schema === LEGACY_EXPORT_SCHEMA_V6 || payload.schema === LEGACY_EXPORT_SCHEMA_V5 || payload.schema === LEGACY_EXPORT_SCHEMA_V4 || payload.schema === LEGACY_EXPORT_SCHEMA_V31 || payload.schema === LEGACY_EXPORT_SCHEMA_V3 || payload.schema === LEGACY_EXPORT_SCHEMA_V2 || payload.schema === LEGACY_EXPORT_SCHEMA_V1);
           const rawProject = supportedExport ? payload.project : payload;
-          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V14 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V13 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V12 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V11 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
+          if (!rawProject || (rawProject.schema !== PROJECT_SCHEMA && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V15 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V14 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V13 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V12 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V11 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V9 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V8 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V7 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V6 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V5 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V4 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V31 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V3 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V2 && rawProject.schema !== LEGACY_PROJECT_SCHEMA_V1)) throw new Error('Unsupported project schema');
           const project = normalizeProject(rawProject);
           if (!project) throw new Error('Invalid project');
           if (state.projects.some((item) => item.id === project.id)) { project.id = id('scwp'); project.title = `${project.title} (Imported)`.slice(0, 120); }
@@ -4616,12 +4690,12 @@
     });
 
     if (notebookProject) notebookProject.addEventListener('change',()=>{const project=state.projects.find(item=>item.id===String(notebookProject.value||'')&&!item.archivedAt);if(project){state.activeProjectId=project.id;persist('Notebook project selected');}renderNotebook();});
-    if (notebookCreateForm) notebookCreateForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject();if(!project){window.alert('Choose a project first.');return;}project.notebooks=normalizeNotebooks(project.notebooks,project.objects);if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS){window.alert(`This project has reached the ${MAX_NOTEBOOKS}-notebook limit.`);return;}const data=new FormData(notebookCreateForm);const nb=notebookHelper()?.createNotebook(String(data.get('title')||'Research Notebook'),String(data.get('description')||''),id,nowIso);if(!nb)return;project.notebooks.notebooks.unshift(nb);project.notebooks.activeNotebookId=nb.id;touchNotebooks(project);addActivity(project,'notebook',`Notebook created: ${nb.title}`);notebookCreateForm.reset();persist('Notebook created');renderNotebook();});
+    if (notebookCreateForm) notebookCreateForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject();if(!project){window.alert('Choose a project first.');return;}project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS){window.alert(`This project has reached the ${MAX_NOTEBOOKS}-notebook limit.`);return;}const data=new FormData(notebookCreateForm);const nb=notebookHelper()?.createNotebook(String(data.get('title')||'Research Notebook'),String(data.get('description')||''),id,nowIso);if(!nb)return;project.notebooks.notebooks.unshift(nb);project.notebooks.activeNotebookId=nb.id;touchNotebooks(project);addActivity(project,'notebook',`Notebook created: ${nb.title}`);notebookCreateForm.reset();persist('Notebook created');renderNotebook();});
     if (notebookSectionForm) notebookSectionForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),nb=activeNotebookFor(project);if(!project||!nb)return;if(nb.sections.length>=MAX_NOTEBOOK_SECTIONS){window.alert(`This notebook has reached the ${MAX_NOTEBOOK_SECTIONS}-section limit.`);return;}const data=new FormData(notebookSectionForm),title=String(data.get('title')||'Notes').trim().slice(0,160)||'Notes';const section=notebookHelper()?.createSection(title,id,nowIso);if(!section)return;nb.sections.push(section);nb.activeSectionId=section.id;nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-section',`Notebook section added: ${title}`);notebookSectionForm.reset();persist('Notebook section added');renderNotebook();});
     if (notebookBlockForm) notebookBlockForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),nb=activeNotebookFor(project),section=activeNotebookSectionFor(project,nb);if(!project||!nb||!section){window.alert('Choose a notebook section first.');return;}const total=notebookAllBlocks(project).length;if(total>=MAX_NOTEBOOK_BLOCKS_PER_PROJECT||nb.sections.reduce((sum,s)=>sum+s.blocks.length,0)>=MAX_NOTEBOOK_BLOCKS_PER_NOTEBOOK){window.alert('This notebook has reached its local block limit.');return;}const data=new FormData(notebookBlockForm),type=String(data.get('type')||'note'),title=String(data.get('title')||'').trim().slice(0,240),content=String(data.get('content')||'').slice(0,50000),referenceObjectId=String(data.get('referenceObjectId')||'').slice(0,160),reference=objectById(project,referenceObjectId);const block=notebookHelper()?.createBlock(type,{title,content,sourceUrl:String(data.get('sourceUrl')||'').trim().slice(0,2000),sourceObjectId:reference?.type==='source'?reference.id:'',sourceTitle:reference?.title||'',referenceObjectId:reference?.id||'',tags:normalizeTags(data.get('tags')),capture:{sourceSurface:'manual',sourceKind:type==='attachment'?'document-reference':type,selectionKind:type==='excerpt'?'pasted-excerpt':'manual-entry',captureMode:'manual',capturedAt:nowIso()},bibliography:{}},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-block',`Notebook ${type} added${title?`: ${title}`:''}`);notebookBlockForm.reset();if(notebookBlockObject)notebookBlockObject.value='';persist('Notebook block added');renderNotebook();});
     if (notebookExport) notebookExport.addEventListener('click',()=>{const project=notebookSelectedProject(),nb=activeNotebookFor(project);if(!project||!nb)return;const pkg=notebookHelper()?.exportNotebook(nb,project,rootVersion(),project.notebooks);if(!pkg)return;downloadJson(`${safeFileName(project.title)}-${safeFileName(nb.title)}.sc-workspace-notebook.json`,pkg);addActivity(project,'notebook-export',`Notebook exported: ${nb.title}`);touchNotebooks(project);persist('Notebook export recorded');renderNotebook();});
     const objectToNotebook = root.querySelector('[data-scw-object-to-notebook]');
-    if (objectToNotebook) objectToNotebook.addEventListener('click',()=>{const project=activeProject(),object=activeObject();if(!project||!object)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);let nb=activeNotebookFor(project);if(!nb){if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS)return;nb=notebookHelper()?.createNotebook('Research Notebook','Working notes and captured project material.',id,nowIso);if(!nb)return;project.notebooks.notebooks.push(nb);project.notebooks.activeNotebookId=nb.id;}let section=activeNotebookSectionFor(project,nb);if(!section){section=notebookHelper()?.createSection('Notes',id,nowIso);nb.sections.push(section);nb.activeSectionId=section.id;}const type=object.type==='source'?'source':object.type==='evidence'?'excerpt':'reference';const block=notebookHelper()?.createBlock(type,{title:object.title,content:object.type==='evidence'?(object.content||object.summary):(object.summary||''),sourceObjectId:object.type==='source'?object.id:'',sourceTitle:object.provenance?.sourceTitle||object.title,sourceUrl:object.provenance?.sourceUrl||'',referenceObjectId:object.id,tags:object.tags,capture:{sourceSurface:'workspace-object',sourceId:object.id,sourceKind:object.type,selectionKind:'object-reference',captureMode:'workspace-object',capturedAt:nowIso()},bibliography:{}},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-capture',`Added object to Notebook: ${object.title}`);persist('Object added to Research Notebook');render();setWorkspaceView('notebook',true);});
+    if (objectToNotebook) objectToNotebook.addEventListener('click',()=>{const project=activeProject(),object=activeObject();if(!project||!object)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);let nb=activeNotebookFor(project);if(!nb){if(project.notebooks.notebooks.length>=MAX_NOTEBOOKS)return;nb=notebookHelper()?.createNotebook('Research Notebook','Working notes and captured project material.',id,nowIso);if(!nb)return;project.notebooks.notebooks.push(nb);project.notebooks.activeNotebookId=nb.id;}let section=activeNotebookSectionFor(project,nb);if(!section){section=notebookHelper()?.createSection('Notes',id,nowIso);nb.sections.push(section);nb.activeSectionId=section.id;}const type=object.type==='source'?'source':object.type==='evidence'?'excerpt':'reference';const block=notebookHelper()?.createBlock(type,{title:object.title,content:object.type==='evidence'?(object.content||object.summary):(object.summary||''),sourceObjectId:object.type==='source'?object.id:'',sourceTitle:object.provenance?.sourceTitle||object.title,sourceUrl:object.provenance?.sourceUrl||'',referenceObjectId:object.id,tags:object.tags,capture:{sourceSurface:'workspace-object',sourceId:object.id,sourceKind:object.type,selectionKind:'object-reference',captureMode:'workspace-object',capturedAt:nowIso()},bibliography:{}},id,nowIso);if(!block)return;section.blocks.push(block);section.updatedAt=nb.updatedAt=nowIso();touchNotebooks(project);addActivity(project,'notebook-capture',`Added object to Notebook: ${object.title}`);persist('Object added to Research Notebook');render();setWorkspaceView('notebook',true);});
 
     if (notebookCaptureForm) notebookCaptureForm.addEventListener('submit', event => {
       event.preventDefault(); const project=notebookSelectedProject(); if(!project){window.alert('Choose a project first.');return;}
@@ -4632,9 +4706,9 @@
     if (notebookCaptureImport && notebookCaptureFile) notebookCaptureImport.addEventListener('click',()=>notebookCaptureFile.click());
     if (notebookCaptureFile) notebookCaptureFile.addEventListener('change',()=>{const file=notebookCaptureFile.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const raw=JSON.parse(String(reader.result||'')),helper=sourceCaptureHelper();if(!helper||raw?.schema!==SOURCE_CAPTURE_REQUEST_SCHEMA)throw new Error('unsupported');enqueueSourceCapture(raw);persist('Portable capture request imported');renderNotebook();}catch(_){window.alert('Workspace could not import this capture request. Use sc-workspace-notebook-capture-request/1.0 JSON.');}finally{notebookCaptureFile.value='';}};reader.readAsText(file);});
 
-    if (notebookCollectionForm) notebookCollectionForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);if(project.notebooks.collections.length>=helper.MAX_COLLECTIONS){window.alert(`This project has reached the ${helper.MAX_COLLECTIONS}-collection limit.`);return;}const data=new FormData(notebookCollectionForm),title=String(data.get('title')||'').trim().slice(0,160);if(!title)return;const collection=helper.createCollection(title,String(data.get('description')||''),id,nowIso);project.notebooks.collections.unshift(collection);project.notebooks.activeCollectionId=collection.id;touchNotebooks(project);addActivity(project,'notebook-collection',`Notebook collection created: ${collection.title}`);notebookCollectionForm.reset();persist('Notebook collection created');renderNotebook();});
-    if (notebookCollectionAssignForm) notebookCollectionAssignForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);const data=new FormData(notebookCollectionAssignForm),collection=project.notebooks.collections.find(c=>c.id===String(data.get('collectionId')||'')),ref=notebookRefFromValue(project,String(data.get('itemRef')||''));if(!collection||!ref){window.alert('Choose both a collection and an item.');return;}if(!helper.addCollectionItem(collection,ref,nowIso)){window.alert('That item is already in the collection or the collection is full.');return;}project.notebooks.activeCollectionId=collection.id;touchNotebooks(project);addActivity(project,'notebook-collection-item',`Added ${ref.kind} to collection: ${collection.title}`);persist('Collection item added');renderNotebook();});
-    if (notebookLinkForm) notebookLinkForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects);if(project.notebooks.links.length>=helper.MAX_LINKS){window.alert(`This project has reached the ${helper.MAX_LINKS}-link limit.`);return;}const data=new FormData(notebookLinkForm),source=notebookRefFromValue(project,String(data.get('sourceRef')||'')),target=notebookRefFromValue(project,String(data.get('targetRef')||'')),relation=String(data.get('relation')||'references'),note=String(data.get('note')||'');if(!source||!target){window.alert('Choose both a source and target.');return;}const link=helper.createLink(source,target,relation,note,id,nowIso);if(!link){window.alert('Choose two different items to link.');return;}const signature=`${helper.refKey(link.source)}>${link.relation}>${helper.refKey(link.target)}`;if(project.notebooks.links.some(x=>`${helper.refKey(x.source)}>${x.relation}>${helper.refKey(x.target)}`===signature)){window.alert('That explicit link already exists.');return;}project.notebooks.links.unshift(link);touchNotebooks(project);addActivity(project,'notebook-link',`Notebook link created: ${link.relation}`);notebookLinkForm.reset();persist('Notebook knowledge link created');renderNotebook();});
+    if (notebookCollectionForm) notebookCollectionForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);if(project.notebooks.collections.length>=helper.MAX_COLLECTIONS){window.alert(`This project has reached the ${helper.MAX_COLLECTIONS}-collection limit.`);return;}const data=new FormData(notebookCollectionForm),title=String(data.get('title')||'').trim().slice(0,160);if(!title)return;const collection=helper.createCollection(title,String(data.get('description')||''),id,nowIso);project.notebooks.collections.unshift(collection);project.notebooks.activeCollectionId=collection.id;touchNotebooks(project);addActivity(project,'notebook-collection',`Notebook collection created: ${collection.title}`);notebookCollectionForm.reset();persist('Notebook collection created');renderNotebook();});
+    if (notebookCollectionAssignForm) notebookCollectionAssignForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);const data=new FormData(notebookCollectionAssignForm),collection=project.notebooks.collections.find(c=>c.id===String(data.get('collectionId')||'')),ref=notebookRefFromValue(project,String(data.get('itemRef')||''));if(!collection||!ref){window.alert('Choose both a collection and an item.');return;}if(!helper.addCollectionItem(collection,ref,nowIso)){window.alert('That item is already in the collection or the collection is full.');return;}project.notebooks.activeCollectionId=collection.id;touchNotebooks(project);addActivity(project,'notebook-collection-item',`Added ${ref.kind} to collection: ${collection.title}`);persist('Collection item added');renderNotebook();});
+    if (notebookLinkForm) notebookLinkForm.addEventListener('submit',event=>{event.preventDefault();const project=notebookSelectedProject(),helper=notebookHelper();if(!project||!helper)return;project.notebooks=normalizeNotebooks(project.notebooks,project.objects,project.canvas);if(project.notebooks.links.length>=helper.MAX_LINKS){window.alert(`This project has reached the ${helper.MAX_LINKS}-link limit.`);return;}const data=new FormData(notebookLinkForm),source=notebookRefFromValue(project,String(data.get('sourceRef')||'')),target=notebookRefFromValue(project,String(data.get('targetRef')||'')),relation=String(data.get('relation')||'references'),note=String(data.get('note')||'');if(!source||!target){window.alert('Choose both a source and target.');return;}const link=helper.createLink(source,target,relation,note,id,nowIso);if(!link){window.alert('Choose two different items to link.');return;}const signature=`${helper.refKey(link.source)}>${link.relation}>${helper.refKey(link.target)}`;if(project.notebooks.links.some(x=>`${helper.refKey(x.source)}>${x.relation}>${helper.refKey(x.target)}`===signature)){window.alert('That explicit link already exists.');return;}project.notebooks.links.unshift(link);touchNotebooks(project);addActivity(project,'notebook-link',`Notebook link created: ${link.relation}`);notebookLinkForm.reset();persist('Notebook knowledge link created');renderNotebook();});
 
     researchQuestionForm.addEventListener('submit', (event) => {
       event.preventDefault();

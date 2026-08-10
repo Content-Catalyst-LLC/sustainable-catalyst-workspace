@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__ . '/');
-define('SC_WORKSPACE_VERSION', '0.34.0');
+define('SC_WORKSPACE_VERSION', '0.35.0');
 $GLOBALS['opts'] = array();
 $GLOBALS['updates'] = array();
 class WP_Error { public $code; public $message; public function __construct($c,$m){$this->code=$c;$this->message=$m;} }

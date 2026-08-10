@@ -1,22 +1,22 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.34.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.35.0.json').read_text())
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.34.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.35.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-reconciliation-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.34.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.35.0.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 class GuidedReconciliationContract(unittest.TestCase):
     def test_release_lineage(self):
-        self.assertEqual(MAN['version'],'0.34.0'); self.assertEqual(MAN['previous_version'],'0.33.0'); self.assertEqual(MAN['release_name'],'Notebook Collections & Knowledge Linking')
+        self.assertEqual(MAN['version'],'0.35.0'); self.assertEqual(MAN['previous_version'],'0.34.0'); self.assertEqual(MAN['release_name'],'Notebook-to-Workspace Intelligence')
     def test_storage_migration_project_schema_stable(self):
-        self.assertEqual(MAN['storage_schema_version'],30); self.assertEqual(MAN['project_schema'],'sc-workspace-project/15.0'); self.assertTrue(MAN['schema_migration_required']); self.assertEqual(MAN['migration']['storage_from'],29); self.assertEqual(MAN['migration']['storage_to'],30); self.assertFalse(MAN['migration']['project_schema_unchanged'])
+        self.assertEqual(MAN['storage_schema_version'],31); self.assertEqual(MAN['project_schema'],'sc-workspace-project/16.0'); self.assertTrue(MAN['schema_migration_required']); self.assertEqual(MAN['migration']['storage_from'],30); self.assertEqual(MAN['migration']['storage_to'],31); self.assertFalse(MAN['migration']['project_schema_unchanged'])
     def test_contracts_and_schemas(self):
         self.assertEqual(MAN['reconciliation_schema'],'sc-workspace-reconciliation/1.0'); self.assertEqual(MAN['reconciliation_plan_schema'],'sc-workspace-reconciliation-plan/1.0')
         json.loads((ROOT/'schemas/sc-workspace-reconciliation-v1.schema.json').read_text()); json.loads((ROOT/'schemas/sc-workspace-reconciliation-plan-v1.schema.json').read_text())
     def test_public_rest_contract(self):
-        self.assertIn('/wp-json/sc-workspace/v1/reconciliation-contract',MAN['rest_routes']); self.assertIn("'/reconciliation-contract'",PHP); self.assertIn('public function reconciliation_contract()',PHP); self.assertIn("'storage_schema_version' => 30",PHP)
+        self.assertIn('/wp-json/sc-workspace/v1/reconciliation-contract',MAN['rest_routes']); self.assertIn("'/reconciliation-contract'",PHP); self.assertIn('public function reconciliation_contract()',PHP); self.assertIn("'storage_schema_version' => 31",PHP)
     def test_top_level_reconcile_view(self):
         self.assertIn('data-scw-workspace-view="reconcile"',PHP); self.assertIn('data-scw-workspace-section="reconcile"',PHP); self.assertIn("'reconcile'",JS)
     def test_explicit_selection_no_auto_merge(self):
@@ -41,7 +41,7 @@ class GuidedReconciliationContract(unittest.TestCase):
     def test_change_review_integration(self):
         self.assertIn('data-scw-change-reconcile',PHP); self.assertIn('SCWorkspaceProjectDiff',JS); self.assertIn('buildActiveReconciliation',JS)
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0340'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0340'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '0.33.0'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0350'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0350'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '0.34.0'",REG)
     def test_accessibility_and_library_route(self):
         self.assertIn('@media(forced-colors:active)',CSS); self.assertIn('aria-live="polite"',PHP); self.assertEqual(MAN['canonical_library_path'],'/knowledge-libraries/'); self.assertIn('/knowledge-libraries/',PHP)
 if __name__=='__main__': unittest.main()

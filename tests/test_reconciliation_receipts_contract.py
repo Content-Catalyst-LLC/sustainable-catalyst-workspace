@@ -1,14 +1,14 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.34.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.35.0.json').read_text())
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.34.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.35.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-reconciliation-receipt-v1.js').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 class ReconciliationReceiptsContract(unittest.TestCase):
-  def test_lineage(self): self.assertEqual(MAN['version'],'0.34.0'); self.assertEqual(MAN['previous_version'],'0.33.0'); self.assertEqual(MAN['release_name'],'Notebook Collections & Knowledge Linking')
-  def test_storage_migration_project_stable(self): self.assertEqual(MAN['storage_schema_version'],30); self.assertEqual(MAN['project_schema'],'sc-workspace-project/15.0'); self.assertEqual(MAN['migration']['storage_from'],29); self.assertEqual(MAN['migration']['storage_to'],30); self.assertFalse(MAN['migration']['project_schema_unchanged'])
+  def test_lineage(self): self.assertEqual(MAN['version'],'0.35.0'); self.assertEqual(MAN['previous_version'],'0.34.0'); self.assertEqual(MAN['release_name'],'Notebook-to-Workspace Intelligence')
+  def test_storage_migration_project_stable(self): self.assertEqual(MAN['storage_schema_version'],31); self.assertEqual(MAN['project_schema'],'sc-workspace-project/16.0'); self.assertEqual(MAN['migration']['storage_from'],30); self.assertEqual(MAN['migration']['storage_to'],31); self.assertFalse(MAN['migration']['project_schema_unchanged'])
   def test_receipt_contracts(self): self.assertEqual(MAN['reconciliation_receipt_schema'],'sc-workspace-reconciliation-receipt/1.0'); self.assertEqual(MAN['reconciliation_receipt_export_schema'],'sc-workspace-reconciliation-receipt-export/1.0'); json.loads((ROOT/'schemas/sc-workspace-reconciliation-receipt-v1.schema.json').read_text()); json.loads((ROOT/'schemas/sc-workspace-reconciliation-receipt-export-v1.schema.json').read_text())
   def test_rest(self): self.assertIn('/wp-json/sc-workspace/v1/reconciliation-receipts-contract',MAN['rest_routes']); self.assertIn("'/reconciliation-receipts-contract'",PHP); self.assertIn('public function reconciliation_receipts_contract()',PHP)
   def test_explicit_decision_fields(self): self.assertIn('data-scw-reconcile-reviewer',PHP); self.assertIn('data-scw-reconcile-rationale',PHP); self.assertIn('Decision maker / reviewer label',PHP); self.assertIn('Decision rationale',PHP)
@@ -20,5 +20,5 @@ class ReconciliationReceiptsContract(unittest.TestCase):
   def test_v25_migration_preserves(self):
     self.assertIn('function migrateV25(raw)',JS); seg=JS[JS.index('function migrateV25(raw)'):JS.index('function normalizeState',JS.index('function migrateV25(raw)'))]
     for token in ['raw.accountPersistence','raw.crossDeviceSync','raw.versionHistory','raw.safeActions','raw.reconciliation']: self.assertIn(token,seg)
-  def test_registry(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0340'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0340'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '0.33.0'",REG)
+  def test_registry(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0350'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0350'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '0.34.0'",REG)
 if __name__=='__main__': unittest.main()
