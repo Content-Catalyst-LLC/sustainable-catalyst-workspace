@@ -1,0 +1,28 @@
+import json, unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+MAN=json.loads((ROOT/'release-manifest-v0.50.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.50.0.json').read_text())
+PREV=json.loads((ROOT/'history/release-manifest-v0.49.0.json').read_text())
+MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
+PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
+REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.50.0.js').read_text()
+EXP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-experience-v1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.50.0.css').read_text()
+class V050Experience(unittest.TestCase):
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.50.0','0.49.0','Workspace Experience Consolidation')); self.assertIn('Version: 0.50.0',MAIN); self.assertEqual(PREV['release_name'],'Research Templates & Reusable Workflows')
+ def test_02_schema_stable(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertFalse(MAN['schema_migration_required']); self.assertTrue(MAN['migration']['experience_consolidation_only_release']); self.assertFalse(MAN['migration']['experience_canonical_data_rewrite'])
+ def test_03_experience_schemas(self): self.assertEqual(MAN['experience_schema'],'sc-workspace-experience/1.0'); self.assertEqual(MAN['experience_preferences_schema'],'sc-workspace-experience-preferences/1.0'); self.assertTrue((ROOT/'schemas/sc-workspace-experience-v1.schema.json').exists()); self.assertTrue((ROOT/'schemas/sc-workspace-experience-preferences-v1.schema.json').exists())
+ def test_04_five_area_architecture_retained(self): self.assertEqual(MAN['workspace_experience']['primary_areas'],['start','projects','research','review','exchange']); self.assertIn('data-scw-workspace-area="research"',PHP); self.assertIn('data-scw-workspace-area="review"',PHP); self.assertIn('data-scw-workspace-area="exchange"',PHP)
+ def test_05_density_is_presentation_only(self): self.assertEqual(MAN['workspace_experience']['density_modes'],['comfortable','compact']); self.assertIn("STORAGE_KEY='sc_workspace_experience_v0500'",EXP); self.assertIn('scw-density-compact',CSS); self.assertFalse(MAN['governance']['experience_automatic_canonical_mutation'])
+ def test_06_command_palette(self): self.assertIn('data-scw-command-open',PHP); self.assertIn('data-scw-command-palette',PHP); self.assertIn('data-scw-command-query',PHP); self.assertIn("String(event.key).toLowerCase()==='k'",EXP); self.assertEqual(MAN['workspace_experience']['command_shortcut'],'Ctrl/Meta+K')
+ def test_07_keyboard_primary_navigation(self): self.assertIn('routeForShortcut',EXP); self.assertEqual(MAN['workspace_experience']['primary_area_shortcuts'],['Alt+1','Alt+2','Alt+3','Alt+4','Alt+5']); self.assertIn("event.key==='/'",EXP); self.assertIn('focusCurrentSearch',EXP)
+ def test_08_help_and_terminology(self): self.assertIn('One Workspace, five primary areas.',PHP); self.assertIn('<strong>Notebook</strong>',PHP); self.assertIn('<strong>Knowledge</strong>',PHP); self.assertIn('<strong>Exchange</strong>',PHP); self.assertTrue(MAN['workspace_experience']['terminology_help'])
+ def test_09_responsive_and_targets(self): self.assertIn('scroll-snap-type:x proximity',CSS); self.assertIn('min-height:44px',CSS); self.assertTrue(MAN['workspace_experience']['responsive_horizontal_primary_nav']); self.assertEqual(MAN['workspace_experience']['minimum_control_target_px'],44)
+ def test_10_header_rule_retained(self): self.assertIn('.scw-editorial-header-bar{height:4px',CSS); self.assertNotIn('.scw-editorial-header-bar{height:2px',CSS); self.assertEqual(MAN['workspace_experience']['editorial_header_rule_px'],4)
+ def test_11_rest_and_assets(self): self.assertIn("'/experience-contract'",PHP); self.assertIn('public function experience_contract()',PHP); self.assertIn('/wp-json/sc-workspace/v1/experience-contract',MAN['rest_routes']); self.assertIn('sc-workspace-experience-v1.js',PHP); self.assertIn('workspace-v0.50.0.js',PHP); self.assertIn('workspace-v0.50.0.css',PHP)
+ def test_12_governance(self): self.assertFalse(MAN['workspace_experience']['schema_migration']); self.assertFalse(MAN['workspace_experience']['canonical_data_mutation']); self.assertFalse(MAN['workspace_experience']['automatic_navigation']); self.assertFalse(MAN['workspace_experience']['automatic_project_creation']); self.assertFalse(MAN['workspace_experience']['automatic_ai']); self.assertIn('canonicalDataMutation:false',EXP)
+ def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.50.0','0.49.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0500'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0490 = 'sc_workspace_registry_pending_v0490'",REGPHP); self.assertTrue((ROOT/'history/workspace-product-record-v0.49.0.json').exists())
+ def test_14_prior_features_retained(self): self.assertIn('research_templates',MAN); self.assertIn('cross_project_knowledge_schema',MAN); self.assertIn('relationship_explorer_schema',MAN); self.assertIn('composition_studio',MAN); self.assertIn('knowledge_search',MAN)
+if __name__=='__main__': unittest.main()

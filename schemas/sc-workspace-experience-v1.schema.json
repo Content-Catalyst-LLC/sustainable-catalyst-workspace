@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-experience-v1.schema.json",
+  "title": "Workspace Experience v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "primaryAreas", "densityModes", "keyboard", "editorialHeaderRulePx", "preferencesStorage"],
+  "properties": {
+    "schema": {"const": "sc-workspace-experience/1.0"},
+    "primaryAreas": {
+      "type": "array",
+      "const": ["start", "projects", "research", "review", "exchange"]
+    },
+    "densityModes": {
+      "type": "array",
+      "const": ["comfortable", "compact"]
+    },
+    "keyboard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commandPalette", "primaryAreas", "currentViewSearch", "closeDialog"],
+      "properties": {
+        "commandPalette": {"const": "Ctrl/Meta+K"},
+        "primaryAreas": {"const": "Alt+1..5"},
+        "currentViewSearch": {"const": "/"},
+        "closeDialog": {"const": "Escape"}
+      }
+    },
+    "editorialHeaderRulePx": {"const": 4},
+    "preferencesStorage": {"const": "browser-local"}
+  }
+}

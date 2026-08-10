@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0490, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0461, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0420, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0390, '') === '1' ||
@@ -86,7 +87,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.48.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.50.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -208,6 +209,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/research-templates-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'research_templates_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/experience-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'experience_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -1078,6 +1084,33 @@ public function research_templates_contract() {
     ));
 }
 
+    public function experience_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-experience-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'experience_schema' => 'sc-workspace-experience/1.0',
+            'preferences_schema' => 'sc-workspace-experience-preferences/1.0',
+            'primary_areas' => array('start','projects','research','review','exchange'),
+            'density_modes' => array('comfortable','compact'),
+            'command_palette' => true,
+            'command_shortcut' => 'Ctrl/Meta+K',
+            'primary_area_shortcuts' => array('Alt+1','Alt+2','Alt+3','Alt+4','Alt+5'),
+            'current_view_search_shortcut' => '/',
+            'terminology_help' => true,
+            'responsive_horizontal_primary_nav' => true,
+            'minimum_control_target_px' => 44,
+            'editorial_header_rule_px' => 4,
+            'preferences_storage' => 'browser-local',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration' => false,
+            'canonical_data_mutation' => false,
+            'automatic_navigation' => false,
+            'automatic_project_creation' => false,
+            'automatic_ai' => false,
+        ));
+    }
+
     public function cross_project_knowledge_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-cross-project-knowledge-contract/1.0',
@@ -1878,8 +1911,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0490',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.49.0.css',
+            'sc-workspace-v0500',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.50.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2038,9 +2071,16 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0490',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.49.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1'),
+            'sc-workspace-experience-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
+            array('sc-workspace-research-navigation-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0500',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.50.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2048,7 +2088,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0490', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0500', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2238,6 +2278,36 @@ public function research_templates_contract() {
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
                 </nav>
+            </div>
+            <div class="scw-experience-controls" data-scw-experience-controls aria-label="Workspace display and navigation tools">
+                <div class="scw-experience-controls-copy"><strong>Workspace controls</strong><span>Navigate quickly, adjust density, or review terminology and shortcuts.</span></div>
+                <div class="scw-experience-actions">
+                    <button class="scw-experience-action" type="button" data-scw-command-open aria-keyshortcuts="Control+K Meta+K">Find command <kbd>⌘K</kbd></button>
+                    <button class="scw-experience-action" type="button" data-scw-density-toggle aria-pressed="false">Density: <span data-scw-density-label>Comfortable</span></button>
+                    <button class="scw-experience-action" type="button" data-scw-help-open>Help</button>
+                </div>
+                <div class="scw-experience-status" data-scw-experience-status role="status" aria-live="polite"></div>
+            </div>
+            <div class="scw-experience-dialog" data-scw-command-palette hidden role="dialog" aria-modal="true" aria-labelledby="scw-command-palette-title">
+                <section class="scw-experience-dialog-panel">
+                    <div class="scw-experience-dialog-head"><div><span>WORKSPACE COMMANDS</span><h3 id="scw-command-palette-title">Go directly to the work.</h3></div><button class="scw-experience-dialog-close" type="button" data-scw-dialog-close aria-label="Close command palette">×</button></div>
+                    <label class="scw-command-query-wrap"><span>Find a Workspace route</span><input type="search" data-scw-command-query autocomplete="off" placeholder="Search Research, Notebook, Review, Import…"></label>
+                    <div class="scw-command-results" data-scw-command-results></div>
+                </section>
+            </div>
+            <div class="scw-experience-dialog" data-scw-experience-help hidden role="dialog" aria-modal="true" aria-labelledby="scw-experience-help-title">
+                <section class="scw-experience-dialog-panel">
+                    <div class="scw-experience-dialog-head"><div><span>ORIENTATION</span><h3 id="scw-experience-help-title">One Workspace, five primary areas.</h3></div><button class="scw-experience-dialog-close" type="button" data-scw-dialog-close aria-label="Close Workspace help">×</button></div>
+                    <div class="scw-experience-help-body">
+                        <p class="scw-experience-help-intro">The primary navigation stays deliberately small. Specialized tools appear within Research, Review, and Exchange rather than competing at the top level.</p>
+                        <div class="scw-experience-shortcuts" aria-label="Keyboard shortcuts">
+                            <div><kbd>⌘/Ctrl + K</kbd><span>Open command palette</span></div><div><kbd>Alt + 1…5</kbd><span>Open Start through Exchange</span></div><div><kbd>/</kbd><span>Focus search in the current view</span></div><div><kbd>Esc</kbd><span>Close Workspace dialogs</span></div>
+                        </div>
+                        <div class="scw-experience-terms">
+                            <div><strong>Project</strong><span>The canonical local container for a body of work and its structured objects.</span></div><div><strong>Research</strong><span>Retrieval, Notebook, Knowledge, citations, composition, and Graph exploration.</span></div><div><strong>Notebook</strong><span>Working notes, source captures, links, synthesis, and grounded questions.</span></div><div><strong>Knowledge</strong><span>A derived view over canonical records for finding and reusing existing work.</span></div><div><strong>Review</strong><span>Activity, lifecycle, history, changes, reconciliation, safety, and audit.</span></div><div><strong>Exchange</strong><span>Deliberate import, collaboration, institutional handoff, and sharing.</span></div>
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <div class="scw-action-gate" data-scw-action-gate hidden role="dialog" aria-modal="true" aria-labelledby="scw-action-gate-title">

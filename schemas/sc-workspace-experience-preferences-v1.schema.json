@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-experience-preferences-v1.schema.json",
+  "title": "Workspace Experience Preferences v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "density", "commandHints"],
+  "properties": {
+    "schema": {"const": "sc-workspace-experience-preferences/1.0"},
+    "density": {"enum": ["comfortable", "compact"]},
+    "commandHints": {"type": "boolean"}
+  }
+}
