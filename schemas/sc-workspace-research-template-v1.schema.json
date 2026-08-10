@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-research-template-v1.schema.json",
+  "title": "Workspace Research Template v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "category",
+    "description",
+    "projectDescription",
+    "baseWorkflowTemplateId",
+    "notebook",
+    "starterObjects",
+    "steps",
+    "builtIn",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-template/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 180
+    },
+    "category": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "projectDescription": {
+      "type": "string",
+      "maxLength": 600
+    },
+    "baseWorkflowTemplateId": {
+      "enum": [
+        "research-investigation",
+        "evidence-review",
+        "analytical-assessment",
+        "decision-case",
+        "systems-mapping",
+        "publication-preparation"
+      ]
+    },
+    "builtIn": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    },
+    "notebook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "sections"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "sections": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 160
+          }
+        }
+      }
+    },
+    "starterObjects": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "source",
+              "evidence",
+              "dataset",
+              "analysis",
+              "decision",
+              "document",
+              "export"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "title",
+          "description",
+          "mode"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 180
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "mode": {
+            "enum": [
+              "overview",
+              "research",
+              "analysis",
+              "decision",
+              "canvas",
+              "traceability",
+              "assist",
+              "briefing",
+              "objects"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

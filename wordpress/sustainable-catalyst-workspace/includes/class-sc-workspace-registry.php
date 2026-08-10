@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0480';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0480';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0490';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0490';
+    const LEGACY_PENDING_KEY_V0480 = 'sc_workspace_registry_pending_v0480';
     const LEGACY_PENDING_KEY_V0470 = 'sc_workspace_registry_pending_v0470';
     const LEGACY_PENDING_KEY_V0461 = 'sc_workspace_registry_pending_v0461';
     const LEGACY_PENDING_KEY_V0460 = 'sc_workspace_registry_pending_v0460';
@@ -125,6 +126,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0480);
         delete_option(self::LEGACY_PENDING_KEY_V0470);
         delete_option(self::LEGACY_PENDING_KEY_V0461);
         delete_option(self::LEGACY_PENDING_KEY_V0460);
@@ -230,11 +232,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.47.0',
+            'previous_version' => '0.48.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Cross-Project Knowledge adds explicit, browser-local references from a target project to canonical research owned by another project, with visible project boundaries and Research Graph integration.',
+            'change_summary' => 'Research Templates & Reusable Workflows adds structure-only research protocols, Notebook scaffolds, explicit project starters, and portable custom template definitions without copying research content.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.48.0 remains schema-stable at storage 35 / project 20.0. Cross-project knowledge stores only explicit canonical pointers, target project context, relationship labels, and notes in browser-local storage; no content copy, ownership transfer, or inferred links.',
+            'manual_notes' => 'Free public Workspace. v0.49.0 remains schema-stable at storage 35 / project 20.0. Research templates are browser-local structure definitions; instantiation is explicit and does not copy project notes, Notebook content, evidence, citations, findings, or completion state.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

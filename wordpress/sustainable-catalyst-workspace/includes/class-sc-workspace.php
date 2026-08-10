@@ -205,6 +205,11 @@ final class SC_Workspace {
             'callback' => array($this, 'cross_project_knowledge_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/research-templates-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'research_templates_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'knowledge_graph_contract'),
@@ -1049,6 +1054,30 @@ final class SC_Workspace {
         ));
     }
 
+
+public function research_templates_contract() {
+    return rest_ensure_response(array(
+        'schema' => 'sc-workspace-research-templates-contract/1.0',
+        'workspace_version' => SC_WORKSPACE_VERSION,
+        'research_template_library_schema' => 'sc-workspace-research-template-library/1.0',
+        'research_template_schema' => 'sc-workspace-research-template/1.0',
+        'research_template_export_schema' => 'sc-workspace-research-template-export/1.0',
+        'built_in_templates' => 8,
+        'supports_project_starters' => true,
+        'supports_notebook_scaffolds' => true,
+        'supports_guided_workflow_scaffolds' => true,
+        'supports_optional_empty_starter_objects' => true,
+        'custom_templates_browser_local' => true,
+        'template_instantiation_requires_user_action' => true,
+        'templates_store_project_content' => false,
+        'templates_store_notebook_content' => false,
+        'templates_store_findings' => false,
+        'templates_copy_completion_status' => false,
+        'automatic_step_completion' => false,
+        'automatic_ai' => false,
+    ));
+}
+
     public function cross_project_knowledge_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-cross-project-knowledge-contract/1.0',
@@ -1849,8 +1878,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0480',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.48.0.css',
+            'sc-workspace-v0490',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.49.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1988,6 +2017,13 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-research-templates-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-templates-v1.js',
+            array('sc-workspace-research-notebook-v8'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-cross-project-knowledge-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-cross-project-knowledge-v1.js',
             array('sc-workspace-integrated-knowledge-v1'),
@@ -2002,9 +2038,9 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0480',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.48.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1'),
+            'sc-workspace-v0490',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.49.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2012,7 +2048,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0480', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0490', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2951,6 +2987,20 @@ final class SC_Workspace {
                         <div><strong data-scw-workflow-metric-steps>0</strong><span>in progress</span></div>
                         <div><strong data-scw-workflow-metric-complete>0</strong><span>steps complete</span></div>
                     </div>
+                    <section class="scw-research-template-library" aria-labelledby="scw-research-template-library-title">
+                        <div class="scw-research-template-head"><div><span>REUSABLE RESEARCH TEMPLATES</span><h4 id="scw-research-template-library-title">Scaffold a method without copying the research.</h4><p>Use built-in protocols or explicitly saved custom structures to add a guided workflow, a Notebook section scaffold, and optional empty starter objects. Templates never contain project notes, Notebook contents, evidence, findings, citations, or completion states.</p></div></div>
+                        <div class="scw-research-template-controls">
+                            <label><span>Template</span><select data-scw-research-template-select></select></label>
+                            <label><span>Project starter title</span><input type="text" maxlength="120" data-scw-research-template-project-title placeholder="Template project title"></label>
+                            <label class="scw-template-check"><input type="checkbox" data-scw-research-template-workflow checked><span>Guided workflow</span></label>
+                            <label class="scw-template-check"><input type="checkbox" data-scw-research-template-notebook checked><span>Notebook scaffold</span></label>
+                            <label class="scw-template-check"><input type="checkbox" data-scw-research-template-objects><span>Empty starter objects</span></label>
+                        </div>
+                        <div class="scw-research-template-preview" data-scw-research-template-preview></div>
+                        <div class="scw-research-template-actions"><button type="button" class="scw-button scw-button-primary" data-scw-research-template-apply>Apply structure to this project</button><button type="button" class="scw-button" data-scw-research-template-create-project>Create project starter</button><button type="button" class="scw-button" data-scw-research-template-save-workflow>Save active workflow as template</button><button type="button" class="scw-button" data-scw-research-template-export>Export custom templates</button><button type="button" class="scw-button" data-scw-research-template-import>Import custom templates</button><input type="file" accept="application/json,.json" data-scw-research-template-import-file hidden></div>
+                        <p class="scw-research-template-status" data-scw-research-template-status role="status" aria-live="polite"></p>
+                        <div class="scw-research-template-custom-list" data-scw-research-template-custom-list></div>
+                    </section>
                     <div class="scw-workflow-grid">
                         <section class="scw-workflow-panel scw-workflow-panel-wide" aria-labelledby="scw-workflow-templates-heading">
                             <div class="scw-workflow-panel-head"><span>01 / TEMPLATES</span><h4 id="scw-workflow-templates-heading">Choose a method, not a locked tier.</h4></div>

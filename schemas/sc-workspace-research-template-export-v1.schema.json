@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-research-template-export-v1.schema.json",
+  "title": "Workspace Research Template Export v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "exportedAt",
+    "library",
+    "integrity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-template-export/1.0"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "library": {
+      "$ref": "sc-workspace-research-template-library-v1.schema.json"
+    },
+    "integrity": {
+      "type": "object"
+    }
+  }
+}
