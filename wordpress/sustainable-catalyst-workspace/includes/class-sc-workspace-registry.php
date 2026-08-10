@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0410';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0410';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0420';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0420';
+    const LEGACY_PENDING_KEY_V0410 = 'sc_workspace_registry_pending_v0410';
     const LEGACY_PENDING_KEY_V0400 = 'sc_workspace_registry_pending_v0400';
     const LEGACY_PENDING_KEY_V0390 = 'sc_workspace_registry_pending_v0390';
     const LEGACY_PENDING_KEY_V0380 = 'sc_workspace_registry_pending_v0380';
@@ -117,6 +118,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0410);
         delete_option(self::LEGACY_PENDING_KEY_V0400);
         delete_option(self::LEGACY_PENDING_KEY_V0390);
         delete_option(self::LEGACY_PENDING_KEY_V0380);
@@ -214,11 +216,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.40.0',
+            'previous_version' => '0.41.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Unified Research Navigation & Information Architecture: five primary Workspace areas with contextual Research, Review, and Exchange routes while retaining canonical records and all specialized tools.',
+            'change_summary' => 'Knowledge Search & Advanced Retrieval: fielded cross-project retrieval, local saved searches, explainable provenance-aware ranking, and related-material navigation over the canonical Integrated Knowledge index.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.41.0 remains schema-stable at storage 35 / project 20.0. Navigation is derived from existing surfaces and moves no canonical data: Start, Projects, Research, Review, and Exchange are the five primary areas.',
+            'manual_notes' => 'Free public Workspace. v0.42.0 remains schema-stable at storage 35 / project 20.0. Advanced retrieval is derived from the canonical Integrated Knowledge index; saved searches stay browser-local and no server index, embeddings, automatic AI, or canonical mutation are introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

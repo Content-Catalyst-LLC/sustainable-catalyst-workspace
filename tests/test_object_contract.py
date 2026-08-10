@@ -1,6 +1,6 @@
 import json, unittest
 from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.41.0.js'
+ROOT=Path(__file__).resolve().parents[1]; JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.42.0.js'
 class ObjectTests(unittest.TestCase):
     def test_object_contract_stable(self):
         s=json.loads((ROOT/'schemas/sc-workspace-object-v1.schema.json').read_text())

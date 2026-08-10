@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-knowledge-search-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Knowledge Search",
+  "type": "object",
+  "required": ["schema", "query", "kind", "project", "provenance", "scope", "sort"],
+  "properties": {
+    "schema": {"const": "sc-workspace-knowledge-search/1.0"},
+    "query": {"type": "string", "maxLength": 320},
+    "kind": {"type": "string", "maxLength": 80},
+    "subtype": {"type": "string", "maxLength": 80},
+    "project": {"type": "string", "maxLength": 160},
+    "tag": {"type": "string", "maxLength": 80},
+    "origin": {"type": "string", "maxLength": 120},
+    "provenance": {"enum": ["all", "documented", "linked", "source-url", "bibliographic"]},
+    "scope": {"enum": ["active", "all"]},
+    "sort": {"enum": ["relevance", "updated-desc", "updated-asc", "title-asc", "project-asc"]}
+  },
+  "additionalProperties": false
+}

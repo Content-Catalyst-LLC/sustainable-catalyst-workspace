@@ -84,7 +84,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.41.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.42.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -171,6 +171,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/integrated-knowledge-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'integrated_knowledge_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/knowledge-search-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'knowledge_search_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/navigation-contract', array(
@@ -339,6 +344,8 @@ final class SC_Workspace {
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'integrated_knowledge_schema' => 'sc-workspace-integrated-knowledge/1.0',
+            'knowledge_search_schema' => 'sc-workspace-knowledge-search/1.0',
+            'saved_search_schema' => 'sc-workspace-saved-search/1.0',
             'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
@@ -433,6 +440,8 @@ final class SC_Workspace {
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'integrated_knowledge_schema' => 'sc-workspace-integrated-knowledge/1.0',
+            'knowledge_search_schema' => 'sc-workspace-knowledge-search/1.0',
+            'saved_search_schema' => 'sc-workspace-saved-search/1.0',
             'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
             'interoperability_schema' => 'sc-workspace-interoperability/1.0',
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
@@ -879,6 +888,34 @@ final class SC_Workspace {
             'notebook_workspace_schema' => 'sc-workspace-notebook-workspace/8.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
+        ));
+    }
+
+
+
+    public function knowledge_search_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-knowledge-search-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'search_schema' => 'sc-workspace-knowledge-search/1.0',
+            'saved_search_schema' => 'sc-workspace-saved-search/1.0',
+            'corpus' => 'derived-integrated-knowledge-index',
+            'cross_project' => true,
+            'fields' => array('query','kind','subtype','project','tag','origin','provenance','scope','sort'),
+            'provenance_filters' => array('all','documented','linked','source-url','bibliographic'),
+            'sorts' => array('relevance','updated-desc','updated-asc','title-asc','project-asc'),
+            'saved_searches' => 'browser-local-preferences',
+            'ranking' => 'deterministic-explainable-field-match-plus-recorded-provenance',
+            'ranking_reasons_visible' => true,
+            'hidden_relevance_score' => false,
+            'related_material_requires_recorded_relationship_or_provenance' => true,
+            'server_index' => false,
+            'semantic_embeddings' => false,
+            'automatic_ai' => false,
+            'automatic_relationship_inference' => false,
+            'canonical_record_mutation' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
         ));
     }
 
@@ -1665,8 +1702,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0410',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.41.0.css',
+            'sc-workspace-v0420',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.42.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1762,6 +1799,13 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-knowledge-search-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-knowledge-search-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-research-navigation-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-navigation-v1.js',
             array(),
@@ -1769,9 +1813,9 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0410',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.41.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-research-navigation-v1'),
+            'sc-workspace-v0420',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.42.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1779,7 +1823,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0410', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0420', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2048,9 +2092,23 @@ final class SC_Workspace {
                     <button class="scw-research-route" type="button" data-scw-research-route="graph"><span>CONNECT</span><strong>Graph</strong><small>Inspect explicit relationships, provenance, and traceable connections.</small></button>
                 </div>
                 <div class="scw-integrated-metrics" aria-label="Integrated research metrics"><div><strong data-scw-integrated-total>0</strong><span>research records</span></div><div><strong data-scw-integrated-objects>0</strong><span>Workspace objects</span></div><div><strong data-scw-integrated-notebooks>0</strong><span>Notebook records</span></div><div><strong data-scw-integrated-research>0</strong><span>questions &amp; claims</span></div></div>
-                <div class="scw-integrated-toolbar"><label><span>Search research</span><input type="search" maxlength="240" data-scw-integrated-search placeholder="Search across notebooks, objects, questions, and claims"></label><label><span>Kind</span><select data-scw-integrated-kind><option value="all">All research</option><option value="object">Workspace objects</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option></select></label><label><span>Project</span><select data-scw-integrated-project><option value="all">All projects</option></select></label></div>
-                <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin and explicit connections.</div></aside></div>
-                <div class="scw-notebook-boundary" role="note"><strong>One view, canonical records.</strong><span>Integrated Knowledge is derived at runtime from existing project objects, Research Workspace records, and Research Notebook material. It creates no duplicate content database, runs no semantic inference or AI automatically, and writes nothing back to source records unless you explicitly use an origin workspace action.</span></div>
+                <section class="scw-advanced-retrieval" aria-labelledby="scw-advanced-retrieval-title">
+                    <div class="scw-advanced-retrieval-head"><div><span>ADVANCED RETRIEVAL</span><h3 id="scw-advanced-retrieval-title">Find research with inspectable fields and provenance.</h3><p>Search across projects, filter by canonical record fields, save useful queries locally, and understand why results are ordered. Ranking uses deterministic field matches and recorded provenance—not embeddings or hidden semantic scoring.</p></div><div class="scw-retrieval-result-count"><strong data-scw-retrieval-count>0</strong><span>matching records</span></div></div>
+                    <div class="scw-integrated-toolbar scw-retrieval-toolbar">
+                        <label class="scw-retrieval-query"><span>Query</span><input type="search" maxlength="320" data-scw-integrated-search placeholder='Search words or quoted phrases, e.g. "grid resilience"'></label>
+                        <label><span>Kind</span><select data-scw-integrated-kind><option value="all">All research</option><option value="object">Workspace objects</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option></select></label>
+                        <label><span>Subtype</span><select data-scw-retrieval-subtype><option value="all">All subtypes</option></select></label>
+                        <label><span>Project</span><select data-scw-integrated-project><option value="all">All projects</option></select></label>
+                        <label><span>Tag</span><input type="text" maxlength="80" data-scw-retrieval-tag placeholder="Any matching tag"></label>
+                        <label><span>Origin</span><select data-scw-retrieval-origin><option value="all">All origins</option></select></label>
+                        <label><span>Provenance</span><select data-scw-retrieval-provenance><option value="all">Any provenance</option><option value="documented">Recorded provenance</option><option value="linked">Explicitly linked</option><option value="source-url">Source URL recorded</option><option value="bibliographic">Bibliographic context</option></select></label>
+                        <label><span>Scope</span><select data-scw-retrieval-scope><option value="active">Active projects</option><option value="all">Active + archived</option></select></label>
+                        <label><span>Sort</span><select data-scw-retrieval-sort><option value="relevance">Explainable relevance</option><option value="updated-desc">Recently updated</option><option value="updated-asc">Oldest updated</option><option value="title-asc">Title A–Z</option><option value="project-asc">Project A–Z</option></select></label>
+                    </div>
+                    <div class="scw-saved-search-bar"><label><span>Saved search</span><select data-scw-saved-search><option value="">Choose saved search</option></select></label><button type="button" class="scw-button" data-scw-save-search>Save current search</button><button type="button" class="scw-button" data-scw-delete-search disabled>Delete saved search</button><button type="button" class="scw-button" data-scw-clear-search>Clear filters</button><p data-scw-search-status role="status" aria-live="polite"></p></div>
+                </section>
+                <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
+                <div class="scw-notebook-boundary" role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>
             </section>
 
             <section class="scw-research-notebook" data-scw-workspace-section="notebook" hidden aria-labelledby="scw-notebook-title">

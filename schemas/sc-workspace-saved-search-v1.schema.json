@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-saved-search-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Saved Search",
+  "type": "object",
+  "required": ["schema", "id", "name", "preferences", "createdAt", "updatedAt"],
+  "properties": {
+    "schema": {"const": "sc-workspace-saved-search/1.0"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "name": {"type": "string", "minLength": 1, "maxLength": 120},
+    "preferences": {"$ref": "sc-workspace-knowledge-search-v1.schema.json"},
+    "createdAt": {"type": "string"},
+    "updatedAt": {"type": "string"}
+  },
+  "additionalProperties": false
+}
