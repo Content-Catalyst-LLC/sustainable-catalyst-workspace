@@ -1700,7 +1700,7 @@
   function aiRequestPackage(project,session){
     return {schema:AI_REQUEST_EXPORT_SCHEMA,workspaceVersion:rootVersion(),exportedAt:nowIso(),request:{id:session.id,title:session.title,task:session.task,prompt:session.prompt,status:session.status},project:{id:project.id,title:project.title},returnUrl:(document.querySelector('[data-sc-workspace]')?.dataset.returnUrl||window.location.href),responseStorageKey:AI_RESPONSE_KEY,responseSchema:AI_RESPONSE_SCHEMA,groundingPolicy:aiGroundingPolicy(),selectedObjects:aiSelectedObjects(project,session).map(o=>({id:o.id,type:o.type,title:o.title,summary:o.summary,content:o.content,status:o.status,tags:o.tags,provenance:o.provenance}))};
   }
-  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.40.0'; }
+  function rootVersion(){ const el=document.querySelector('[data-sc-workspace]'); return el&&el.dataset.version?el.dataset.version:'0.41.0'; }
   function aiPromptMarkdown(project,session){
     const objects=aiSelectedObjects(project,session), lines=[`# ${session.title}`,`Task: ${aiTaskLabel(session.task)}`,'','## User request',session.prompt||'(No additional prompt supplied.)','','## Grounding rules','- Use only the selected Workspace context below unless explicitly stating that more information is needed.','- Distinguish source-backed statements from inference.','- Preserve uncertainty, limitations, and conflicting evidence.','- Do not make or approve a final decision for the user.','- Do not invent citations or claim access to sources not included here.',''];
     objects.forEach((o,i)=>{lines.push(`## Context ${i+1}: ${o.title}`,`Workspace Object ID: ${o.id}`,`Type: ${o.type}`,`Status: ${o.status}`,`Provenance: ${o.provenance?.sourceTitle||o.provenance?.sourceType||'manual'}${o.provenance?.sourceUrl?` — ${o.provenance.sourceUrl}`:''}`,'',o.summary?`Summary: ${o.summary}`:'',o.content?`Content:\n${o.content}`:'','');});
@@ -3077,6 +3077,10 @@
     const workflowMetricSteps = root.querySelector('[data-scw-workflow-metric-steps]');
     const workflowMetricComplete = root.querySelector('[data-scw-workflow-metric-complete]');
     const workspaceViewNav = root.querySelector('[data-scw-workspace-view-nav]');
+    const workspaceNavigationPath = root.querySelector('[data-scw-navigation-path]');
+    const workspaceNavigationTitle = root.querySelector('[data-scw-navigation-title]');
+    const workspaceNavigationDescription = root.querySelector('[data-scw-navigation-description]');
+    const workspaceContextNavs = [...root.querySelectorAll('[data-scw-workspace-context-nav]')];
     const startSection = root.querySelector('[data-scw-workspace-section="start"]');
     const integratedSection = root.querySelector('[data-scw-workspace-section="research"]');
     const integratedSearch = root.querySelector('[data-scw-integrated-search]');
@@ -4600,14 +4604,31 @@
       setProjectMode('guide');
     }
 
+    function navigationApi(){ return window.SCWorkspaceResearchNavigation || null; }
+    function syncWorkspaceNavigation(){
+      const api=navigationApi(); if(!api)return;
+      const ctx=api.context(workspaceView);
+      root.querySelectorAll('[data-scw-workspace-area]').forEach(button=>{
+        const selected=button.dataset.scwWorkspaceArea===ctx.area;
+        button.classList.toggle('is-active',selected);
+        button.setAttribute('aria-pressed',selected?'true':'false');
+        if(selected)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
+      });
+      workspaceContextNavs.forEach(nav=>{nav.hidden=nav.dataset.scwWorkspaceContextNav!==ctx.area;});
+      if(workspaceNavigationPath)workspaceNavigationPath.textContent=ctx.path;
+      if(workspaceNavigationTitle)workspaceNavigationTitle.textContent=ctx.viewLabel;
+      if(workspaceNavigationDescription)workspaceNavigationDescription.textContent=ctx.description;
+    }
+
     function setWorkspaceView(view, moveFocus = false) {
-      workspaceView = ['start','projects','research','notebook','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share'].includes(view) ? view : 'start';
+      const navApi=navigationApi(); const candidate=String(view||''); const fallbackViews=['start','projects','research','notebook','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share']; const validView=navApi?(candidate==='start'||navApi.areaForView(candidate)!=='start'):fallbackViews.includes(candidate); workspaceView=validView?candidate:'start';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
         button.setAttribute('aria-pressed', selected ? 'true' : 'false');
         if (selected) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
       });
+      syncWorkspaceNavigation();
       if (startSection) startSection.hidden = workspaceView !== 'start';
       if (integratedSection) integratedSection.hidden = workspaceView !== 'research';
       if (projectsSection) projectsSection.hidden = workspaceView !== 'projects';
@@ -5405,6 +5426,17 @@
       event.preventDefault();
       buttons[next].focus();
     });
+
+    workspaceContextNavs.forEach((nav)=>nav.addEventListener('keydown',(event)=>{
+      if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+      const buttons=[...nav.querySelectorAll('[data-scw-workspace-view]')]; if(!buttons.length)return;
+      const current=Math.max(0,buttons.indexOf(document.activeElement)); let next=current;
+      if(event.key==='ArrowRight')next=(current+1)%buttons.length;
+      if(event.key==='ArrowLeft')next=(current-1+buttons.length)%buttons.length;
+      if(event.key==='Home')next=0;if(event.key==='End')next=buttons.length-1;
+      event.preventDefault();buttons[next].focus();
+    }));
+    root.querySelectorAll('[data-scw-research-route]').forEach(button=>button.addEventListener('click',()=>setWorkspaceView(button.dataset.scwResearchRoute,true)));
 
     if (runDiagnostics) runDiagnostics.addEventListener('click', () => {
       latestDiagnosticReport = privacyMinimizedDiagnostic(state);

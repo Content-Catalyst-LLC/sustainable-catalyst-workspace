@@ -84,7 +84,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.40.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.41.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -171,6 +171,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/integrated-knowledge-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'integrated_knowledge_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/navigation-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'navigation_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -874,6 +879,31 @@ final class SC_Workspace {
             'notebook_workspace_schema' => 'sc-workspace-notebook-workspace/8.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
             'research_schema' => 'sc-workspace-research/1.0',
+        ));
+    }
+
+
+    public function navigation_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-navigation-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'navigation_schema' => 'sc-workspace-navigation-map/1.0',
+            'primary_areas' => array('start','projects','research','review','exchange'),
+            'routes' => array(
+                'start' => array('start'),
+                'projects' => array('projects'),
+                'research' => array('research','notebook','knowledge','graph'),
+                'review' => array('activity','lifecycle','history','changes','reconcile','safety','audit'),
+                'exchange' => array('interoperability','collaboration','institutional','share'),
+            ),
+            'derived_from_existing_surfaces' => true,
+            'moves_canonical_data' => false,
+            'duplicates_canonical_content' => false,
+            'specialized_surfaces_retained' => true,
+            'automatic_semantic_inference' => false,
+            'automatic_ai' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
         ));
     }
 
@@ -1635,8 +1665,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0400',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.40.0.css',
+            'sc-workspace-v0410',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.41.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1732,9 +1762,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0400',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.40.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1'),
+            'sc-workspace-research-navigation-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-research-navigation-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0410',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.41.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-research-navigation-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1742,7 +1779,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0400', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0410', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1914,25 +1951,25 @@ final class SC_Workspace {
                 <button type="button" class="scw-button" data-scw-dismiss-recovery>Dismiss</button>
             </div>
 
-            <nav id="scw-workspace-main" class="scw-workspace-view-nav" aria-label="Workspace views" data-scw-workspace-view-nav tabindex="-1">
-                <button type="button" class="is-active" data-scw-workspace-view="start" aria-pressed="true" aria-current="page">Start</button>
-                <button type="button" data-scw-workspace-view="projects" aria-pressed="false">Projects</button>
-                <button type="button" data-scw-workspace-view="research" aria-pressed="false">Research</button>
-                <button type="button" data-scw-workspace-view="notebook" aria-pressed="false">Notebook</button>
-                <button type="button" data-scw-workspace-view="knowledge" aria-pressed="false">Knowledge</button>
-                <button type="button" data-scw-workspace-view="graph" aria-pressed="false">Graph</button>
-                <button type="button" data-scw-workspace-view="activity" aria-pressed="false">Activity</button>
-                <button type="button" data-scw-workspace-view="lifecycle" aria-pressed="false">Lifecycle</button>
-                <button type="button" data-scw-workspace-view="history" aria-pressed="false">History</button>
-                <button type="button" data-scw-workspace-view="changes" aria-pressed="false">Changes</button>
-                <button type="button" data-scw-workspace-view="reconcile" aria-pressed="false">Reconcile</button>
-                <button type="button" data-scw-workspace-view="safety" aria-pressed="false">Safety</button>
-                <button type="button" data-scw-workspace-view="audit" aria-pressed="false">Audit</button>
-                <button type="button" data-scw-workspace-view="interoperability" aria-pressed="false">Import &amp; Interoperability</button>
-                <button type="button" data-scw-workspace-view="collaboration" aria-pressed="false">Collaborate</button>
-                <button type="button" data-scw-workspace-view="institutional" aria-pressed="false">Institutional</button>
-                <button type="button" data-scw-workspace-view="share" aria-pressed="false">Share</button>
+            <nav id="scw-workspace-main" class="scw-workspace-primary-nav" aria-label="Workspace areas" data-scw-workspace-view-nav tabindex="-1">
+                <button type="button" class="is-active" data-scw-workspace-area="start" data-scw-workspace-view="start" aria-pressed="true" aria-current="page">Start</button>
+                <button type="button" data-scw-workspace-area="projects" data-scw-workspace-view="projects" aria-pressed="false">Projects</button>
+                <button type="button" data-scw-workspace-area="research" data-scw-workspace-view="research" aria-pressed="false">Research</button>
+                <button type="button" data-scw-workspace-area="review" data-scw-workspace-view="activity" aria-pressed="false">Review</button>
+                <button type="button" data-scw-workspace-area="exchange" data-scw-workspace-view="interoperability" aria-pressed="false">Exchange</button>
             </nav>
+            <div class="scw-navigation-context" data-scw-navigation-context>
+                <div class="scw-navigation-context-copy"><span data-scw-navigation-path>Workspace / Start</span><strong data-scw-navigation-title>Start</strong><p data-scw-navigation-description>Begin, resume, or orient your Workspace.</p></div>
+                <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="research" aria-label="Research routes" hidden>
+                    <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
+                </nav>
+                <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button>
+                </nav>
+                <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
+                    <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
+                </nav>
+            </div>
 
             <div class="scw-action-gate" data-scw-action-gate hidden role="dialog" aria-modal="true" aria-labelledby="scw-action-gate-title">
                 <div class="scw-action-gate-backdrop" data-scw-action-gate-cancel></div>
@@ -2003,6 +2040,12 @@ final class SC_Workspace {
                 <div class="scw-integrated-head">
                     <div><div class="scw-kicker">INTEGRATED KNOWLEDGE WORKSPACE</div><h2 id="scw-integrated-title">Research without feature boundaries.</h2><p>Search Notebook material, canonical Workspace Objects, and Research Workspace questions and claims through one derived index. Every result remains anchored to its original record; this view does not duplicate content or invent semantic relationships.</p></div>
                     <div class="scw-integrated-actions"><button class="scw-button" type="button" data-scw-integrated-open-notebook>Open Notebook</button><button class="scw-button" type="button" data-scw-integrated-open-knowledge>Open Personal Knowledge</button><button class="scw-button" type="button" data-scw-integrated-open-project>Open active Project</button></div>
+                </div>
+                <div class="scw-research-route-grid" aria-label="Research pathways">
+                    <button class="scw-research-route" type="button" data-scw-research-route="research"><span>FIND</span><strong>Research home</strong><small>Search every canonical research record through one derived index.</small></button>
+                    <button class="scw-research-route" type="button" data-scw-research-route="notebook"><span>WORK</span><strong>Notebook</strong><small>Capture sources, write notes, synthesize material, and use grounded assistance.</small></button>
+                    <button class="scw-research-route" type="button" data-scw-research-route="knowledge"><span>ORGANIZE</span><strong>Knowledge</strong><small>Work with Sources, Evidence, Datasets, Analysis, Decisions, and Documents.</small></button>
+                    <button class="scw-research-route" type="button" data-scw-research-route="graph"><span>CONNECT</span><strong>Graph</strong><small>Inspect explicit relationships, provenance, and traceable connections.</small></button>
                 </div>
                 <div class="scw-integrated-metrics" aria-label="Integrated research metrics"><div><strong data-scw-integrated-total>0</strong><span>research records</span></div><div><strong data-scw-integrated-objects>0</strong><span>Workspace objects</span></div><div><strong data-scw-integrated-notebooks>0</strong><span>Notebook records</span></div><div><strong data-scw-integrated-research>0</strong><span>questions &amp; claims</span></div></div>
                 <div class="scw-integrated-toolbar"><label><span>Search research</span><input type="search" maxlength="240" data-scw-integrated-search placeholder="Search across notebooks, objects, questions, and claims"></label><label><span>Kind</span><select data-scw-integrated-kind><option value="all">All research</option><option value="object">Workspace objects</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option></select></label><label><span>Project</span><select data-scw-integrated-project><option value="all">All projects</option></select></label></div>

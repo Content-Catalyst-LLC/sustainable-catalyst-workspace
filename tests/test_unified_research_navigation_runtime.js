@@ -1,0 +1,10 @@
+const assert=require('assert');
+const N=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js');
+assert.equal(N.SCHEMA,'sc-workspace-navigation-map/1.0');
+assert.deepEqual(N.primaryAreas().map(x=>x.id),['start','projects','research','review','exchange']);
+assert.equal(N.areaForView('notebook'),'research');assert.equal(N.areaForView('changes'),'review');assert.equal(N.areaForView('share'),'exchange');
+assert.equal(N.defaultView('research'),'research');assert.equal(N.defaultView('review'),'activity');assert.equal(N.defaultView('exchange'),'interoperability');
+assert.deepEqual(N.viewsForArea('research'),['research','notebook','knowledge','graph']);
+const c=N.context('notebook');assert.equal(c.area,'research');assert.equal(c.viewLabel,'Notebook');assert.equal(c.path,'Workspace / Research / Notebook');
+const map=N.map();assert.equal(map.governance.derivedFromExistingSurfaces,true);assert.equal(map.governance.movesCanonicalData,false);assert.equal(map.governance.duplicatesCanonicalContent,false);assert.equal(map.governance.automaticSemanticInference,false);assert.equal(map.governance.automaticAI,false);assert.equal(map.governance.specializedSurfacesRetained,true);
+console.log('PASS - v0.41.0 unified research navigation runtime');

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-navigation-map-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Navigation Map v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "primaryAreas",
+    "routes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-navigation-map/1.0"
+    },
+    "primaryAreas": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "start",
+          "projects",
+          "research",
+          "review",
+          "exchange"
+        ]
+      },
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
