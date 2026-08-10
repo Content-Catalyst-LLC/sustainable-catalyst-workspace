@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0460';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0460';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0461';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0461';
+    const LEGACY_PENDING_KEY_V0460 = 'sc_workspace_registry_pending_v0460';
     const LEGACY_PENDING_KEY_V0450 = 'sc_workspace_registry_pending_v0450';
     const LEGACY_PENDING_KEY_V0440 = 'sc_workspace_registry_pending_v0440';
     const LEGACY_PENDING_KEY_V0430 = 'sc_workspace_registry_pending_v0430';
@@ -122,6 +123,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0460);
         delete_option(self::LEGACY_PENDING_KEY_V0450);
         delete_option(self::LEGACY_PENDING_KEY_V0440);
         delete_option(self::LEGACY_PENDING_KEY_V0430);
@@ -224,11 +226,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.45.0',
+            'previous_version' => '0.46.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Workspace Import & Interchange: profile-based JSON, Markdown, CSV, CSL JSON, and portable Project exchange with deterministic local detection, staged review, explicit provenance, and no silent overwrite.',
+            'change_summary' => 'Workspace Import & Interchange retained; editorial header rule corrected from 2px to the site-standard 4px treatment.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.46.0 remains schema-stable at storage 35 / project 20.0. Interchange profiles are deterministic browser-local transforms; imported records are staged, portable Projects import as copies, no external metadata lookup occurs, and the editorial top rule is aligned to 2px.',
+            'manual_notes' => 'Free public Workspace. v0.46.1 remains schema-stable at storage 35 / project 20.0, retains the complete v0.46.0 interchange feature set, and aligns the editorial top rule to the site-standard 4px treatment on desktop and mobile.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

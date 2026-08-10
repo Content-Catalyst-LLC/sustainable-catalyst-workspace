@@ -1,13 +1,13 @@
 import json,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.46.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.46.1.json').read_text())
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.0.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.0.css').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.1.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 class CrossDeviceSyncContract(unittest.TestCase):
- def test_lineage(self): self.assertEqual(MAN['version'],'0.46.0');self.assertEqual(MAN['previous_version'],'0.45.0');self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0')
+ def test_lineage(self): self.assertEqual(MAN['version'],'0.46.1');self.assertEqual(MAN['previous_version'],'0.46.0');self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0')
  def test_sync_schemas(self): self.assertEqual(MAN['cross_device_sync_schema'],'sc-workspace-cross-device-sync/1.0');self.assertEqual(MAN['sync_push_schema'],'sc-workspace-sync-push/1.0')
  def test_sync_endpoint(self): self.assertIn("'/sync-contract'",PHP);self.assertIn('public function sync_contract()',PHP)
  def test_explicit_enrollment(self): self.assertTrue(MAN['cross_device_sync']['explicit_project_enrollment']);self.assertFalse(MAN['cross_device_sync']['enrollment_uploads_content']);self.assertIn('data-scw-sync-toggle',PHP)
@@ -22,7 +22,7 @@ class CrossDeviceSyncContract(unittest.TestCase):
  def test_account_limits(self): self.assertEqual(MAN['account_persistence']['max_projects_per_account'],25);self.assertEqual(MAN['account_persistence']['max_project_bytes'],2621440);self.assertEqual(MAN['account_persistence']['max_account_bytes'],26214400)
  def test_schema_files(self):
   for f in ['sc-workspace-cross-device-sync-v1.schema.json','sc-workspace-sync-push-v1.schema.json']: json.loads((ROOT/'schemas'/f).read_text())
- def test_registry_lineage(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0460'",REG);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",REG)
+ def test_registry_lineage(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0461'",REG);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",REG)
  def test_css(self): self.assertIn('/* v0.22.0 — Cross-Device Sync & Conflict-Safe Recovery */',CSS);self.assertIn('.scw-sync-grid',CSS)
  def test_history(self): self.assertTrue((ROOT/'history/release-manifest-v0.21.0.json').exists());self.assertTrue((ROOT/'history/workspace-product-record-v0.21.0.json').exists())
 if __name__=='__main__':unittest.main()

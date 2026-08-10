@@ -2,11 +2,11 @@ from pathlib import Path
 import json, unittest
 ROOT=Path(__file__).resolve().parents[1]
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.0.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.0.css').read_text()
-MAN=json.loads((ROOT/'release-manifest-v0.46.0.json').read_text())
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.1.css').read_text()
+MAN=json.loads((ROOT/'release-manifest-v0.46.1.json').read_text())
 class AccountCloudPersistenceContract(unittest.TestCase):
-  def test_release_lineage(self): self.assertEqual(MAN['version'],'0.46.0'); self.assertEqual(MAN['previous_version'],'0.45.0'); self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0')
+  def test_release_lineage(self): self.assertEqual(MAN['version'],'0.46.1'); self.assertEqual(MAN['previous_version'],'0.46.0'); self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0')
   def test_contract_route(self): self.assertIn("'/account-persistence-contract'",PHP); self.assertIn('public function account_persistence_contract()',PHP)
   def test_cloud_routes(self): self.assertIn("'/cloud-projects'",PHP); self.assertIn("'/cloud-projects/(?P<project_id>",PHP)
   def test_auth_required(self): self.assertIn("is_user_logged_in() && current_user_can('read')",PHP); self.assertIn("'X-WP-Nonce'",JS)
