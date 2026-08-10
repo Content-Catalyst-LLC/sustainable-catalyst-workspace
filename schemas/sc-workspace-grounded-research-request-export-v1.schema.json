@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grounded Research Request Export",
+  "type": "object",
+  "required": [
+    "schema",
+    "request",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-grounded-research-request-export/1.0"
+    },
+    "request": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grounded Research Response Export",
+  "type": "object",
+  "required": [
+    "schema",
+    "response",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-grounded-research-response-export/1.0"
+    },
+    "response": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

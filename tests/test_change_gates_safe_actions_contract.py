@@ -1,17 +1,17 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.50.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.51.0.json').read_text())
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.50.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.51.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-safe-actions-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.50.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.51.0.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 
 class ChangeGatesSafeActionsContract(unittest.TestCase):
     def test_release_lineage_and_storage_migration(self):
-        self.assertEqual(MAN['version'],'0.50.0'); self.assertEqual(MAN['previous_version'],'0.49.0')
-        self.assertEqual(MAN['release_name'],'Workspace Experience Consolidation')
+        self.assertEqual(MAN['version'],'0.51.0'); self.assertEqual(MAN['previous_version'],'0.50.0')
+        self.assertEqual(MAN['release_name'],'Grounded Research Assistant II')
         self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0')
         self.assertFalse(MAN['schema_migration_required']); self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35)); self.assertTrue(MAN['migration']['project_schema_unchanged'])
         self.assertTrue(MAN['migration']['preserves_safe_actions']); self.assertTrue(MAN['migration']['project_schema_unchanged'])
@@ -63,8 +63,8 @@ class ChangeGatesSafeActionsContract(unittest.TestCase):
         self.assertIn('/wp-json/sc-workspace/v1/change-review-contract',MAN['rest_routes']); self.assertIn('sc-workspace-project-diff-v1.js',PHP)
         self.assertIn('cloud-revision',MAN['change_review']['sources'])
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0500'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0500'",REG)
-        self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG); self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG); self.assertIn("'previous_version' => '0.49.0'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0510'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0510'",REG)
+        self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG); self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG); self.assertIn("'previous_version' => '0.50.0'",REG)
     def test_accessibility_and_forced_colors(self):
         self.assertIn('.scw-action-gate',CSS); self.assertIn('@media(forced-colors:active)',CSS)
         self.assertIn('aria-live="polite"',PHP); self.assertIn('role="dialog"',PHP)

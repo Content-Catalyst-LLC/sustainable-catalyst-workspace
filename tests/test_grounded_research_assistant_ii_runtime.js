@@ -1,0 +1,41 @@
+'use strict';
+const assert=require('assert');
+const api=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-grounded-research-assistant-v1.js');
+const entries=[
+ {key:'object:p1:o1',kind:'object',subtype:'source',projectId:'p1',projectTitle:'Alpha',id:'o1',title:'Grid source',origin:'Personal Knowledge / Workspace Object',updatedAt:'2026-08-10T10:00:00Z',content:'Recorded material about grid resilience and transmission planning.',ref:{schema:'sc-workspace-integrated-knowledge-ref/1.0',kind:'object',projectId:'p1',id:'o1'},provenance:{sourceTitle:'Grid report',sourceUrl:'https://example.com/grid'}},
+ {key:'notebook-block:p2:n1:b1',kind:'notebook-block',subtype:'excerpt',projectId:'p2',projectTitle:'Beta',id:'b1',title:'Reliability note',origin:'Research Notebook',updatedAt:'2026-08-10T11:00:00Z',content:'Notebook evidence about reliability constraints and interconnection queues.',ref:{schema:'sc-workspace-integrated-knowledge-ref/1.0',kind:'notebook-block',projectId:'p2',id:'b1',notebookId:'n1'},provenance:{sourceTitle:'Reliability study'}}
+];
+let seq=0;
+const req=api.prepareRequest({title:'Grid synthesis',task:'grounded-summary',question:'What do these records support?',selectedKeys:entries.map(e=>e.key)},entries,()=>`gra-${++seq}`,()=> '2026-08-10T15:00:00Z');
+assert.equal(req.schema,api.REQUEST_SCHEMA);
+assert.equal(req.grounding.length,2);
+assert.equal(req.grounding[0].number,1);
+assert.ok(req.groundingFingerprint);
+assert.equal(req.status,'prepared');
+assert.ok(api.promptMarkdown(req).includes('[1] Grid source'));
+assert.ok(api.promptMarkdown(req).includes('Do not invent sources'));
+let bad=api.applyResponse(req,'This paragraph has no grounding citation.','manual',()=> '2026-08-10T15:01:00Z');
+assert.equal(bad.ok,false);
+assert.ok(bad.coverage.uncitedSegments.length);
+bad=api.applyResponse(req,'This claim uses a missing source [9].','manual',()=> '2026-08-10T15:01:00Z');
+assert.equal(bad.ok,false);
+assert.deepEqual(bad.coverage.invalidMarkers,[9]);
+const good=api.applyResponse(req,'Grid resilience is supported by the recorded source [1].\n\nThe notebook material adds reliability constraints [2].','research-librarian',()=> '2026-08-10T15:02:00Z');
+assert.equal(good.ok,true);
+assert.equal(good.record.status,'response-draft');
+assert.equal(good.record.citations.length,2);
+assert.equal(good.record.responseSource,'research-librarian');
+const payload=api.materializationPayload(good.record);
+assert.ok(payload.content.includes('## Grounding references'));
+assert.equal(payload.provenance.sourceTitle,'Grounded Research Assistant II');
+const lib=api.normalizeLibrary({sessions:[good.record]});
+assert.equal(lib.sessions.length,1);
+assert.equal(api.exportRequest(req).governance.automaticAI,false);
+assert.equal(api.exportResponse(good.record).governance.canonicalWrite,false);
+const gov=api.governance();
+assert.equal(gov.explicitScopeRequired,true);
+assert.equal(gov.citationMarkersRequired,true);
+assert.equal(gov.draftOnlyOutputs,true);
+assert.equal(gov.automaticAI,false);
+assert.equal(gov.automaticCanonicalMutation,false);
+console.log('PASS - v0.51.0 Grounded Research Assistant II runtime');

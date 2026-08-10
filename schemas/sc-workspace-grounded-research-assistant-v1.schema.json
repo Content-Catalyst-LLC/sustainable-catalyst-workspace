@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Grounded Research Assistant II",
+  "type": "object",
+  "required": [
+    "schema",
+    "explicitScopeRequired",
+    "citationMarkersRequired",
+    "draftOnlyOutputs"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-grounded-research-assistant/1.0"
+    },
+    "explicitScopeRequired": {
+      "const": true
+    },
+    "citationMarkersRequired": {
+      "const": true
+    },
+    "draftOnlyOutputs": {
+      "const": true
+    },
+    "automaticAI": {
+      "const": false
+    },
+    "automaticCanonicalMutation": {
+      "const": false
+    }
+  }
+}

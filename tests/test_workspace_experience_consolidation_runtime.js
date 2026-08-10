@@ -19,4 +19,4 @@ assert.equal(gov.canonicalDataMutation,false);
 assert.equal(gov.automaticProjectCreation,false);
 assert.equal(gov.automaticAi,false);
 assert.equal(gov.editorialHeaderRulePx,4);
-console.log('PASS - v0.50.0 Workspace Experience Consolidation runtime');
+console.log('PASS - v0.50.0 Grounded Research Assistant II runtime');

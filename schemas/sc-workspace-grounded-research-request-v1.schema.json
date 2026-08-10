@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grounded Research Request",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "question",
+    "grounding",
+    "groundingFingerprint",
+    "status"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-grounded-research-request/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "question": {
+      "type": "string"
+    },
+    "grounding": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64
+    },
+    "groundingFingerprint": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "prepared",
+        "response-draft",
+        "reviewed",
+        "rejected",
+        "materialized"
+      ]
+    }
+  }
+}

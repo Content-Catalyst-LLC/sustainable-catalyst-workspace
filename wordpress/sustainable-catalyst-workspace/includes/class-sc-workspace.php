@@ -216,6 +216,11 @@ final class SC_Workspace {
             'callback' => array($this, 'experience_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/grounded-research-assistant-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'grounded_research_assistant_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'knowledge_graph_contract'),
@@ -382,6 +387,9 @@ final class SC_Workspace {
             'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/2.0',
             'relationship_explorer_schema' => 'sc-workspace-relationship-explorer/1.0',
             'cross_project_knowledge_schema' => 'sc-workspace-cross-project-knowledge/1.0',
+            'grounded_research_assistant_schema' => 'sc-workspace-grounded-research-assistant/1.0',
+            'grounded_research_request_schema' => 'sc-workspace-grounded-research-request/1.0',
+            'grounded_research_response_schema' => 'sc-workspace-grounded-research-response/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
             'review_package_schema' => 'sc-workspace-review-package/1.0',
@@ -1108,6 +1116,35 @@ public function research_templates_contract() {
             'automatic_navigation' => false,
             'automatic_project_creation' => false,
             'automatic_ai' => false,
+        ));
+    }
+
+    public function grounded_research_assistant_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-grounded-research-assistant-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'assistant_schema' => 'sc-workspace-grounded-research-assistant/1.0',
+            'request_schema' => 'sc-workspace-grounded-research-request/1.0',
+            'response_schema' => 'sc-workspace-grounded-research-response/1.0',
+            'request_export_schema' => 'sc-workspace-grounded-research-request-export/1.0',
+            'response_export_schema' => 'sc-workspace-grounded-research-response-export/1.0',
+            'corpus' => 'derived-integrated-knowledge-index',
+            'scope_selection' => 'explicit-multi-record',
+            'grounding_packet' => 'frozen-bounded-snapshot-with-fingerprint',
+            'citation_format' => '[n]',
+            'citation_enforcement' => true,
+            'substantive_segment_citation_required' => true,
+            'provider_neutral' => true,
+            'browser_local_library' => true,
+            'human_review_required' => true,
+            'materialization' => 'explicit-document-only',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration' => false,
+            'automatic_ai' => false,
+            'automatic_scope_expansion' => false,
+            'metadata_invention' => false,
+            'automatic_canonical_mutation' => false,
         ));
     }
 
@@ -1911,8 +1948,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0500',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.50.0.css',
+            'sc-workspace-v0510',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.51.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2071,6 +2108,13 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-grounded-research-assistant-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-grounded-research-assistant-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2078,9 +2122,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0500',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.50.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0510',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.51.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2088,7 +2132,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0500', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0510', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2421,6 +2465,17 @@ public function research_templates_contract() {
                     <div class="scw-cross-project-list" data-scw-cross-project-list><div class="scw-knowledge-empty-note">No cross-project references yet.</div></div>
                     <div class="scw-notebook-boundary" role="note"><strong>Reference, do not duplicate.</strong><span>Cross-project knowledge is a browser-local ledger of canonical pointers. It never copies source content into the target project, silently changes project ownership, infers relationships, or mutates either project. Missing source/target records remain visibly unresolved.</span></div>
                 </section>
+                <section class="scw-grounded-research-assistant" data-scw-grounded-research-assistant aria-labelledby="scw-grounded-research-assistant-title">
+                    <div class="scw-grounded-research-head"><div><span>GROUNDED RESEARCH ASSISTANT II</span><h3 id="scw-grounded-research-assistant-title">Ask across Integrated Knowledge without expanding the scope behind your back.</h3><p>Build an explicit multi-record grounding set from the research results on this page. Preparing a request freezes the selected records into an inspectable packet. Returned prose is accepted only when its citation markers resolve to that frozen set, and every substantive segment cites at least one selected record.</p></div><div class="scw-grounded-research-metrics"><div><strong data-scw-grounded-session-count>0</strong><span>draft sessions</span></div><div><strong data-scw-grounded-scope-count>0</strong><span>next-request scope</span></div></div></div>
+                    <div class="scw-grounded-research-toolbar"><label><span>Saved request</span><select data-scw-grounded-session><option value="">Choose grounded request</option></select></label><button type="button" class="scw-button" data-scw-grounded-add-selected disabled>Add selected research to scope</button><button type="button" class="scw-button" data-scw-grounded-clear-scope>Clear next scope</button><button type="button" class="scw-button" data-scw-grounded-delete disabled>Delete request</button><p data-scw-grounded-status role="status" aria-live="polite"></p></div>
+                    <div class="scw-grounded-research-layout">
+                        <div class="scw-grounded-request"><div class="scw-knowledge-panel-head"><span>01 / SCOPE + QUESTION</span><h4>Prepare a frozen grounding request</h4></div><div class="scw-grounded-scope" data-scw-grounded-scope><div class="scw-knowledge-empty-note">Select research above and add it to the grounding scope.</div></div><form data-scw-grounded-form><label><span>Request title</span><input name="title" maxlength="240" placeholder="Research question"></label><label><span>Task</span><select name="task"><option value="grounded-summary">Grounded summary</option><option value="evidence-gaps">Evidence gaps &amp; contradictions</option><option value="compare-alternatives">Compare alternatives</option><option value="briefing-draft">Draft briefing section</option><option value="method-explanation">Explain method &amp; assumptions</option><option value="general-question">Grounded question</option></select></label><label><span>Question</span><textarea name="question" rows="5" maxlength="6000" required placeholder="Ask only what the selected research can support."></textarea></label><button type="submit" class="scw-button scw-button-primary">Prepare grounded request</button></form></div>
+                        <div class="scw-grounded-packet"><div class="scw-knowledge-panel-head"><span>02 / PACKET</span><h4>Provider-neutral grounded prompt</h4></div><pre data-scw-grounded-prompt>Select a prepared request to inspect its frozen grounding packet.</pre><div class="scw-grounded-actions"><button type="button" class="scw-button" data-scw-grounded-export-request disabled>Export request</button><button type="button" class="scw-button" data-scw-grounded-copy disabled>Copy grounded prompt</button></div></div>
+                        <div class="scw-grounded-review"><div class="scw-knowledge-panel-head"><span>03 / RESPONSE + REVIEW</span><h4>Citation-enforced draft</h4></div><label><span>Response source</span><select data-scw-grounded-response-source><option value="manual">Manual paste / review</option><option value="research-librarian">Research Librarian</option><option value="adapter">Connected adapter</option><option value="external">External AI tool</option></select></label><label><span>Draft response</span><textarea rows="10" maxlength="40000" data-scw-grounded-response placeholder="Return a draft with [1], [2], etc. Every substantive paragraph or list block must contain a valid citation marker."></textarea></label><div class="scw-grounded-actions"><button type="button" class="scw-button scw-button-primary" data-scw-grounded-save-response disabled>Validate &amp; save cited draft</button><button type="button" class="scw-button" data-scw-grounded-export-response disabled>Export response</button><button type="button" class="scw-button" data-scw-grounded-review disabled>Mark reviewed</button><button type="button" class="scw-button" data-scw-grounded-reject disabled>Reject draft</button></div><label><span>Materialize reviewed draft into</span><select data-scw-grounded-target-project><option value="">Choose project</option></select></label><button type="button" class="scw-button" data-scw-grounded-materialize disabled>Create Workspace Document</button><div class="scw-grounded-citations" data-scw-grounded-citations></div></div>
+                    </div>
+                    <div class="scw-notebook-boundary" role="note"><strong>Grounding is a boundary, not a suggestion.</strong><span>Workspace does not call an AI provider automatically, expand the selected scope, invent citations, infer missing metadata, or write a canonical Document without an explicit reviewed-materialization action. Request packets preserve exactly what was supplied for later review.</span></div>
+                </section>
+
                 <section class="scw-reference-library" data-scw-reference-library aria-labelledby="scw-reference-library-title">
                     <div class="scw-reference-library-head"><div><span>CITATION LIBRARY / REFERENCE MANAGEMENT</span><h3 id="scw-reference-library-title">Manage reusable references without inventing metadata.</h3><p>Normalize recorded bibliographic fields, detect likely duplicates, assign citation keys, preview common citation styles, and reuse references across projects. Missing authors, dates, publishers, identifiers, and DOI metadata remain missing until you enter them.</p></div><div class="scw-reference-metrics"><div><strong data-scw-reference-count>0</strong><span>references</span></div><div><strong data-scw-reference-duplicates>0</strong><span>duplicate groups</span></div></div></div>
                     <div class="scw-reference-toolbar"><label><span>Citation style</span><select data-scw-citation-style><option value="apa7">APA 7</option><option value="chicago-author-date">Chicago author-date</option><option value="mla9">MLA 9</option><option value="ieee">IEEE</option></select></label><label class="scw-reference-search"><span>Find reference</span><input type="search" maxlength="240" data-scw-reference-search placeholder="Title, author, DOI, citation key"></label><button type="button" class="scw-button" data-scw-reference-add-selected disabled>Add selected research result</button><button type="button" class="scw-button" data-scw-reference-export>Export library</button><button type="button" class="scw-button" data-scw-reference-import>Import library</button><input type="file" accept="application/json,.json" data-scw-reference-import-file hidden><p data-scw-reference-status role="status" aria-live="polite"></p></div>

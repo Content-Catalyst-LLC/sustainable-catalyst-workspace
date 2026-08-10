@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0500';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0500';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0510';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0510';
+    const LEGACY_PENDING_KEY_V0500 = 'sc_workspace_registry_pending_v0500';
     const LEGACY_PENDING_KEY_V0490 = 'sc_workspace_registry_pending_v0490';
     const LEGACY_PENDING_KEY_V0480 = 'sc_workspace_registry_pending_v0480';
     const LEGACY_PENDING_KEY_V0470 = 'sc_workspace_registry_pending_v0470';
@@ -127,6 +128,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0500);
         delete_option(self::LEGACY_PENDING_KEY_V0490);
         delete_option(self::LEGACY_PENDING_KEY_V0480);
         delete_option(self::LEGACY_PENDING_KEY_V0470);
@@ -234,11 +236,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.49.0',
+            'previous_version' => '0.50.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Workspace Experience Consolidation unifies navigation, density, keyboard access, terminology, responsive behavior, and orientation without changing canonical research schemas.',
+            'change_summary' => 'Grounded Research Assistant II extends explicit citation-enforced assistance across Integrated Knowledge.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.50.0 remains schema-stable at storage 35 / project 20.0. Experience preferences are browser-local presentation settings; navigation commands do not create projects, mutate canonical records, or invoke AI automatically. The 4px editorial header rule is retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Grounding scope is explicit and frozen into provider-neutral request packets. Responses require citations and remain drafts until human review and explicit materialization. No automatic AI invocation, scope expansion, metadata invention, or canonical mutation. The 4px editorial header rule is retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
