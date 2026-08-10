@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Sustainable Catalyst Workspace Shared Review Ledger","type":"object","required":["schema","handoffs","responses"],"properties":{"schema":{"const":"sc-workspace-shared-review-ledger/1.0"},"handoffs":{"type":"array","maxItems":200},"responses":{"type":"array"},"updatedAt":{"type":"string"}}}

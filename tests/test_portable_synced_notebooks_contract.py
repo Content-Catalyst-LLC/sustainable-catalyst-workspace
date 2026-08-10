@@ -1,9 +1,9 @@
 import json,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.53.0.json').read_text());PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text();JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.53.0.js').read_text();NB=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text();PORT=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-notebook-portability-v1.js').read_text()
+MAN=json.loads((ROOT/'release-manifest-v0.54.0.json').read_text());PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text();JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.54.0.js').read_text();NB=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text();PORT=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-notebook-portability-v1.js').read_text()
 class PortableSyncedNotebooks(unittest.TestCase):
- def test_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.53.0','0.52.0','Collaboration Architecture Foundation'))
+ def test_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.54.0','0.53.0','Shared Review & Research Handoff'))
  def test_migration(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'));self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35));self.assertTrue(MAN['migration']['project_schema_unchanged']);self.assertIn('function migrateV34(raw)',JS);self.assertIn('if (raw.schemaVersion === 34) return migrateV34(raw);',JS)
  def test_notebook_v7(self): self.assertEqual(MAN['notebook_workspace_schema'],'sc-workspace-notebook-workspace/8.0');self.assertEqual(MAN['notebook_export_schema'],'sc-workspace-notebook-export/8.0');self.assertIn("WORKSPACE_SCHEMA='sc-workspace-notebook-workspace/8.0'",NB);self.assertIn('portabilityState',NB)
  def test_portability_integrity(self):
