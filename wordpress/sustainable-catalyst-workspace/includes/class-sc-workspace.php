@@ -85,7 +85,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.45.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.46.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -371,7 +371,7 @@ final class SC_Workspace {
             'institutional_handoff_receipt_schema' => 'sc-workspace-institutional-handoff-receipt/1.0',
             'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
             'interoperability_schema' => 'sc-workspace-interoperability/1.0',
-            'interchange_export_schema' => 'sc-workspace-interchange/1.0',
+            'interchange_export_schema' => 'sc-workspace-interchange/2.0',
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
             'publication_export_schema' => 'sc-workspace-publication-export/1.0',
@@ -1099,15 +1099,23 @@ final class SC_Workspace {
 
     public function interoperability_contract() {
         return rest_ensure_response(array(
-            'schema' => 'sc-workspace-interoperability-contract/1.0',
+            'schema' => 'sc-workspace-interoperability-contract/2.0',
             'workspace_version' => SC_WORKSPACE_VERSION,
             'interoperability_schema' => 'sc-workspace-interoperability/1.0',
-            'interchange_export_schema' => 'sc-workspace-interchange/1.0',
+            'interchange_export_schema' => 'sc-workspace-interchange/2.0',
             'share_schema' => 'sc-workspace-share/1.0',
             'portable_project_schema' => 'sc-workspace-portable-project/1.0',
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
             'accepted_formats' => array('json','csv','tsv','markdown','html','text'),
+            'interchange_profiles' => array('workspace-json','obsidian-markdown','notion-csv','zotero-csl-json','portable-project'),
+            'profile_schema' => 'sc-workspace-interchange-profile/1.0',
+            'import_report_schema' => 'sc-workspace-interchange-import-report/1.0',
+            'profile_detection' => 'deterministic-local',
+            'obsidian_front_matter_supported' => true,
+            'notion_column_aliases_supported' => true,
+            'zotero_csl_json_supported' => true,
+            'external_network_lookup' => false,
             'staged_review_required' => true,
             'automatic_overwrite' => false,
             'id_collision_strategy' => 'remap-new-stable-id',
@@ -1119,6 +1127,8 @@ final class SC_Workspace {
             'project_package_import_supported' => true,
             'object_package_import_supported' => true,
             'portable_interchange_export_supported' => true,
+            'multi_profile_export_supported' => true,
+            'portable_project_export_supported' => true,
             'server_import_pipeline' => false,
             'automatic_trust_elevation' => false,
             'local_first' => true,
@@ -1797,8 +1807,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0450',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.45.0.css',
+            'sc-workspace-v0460',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.46.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1929,9 +1939,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0450',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.45.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1'),
+            'sc-workspace-interchange-v2',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-interchange-v2.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0460',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.46.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1939,7 +1956,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0450', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0460', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2652,11 +2669,11 @@ final class SC_Workspace {
                 <div class="scw-interoperability-head">
                     <div>
                         <div class="scw-kicker">IMPORT &amp; INTEROPERABILITY</div>
-                        <h2 id="scw-interoperability-title">Bring outside work in without losing where it came from.</h2>
-                        <p>Stage files locally, inspect what Workspace will create, then commit the import into a project. Imported artifacts receive explicit provenance and a file fingerprint; Workspace never silently replaces an existing canonical object.</p>
+                        <h2 id="scw-interoperability-title">Move research between systems without losing where it came from.</h2>
+                        <p>Stage files locally, inspect the detected interchange profile and what Workspace will create, then commit into a project. v0.46 also exports structured Workspace JSON, Obsidian-ready Markdown, Notion-style CSV, Zotero-compatible CSL JSON, or a portable Workspace Project package.</p>
                     </div>
                 </div>
-                <div class="scw-interoperability-boundary" role="note"><strong>Review before commit</strong><span>Supported formats: JSON, CSV/TSV, Markdown, HTML, and plain text. Files are parsed in this browser. Nothing is uploaded by Workspace, and imported material is not treated as verified evidence merely because it was imported.</span></div>
+                <div class="scw-interoperability-boundary" role="note"><strong>Review before commit</strong><span>Supported inputs: JSON, CSV/TSV, Markdown, HTML, and plain text. Workspace recognizes common Obsidian front matter, Notion-style columns, CSL JSON, and Workspace interchange packages locally. Nothing is uploaded, enriched from the network, or treated as verified evidence merely because it was imported.</span></div>
                 <div class="scw-interoperability-grid">
                     <section class="scw-interoperability-panel" aria-labelledby="scw-import-heading">
                         <div class="scw-knowledge-panel-head"><span>01 / STAGE</span><h3 id="scw-import-heading">Inspect an external file</h3></div>
@@ -2672,11 +2689,12 @@ final class SC_Workspace {
                         </div>
                     </section>
                     <section class="scw-interoperability-panel" aria-labelledby="scw-interchange-heading">
-                        <div class="scw-knowledge-panel-head"><span>02 / EXPORT</span><h3 id="scw-interchange-heading">Portable interchange package</h3></div>
-                        <p>Export one project as a portable interoperability package containing canonical objects plus explicit object relationships that can be understood outside the live Workspace runtime.</p>
+                        <div class="scw-knowledge-panel-head"><span>02 / EXPORT</span><h3 id="scw-interchange-heading">Choose an interchange profile</h3></div>
+                        <p>Export canonical project material through an explicit format profile. Profiles are deterministic transforms of recorded Workspace data; they do not call external services or invent missing metadata.</p>
                         <label><span>Project</span><select data-scw-interoperability-export-project><option value="">Choose project</option></select></label>
-                        <button class="scw-button" type="button" data-scw-interoperability-export>Export interchange JSON</button>
-                        <div class="scw-interoperability-note"><strong>Canonical remains canonical</strong><span>An interchange export is a portable copy. Re-importing it creates new local object IDs when needed rather than overwriting existing project artifacts.</span></div>
+                        <label><span>Profile</span><select data-scw-interoperability-export-profile><option value="workspace-json">Workspace structured JSON</option><option value="obsidian-markdown">Obsidian-ready Markdown</option><option value="notion-csv">Notion-style CSV</option><option value="zotero-csl-json">Zotero / CSL JSON</option><option value="portable-project">Workspace portable project</option></select></label>
+                        <button class="scw-button" type="button" data-scw-interoperability-export>Export selected profile</button>
+                        <div class="scw-interoperability-note"><strong>Canonical remains canonical</strong><span>Every interchange export is a portable copy. Re-importing creates new draft objects or a new local Project copy rather than overwriting canonical Workspace records. Obsidian, Notion, and Zotero profiles are compatibility foundations—not live integrations.</span></div>
                     </section>
                 </div>
                 <section class="scw-interoperability-history" aria-labelledby="scw-interoperability-history-heading">

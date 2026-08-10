@@ -2,8 +2,8 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.45.0.css'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.45.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.46.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.46.0.js'
 PLATFORM=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-platform.php'
 class PublicExperienceTests(unittest.TestCase):
     def test_advisory_aligned_editorial_hero(self):
@@ -16,9 +16,9 @@ class PublicExperienceTests(unittest.TestCase):
     def test_editorial_header_bar_and_alignment(self):
         t=PHP.read_text(); c=CSS.read_text()
         self.assertIn('scw-editorial-header-bar',t)
-        self.assertIn('.scw-editorial-header-bar{height:12px;background:#0b0b0b',c)
+        self.assertIn('.scw-editorial-header-bar{height:2px;background:#0b0b0b',c)
         self.assertIn('scw-editorial-header-bar + .scw-platform-hero-editorial',c)
-        self.assertIn('height:9px',c)
+        self.assertIn('height:2px',c)
     def test_editorial_section_rhythm(self):
         t=PHP.read_text(); c=CSS.read_text()
         for token in ('ONE PERSONAL WORKSPACE','WORKSPACE PATHWAYS','PERSONAL CAPABILITY','WORKSPACE APPLICATION','scw-editorial-band','scw-editorial-closing'):
@@ -54,11 +54,11 @@ class PublicExperienceTests(unittest.TestCase):
         self.assertIn('relabel_navigation_items',a)
         self.assertIn("post_title' => 'Workspace'",a)
     def test_traceability_schema_migration_preserves_platform_boundary(self):
-        m=json.loads((ROOT/'release-manifest-v0.45.0.json').read_text())
+        m=json.loads((ROOT/'release-manifest-v0.46.0.json').read_text())
         self.assertEqual(m['storage_schema_version'],35)
         self.assertEqual(m['project_schema'],'sc-workspace-project/20.0')
-        self.assertEqual(m['version'],'0.45.0')
-        self.assertEqual(m['previous_version'],'0.44.0')
+        self.assertEqual(m['version'],'0.46.0')
+        self.assertEqual(m['previous_version'],'0.45.0')
         self.assertEqual(m['cloud_sync'],'explicit-project-enrollment')
         self.assertEqual(m['server_project_storage'],'manual-backup-plus-explicit-sync-head')
 if __name__=='__main__': unittest.main()
