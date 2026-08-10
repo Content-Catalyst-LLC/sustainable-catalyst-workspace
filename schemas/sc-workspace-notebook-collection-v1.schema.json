@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-collection-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Collection v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "description",
+    "items",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-notebook-collection/1.0"
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "sc-workspace-notebook-ref-v1.schema.json"
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  }
+}

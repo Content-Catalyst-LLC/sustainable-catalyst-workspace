@@ -1,10 +1,10 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.33.0 — Source Capture & Research Clipping**
+Current release: **v0.34.0 — Notebook Collections & Knowledge Linking**
 
 Sustainable Catalyst Workspace is a free, public, local-first environment for research, evidence, analysis, decisions, notebooks, briefings, provenance, change review, reconciliation, and governance-aware project work.
 
-v0.33.0 extends Research Notebook with explicit source capture and research clipping, retained bibliographic context, a local capture inbox, and a same-origin producer adapter for Sustainable Catalyst research surfaces. It does not automatically fetch source pages, infer citation metadata, upload research, or run AI.
+v0.34.0 adds explicit cross-notebook and notebook-to-object links, derived backlinks, and mixed research collections on top of the v0.33 Source Capture foundation. Relationships remain human-created and inspectable; Workspace does not infer semantic links, automatically run AI, fetch source pages, publish, or upload research.
 
 Canonical public Workspace route: `/platform/`
 

@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0330';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0330';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0340';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0340';
+    const LEGACY_PENDING_KEY_V0330 = 'sc_workspace_registry_pending_v0330';
     const LEGACY_PENDING_KEY_V0320 = 'sc_workspace_registry_pending_v0320';
     const LEGACY_PENDING_KEY_V0310 = 'sc_workspace_registry_pending_v0310';
     const LEGACY_PENDING_KEY_V0300 = 'sc_workspace_registry_pending_v0300';
@@ -109,6 +110,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0330);
         delete_option(self::LEGACY_PENDING_KEY_V0320);
         delete_option(self::LEGACY_PENDING_KEY_V0310);
         delete_option(self::LEGACY_PENDING_KEY_V0300);
@@ -198,11 +200,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.32.0',
+            'previous_version' => '0.33.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Source Capture & Research Clipping: adds a reviewable capture inbox, retained bibliographic context, same-origin capture handoffs, portable capture-request import, and explicit saving of sources and excerpts into Research Notebook.',
+            'change_summary' => 'Notebook Collections & Knowledge Linking: explicit cross-notebook and notebook-to-object links, derived backlinks, mixed research collections, portable link/collection export context, and non-destructive migration from Notebook Workspace v2 to v3.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.33.0 adds explicit Source Capture & Research Clipping. Storage advances 28→29 and project schema 13.0→14.0. Capture does not fetch remote pages, infer metadata, run AI, publish, or upload automatically.',
+            'manual_notes' => 'Free public Workspace. v0.34.0 adds explicit Notebook Collections & Knowledge Linking. Storage advances 29→30 and project schema 14.0→15.0. Links are user-created and backlinks are derived; no semantic inference, automatic AI, publication, or upload.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
