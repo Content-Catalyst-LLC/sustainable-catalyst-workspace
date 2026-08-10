@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Collaboration Policy",
+  "type":"object",
+  "required":["schema","id","projectId","ownerActorId","grants"],
+  "properties":{"schema":{"const":"sc-workspace-collaboration-policy/1.0"},"id":{"type":"string"},"projectId":{"type":"string"},"ownerActorId":{"type":"string"},"grants":{"type":"array","maxItems":80,"items":{"type":"object","required":["actorId","role"],"properties":{"actorId":{"type":"string"},"role":{"enum":["owner","editor","contributor","reviewer","observer"]},"grantedAt":{"type":"string"},"grantedByActorId":{"type":"string"}}}},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}}
+}

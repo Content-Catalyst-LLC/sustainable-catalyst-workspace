@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Collaboration Proposal",
+  "type":"object",
+  "required":["schema","id","target","actorId","kind","proposedValue","status","history"],
+  "properties":{"schema":{"const":"sc-workspace-collaboration-proposal/1.0"},"id":{"type":"string"},"target":{"type":"object"},"actorId":{"type":"string"},"kind":{"enum":["replace-field","append-note","status-request","custom"]},"field":{"type":"string","maxLength":120},"proposedValue":{"type":"string","maxLength":8000},"rationale":{"type":"string","maxLength":5000},"status":{"enum":["draft","submitted","accepted","rejected","withdrawn"]},"reviewerNote":{"type":"string","maxLength":5000},"history":{"type":"array","maxItems":80},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}}
+}

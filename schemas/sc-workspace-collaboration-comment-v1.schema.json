@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Collaboration Comment",
+  "type":"object",
+  "required":["schema","id","target","actorId","body","status"],
+  "properties":{"schema":{"const":"sc-workspace-collaboration-comment/1.0"},"id":{"type":"string"},"target":{"type":"object","required":["kind","projectId"],"properties":{"kind":{"enum":["project","object"]},"projectId":{"type":"string"},"objectId":{"type":"string"},"objectTitle":{"type":"string"}}},"actorId":{"type":"string"},"body":{"type":"string","maxLength":5000},"parentId":{"type":"string"},"status":{"enum":["open","resolved"]},"createdAt":{"type":"string"},"updatedAt":{"type":"string"},"resolvedAt":{"type":"string"}}
+}

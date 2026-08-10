@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Collaboration Architecture Export",
+  "type":"object",
+  "required":["schema","createdAt","architecture","governance","fingerprint"],
+  "properties":{"schema":{"const":"sc-workspace-collaboration-architecture-export/1.0"},"createdAt":{"type":"string"},"architecture":{"type":"object"},"governance":{"type":"object"},"fingerprint":{"type":"string"}}
+}

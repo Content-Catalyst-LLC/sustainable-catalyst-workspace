@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Shareable Project Contract",
+  "type":"object",
+  "required":["schema","workspaceVersion","createdAt","project","ownership","policy","scope","governance","fingerprint"],
+  "properties":{"schema":{"const":"sc-workspace-shareable-project-contract/1.0"},"workspaceVersion":{"type":"string"},"createdAt":{"type":"string"},"project":{"type":"object","required":["id","title"]},"ownership":{"type":"object","required":["ownerActorId"]},"policy":{"type":"object","required":["id","grants"]},"scope":{"type":"object","required":["objectIds"]},"governance":{"type":"object"},"fingerprint":{"type":"string"}}
+}

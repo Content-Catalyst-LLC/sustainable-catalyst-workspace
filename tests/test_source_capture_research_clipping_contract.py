@@ -3,9 +3,9 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAN = json.loads((ROOT / 'release-manifest-v0.52.0.json').read_text())
-REG = json.loads((ROOT / 'registry/workspace-product-record-v0.52.0.json').read_text())
-JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.52.0.js').read_text()
+MAN = json.loads((ROOT / 'release-manifest-v0.53.0.json').read_text())
+REG = json.loads((ROOT / 'registry/workspace-product-record-v0.53.0.json').read_text())
+JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.53.0.js').read_text()
 PHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN = (ROOT / 'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 REGPHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
@@ -14,8 +14,8 @@ NOTEBOOK = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-worksp
 
 class SourceCaptureResearchClippingContract(unittest.TestCase):
     def test_01_release_lineage(self):
-        self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.52.0','0.51.0','Research Tasks & Workflow State'))
-        self.assertIn('Version: 0.52.0', MAIN)
+        self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.53.0','0.52.0','Collaboration Architecture Foundation'))
+        self.assertIn('Version: 0.53.0', MAIN)
 
     def test_02_schema_migration(self):
         self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']), (35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'))
@@ -112,9 +112,9 @@ class SourceCaptureResearchClippingContract(unittest.TestCase):
         self.assertIn('/knowledge-libraries/', PHP)
 
     def test_16_registry_and_history(self):
-        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.52.0','0.51.0'))
-        self.assertIn('Research Tasks & Workflow State', REG['change_summary'])
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0520'", REGPHP)
+        self.assertEqual((REG['public_version'], REG['previous_version']), ('0.53.0','0.52.0'))
+        self.assertIn('Collaboration Architecture Foundation', REG['change_summary'])
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0530'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0320', REGPHP)
         self.assertTrue((ROOT / 'history/release-manifest-v0.32.0.json').exists())
         self.assertTrue((ROOT / 'history/workspace-product-record-v0.32.0.json').exists())

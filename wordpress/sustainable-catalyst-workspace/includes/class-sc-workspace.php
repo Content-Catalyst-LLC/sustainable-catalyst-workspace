@@ -29,6 +29,9 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0520, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0510, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0500, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0490, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0461, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0420, '') === '1' ||
@@ -87,7 +90,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.50.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.53.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -224,6 +227,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/research-tasks-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'research_tasks_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/collaboration-architecture-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'collaboration_architecture_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -1149,6 +1157,33 @@ public function research_templates_contract() {
         ));
     }
 
+    public function collaboration_architecture_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-collaboration-architecture-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'architecture_schema' => 'sc-workspace-collaboration-architecture/1.0',
+            'actor_schema' => 'sc-workspace-collaboration-actor/1.0',
+            'policy_schema' => 'sc-workspace-collaboration-policy/1.0',
+            'comment_schema' => 'sc-workspace-collaboration-comment/1.0',
+            'proposal_schema' => 'sc-workspace-collaboration-proposal/1.0',
+            'shareable_project_contract_schema' => 'sc-workspace-shareable-project-contract/1.0',
+            'roles' => array('owner','editor','contributor','reviewer','observer'),
+            'proposal_states' => array('draft','submitted','accepted','rejected','withdrawn'),
+            'storage' => 'browser-local',
+            'project_ownership_explicit' => true,
+            'capability_grants_descriptive' => true,
+            'comments_reference_canonical_targets' => true,
+            'proposal_acceptance_applies_canonical_change' => false,
+            'shareable_contract_includes_project_content' => false,
+            'server_permissions' => false,
+            'live_coediting' => false,
+            'organization_membership' => false,
+            'schema_migration' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
     public function grounded_research_assistant_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-grounded-research-assistant-contract/1.0',
@@ -1978,8 +2013,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0520',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.52.0.css',
+            'sc-workspace-v0530',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.53.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2152,6 +2187,13 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-collaboration-architecture-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-collaboration-architecture-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2159,9 +2201,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0520',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.52.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0530',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.53.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2169,7 +2211,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0520', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0530', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2974,8 +3016,22 @@ public function research_templates_contract() {
 
             <section class="scw-collaboration" data-scw-workspace-section="collaboration" hidden aria-labelledby="scw-collaboration-title">
                 <div class="scw-collaboration-head">
-                    <div><div class="scw-editorial-kicker">COLLABORATION FOUNDATION</div><h2 id="scw-collaboration-title">Structured review without surrendering project ownership.</h2><p>Create a review request, send a privacy-minimized project copy, collect object-linked comments or suggestions, and bring feedback back to the source Workspace. v0.25.0 keeps collaboration asynchronous and file-based; it does not create a shared cloud project or server permission system.</p></div>
+                    <div><div class="scw-editorial-kicker">COLLABORATION ARCHITECTURE FOUNDATION</div><h2 id="scw-collaboration-title">Define ownership, responsibility, comments, and review proposals before live collaboration exists.</h2><p>v0.53.0 adds a browser-local collaboration architecture around canonical projects: explicit actors, project owners, descriptive capability grants, canonical-target comments, review proposals, and exportable shareable-project contracts. It does not pretend those local grants are server access control, and accepting a proposal never applies it to the source project automatically.</p></div>
                 </div>
+                <section class="scw-collaboration-architecture" data-scw-collaboration-architecture aria-labelledby="scw-collab-architecture-title">
+                    <div class="scw-collab-architecture-head"><div><span>V0.53 / ARCHITECTURE</span><h3 id="scw-collab-architecture-title">Collaboration contracts around canonical project ownership.</h3><p>Actors and policies are local coordination records. Comments and proposals point to projects or objects by stable ID. Shareable-project contracts carry ownership, scope, and role declarations—not project content and not server permission grants.</p></div><div class="scw-collab-architecture-metrics"><div><strong data-scw-collab-arch-actors>0</strong><span>actors</span></div><div><strong data-scw-collab-arch-policies>0</strong><span>project policies</span></div><div><strong data-scw-collab-arch-comments>0</strong><span>open comments</span></div><div><strong data-scw-collab-arch-proposals>0</strong><span>open proposals</span></div></div></div>
+                    <div class="scw-collab-architecture-grid">
+                        <section class="scw-collab-architecture-panel"><div class="scw-knowledge-panel-head"><span>01 / ACTORS</span><h3>Local collaboration identities</h3></div><form data-scw-collab-actor-form><label><span>Display label</span><input name="displayName" maxlength="120" required placeholder="Name, initials, team label"></label><label><span>Default role</span><select name="role"><option value="owner">Owner</option><option value="editor">Editor</option><option value="contributor">Contributor</option><option value="reviewer">Reviewer</option><option value="observer">Observer</option></select></label><button class="scw-button" type="submit">Add actor</button></form><div data-scw-collab-actor-list class="scw-collab-actor-list"></div></section>
+                        <section class="scw-collab-architecture-panel"><div class="scw-knowledge-panel-head"><span>02 / OWNERSHIP &amp; GRANTS</span><h3>Project collaboration policy</h3></div><form data-scw-collab-policy-form><label><span>Project</span><select name="projectId" data-scw-collab-arch-project required><option value="">Choose project</option></select></label><label><span>Project owner</span><select name="ownerActorId" data-scw-collab-owner required><option value="">Choose actor</option></select></label><button class="scw-button scw-button-primary" type="submit">Save ownership policy</button></form><form data-scw-collab-grant-form><label><span>Collaborator</span><select name="actorId" data-scw-collab-grant-actor required><option value="">Choose actor</option></select></label><label><span>Role grant</span><select name="role"><option value="editor">Editor</option><option value="contributor">Contributor</option><option value="reviewer">Reviewer</option><option value="observer">Observer</option></select></label><button class="scw-button" type="submit">Add / update grant</button></form><div data-scw-collab-policy-summary class="scw-collab-policy-summary"></div></section>
+                    </div>
+                    <div class="scw-collab-architecture-grid">
+                        <section class="scw-collab-architecture-panel"><div class="scw-knowledge-panel-head"><span>03 / COMMENTS</span><h3>Canonical-target discussion</h3></div><form data-scw-collab-comment-form><label><span>Actor</span><select name="actorId" data-scw-collab-comment-actor required><option value="">Choose actor</option></select></label><label><span>Target</span><select name="objectId" data-scw-collab-comment-object><option value="">Project-level comment</option></select></label><label><span>Comment</span><textarea name="body" rows="4" maxlength="5000" required></textarea></label><button class="scw-button" type="submit">Add comment</button></form><div data-scw-collab-comment-list class="scw-collab-record-list"></div></section>
+                        <section class="scw-collab-architecture-panel"><div class="scw-knowledge-panel-head"><span>04 / PROPOSALS</span><h3>Propose change without applying it</h3></div><form data-scw-collab-proposal-form><label><span>Actor</span><select name="actorId" data-scw-collab-proposal-actor required><option value="">Choose actor</option></select></label><label><span>Target object</span><select name="objectId" data-scw-collab-proposal-object required><option value="">Choose object</option></select></label><label><span>Proposal kind</span><select name="kind"><option value="replace-field">Replace field</option><option value="append-note">Append note</option><option value="status-request">Status request</option><option value="custom">Custom</option></select></label><label><span>Field <em>optional</em></span><input name="field" maxlength="120" placeholder="e.g. summary"></label><label><span>Proposed value / change</span><textarea name="proposedValue" rows="4" maxlength="8000" required></textarea></label><label><span>Rationale</span><textarea name="rationale" rows="3" maxlength="5000"></textarea></label><button class="scw-button" type="submit">Create proposal</button></form><div data-scw-collab-proposal-list class="scw-collab-record-list"></div></section>
+                    </div>
+                    <section class="scw-collab-contract-panel"><div class="scw-knowledge-panel-head"><span>05 / SHAREABLE PROJECT CONTRACT</span><h3>Export ownership, scope, and role declarations without project content.</h3></div><div class="scw-collab-contract-actions"><button class="scw-button" type="button" data-scw-collab-contract-preview>Preview contract</button><button class="scw-button" type="button" data-scw-collab-contract-export>Export contract</button><button class="scw-button" type="button" data-scw-collab-architecture-export>Export architecture</button><button class="scw-button" type="button" data-scw-collab-architecture-import>Import architecture</button><input type="file" accept="application/json,.json" data-scw-collab-architecture-file hidden></div><pre data-scw-collab-contract-output>No project policy selected.</pre><p data-scw-collab-arch-status role="status" aria-live="polite"></p></section>
+                    <div class="scw-collaboration-boundary" role="note"><strong>Architecture, not enforcement</strong><span>Roles and capability grants describe intended responsibility in this local Workspace. They do not create server accounts, grant organization access, or protect a shared cloud tenant. Proposal acceptance records a review decision only; it never edits canonical project content.</span></div>
+                </section>
+                <div class="scw-editorial-kicker scw-collab-legacy-kicker">COLLABORATION FOUNDATION · PORTABLE REVIEW COMPATIBILITY</div>
                 <div class="scw-collaboration-metrics" aria-label="Collaboration metrics">
                     <div><strong data-scw-collab-metric-sessions>0</strong><span>review sessions</span></div>
                     <div><strong data-scw-collab-metric-open>0</strong><span>open threads</span></div>
@@ -3014,7 +3070,7 @@ public function research_templates_contract() {
                     <div class="scw-collaboration-stage-actions"><button class="scw-button scw-button-primary" type="button" data-scw-collab-commit disabled>Commit staged review package</button><button class="scw-button" type="button" data-scw-collab-clear disabled>Clear</button></div>
                     <div class="scw-collaboration-history" data-scw-collab-history></div>
                 </section>
-                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Roles in v0.25.0 continue to describe review responsibility inside portable packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
+                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Legacy portable-review roles continue to describe responsibility inside review packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
             </section>
 
             <section class="scw-institutional" data-scw-workspace-section="institutional" hidden aria-labelledby="scw-institutional-title">

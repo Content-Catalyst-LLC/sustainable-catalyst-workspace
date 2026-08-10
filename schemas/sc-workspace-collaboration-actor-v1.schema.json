@@ -1,0 +1,7 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Collaboration Actor",
+  "type":"object",
+  "required":["schema","id","displayName","role"],
+  "properties":{"schema":{"const":"sc-workspace-collaboration-actor/1.0"},"id":{"type":"string"},"displayName":{"type":"string","maxLength":120},"role":{"enum":["owner","editor","contributor","reviewer","observer"]},"createdAt":{"type":"string"},"updatedAt":{"type":"string"}}
+}

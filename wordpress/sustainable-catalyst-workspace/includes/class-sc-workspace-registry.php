@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0520';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0520';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0530';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0530';
+    const LEGACY_PENDING_KEY_V0520 = 'sc_workspace_registry_pending_v0520';
     const LEGACY_PENDING_KEY_V0510 = 'sc_workspace_registry_pending_v0510';
     const LEGACY_PENDING_KEY_V0500 = 'sc_workspace_registry_pending_v0500';
     const LEGACY_PENDING_KEY_V0490 = 'sc_workspace_registry_pending_v0490';
@@ -129,6 +130,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0520);
         delete_option(self::LEGACY_PENDING_KEY_V0510);
         delete_option(self::LEGACY_PENDING_KEY_V0500);
         delete_option(self::LEGACY_PENDING_KEY_V0490);
@@ -238,11 +240,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.51.0',
+            'previous_version' => '0.52.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Research Tasks & Workflow State adds explicit workflow tasks around canonical research references.',
+            'change_summary' => 'Collaboration Architecture Foundation adds explicit actors, project ownership policies, descriptive capability grants, canonical-target comments, review proposals, and shareable-project contracts.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Tasks are browser-local canonical pointers with explicit status history. Task transitions never mutate referenced research. Unresolved targets remain visible. No automatic task creation, completion, AI action, or canonical mutation. The 4px editorial header rule is retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Collaboration architecture is browser-local. Roles and grants are descriptive and do not create server permissions. Comments and proposals reference canonical IDs. Accepting a proposal records review state only and never applies canonical changes. Shareable-project contracts contain ownership, grants, and scope IDs but no project content. No live co-editing or organization membership. The 4px editorial header rule is retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
