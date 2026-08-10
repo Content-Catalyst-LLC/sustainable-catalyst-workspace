@@ -19,4 +19,4 @@ const view=C.researchView({name:'By project',criteria:{scope:'active'},presentat
 const grouped=C.group(S.search(entries,{scope:'active',sort:'updated-desc'},state),'project');assert.equal(grouped.length,2);assert(grouped.some(g=>g.label==='Energy'&&g.rows.length===3));
 const dash=C.dashboard(entries,state,S,{project:'p1',scope:'active'});assert.deepEqual({sources:dash.sources,evidence:dash.evidence,decisions:dash.decisions,projects:dash.projects,records:dash.records},{sources:1,evidence:1,decisions:1,projects:1,records:3});assert.equal(dash.documented,2);
 assert.equal(C.normalizeCollections([collection],S).length,1);assert.equal(C.normalizeViews([view],S).length,1);assert(C.BUILTINS.some(v=>v.id==='documented'));
-console.log('PASS - v0.43.0 Research Collections & Dynamic Views runtime');
+console.log('PASS - v0.44.0 Citation Library & Reference Management runtime');

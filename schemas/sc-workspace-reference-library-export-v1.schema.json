@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-reference-library-export-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Reference Library Export",
+  "type":"object","additionalProperties":false,
+  "required":["schema","exportedAt","library","preferences","integrity"],
+  "properties":{
+    "schema":{"const":"sc-workspace-reference-library-export/1.0"},
+    "exportedAt":{"type":"string"},
+    "library":{"$ref":"sc-workspace-reference-library-v1.schema.json"},
+    "preferences":{"$ref":"sc-workspace-citation-preferences-v1.schema.json"},
+    "integrity":{"type":"object","required":["algorithm","fingerprints"],"properties":{"algorithm":{"const":"deterministic-reference-fingerprints"},"fingerprints":{"type":"array","items":{"type":"object","required":["id","fingerprint"],"properties":{"id":{"type":"string"},"fingerprint":{"type":"string"}},"additionalProperties":false}}},"additionalProperties":false}
+  }
+}

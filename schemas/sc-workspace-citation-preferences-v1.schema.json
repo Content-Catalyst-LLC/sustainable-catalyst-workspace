@@ -1,0 +1,13 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-citation-preferences-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Citation Preferences",
+  "type":"object","additionalProperties":false,
+  "required":["schema","style","showUrls","updatedAt"],
+  "properties":{
+    "schema":{"const":"sc-workspace-citation-preferences/1.0"},
+    "style":{"enum":["apa7","chicago-author-date","mla9","ieee"]},
+    "showUrls":{"type":"boolean"},
+    "updatedAt":{"type":"string"}
+  }
+}

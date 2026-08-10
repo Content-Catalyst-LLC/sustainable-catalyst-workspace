@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-reference-library-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Reference Library",
+  "type":"object","additionalProperties":false,
+  "required":["schema","references","updatedAt"],
+  "properties":{
+    "schema":{"const":"sc-workspace-reference-library/1.0"},
+    "references":{"type":"array","maxItems":1500,"items":{"$ref":"sc-workspace-reference-v1.schema.json"}},
+    "updatedAt":{"type":"string"}
+  }
+}

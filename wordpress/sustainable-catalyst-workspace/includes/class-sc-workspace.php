@@ -85,7 +85,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.43.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.44.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -182,6 +182,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/research-collections-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'research_collections_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/citation-library-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'citation_library_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/navigation-contract', array(
@@ -948,6 +953,31 @@ final class SC_Workspace {
             'semantic_inference' => false,
             'automatic_ai' => false,
             'canonical_record_mutation' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
+
+    public function citation_library_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-citation-library-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'reference_schema' => 'sc-workspace-reference/1.0',
+            'library_schema' => 'sc-workspace-reference-library/1.0',
+            'preferences_schema' => 'sc-workspace-citation-preferences/1.0',
+            'export_schema' => 'sc-workspace-reference-library-export/1.0',
+            'storage' => 'browser-local-workspace-library',
+            'max_references' => 1500,
+            'styles' => array('apa7','chicago-author-date','mla9','ieee'),
+            'duplicate_detection' => array('normalized-doi','bibliographic-fingerprint'),
+            'citation_keys' => 'deterministic-local-collision-safe',
+            'canonical_origin_refs' => true,
+            'metadata_lookup' => false,
+            'metadata_inference' => false,
+            'automatic_deduplication' => false,
+            'automatic_project_mutation' => false,
+            'automatic_ai' => false,
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
         ));
@@ -1736,8 +1766,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0430',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.43.0.css',
+            'sc-workspace-v0440',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.44.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1854,9 +1884,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0430',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.43.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1'),
+            'sc-workspace-reference-library-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-reference-library-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0440',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.44.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1864,7 +1901,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0430', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0440', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2160,6 +2197,16 @@ final class SC_Workspace {
                     </div>
                     <div class="scw-dynamic-preview" data-scw-dynamic-preview><div class="scw-knowledge-empty-note">Dynamic view preview will appear here.</div></div>
                     <div class="scw-notebook-boundary" role="note"><strong>Definitions, not duplicate records.</strong><span>Smart collections and saved views are browser-local preferences. Their membership is recomputed from the v0.42 Advanced Retrieval corpus. No canonical research content is copied into this layer.</span></div>
+                </section>
+                <section class="scw-reference-library" data-scw-reference-library aria-labelledby="scw-reference-library-title">
+                    <div class="scw-reference-library-head"><div><span>CITATION LIBRARY / REFERENCE MANAGEMENT</span><h3 id="scw-reference-library-title">Manage reusable references without inventing metadata.</h3><p>Normalize recorded bibliographic fields, detect likely duplicates, assign citation keys, preview common citation styles, and reuse references across projects. Missing authors, dates, publishers, identifiers, and DOI metadata remain missing until you enter them.</p></div><div class="scw-reference-metrics"><div><strong data-scw-reference-count>0</strong><span>references</span></div><div><strong data-scw-reference-duplicates>0</strong><span>duplicate groups</span></div></div></div>
+                    <div class="scw-reference-toolbar"><label><span>Citation style</span><select data-scw-citation-style><option value="apa7">APA 7</option><option value="chicago-author-date">Chicago author-date</option><option value="mla9">MLA 9</option><option value="ieee">IEEE</option></select></label><label class="scw-reference-search"><span>Find reference</span><input type="search" maxlength="240" data-scw-reference-search placeholder="Title, author, DOI, citation key"></label><button type="button" class="scw-button" data-scw-reference-add-selected disabled>Add selected research result</button><button type="button" class="scw-button" data-scw-reference-export>Export library</button><button type="button" class="scw-button" data-scw-reference-import>Import library</button><input type="file" accept="application/json,.json" data-scw-reference-import-file hidden><p data-scw-reference-status role="status" aria-live="polite"></p></div>
+                    <div class="scw-reference-layout">
+                        <form class="scw-reference-form" data-scw-reference-form><div class="scw-knowledge-panel-head"><span>ADD / EDIT</span><h4>Bibliographic reference</h4></div><input type="hidden" name="id"><label><span>Type</span><select name="type"><option value="article">Article</option><option value="book">Book</option><option value="chapter">Chapter</option><option value="report">Report</option><option value="webpage">Webpage</option><option value="dataset">Dataset</option><option value="thesis">Thesis</option><option value="conference">Conference</option><option value="other">Other</option></select></label><label><span>Title</span><input name="title" maxlength="500" required></label><label><span>Authors <em>semicolon separated</em></span><input name="authors" maxlength="2000"></label><div class="scw-reference-form-row"><label><span>Publication date</span><input name="publicationDate" maxlength="80"></label><label><span>Container / journal</span><input name="containerTitle" maxlength="300"></label></div><div class="scw-reference-form-row"><label><span>Publisher</span><input name="publisher" maxlength="300"></label><label><span>Pages / locator</span><input name="pages" maxlength="120"></label></div><div class="scw-reference-form-row"><label><span>DOI</span><input name="doi" maxlength="240"></label><label><span>Identifier</span><input name="identifier" maxlength="240"></label></div><label><span>URL</span><input name="url" maxlength="2000"></label><div class="scw-reference-form-row"><label><span>Citation key</span><input name="citationKey" maxlength="120" placeholder="Generated if blank"></label><label><span>Tags</span><input name="tags" maxlength="800" placeholder="research, climate"></label></div><label><span>Notes</span><textarea name="notes" rows="3" maxlength="4000"></textarea></label><div class="scw-reference-form-actions"><button class="scw-button scw-button-primary" type="submit">Save reference</button><button class="scw-button" type="button" data-scw-reference-form-clear>Clear</button></div></form>
+                        <div class="scw-reference-list-panel"><div class="scw-knowledge-panel-head"><span>LIBRARY</span><h4>Reusable references</h4></div><div class="scw-reference-list" data-scw-reference-list><div class="scw-knowledge-empty-note">No references yet.</div></div></div>
+                        <aside class="scw-reference-detail" data-scw-reference-detail><div class="scw-knowledge-empty-note">Select a reference to inspect its citation, normalized identifiers, origin links, and duplicate candidates.</div></aside>
+                    </div>
+                    <div class="scw-notebook-boundary" role="note"><strong>Recorded bibliography only.</strong><span>The Citation Library is browser-local Workspace data. It can normalize what you enter, but it does not query DOI services, scrape pages, infer missing metadata, automatically merge duplicates, or mutate Project records.</span></div>
                 </section>
                 <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
                 <div class="scw-notebook-boundary" role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>

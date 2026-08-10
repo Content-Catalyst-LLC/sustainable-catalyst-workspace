@@ -1,0 +1,30 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-reference-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Reference",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema","id","type","title","authors","publicationDate","containerTitle","publisher","edition","volume","issue","pages","url","doi","identifier","citationKey","tags","notes","origins","createdAt","updatedAt"],
+  "properties":{
+    "schema":{"const":"sc-workspace-reference/1.0"},
+    "id":{"type":"string","minLength":1,"maxLength":160},
+    "type":{"enum":["article","book","chapter","report","webpage","dataset","thesis","conference","other"]},
+    "title":{"type":"string","minLength":1,"maxLength":500},
+    "authors":{"type":"array","maxItems":20,"items":{"type":"string","maxLength":160}},
+    "publicationDate":{"type":"string","maxLength":80},
+    "containerTitle":{"type":"string","maxLength":300},
+    "publisher":{"type":"string","maxLength":300},
+    "edition":{"type":"string","maxLength":100},
+    "volume":{"type":"string","maxLength":80},
+    "issue":{"type":"string","maxLength":80},
+    "pages":{"type":"string","maxLength":120},
+    "url":{"type":"string","maxLength":2000},
+    "doi":{"type":"string","maxLength":240},
+    "identifier":{"type":"string","maxLength":240},
+    "citationKey":{"type":"string","maxLength":120},
+    "tags":{"type":"array","maxItems":40,"items":{"type":"string","maxLength":80}},
+    "notes":{"type":"string","maxLength":4000},
+    "origins":{"type":"array","maxItems":40,"items":{"$ref":"sc-workspace-integrated-knowledge-ref-v1.schema.json"}},
+    "createdAt":{"type":"string"},"updatedAt":{"type":"string"}
+  }
+}
