@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0390, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0380, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0370, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0360, '') === '1' ||
@@ -83,7 +84,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.39.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.40.0 Commercial Release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -165,6 +166,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/personal-knowledge-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'personal_knowledge_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/integrated-knowledge-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'integrated_knowledge_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -327,6 +333,7 @@ final class SC_Workspace {
             'briefing_schema' => 'sc-workspace-briefing/1.0',
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'integrated_knowledge_schema' => 'sc-workspace-integrated-knowledge/1.0',
             'knowledge_graph_schema' => 'sc-workspace-knowledge-graph/1.0',
             'activity_intelligence_schema' => 'sc-workspace-activity-intelligence/1.0',
             'collaboration_schema' => 'sc-workspace-collaboration/1.0',
@@ -420,6 +427,7 @@ final class SC_Workspace {
             'reproducibility_export_schema' => 'sc-workspace-reproducibility-export/1.0',
             'guided_workflows_schema' => 'sc-workspace-guided-workflows/1.0',
             'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'integrated_knowledge_schema' => 'sc-workspace-integrated-knowledge/1.0',
             'ai_assistance_schema' => 'sc-workspace-ai-assistance/1.0',
             'interoperability_schema' => 'sc-workspace-interoperability/1.0',
             'interchange_export_schema' => 'sc-workspace-interchange/1.0',
@@ -845,6 +853,29 @@ final class SC_Workspace {
         ));
     }
 
+
+    public function integrated_knowledge_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-integrated-knowledge-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'integrated_knowledge_schema' => 'sc-workspace-integrated-knowledge/1.0',
+            'integrated_ref_schema' => 'sc-workspace-integrated-knowledge-ref/1.0',
+            'sources' => array('research-notebook','personal-knowledge','research-workspace'),
+            'entry_kinds' => array('object','notebook','notebook-block','research-question','research-claim'),
+            'derived_from_canonical_records' => true,
+            'duplicates_canonical_content' => false,
+            'automatic_semantic_inference' => false,
+            'automatic_ai' => false,
+            'automatic_mutation' => false,
+            'canonical_origin_handoff' => true,
+            'local_first' => true,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'notebook_workspace_schema' => 'sc-workspace-notebook-workspace/8.0',
+            'personal_knowledge_schema' => 'sc-workspace-personal-knowledge/1.0',
+            'research_schema' => 'sc-workspace-research/1.0',
+        ));
+    }
 
     public function knowledge_graph_contract() {
         return rest_ensure_response(array(
@@ -1604,8 +1635,8 @@ final class SC_Workspace {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0390',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.39.0.css',
+            'sc-workspace-v0400',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.40.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -1694,9 +1725,16 @@ final class SC_Workspace {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0390',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.39.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8'),
+            'sc-workspace-integrated-knowledge-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-integrated-knowledge-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0400',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.40.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -1704,7 +1742,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0390', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0400', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -1742,7 +1780,7 @@ final class SC_Workspace {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="33" data-project-schema="sc-workspace-project/18.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -1879,6 +1917,7 @@ final class SC_Workspace {
             <nav id="scw-workspace-main" class="scw-workspace-view-nav" aria-label="Workspace views" data-scw-workspace-view-nav tabindex="-1">
                 <button type="button" class="is-active" data-scw-workspace-view="start" aria-pressed="true" aria-current="page">Start</button>
                 <button type="button" data-scw-workspace-view="projects" aria-pressed="false">Projects</button>
+                <button type="button" data-scw-workspace-view="research" aria-pressed="false">Research</button>
                 <button type="button" data-scw-workspace-view="notebook" aria-pressed="false">Notebook</button>
                 <button type="button" data-scw-workspace-view="knowledge" aria-pressed="false">Knowledge</button>
                 <button type="button" data-scw-workspace-view="graph" aria-pressed="false">Graph</button>
@@ -1958,6 +1997,17 @@ final class SC_Workspace {
                     <div class="scw-beta-recent-list" data-scw-beta-recent-list><div class="scw-beta-empty">No local projects yet. Start a blank project or choose a guided pathway above.</div></div>
                 </section>
                 <div class="scw-beta-boundary" role="note"><strong>Public beta boundary</strong><span>Guest use remains first-class. Sign-in is optional. Cloud backup and sync stay explicit. Lifecycle states remain human-declared. Workspace does not run behavioral telemetry or assign readiness/productivity scores.</span></div>
+            </section>
+
+            <section class="scw-integrated-knowledge" data-scw-workspace-section="research" hidden aria-labelledby="scw-integrated-title">
+                <div class="scw-integrated-head">
+                    <div><div class="scw-kicker">INTEGRATED KNOWLEDGE WORKSPACE</div><h2 id="scw-integrated-title">Research without feature boundaries.</h2><p>Search Notebook material, canonical Workspace Objects, and Research Workspace questions and claims through one derived index. Every result remains anchored to its original record; this view does not duplicate content or invent semantic relationships.</p></div>
+                    <div class="scw-integrated-actions"><button class="scw-button" type="button" data-scw-integrated-open-notebook>Open Notebook</button><button class="scw-button" type="button" data-scw-integrated-open-knowledge>Open Personal Knowledge</button><button class="scw-button" type="button" data-scw-integrated-open-project>Open active Project</button></div>
+                </div>
+                <div class="scw-integrated-metrics" aria-label="Integrated research metrics"><div><strong data-scw-integrated-total>0</strong><span>research records</span></div><div><strong data-scw-integrated-objects>0</strong><span>Workspace objects</span></div><div><strong data-scw-integrated-notebooks>0</strong><span>Notebook records</span></div><div><strong data-scw-integrated-research>0</strong><span>questions &amp; claims</span></div></div>
+                <div class="scw-integrated-toolbar"><label><span>Search research</span><input type="search" maxlength="240" data-scw-integrated-search placeholder="Search across notebooks, objects, questions, and claims"></label><label><span>Kind</span><select data-scw-integrated-kind><option value="all">All research</option><option value="object">Workspace objects</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option></select></label><label><span>Project</span><select data-scw-integrated-project><option value="all">All projects</option></select></label></div>
+                <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin and explicit connections.</div></aside></div>
+                <div class="scw-notebook-boundary" role="note"><strong>One view, canonical records.</strong><span>Integrated Knowledge is derived at runtime from existing project objects, Research Workspace records, and Research Notebook material. It creates no duplicate content database, runs no semantic inference or AI automatically, and writes nothing back to source records unless you explicitly use an origin workspace action.</span></div>
             </section>
 
             <section class="scw-research-notebook" data-scw-workspace-section="notebook" hidden aria-labelledby="scw-notebook-title">

@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0390';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0390';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0400';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0400';
+    const LEGACY_PENDING_KEY_V0390 = 'sc_workspace_registry_pending_v0390';
     const LEGACY_PENDING_KEY_V0380 = 'sc_workspace_registry_pending_v0380';
     const LEGACY_PENDING_KEY_V0370 = 'sc_workspace_registry_pending_v0370';
     const LEGACY_PENDING_KEY_V0360 = 'sc_workspace_registry_pending_v0360';
@@ -115,6 +116,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0390);
         delete_option(self::LEGACY_PENDING_KEY_V0380);
         delete_option(self::LEGACY_PENDING_KEY_V0370);
         delete_option(self::LEGACY_PENDING_KEY_V0360);
@@ -210,11 +212,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.38.0',
+            'previous_version' => '0.39.0',
             'release_date' => '2026-08-09',
-            'change_summary' => 'Notebook Review & Provenance: notebook-level Change Review, selective reconciliation into new notebook copies, derived audit history, and inspectable source lineage.',
+            'change_summary' => 'Integrated Knowledge Workspace: one derived research index spanning Research Notebook, Personal Knowledge objects, and Research Workspace questions/claims with canonical origin handoffs and no duplicate content store.',
             'superseded_by' => '',
-            'manual_notes' => 'Free public Workspace. v0.39.0 advances storage 34→35 and project schema 19.0→20.0. Notebook review is explicit; reconciliation applies only selected changes into a new notebook copy; audit history is derived from authoritative notebook records; lineage inspection does not create a shadow provenance database.',
+            'manual_notes' => 'Free public Workspace. v0.40.0 is schema-stable at storage 35 / project 20.0. Integrated Knowledge is a derived access layer over canonical Notebook, Research Workspace, and Personal Knowledge records; it does not create a duplicate knowledge database or infer hidden semantic relationships.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

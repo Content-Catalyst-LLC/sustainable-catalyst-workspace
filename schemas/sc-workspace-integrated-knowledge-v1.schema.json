@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-integrated-knowledge-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Integrated Knowledge View v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generatedAt",
+    "entries",
+    "stats",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-integrated-knowledge/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {
+        "type": "object"
+      }
+    },
+    "stats": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "derivedFromCanonicalRecords",
+        "duplicatesCanonicalContent",
+        "automaticSemanticInference",
+        "automaticAI",
+        "automaticMutation",
+        "localFirst"
+      ],
+      "properties": {
+        "derivedFromCanonicalRecords": {
+          "const": true
+        },
+        "duplicatesCanonicalContent": {
+          "const": false
+        },
+        "automaticSemanticInference": {
+          "const": false
+        },
+        "automaticAI": {
+          "const": false
+        },
+        "automaticMutation": {
+          "const": false
+        },
+        "localFirst": {
+          "const": true
+        }
+      }
+    }
+  }
+}

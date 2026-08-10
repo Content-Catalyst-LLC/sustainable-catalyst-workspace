@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-integrated-knowledge-ref-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Integrated Knowledge Canonical Reference v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "kind",
+    "projectId",
+    "id",
+    "notebookId",
+    "sectionId"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-integrated-knowledge-ref/1.0"
+    },
+    "kind": {
+      "enum": [
+        "object",
+        "notebook",
+        "notebook-block",
+        "research-question",
+        "research-claim"
+      ]
+    },
+    "projectId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "id": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "notebookId": {
+      "type": "string",
+      "maxLength": 160
+    },
+    "sectionId": {
+      "type": "string",
+      "maxLength": 160
+    }
+  }
+}

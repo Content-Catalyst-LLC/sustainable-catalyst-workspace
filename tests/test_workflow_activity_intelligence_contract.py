@@ -1,10 +1,10 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.39.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.39.0.css';MANIFEST=ROOT/'release-manifest-v0.39.0.json'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.40.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.40.0.css';MANIFEST=ROOT/'release-manifest-v0.40.0.json'
 class WorkflowActivityIntelligenceContract(unittest.TestCase):
  def test_manifest(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.39.0');self.assertEqual(m['previous_version'],'0.38.0');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0');self.assertEqual(m['activity_intelligence_schema'],'sc-workspace-activity-intelligence/1.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.40.0');self.assertEqual(m['previous_version'],'0.39.0');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0');self.assertEqual(m['activity_intelligence_schema'],'sc-workspace-activity-intelligence/1.0')
  def test_schema(self):
   s=json.loads((ROOT/'schemas/sc-workspace-activity-intelligence-v1.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-activity-intelligence/1.0')
  def test_storage_migration_only(self):

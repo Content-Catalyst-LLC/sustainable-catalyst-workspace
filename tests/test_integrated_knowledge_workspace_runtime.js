@@ -1,0 +1,12 @@
+const assert=require('assert');
+const K=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-integrated-knowledge-v1.js');
+const now='2026-08-10T04:20:00.000Z';
+const object={id:'o1',type:'source',title:'Ocean source',summary:'Temperature data',content:'Pacific observations',tags:['ocean'],updatedAt:now,archivedAt:null,provenance:{sourceTitle:'NOAA',sourceUrl:'https://example.test/noaa'}};
+const block={id:'b1',type:'excerpt',title:'Current finding',content:'A selected observation',tags:['ocean'],updatedAt:now,sourceTitle:'NOAA',sourceUrl:'https://example.test/noaa'};
+const state={projects:[{id:'p1',title:'Ocean research',archivedAt:null,objects:[object],research:{questions:[{id:'q1',text:'What is changing?',status:'open',updatedAt:now}],claims:[{id:'c1',text:'Conditions are changing',status:'exploratory',evidenceObjectIds:['o1'],updatedAt:now}],evidenceLinks:[{id:'e1',sourceObjectId:'o1',evidenceObjectId:'o2'}]},notebooks:{notebooks:[{id:'n1',title:'Ocean notebook',description:'Working research',updatedAt:now,sections:[{id:'s1',blocks:[block]}]}],links:[{id:'l1',source:{kind:'block',id:'b1',notebookId:'n1'},target:{kind:'object',id:'o1'},relation:'supports'}]}}]};
+const entries=K.derive(state);assert.equal(entries.length,5);assert.ok(entries.some(e=>e.kind==='object'));assert.ok(entries.some(e=>e.kind==='notebook-block'));assert.ok(entries.some(e=>e.kind==='research-question'));assert.ok(entries.some(e=>e.kind==='research-claim'));
+assert.equal(K.filter(entries,{query:'Pacific',kind:'all',project:'all',scope:'active'}).length,1);assert.equal(K.filter(entries,{query:'',kind:'notebook-block',project:'p1',scope:'active'}).length,1);
+const stats=K.stats(entries);assert.equal(stats.objects,1);assert.equal(stats.notebooks,2);assert.equal(stats.research,2);assert.equal(stats.projects,1);
+const obj=entries.find(e=>e.kind==='object');const con=K.connections(obj,state);assert.ok(con.some(c=>c.relation==='supports'));assert.ok(con.some(c=>c.relation==='evidence-link'));assert.ok(con.some(c=>c.relation==='supports-claim'));
+const snap=K.snapshot(state,{});assert.equal(snap.schema,K.SCHEMA);assert.equal(snap.governance.derivedFromCanonicalRecords,true);assert.equal(snap.governance.duplicatesCanonicalContent,false);assert.equal(snap.governance.automaticSemanticInference,false);assert.equal(snap.governance.automaticAI,false);assert.equal(snap.governance.automaticMutation,false);
+console.log('PASS - v0.40.0 integrated knowledge workspace runtime');
