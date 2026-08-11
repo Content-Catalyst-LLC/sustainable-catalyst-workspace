@@ -7,11 +7,11 @@ const e2={key:'research-claim:p1:c1',kind:'research-claim',subtype:'supported',p
 const refs=[{id:'r1',title:'Reference A',origins:[{projectId:'p1',key:e1.key}]}];
 const tasks=[{id:'t1',target:{projectId:'p1',key:e2.key},status:'open'}];
 const architecture={actors:[{id:'a1',displayName:'Reviewer'}],policies:[{id:'pol1',projectId:'p1'}],comments:[{id:'cm1',target:{kind:'object',projectId:'p1',objectId:'s1'},body:'Review this'}],proposals:[{id:'pr1',target:{kind:'project',projectId:'p1'},proposedValue:'Clarify scope',history:[{action:'created'}]}]};
-let out=P.createPackage({title:'Package A',institution:'Institution X',purpose:'External review',includeFullContent:true,includeProvenance:true,includeCitations:true,includeTasks:true,includeReviewContext:true,workspaceVersion:'0.58.0'},project,[e1,e2],{references:refs,tasks,architecture},id,now);
+let out=P.createPackage({title:'Package A',institution:'Institution X',purpose:'External review',includeFullContent:true,includeProvenance:true,includeCitations:true,includeTasks:true,includeReviewContext:true,workspaceVersion:'0.59.0'},project,[e1,e2],{references:refs,tasks,architecture},id,now);
 assert(out.ok);const pkg=out.package;assert.equal(pkg.records.length,2);assert.equal(pkg.references.length,1);assert.equal(pkg.tasks.length,1);assert.equal(pkg.review.comments.length,1);assert.equal(pkg.review.proposals.length,1);assert.equal(pkg.records[0].content,'Full A');assert.equal(pkg.governance.sourceProjectUnchanged,true);assert.equal(pkg.governance.automaticUpload,false);assert(P.verifyPackage(pkg).verified);
 const changed=JSON.parse(JSON.stringify(pkg));changed.records[0].content='tampered';assert.equal(P.verifyPackage(changed).verified,false);
 const exported=P.exportPackage(pkg),imported=P.importExport(exported);assert(imported.ok);assert.equal(imported.package.id,pkg.id);
 const noContent=P.createPackage({includeFullContent:false,includeProvenance:false},project,[e1],{},id,now).package;assert.equal(noContent.records[0].content,'');assert.deepEqual(noContent.records[0].provenance,{});
 const other={...e1,key:'object:p2:x',projectId:'p2'};assert.equal(P.createPackage({},project,[other],{},id,now).ok,false);
 const g=P.governance();assert.equal(g.frozenDisclosureArtifact,true);assert.equal(g.automaticCanonicalMutation,false);assert.equal(g.organizationAccessControl,false);
-console.log('PASS - Workspace v0.58.0 Institutional Research Packages runtime');
+console.log('PASS - Workspace v0.59.0 Institutional Research Packages runtime');

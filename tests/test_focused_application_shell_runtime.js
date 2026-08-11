@@ -1,0 +1,14 @@
+'use strict';
+const assert=require('assert');
+const shell=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-focused-shell-v1.js');
+assert.equal(shell.SCHEMA,'sc-workspace-focused-shell/1.0');
+assert.deepEqual(shell.SURFACES,['overview','search','collections','cross-project','tasks','assistant','citations','composition']);
+assert.equal(shell.normalizeSurface('tasks'),'tasks');
+assert.equal(shell.normalizeSurface('unknown'),'overview');
+const store={data:{},getItem(k){return this.data[k]||null},setItem(k,v){this.data[k]=String(v)}};
+assert.equal(shell.readSurface(store),'overview');
+assert.equal(shell.writeSurface(store,'citations'),'citations');
+assert.equal(shell.readSurface(store),'citations');
+const plan=shell.visibilityPlan('tasks',[{surface:'overview'},{surface:'tasks'},{surface:'search'}]);
+assert.deepEqual(plan,[{surface:'overview',hidden:true},{surface:'tasks',hidden:false},{surface:'search',hidden:true}]);
+console.log('PASS - v0.59.1 Focused Application Shell runtime');

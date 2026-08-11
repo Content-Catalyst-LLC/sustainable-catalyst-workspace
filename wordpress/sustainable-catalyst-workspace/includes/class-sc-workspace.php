@@ -93,7 +93,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.58.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.59.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -260,6 +260,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/scale-performance-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'scale_performance_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/security-privacy-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'security_privacy_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -2054,6 +2059,28 @@ public function research_templates_contract() {
         ));
     }
 
+    public function security_privacy_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-security-privacy-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Security, Privacy & Data-Portability Audit',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'browser_local_primary' => true,
+            'application_level_localstorage_encryption' => false,
+            'public_project_enumeration' => false,
+            'complete_browser_local_portability' => true,
+            'verified_browser_local_deletion' => true,
+            'server_account_deletion_separate' => true,
+            'integrity_fingerprint_is_encryption' => false,
+            'durable_reference_is_authorization' => false,
+            'automatic_deletion' => false,
+            'automatic_upload' => false,
+            'canonical_mutation' => false,
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2167,8 +2194,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0580',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.58.0.css',
+            'sc-workspace-v0591',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.59.1.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2418,6 +2445,20 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-security-privacy-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-security-privacy-v1.js',
+            array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-security-privacy-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-security-privacy-ui-v1.js',
+            array('sc-workspace-security-privacy-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2425,9 +2466,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0580',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.58.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0591',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.59.1.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2435,7 +2476,15 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0580', 'SCWorkspaceIdentity', array(
+        wp_enqueue_script(
+            'sc-workspace-focused-shell-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
+            array('sc-workspace-v0591'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+
+        wp_localize_script('sc-workspace-v0591', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2473,7 +2522,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -2620,7 +2669,7 @@ public function research_templates_contract() {
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -2734,7 +2783,26 @@ public function research_templates_contract() {
                     <button class="scw-research-route" type="button" data-scw-research-route="graph"><span>CONNECT</span><strong>Graph</strong><small>Inspect explicit relationships, provenance, and traceable connections.</small></button>
                 </div>
                 <div class="scw-integrated-metrics" aria-label="Integrated research metrics"><div><strong data-scw-integrated-total>0</strong><span>research records</span></div><div><strong data-scw-integrated-objects>0</strong><span>Workspace objects</span></div><div><strong data-scw-integrated-notebooks>0</strong><span>Notebook records</span></div><div><strong data-scw-integrated-research>0</strong><span>questions &amp; claims</span></div></div>
-                <section class="scw-advanced-retrieval" aria-labelledby="scw-advanced-retrieval-title">
+                <nav class="scw-research-tool-nav" data-scw-research-tool-nav aria-label="Research workspace tools">
+                    <button type="button" data-scw-research-surface="overview" aria-pressed="true">Overview</button>
+                    <button type="button" data-scw-research-surface="search" aria-pressed="false">Search</button>
+                    <button type="button" data-scw-research-surface="collections" aria-pressed="false">Collections</button>
+                    <button type="button" data-scw-research-surface="cross-project" aria-pressed="false">Cross-project</button>
+                    <button type="button" data-scw-research-surface="tasks" aria-pressed="false">Tasks</button>
+                    <button type="button" data-scw-research-surface="assistant" aria-pressed="false">Assistant</button>
+                    <button type="button" data-scw-research-surface="citations" aria-pressed="false">Citations</button>
+                    <button type="button" data-scw-research-surface="composition" aria-pressed="false">Composition</button>
+                </nav>
+                <div class="scw-research-overview" data-scw-research-surface-panel="overview">
+                    <div><span>FOCUSED RESEARCH WORKSPACE</span><h3>Choose the tool needed for the work in front of you.</h3><p>Research no longer opens every subsystem in one continuous page. Search, organize, reference, review, and compose in focused surfaces while the selected canonical research context remains available across the session.</p></div>
+                    <div class="scw-research-overview-grid">
+                        <button type="button" data-scw-research-surface-jump="search"><strong>Find</strong><span>Search and inspect canonical research.</span></button>
+                        <button type="button" data-scw-research-surface-jump="collections"><strong>Organize</strong><span>Use dynamic views and smart collections.</span></button>
+                        <button type="button" data-scw-research-surface-jump="tasks"><strong>Review next</strong><span>Track explicit research workflow state.</span></button>
+                        <button type="button" data-scw-research-surface-jump="composition"><strong>Compose</strong><span>Build documents from selected research and citations.</span></button>
+                    </div>
+                </div>
+                <section class="scw-advanced-retrieval" data-scw-research-surface-panel="search" hidden aria-labelledby="scw-advanced-retrieval-title">
                     <div class="scw-advanced-retrieval-head"><div><span>ADVANCED RETRIEVAL</span><h3 id="scw-advanced-retrieval-title">Find research with inspectable fields and provenance.</h3><p>Search across projects, filter by canonical record fields, save useful queries locally, and understand why results are ordered. Ranking uses deterministic field matches and recorded provenance—not embeddings or hidden semantic scoring.</p></div><div class="scw-retrieval-result-count"><strong data-scw-retrieval-count>0</strong><span>matching records</span></div></div>
                     <div class="scw-integrated-toolbar scw-retrieval-toolbar">
                         <label class="scw-retrieval-query"><span>Query</span><input type="search" maxlength="320" data-scw-integrated-search placeholder='Search words or quoted phrases, e.g. "grid resilience"'></label>
@@ -2749,7 +2817,7 @@ public function research_templates_contract() {
                     </div>
                     <div class="scw-saved-search-bar"><label><span>Saved search</span><select data-scw-saved-search><option value="">Choose saved search</option></select></label><button type="button" class="scw-button" data-scw-save-search>Save current search</button><button type="button" class="scw-button" data-scw-delete-search disabled>Delete saved search</button><button type="button" class="scw-button" data-scw-clear-search>Clear filters</button><p data-scw-search-status role="status" aria-live="polite"></p></div>
                 </section>
-                <section class="scw-research-collections" data-scw-research-collections aria-labelledby="scw-research-collections-title">
+                <section class="scw-research-collections" data-scw-research-surface-panel="collections" data-scw-research-collections hidden aria-labelledby="scw-research-collections-title">
                     <div class="scw-research-collections-head"><div><span>DYNAMIC RESEARCH VIEWS</span><h3 id="scw-research-collections-title">Organize retrieval without copying research.</h3><p>Smart collections store explicit retrieval definitions. Saved views add grouping and density. Membership, dashboards, and project lenses are recalculated from canonical records whenever the Research workspace renders.</p></div><div class="scw-collection-metrics"><div><strong data-scw-collection-count>0</strong><span>smart collections</span></div><div><strong data-scw-view-count>0</strong><span>saved views</span></div></div></div>
                     <div class="scw-research-dashboard" aria-label="Derived research dashboard"><div><strong data-scw-dashboard-sources>0</strong><span>Sources</span></div><div><strong data-scw-dashboard-evidence>0</strong><span>Evidence</span></div><div><strong data-scw-dashboard-decisions>0</strong><span>Decisions</span></div><div><strong data-scw-dashboard-documented>0</strong><span>Documented</span></div><div><strong data-scw-dashboard-projects>0</strong><span>Projects</span></div><div><strong data-scw-dashboard-records>0</strong><span>Records</span></div></div>
                     <div class="scw-builtin-views" aria-label="Project-aware dynamic views"><button type="button" data-scw-dynamic-view="sources">Sources</button><button type="button" data-scw-dynamic-view="evidence">Evidence</button><button type="button" data-scw-dynamic-view="decisions">Decisions</button><button type="button" data-scw-dynamic-view="analysis">Analysis</button><button type="button" data-scw-dynamic-view="notebooks">Notebooks</button><button type="button" data-scw-dynamic-view="documented">Documented</button></div>
@@ -2762,13 +2830,13 @@ public function research_templates_contract() {
                     <div class="scw-dynamic-preview" data-scw-dynamic-preview><div class="scw-knowledge-empty-note">Dynamic view preview will appear here.</div></div>
                     <div class="scw-notebook-boundary" role="note"><strong>Definitions, not duplicate records.</strong><span>Smart collections and saved views are browser-local preferences. Their membership is recomputed from the v0.42 Advanced Retrieval corpus. No canonical research content is copied into this layer.</span></div>
                 </section>
-                <section class="scw-cross-project-knowledge" data-scw-cross-project-knowledge aria-labelledby="scw-cross-project-knowledge-title">
+                <section class="scw-cross-project-knowledge" data-scw-research-surface-panel="cross-project" data-scw-cross-project-knowledge hidden aria-labelledby="scw-cross-project-knowledge-title">
                     <div class="scw-cross-project-head"><div><span>CROSS-PROJECT KNOWLEDGE</span><h3 id="scw-cross-project-knowledge-title">Reuse research across projects without copying the record.</h3><p>Select a canonical research result above, choose a different project as the context that needs it, and record an explicit relationship. The source stays owned by its original project; Workspace stores only the pointer, target project, relationship, and your note.</p></div><div class="scw-cross-project-metrics"><div><strong data-scw-cross-project-count>0</strong><span>references</span></div><div><strong data-scw-cross-project-projects>0</strong><span>target projects</span></div><div><strong data-scw-cross-project-unresolved>0</strong><span>unresolved</span></div></div></div>
                     <div class="scw-cross-project-toolbar"><label><span>Target project</span><select data-scw-cross-project-target><option value="">Choose target project</option></select></label><label><span>Relationship</span><select data-scw-cross-project-relation><option value="references">References</option><option value="supports">Supports</option><option value="informs">Informs</option><option value="extends">Extends</option><option value="contrasts">Contrasts</option><option value="related">Related</option></select></label><label class="scw-cross-project-note"><span>Context note</span><input type="text" maxlength="3000" data-scw-cross-project-note placeholder="Why this research matters in the target project"></label><button type="button" class="scw-button scw-button-primary" data-scw-cross-project-add disabled>Reference selected research</button><button type="button" class="scw-button" data-scw-cross-project-export>Export reference ledger</button><button type="button" class="scw-button" data-scw-cross-project-import>Import reference ledger</button><input type="file" accept="application/json,.json" data-scw-cross-project-import-file hidden><p data-scw-cross-project-status role="status" aria-live="polite"></p></div>
                     <div class="scw-cross-project-list" data-scw-cross-project-list><div class="scw-knowledge-empty-note">No cross-project references yet.</div></div>
                     <div class="scw-notebook-boundary" role="note"><strong>Reference, do not duplicate.</strong><span>Cross-project knowledge is a browser-local ledger of canonical pointers. It never copies source content into the target project, silently changes project ownership, infers relationships, or mutates either project. Missing source/target records remain visibly unresolved.</span></div>
                 </section>
-                <section class="scw-research-tasks" data-scw-research-tasks aria-labelledby="scw-research-tasks-title">
+                <section class="scw-research-tasks" data-scw-research-surface-panel="tasks" data-scw-research-tasks hidden aria-labelledby="scw-research-tasks-title">
                     <div class="scw-research-tasks-head"><div><span>RESEARCH TASKS / WORKFLOW STATE</span><h3 id="scw-research-tasks-title">Track what research needs next without changing the research itself.</h3><p>Create explicit tasks around selected Integrated Knowledge records. Task state, priority, ownership labels, due dates, and history stay separate from the canonical record so “done” never silently changes a claim, source, citation, Notebook block, or Document.</p></div><div class="scw-research-task-metrics"><div><strong data-scw-task-open>0</strong><span>open</span></div><div><strong data-scw-task-progress>0</strong><span>in progress</span></div><div><strong data-scw-task-blocked>0</strong><span>blocked</span></div><div><strong data-scw-task-unresolved>0</strong><span>unresolved</span></div></div></div>
                     <div class="scw-research-task-layout">
                         <form class="scw-research-task-form" data-scw-task-form><div class="scw-knowledge-panel-head"><span>01 / CREATE</span><h4>Task for selected research</h4></div><p data-scw-task-selected>No research result selected.</p><label><span>Task type</span><select name="type"><option value="review-needed">Review needed</option><option value="verify-claim">Verify claim</option><option value="source-required">Source required</option><option value="citation-incomplete">Citation incomplete</option><option value="ready-for-synthesis">Ready for synthesis</option><option value="follow-up">Follow-up</option><option value="custom">Custom</option></select></label><div class="scw-research-task-form-row"><label><span>Priority</span><select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option><option value="low">Low</option></select></label><label><span>Due date</span><input type="date" name="dueDate"></label></div><label><span>Owner label</span><input name="owner" maxlength="160" placeholder="Self, editor, reviewer"></label><label><span>Task note</span><textarea name="note" rows="3" maxlength="4000" placeholder="What needs to happen next?"></textarea></label><button class="scw-button scw-button-primary" type="submit" data-scw-task-create disabled>Create task for selected research</button></form>
@@ -2777,7 +2845,7 @@ public function research_templates_contract() {
                     <div class="scw-notebook-boundary" role="note"><strong>Workflow state is not research state.</strong><span>Research Tasks are browser-local canonical pointers. Completing, blocking, dismissing, importing, exporting, or deleting a task never edits the record it references. Workspace does not generate tasks automatically or infer that research is complete.</span></div>
                 </section>
 
-                <section class="scw-grounded-research-assistant" data-scw-grounded-research-assistant aria-labelledby="scw-grounded-research-assistant-title">
+                <section class="scw-grounded-research-assistant" data-scw-research-surface-panel="assistant" data-scw-grounded-research-assistant hidden aria-labelledby="scw-grounded-research-assistant-title">
                     <div class="scw-grounded-research-head"><div><span>GROUNDED RESEARCH ASSISTANT II</span><h3 id="scw-grounded-research-assistant-title">Ask across Integrated Knowledge without expanding the scope behind your back.</h3><p>Build an explicit multi-record grounding set from the research results on this page. Preparing a request freezes the selected records into an inspectable packet. Returned prose is accepted only when its citation markers resolve to that frozen set, and every substantive segment cites at least one selected record.</p></div><div class="scw-grounded-research-metrics"><div><strong data-scw-grounded-session-count>0</strong><span>draft sessions</span></div><div><strong data-scw-grounded-scope-count>0</strong><span>next-request scope</span></div></div></div>
                     <div class="scw-grounded-research-toolbar"><label><span>Saved request</span><select data-scw-grounded-session><option value="">Choose grounded request</option></select></label><button type="button" class="scw-button" data-scw-grounded-add-selected disabled>Add selected research to scope</button><button type="button" class="scw-button" data-scw-grounded-clear-scope>Clear next scope</button><button type="button" class="scw-button" data-scw-grounded-delete disabled>Delete request</button><p data-scw-grounded-status role="status" aria-live="polite"></p></div>
                     <div class="scw-grounded-research-layout">
@@ -2788,7 +2856,7 @@ public function research_templates_contract() {
                     <div class="scw-notebook-boundary" role="note"><strong>Grounding is a boundary, not a suggestion.</strong><span>Workspace does not call an AI provider automatically, expand the selected scope, invent citations, infer missing metadata, or write a canonical Document without an explicit reviewed-materialization action. Request packets preserve exactly what was supplied for later review.</span></div>
                 </section>
 
-                <section class="scw-reference-library" data-scw-reference-library aria-labelledby="scw-reference-library-title">
+                <section class="scw-reference-library" data-scw-research-surface-panel="citations" data-scw-reference-library hidden aria-labelledby="scw-reference-library-title">
                     <div class="scw-reference-library-head"><div><span>CITATION LIBRARY / REFERENCE MANAGEMENT</span><h3 id="scw-reference-library-title">Manage reusable references without inventing metadata.</h3><p>Normalize recorded bibliographic fields, detect likely duplicates, assign citation keys, preview common citation styles, and reuse references across projects. Missing authors, dates, publishers, identifiers, and DOI metadata remain missing until you enter them.</p></div><div class="scw-reference-metrics"><div><strong data-scw-reference-count>0</strong><span>references</span></div><div><strong data-scw-reference-duplicates>0</strong><span>duplicate groups</span></div></div></div>
                     <div class="scw-reference-toolbar"><label><span>Citation style</span><select data-scw-citation-style><option value="apa7">APA 7</option><option value="chicago-author-date">Chicago author-date</option><option value="mla9">MLA 9</option><option value="ieee">IEEE</option></select></label><label class="scw-reference-search"><span>Find reference</span><input type="search" maxlength="240" data-scw-reference-search placeholder="Title, author, DOI, citation key"></label><button type="button" class="scw-button" data-scw-reference-add-selected disabled>Add selected research result</button><button type="button" class="scw-button" data-scw-reference-export>Export library</button><button type="button" class="scw-button" data-scw-reference-import>Import library</button><input type="file" accept="application/json,.json" data-scw-reference-import-file hidden><p data-scw-reference-status role="status" aria-live="polite"></p></div>
                     <div class="scw-reference-layout">
@@ -2799,7 +2867,7 @@ public function research_templates_contract() {
                     <div class="scw-notebook-boundary" role="note"><strong>Recorded bibliography only.</strong><span>The Citation Library is browser-local Workspace data. It can normalize what you enter, but it does not query DOI services, scrape pages, infer missing metadata, automatically merge duplicates, or mutate Project records.</span></div>
                 </section>
 
-                <section class="scw-composition-studio" data-scw-composition-studio aria-labelledby="scw-composition-studio-title">
+                <section class="scw-composition-studio" data-scw-research-surface-panel="composition" data-scw-composition-studio hidden aria-labelledby="scw-composition-studio-title">
                     <div class="scw-composition-head"><div><span>DOCUMENT / RESEARCH COMPOSITION</span><h3 id="scw-composition-studio-title">Compose structured research documents without copying canonical source records.</h3><p>Build ordered sections, attach selected Workspace research and Citation Library references, preview the resulting document, and materialize it into a canonical Workspace Document only when you explicitly choose to do so.</p></div><div class="scw-composition-metrics"><div><strong data-scw-composition-draft-count>0</strong><span>drafts</span></div><div><strong data-scw-composition-input-count>0</strong><span>inputs</span></div></div></div>
                     <div class="scw-composition-toolbar"><label><span>Composition</span><select data-scw-composition-draft><option value="">Choose composition</option></select></label><button class="scw-button" type="button" data-scw-composition-new>New composition</button><button class="scw-button" type="button" data-scw-composition-delete disabled>Delete draft</button><button class="scw-button" type="button" data-scw-composition-export disabled>Export draft</button><button class="scw-button" type="button" data-scw-composition-import>Import draft</button><input type="file" accept="application/json,.json" data-scw-composition-import-file hidden><p data-scw-composition-status-message role="status" aria-live="polite"></p></div>
                     <div class="scw-composition-layout">
@@ -2811,8 +2879,8 @@ public function research_templates_contract() {
                     </div>
                     <div class="scw-notebook-boundary" role="note"><strong>Composition remains reviewable until you materialize it.</strong><span>Drafts are browser-local. Canonical research is referenced, not copied. Citation metadata comes only from the Citation Library. Workspace never creates a Document automatically, rewrites a source record, or invents citations.</span></div>
                 </section>
-                <div class="scw-integrated-layout"><div><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><div class="scw-integrated-more"><button class="scw-button" type="button" data-scw-integrated-load-more hidden>Load more</button></div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
-                <div class="scw-notebook-boundary" role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>
+                <div class="scw-integrated-layout" data-scw-research-surface-panel="search" hidden><div><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><div class="scw-integrated-more"><button class="scw-button" type="button" data-scw-integrated-load-more hidden>Load more</button></div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
+                <div class="scw-notebook-boundary" data-scw-research-surface-panel="search" hidden role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>
             </section>
 
             <section class="scw-research-notebook" data-scw-workspace-section="notebook" hidden aria-labelledby="scw-notebook-title">
@@ -3403,6 +3471,23 @@ public function research_templates_contract() {
                 <div class="scw-scale-performance-actions"><button class="scw-button scw-button-primary" type="button" data-scw-scale-run>Run scale profile</button><button class="scw-button" type="button" data-scw-scale-clear-cache>Clear derived cache</button></div>
                 <ul class="scw-scale-performance-attention" data-scw-scale-attention><li>No advisory scale signals</li></ul>
                 <div class="scw-scale-performance-status" data-scw-scale-status role="status" aria-live="polite"></div>
+            </section>
+
+            <section class="scw-security-privacy" data-scw-workspace-section="security" data-scw-security-privacy hidden aria-labelledby="scw-security-privacy-title">
+                <div class="scw-security-privacy-head">
+                    <div><div class="scw-editorial-kicker">SECURITY / PRIVACY / PORTABILITY</div><h2 id="scw-security-privacy-title">Know what Workspace stores, what it can disclose, and what deletion actually covers.</h2><p>Audit browser-local Workspace data, review the same-origin threat model, export a complete local portability bundle, and verify browser-local deletion. This surface makes boundaries explicit rather than claiming encryption, authorization, or cloud deletion that Workspace does not provide.</p></div>
+                    <div class="scw-security-privacy-boundary"><strong>Private by default, not magically encrypted</strong><span>Browser localStorage is accessible within the browser/same-origin threat model. Integrity fingerprints are receipts—not encryption or authentication. Account/cloud data is a separate lifecycle boundary.</span></div>
+                </div>
+                <div class="scw-security-privacy-metrics" aria-label="Security and privacy audit summary"><div><strong data-scw-sec-stores>0</strong><span>local stores</span></div><div><strong data-scw-sec-bytes>0 KB</strong><span>local bytes</span></div><div><strong data-scw-sec-disclosure>0</strong><span>disclosure stores</span></div><div><strong data-scw-sec-recovery>0</strong><span>recovery stores</span></div></div>
+                <div class="scw-security-privacy-actions"><button class="scw-button scw-button-primary" type="button" data-scw-sec-run>Run security/privacy audit</button><button class="scw-button" type="button" data-scw-sec-export-audit>Export metadata-only audit</button></div>
+                <div class="scw-security-privacy-grid">
+                    <section class="scw-security-privacy-panel"><div class="scw-knowledge-panel-head"><span>01 / THREAT MODEL</span><h3>Declared boundaries and non-claims</h3></div><div class="scw-sec-threat-model" data-scw-sec-threat-model></div></section>
+                    <section class="scw-security-privacy-panel"><div class="scw-knowledge-panel-head"><span>02 / FINDINGS</span><h3>Current local audit findings</h3></div><ul class="scw-sec-findings" data-scw-sec-findings></ul></section>
+                    <section class="scw-security-privacy-panel scw-security-privacy-panel-wide"><div class="scw-knowledge-panel-head"><span>03 / DATA INVENTORY</span><h3>Workspace-owned browser-local stores</h3></div><div class="scw-sec-inventory" data-scw-sec-inventory></div></section>
+                    <section class="scw-security-privacy-panel"><div class="scw-knowledge-panel-head"><span>04 / PORTABILITY</span><h3>Complete browser-local export</h3></div><p>The full portability bundle includes every current <code>sc_workspace*</code> browser-local key, including unclassified future keys. It may contain private research, recovery snapshots, identifiers, drafts, and disclosure artifacts.</p><div class="scw-security-privacy-actions"><button class="scw-button scw-button-primary" type="button" data-scw-sec-export-full>Export complete local bundle</button><button class="scw-button" type="button" data-scw-sec-verify>Verify bundle</button><input type="file" accept="application/json,.json" data-scw-sec-verify-file hidden></div></section>
+                    <section class="scw-security-privacy-panel scw-security-danger"><div class="scw-knowledge-panel-head"><span>05 / VERIFIED LOCAL DELETION</span><h3>Delete Workspace browser-local data</h3></div><p>This deletes Workspace-owned browser-local keys only. It does not delete account/cloud backups, WordPress records, previously exported files, or data already shared with another person/system.</p><button class="scw-button" type="button" data-scw-sec-preview-delete>Preview deletion scope</button><p class="scw-sec-delete-summary" data-scw-sec-delete-summary>Preview the deletion scope before enabling local deletion.</p><label class="scw-sec-delete-ack"><input type="checkbox" data-scw-sec-delete-ack> I understand account/cloud backups and previously exported/shared copies are outside this deletion.</label><label><span>Type <strong>DELETE WORKSPACE DATA</strong></span><input type="text" autocomplete="off" data-scw-sec-delete-phrase></label><button class="scw-button scw-button-danger" type="button" data-scw-sec-delete disabled>Delete browser-local Workspace data</button></section>
+                </div>
+                <div class="scw-security-privacy-status" data-scw-sec-status role="status" aria-live="polite"></div>
             </section>
 
             <section class="scw-research-automation" data-scw-workspace-section="automation" data-scw-research-automation hidden aria-labelledby="scw-research-automation-title">

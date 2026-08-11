@@ -21,4 +21,4 @@ assert.ok(crowdedProfile.attention.includes('project-count')); assert.ok(crowded
 const storageCritical=perf.pressure(33*1024*1024,40*1024*1024); assert.strictEqual(storageCritical.level,'critical');
 state.projects[0].updatedAt='2026-08-10T01:00:00.000Z'; perf.deriveIntegrated(state,ik); assert.strictEqual(perf.cacheStats().misses,2,'project revision change invalidates derived cache');
 const contract=perf.contract(); assert.strictEqual(contract.governance.noAutomaticDeletion,true); assert.strictEqual(contract.governance.noAutomaticCompaction,true);
-console.log('PASS - Workspace v0.58.0 scale performance runtime');
+console.log('PASS - Workspace v0.59.0 scale performance runtime');

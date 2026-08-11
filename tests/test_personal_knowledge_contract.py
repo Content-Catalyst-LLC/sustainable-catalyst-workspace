@@ -2,15 +2,15 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.58.0.js'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.58.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.59.1.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.59.1.css'
 SCHEMA=ROOT/'schemas/sc-workspace-personal-knowledge-v1.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.58.0.json'
+MANIFEST=ROOT/'release-manifest-v0.59.1.json'
 
 class PersonalKnowledgeContractTests(unittest.TestCase):
     def test_release_boundary(self):
         m=json.loads(MANIFEST.read_text())
-        self.assertEqual(m['version'],'0.58.0'); self.assertEqual(m['previous_version'],'0.57.0')
+        self.assertEqual(m['version'],'0.59.1'); self.assertEqual(m['previous_version'],'0.59.0')
         self.assertEqual(m['storage_schema_version'],35); self.assertEqual(m['project_schema'],'sc-workspace-project/20.0')
         self.assertEqual(m['personal_knowledge_schema'],'sc-workspace-personal-knowledge/1.0')
         self.assertTrue(m['migration']['non_destructive']); self.assertTrue(m['migration']['preserves_existing_objects'])

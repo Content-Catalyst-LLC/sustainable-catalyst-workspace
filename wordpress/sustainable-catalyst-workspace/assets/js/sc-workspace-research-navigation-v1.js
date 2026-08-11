@@ -9,10 +9,10 @@
     start:{label:'Start',defaultView:'start',description:'Begin, resume, or orient your Workspace.',views:['start']},
     projects:{label:'Projects',defaultView:'projects',description:'Create projects and work with canonical Workspace objects.',views:['projects']},
     research:{label:'Research',defaultView:'research',description:'Search, capture, organize, connect, and synthesize research.',views:['research','notebook','knowledge','graph']},
-    review:{label:'Review',defaultView:'activity',description:'Inspect activity, lifecycle, history, changes, safety, reconciliation, and audit records.',views:['activity','lifecycle','history','changes','reconcile','safety','audit','automation','performance']},
+    review:{label:'Review',defaultView:'activity',description:'Inspect activity, lifecycle, history, changes, safety, reconciliation, and audit records.',views:['activity','lifecycle','history','changes','reconcile','safety','audit','automation','performance','security']},
     exchange:{label:'Exchange',defaultView:'interoperability',description:'Import, collaborate, hand off institutional work, and share portable copies.',views:['interoperability','collaboration','api-embed','institutional','share']}
   };
-  const LABELS={start:'Start',projects:'Projects',research:'Research home',notebook:'Notebook',knowledge:'Knowledge',graph:'Graph',activity:'Activity',lifecycle:'Lifecycle',history:'History',changes:'Changes',reconcile:'Reconcile',safety:'Safety',audit:'Audit',automation:'Automation',performance:'Performance',interoperability:'Import & Interoperability',collaboration:'Collaborate','api-embed':'API & Embed',institutional:'Institutional',share:'Share'};
+  const LABELS={start:'Start',projects:'Projects',research:'Research home',notebook:'Notebook',knowledge:'Knowledge',graph:'Graph',activity:'Activity',lifecycle:'Lifecycle',history:'History',changes:'Changes',reconcile:'Reconcile',safety:'Safety',audit:'Audit',automation:'Automation',performance:'Performance',security:'Security & Privacy',interoperability:'Import & Interoperability',collaboration:'Collaborate','api-embed':'API & Embed',institutional:'Institutional',share:'Share'};
   const VIEW_TO_AREA=Object.keys(AREAS).reduce((map,area)=>{AREAS[area].views.forEach(view=>map[view]=area);return map;},{});
   function areaForView(view){return VIEW_TO_AREA[String(view||'')]||'start';}
   function defaultView(area){const key=String(area||'');return AREAS[key]?AREAS[key].defaultView:'start';}

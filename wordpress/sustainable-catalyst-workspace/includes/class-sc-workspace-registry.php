@@ -5,8 +5,10 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0580';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0580';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0591';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0591';
+    const LEGACY_PENDING_KEY_V0590 = 'sc_workspace_registry_pending_v0590';
+    const LEGACY_PENDING_KEY_V0580 = 'sc_workspace_registry_pending_v0580';
     const LEGACY_PENDING_KEY_V0570 = 'sc_workspace_registry_pending_v0570';
     const LEGACY_PENDING_KEY_V0560 = 'sc_workspace_registry_pending_v0560';
     const LEGACY_PENDING_KEY_V0550 = 'sc_workspace_registry_pending_v0550';
@@ -135,6 +137,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0590);
+        delete_option(self::LEGACY_PENDING_KEY_V0580);
         delete_option(self::LEGACY_PENDING_KEY_V0570);
         delete_option(self::LEGACY_PENDING_KEY_V0560);
         delete_option(self::LEGACY_PENDING_KEY_V0550);
@@ -250,11 +254,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.57.0',
+            'previous_version' => '0.59.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Institutional Research Packages add explicitly scoped frozen disclosure bundles with optional citations, provenance, Research Tasks, and Collaboration review context while leaving the source project unchanged.',
+            'change_summary' => 'Focused Application Shell & Route Isolation prevents inactive Workspace routes from leaking into the page layout and makes Integrated Research show one active tool surface at a time while retaining v0.59 security/privacy boundaries.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Institutional Research Packages are browser-local frozen disclosure artifacts created only from explicit scope. They can include selected content, recorded provenance, related citations, Research Tasks, and Collaboration review context, but do not publish, upload, refresh, mutate the source project, or establish organization access control. v0.56 Research Automation and the 4px editorial header rule are retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.59 Security, Privacy & Data-Portability Audit remains intact. v0.59.1 is presentation-only: inactive routes are force-hidden, Research uses focused sub-surfaces, selected context is preserved, and the 4px editorial header rule is retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

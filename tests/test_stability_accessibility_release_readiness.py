@@ -1,17 +1,17 @@
 from pathlib import Path
 import json, unittest
 ROOT=Path(__file__).resolve().parents[1]
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.58.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.59.1.js').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.58.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.59.1.css').read_text()
 REG=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-MANIFEST=json.loads((ROOT/'release-manifest-v0.58.0.json').read_text())
+MANIFEST=json.loads((ROOT/'release-manifest-v0.59.1.json').read_text())
 
 class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
     def test_release_metadata_and_schema_stability(self):
-        self.assertEqual(MANIFEST['version'],'0.58.0')
-        self.assertEqual(MANIFEST['previous_version'],'0.57.0')
-        self.assertEqual(MANIFEST['release_name'],'Scale, Performance & Large-Project Hardening')
+        self.assertEqual(MANIFEST['version'],'0.59.1')
+        self.assertEqual(MANIFEST['previous_version'],'0.59.0')
+        self.assertEqual(MANIFEST['release_name'],'Focused Application Shell & Route Isolation')
         self.assertEqual(MANIFEST['storage_schema_version'],35)
         self.assertEqual(MANIFEST['project_schema'],'sc-workspace-project/20.0')
         self.assertFalse(MANIFEST['schema_migration_required'])
@@ -74,12 +74,12 @@ class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
         self.assertFalse(MANIFEST['governance']['behavioral_telemetry'])
         self.assertFalse(MANIFEST['governance']['productivity_score'])
     def test_registry_lineage_advances_with_safe_actions_storage_migration(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0580'",REG)
-        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0580'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0591'",REG)
+        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0591'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200'",REG)
-        self.assertIn("'previous_version' => '0.57.0'",REG)
+        self.assertIn("'previous_version' => '0.59.0'",REG)
     def test_canonical_library_route_is_unchanged(self):
         self.assertEqual(MANIFEST['canonical_library_path'],'/knowledge-libraries/')
         self.assertIn('/knowledge-libraries/',PHP)
