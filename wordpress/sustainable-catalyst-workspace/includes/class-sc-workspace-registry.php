@@ -5,8 +5,10 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0560';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0560';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0580';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0580';
+    const LEGACY_PENDING_KEY_V0570 = 'sc_workspace_registry_pending_v0570';
+    const LEGACY_PENDING_KEY_V0560 = 'sc_workspace_registry_pending_v0560';
     const LEGACY_PENDING_KEY_V0550 = 'sc_workspace_registry_pending_v0550';
     const LEGACY_PENDING_KEY_V0540 = 'sc_workspace_registry_pending_v0540';
     const LEGACY_PENDING_KEY_V0530 = 'sc_workspace_registry_pending_v0530';
@@ -133,6 +135,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0570);
+        delete_option(self::LEGACY_PENDING_KEY_V0560);
         delete_option(self::LEGACY_PENDING_KEY_V0550);
         delete_option(self::LEGACY_PENDING_KEY_V0540);
         delete_option(self::LEGACY_PENDING_KEY_V0530);
@@ -246,11 +250,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.55.0',
+            'previous_version' => '0.57.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Research Automation Framework adds browser-local user-authored routines with declarative cadences, explicit manual execution, reviewable run receipts, and portable automation definitions without background execution or canonical research mutation.',
+            'change_summary' => 'Institutional Research Packages add explicitly scoped frozen disclosure bundles with optional citations, provenance, Research Tasks, and Collaboration review context while leaving the source project unchanged.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Research Automation is browser-local and manual-execution-only. Cadence metadata only marks routines due; no background scheduler, network request, automatic import, automatic AI, automatic task creation, or canonical mutation is introduced. Imported routines do not execute automatically. v0.55 API/embed boundaries and the 4px editorial header rule are retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Institutional Research Packages are browser-local frozen disclosure artifacts created only from explicit scope. They can include selected content, recorded provenance, related citations, Research Tasks, and Collaboration review context, but do not publish, upload, refresh, mutate the source project, or establish organization access control. v0.56 Research Automation and the 4px editorial header rule are retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

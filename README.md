@@ -1,9 +1,11 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.50.0 — Workspace Experience Consolidation**
+Current release: **v0.58.0 — Scale, Performance & Large-Project Hardening**
 
 Workspace is the free, local-first Sustainable Catalyst research environment.
 
-v0.50.0 consolidates the accumulated Workspace product experience without changing its canonical research schemas. The five primary areas remain Start, Projects, Research, Review, and Exchange, while a browser-local presentation layer adds Comfortable/Compact density, a `Ctrl/Meta + K` route command palette, `Alt + 1…5` primary-area navigation, `/` current-view search focus, terminology help, responsive horizontal mobile navigation, and 44px minimum primary interaction targets.
+v0.58.0 adds explicitly scoped, frozen institutional research packages over the Integrated Knowledge Workspace. A package can include selected canonical research plus optional recorded provenance, related Citation Library references, Research Tasks, and Collaboration review context. Each package includes a disclosure manifest and deterministic integrity fingerprint. Package creation and export are deliberate disclosure actions; they do not publish, upload, refresh, or mutate the source project.
 
-Storage remains **35**, Project remains **20.0**, Project Export remains **20.0**, Notebook Workspace remains **8.0**, and the established **4px Sustainable Catalyst editorial header rule** is retained. Experience preferences alter presentation only; they do not create projects, rewrite canonical records, invoke AI, or trigger background network activity.
+The existing v0.19 Catalyst Intelligence institutional promotion/receipt path remains available as a product-specific compatibility workflow. v0.57 packages are broader institutional handoff artifacts and do not establish organization access control or automatically import into another product.
+
+Storage remains **35**, Project remains **20.0**, Project Export remains **20.0**, Notebook Workspace remains **8.0**, and the established **4px Sustainable Catalyst editorial header rule** is retained.

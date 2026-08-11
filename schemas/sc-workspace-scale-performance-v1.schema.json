@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Scale Performance Contract",
+  "type": "object",
+  "required": [
+    "schema",
+    "budgets",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-scale-performance/1.0"
+    },
+    "budgets": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

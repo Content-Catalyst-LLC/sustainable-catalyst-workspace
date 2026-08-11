@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Research Package Export v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "exportedAt",
+    "package",
+    "governance",
+    "fingerprint"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-research-package-export/1.0"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "package": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    },
+    "fingerprint": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

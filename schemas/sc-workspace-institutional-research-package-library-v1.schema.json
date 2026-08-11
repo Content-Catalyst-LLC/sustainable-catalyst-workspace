@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Research Package Library v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "packages"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-research-package-library/1.0"
+    },
+    "packages": {
+      "type": "array",
+      "maxItems": 80
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Research Package Manifest v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "frozenAt",
+    "scope",
+    "included",
+    "counts",
+    "omitted"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-research-package-manifest/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "frozenAt": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "object"
+    },
+    "included": {
+      "type": "object"
+    },
+    "counts": {
+      "type": "object"
+    },
+    "omitted": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

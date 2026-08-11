@@ -29,6 +29,8 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0570, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0560, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0540, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0520, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0510, '') === '1' ||
@@ -91,7 +93,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.56.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.58.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -248,6 +250,16 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/research-automation-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'research_automation_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/institutional-research-packages-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'institutional_research_packages_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/scale-performance-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'scale_performance_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -1277,6 +1289,33 @@ public function research_templates_contract() {
         ));
     }
 
+
+    public function institutional_research_packages_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-institutional-research-packages-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'package_schema' => 'sc-workspace-institutional-research-package/1.0',
+            'manifest_schema' => 'sc-workspace-institutional-research-package-manifest/1.0',
+            'library_schema' => 'sc-workspace-institutional-research-package-library/1.0',
+            'export_schema' => 'sc-workspace-institutional-research-package-export/1.0',
+            'storage' => 'browser-local',
+            'scope_selection' => 'explicit-selected-integrated-knowledge-records',
+            'package_state' => 'frozen-disclosure-artifact',
+            'optional_context' => array('citations','provenance','research-tasks','collaboration-review'),
+            'source_project_unchanged' => true,
+            'automatic_publication' => false,
+            'automatic_upload' => false,
+            'automatic_refresh' => false,
+            'automatic_canonical_mutation' => false,
+            'organization_access_control' => false,
+            'receiver_governance_begins_after_transfer' => true,
+            'legacy_institutional_handoff_retained' => true,
+            'schema_migration' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
     public function grounded_research_assistant_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-grounded-research-assistant-contract/1.0',
@@ -1993,6 +2032,28 @@ public function research_templates_contract() {
         ));
     }
 
+    public function scale_performance_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-scale-performance-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Scale, Performance & Large-Project Hardening',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'profile_schema' => 'sc-workspace-scale-profile/1.0',
+            'budget_schema' => 'sc-workspace-performance-budget/1.0',
+            'render_window' => 120,
+            'derived_index_cache' => true,
+            'storage_pressure_visibility' => true,
+            'stress_fixtures' => true,
+            'automatic_deletion' => false,
+            'automatic_archival' => false,
+            'automatic_compaction' => false,
+            'automatic_migration' => false,
+            'canonical_mutation' => false,
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2106,8 +2167,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0560',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.56.0.css',
+            'sc-workspace-v0580',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.58.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2329,6 +2390,34 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-institutional-research-packages-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-institutional-research-packages-v1.js',
+            array('sc-workspace-integrated-knowledge-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-institutional-research-packages-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-institutional-research-packages-ui-v1.js',
+            array('sc-workspace-institutional-research-packages-v1', 'sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-scale-performance-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-scale-performance-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-scale-performance-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-scale-performance-ui-v1.js',
+            array('sc-workspace-scale-performance-v1', 'sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2336,9 +2425,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0560',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.56.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0580',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.58.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2346,7 +2435,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         $authenticated = is_user_logged_in();
         $user = $authenticated ? wp_get_current_user() : null;
-        wp_localize_script('sc-workspace-v0560', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0580', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2531,7 +2620,7 @@ public function research_templates_contract() {
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -2722,7 +2811,7 @@ public function research_templates_contract() {
                     </div>
                     <div class="scw-notebook-boundary" role="note"><strong>Composition remains reviewable until you materialize it.</strong><span>Drafts are browser-local. Canonical research is referenced, not copied. Citation metadata comes only from the Citation Library. Workspace never creates a Document automatically, rewrites a source record, or invents citations.</span></div>
                 </section>
-                <div class="scw-integrated-layout"><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
+                <div class="scw-integrated-layout"><div><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><div class="scw-integrated-more"><button class="scw-button" type="button" data-scw-integrated-load-more hidden>Load more</button></div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
                 <div class="scw-notebook-boundary" role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>
             </section>
 
@@ -3220,6 +3309,37 @@ public function research_templates_contract() {
             </section>
 
             <section class="scw-institutional" data-scw-workspace-section="institutional" hidden aria-labelledby="scw-institutional-title">
+                <section class="scw-institutional-research-packages" data-scw-institutional-research-packages aria-labelledby="scw-irp-title">
+                    <div class="scw-irp-head">
+                        <div><div class="scw-editorial-kicker">INSTITUTIONAL RESEARCH PACKAGES</div><h2 id="scw-irp-title">Freeze a deliberate research package for institutional handoff.</h2><p>Select only the research that should travel. Workspace can include recorded provenance, related Citation Library references, Research Tasks, and Collaboration review context. The package becomes a frozen disclosure artifact; creating or exporting it does not alter the source project.</p></div>
+                        <div class="scw-irp-boundary"><strong>Explicit disclosure</strong><span>Institutional packages contain selected copies for handoff. They are not public links, live mirrors, permission grants, or automatic Catalyst Intelligence imports.</span></div>
+                    </div>
+                    <div class="scw-irp-metrics" data-scw-irp-metrics aria-label="Institutional research package metrics"></div>
+                    <div class="scw-irp-grid">
+                        <section class="scw-irp-panel"><div class="scw-knowledge-panel-head"><span>01 / SCOPE</span><h3>Define exactly what leaves Workspace.</h3></div>
+                            <div class="scw-irp-form">
+                                <label><span>Source project</span><select data-scw-irp-project><option value="">Choose project</option></select></label>
+                                <label><span>Package title</span><input type="text" maxlength="320" data-scw-irp-title placeholder="Institutional research package"></label>
+                                <label><span>Receiving institution / program</span><input type="text" maxlength="320" data-scw-irp-institution placeholder="Institution or program"></label>
+                                <label><span>Purpose</span><textarea rows="4" maxlength="4000" data-scw-irp-purpose placeholder="Why is this package being prepared?"></textarea></label>
+                                <div class="scw-irp-scope" data-scw-irp-scope><div class="scw-irp-empty">Choose a project to define scope.</div></div>
+                                <fieldset class="scw-irp-options"><legend>Included context</legend>
+                                    <label><input type="checkbox" data-scw-irp-full checked> Include full selected research content</label>
+                                    <label><input type="checkbox" data-scw-irp-provenance checked> Include recorded provenance</label>
+                                    <label><input type="checkbox" data-scw-irp-citations checked> Include related Citation Library references</label>
+                                    <label><input type="checkbox" data-scw-irp-tasks checked> Include related Research Tasks</label>
+                                    <label><input type="checkbox" data-scw-irp-review checked> Include project/selected-object Collaboration review context</label>
+                                </fieldset>
+                                <div class="scw-irp-actions"><button class="scw-button scw-button-primary" type="button" data-scw-irp-freeze>Freeze institutional package</button><button class="scw-button" type="button" data-scw-irp-inspect>Inspect package file</button><input type="file" accept="application/json,.json" data-scw-irp-file hidden></div>
+                                <div class="scw-irp-status" data-scw-irp-status role="status" aria-live="polite"></div>
+                            </div>
+                        </section>
+                        <section class="scw-irp-panel"><div class="scw-knowledge-panel-head"><span>02 / PACKAGE LEDGER</span><h3>Frozen institutional disclosure artifacts.</h3></div><div class="scw-irp-list" data-scw-irp-list></div></section>
+                    </div>
+                    <div class="scw-irp-active" data-scw-irp-active><div class="scw-irp-empty">Open a frozen package to inspect its disclosure manifest.</div></div>
+                </section>
+                <div class="scw-institutional-legacy-label"><strong>Catalyst Intelligence promotion — compatibility path</strong><span>The v0.19 institutional promotion and receipt workflow remains available below. v0.57 packages are broader institutional research bundles and do not replace that explicit product-specific handoff.</span></div>
+
                 <div class="scw-institutional-head">
                     <div><div class="scw-editorial-kicker">INSTITUTIONAL HANDOFF</div><h2 id="scw-institutional-title">Promote mature work into governed institutional operations.</h2><p>Prepare an explicit copy of selected Workspace material for Catalyst Intelligence while preserving the personal Workspace as an independent source record. Promotion is deliberate, inspectable, and does not convert the local project in place.</p></div>
                     <div class="scw-institutional-boundary"><strong>Copy into institution</strong><span>The source Workspace remains device-local and independently owned. Institutional governance begins only after the receiving system accepts the handoff.</span></div>
@@ -3265,6 +3385,24 @@ public function research_templates_contract() {
                     <div class="scw-institutional-history" data-scw-institutional-history></div>
                 </section>
                 <div class="scw-institutional-governance" role="note"><strong>Workspace does not become the institution.</strong><span>v0.25.0 preserves the governed handoff contract for Catalyst Intelligence while hardening the surrounding Workspace runtime. It does not create organization membership, server permissions, shared cloud storage, automatic ingestion, or an institutional tenant inside Workspace.</span></div>
+            </section>
+
+            <section class="scw-scale-performance" data-scw-workspace-section="performance" data-scw-scale-performance hidden aria-labelledby="scw-scale-performance-title">
+                <div class="scw-scale-performance-head">
+                    <div><div class="scw-editorial-kicker">SCALE / PERFORMANCE</div><h2 id="scw-scale-performance-title">Know when a project is getting heavy before it becomes fragile.</h2><p>Profile large-project pressure locally, inspect derived-index behavior, and keep rendering bounded. These signals are advisory only: Workspace will not delete, archive, compact, or migrate canonical research automatically.</p></div>
+                    <div class="scw-scale-performance-boundary"><strong>Advisory, not destructive</strong><span>Performance hardening changes derived caches and rendering windows, not Project 20.0 or Notebook 8.0 data.</span></div>
+                </div>
+                <div class="scw-scale-performance-metrics" aria-label="Scale profile summary">
+                    <div><strong data-scw-scale-projects>0</strong><span>projects</span></div><div><strong data-scw-scale-objects>0</strong><span>objects</span></div><div><strong data-scw-scale-blocks>0</strong><span>notebook blocks</span></div><div><strong data-scw-scale-index>0</strong><span>index entries</span></div>
+                </div>
+                <div class="scw-scale-performance-grid">
+                    <section><span>STORAGE</span><strong data-scw-scale-bytes>0 KB</strong><p data-scw-scale-quota>Browser quota estimate unavailable</p></section>
+                    <section><span>DERIVED INDEX</span><strong data-scw-scale-index-ms>0 ms</strong><p data-scw-scale-cache>0 hit / 0 miss</p></section>
+                    <section><span>RENDER WINDOW</span><strong data-scw-scale-window>120</strong><p>Integrated Knowledge renders a bounded initial result window and exposes more only on request.</p></section>
+                </div>
+                <div class="scw-scale-performance-actions"><button class="scw-button scw-button-primary" type="button" data-scw-scale-run>Run scale profile</button><button class="scw-button" type="button" data-scw-scale-clear-cache>Clear derived cache</button></div>
+                <ul class="scw-scale-performance-attention" data-scw-scale-attention><li>No advisory scale signals</li></ul>
+                <div class="scw-scale-performance-status" data-scw-scale-status role="status" aria-live="polite"></div>
             </section>
 
             <section class="scw-research-automation" data-scw-workspace-section="automation" data-scw-research-automation hidden aria-labelledby="scw-research-automation-title">

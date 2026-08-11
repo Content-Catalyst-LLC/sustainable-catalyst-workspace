@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Research Package v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "createdAt",
+    "sourceProject",
+    "manifest",
+    "records",
+    "governance",
+    "fingerprint"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-research-package/1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string"
+    },
+    "institution": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "sourceProject": {
+      "type": "object"
+    },
+    "manifest": {
+      "type": "object"
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 400
+    },
+    "references": {
+      "type": "array"
+    },
+    "tasks": {
+      "type": "array"
+    },
+    "review": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    },
+    "fingerprint": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": true
+}

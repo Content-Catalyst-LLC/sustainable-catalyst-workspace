@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Scale Profile",
+  "type": "object",
+  "required": [
+    "schema",
+    "counts",
+    "storage",
+    "attention",
+    "status"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-scale-profile/1.0"
+    },
+    "counts": {
+      "type": "object"
+    },
+    "storage": {
+      "type": "object"
+    },
+    "attention": {
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "ready",
+        "attention",
+        "critical"
+      ]
+    }
+  }
+}

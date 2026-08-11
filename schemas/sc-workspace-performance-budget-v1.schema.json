@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Performance Budget",
+  "type": "object",
+  "required": [
+    "schema",
+    "budgets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-performance-budget/1.0"
+    },
+    "budgets": {
+      "type": "object"
+    }
+  }
+}

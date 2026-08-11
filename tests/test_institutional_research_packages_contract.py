@@ -1,0 +1,26 @@
+import json, unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+MAN=json.loads((ROOT/'history/release-manifest-v0.57.0.json').read_text())
+REG=json.loads((ROOT/'history/workspace-product-record-v0.57.0.json').read_text())
+MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
+PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
+REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
+HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-institutional-research-packages-v1.js').read_text()
+UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-institutional-research-packages-ui-v1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.58.0.css').read_text()
+class TestInstitutionalResearchPackages(unittest.TestCase):
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.57.0','0.56.0','Institutional Research Packages')); self.assertIn('Version: 0.58.0',MAIN)
+ def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['institutional_research_packages']['schema_migration'])
+ def test_03_route(self): self.assertIn('/wp-json/sc-workspace/v1/institutional-research-packages-contract',MAN['rest_routes']); self.assertIn("'/institutional-research-packages-contract'",PHP)
+ def test_04_frozen_scope(self): self.assertEqual(MAN['institutional_research_packages']['package_state'],'frozen-disclosure-artifact'); self.assertEqual(MAN['institutional_research_packages']['scope_selection'],'explicit-selected-integrated-knowledge-records'); self.assertIn('explicitScopeRequired:true',HELP)
+ def test_05_context_layers(self): self.assertEqual(MAN['institutional_research_packages']['optional_context'],['citations','provenance','research-tasks','collaboration-review']); self.assertIn('relatedReferences',HELP); self.assertIn('relatedTasks',HELP); self.assertIn('relatedReview',HELP)
+ def test_06_source_unchanged(self): self.assertTrue(MAN['institutional_research_packages']['source_project_unchanged']); self.assertIn('sourceProjectUnchanged:true',HELP)
+ def test_07_no_auto_publish_upload(self): self.assertFalse(MAN['institutional_research_packages']['automatic_publication']); self.assertFalse(MAN['institutional_research_packages']['automatic_upload']); self.assertIn('automaticPublication:false',HELP); self.assertIn('automaticUpload:false',HELP)
+ def test_08_integrity(self): self.assertIn('function verifyPackage',HELP); self.assertIn('fingerprint mismatch',HELP); self.assertIn('Disclosure manifest',UI)
+ def test_09_explicit_disclosure_ui(self): self.assertIn('Freeze institutional package',PHP); self.assertIn('Include full selected research content',PHP); self.assertIn('Inspect package file',PHP)
+ def test_10_legacy_handoff_retained(self): self.assertTrue(MAN['institutional_research_packages']['legacy_institutional_handoff_retained']); self.assertIn('Prepare institutional handoff',PHP)
+ def test_11_no_access_control_claim(self): self.assertFalse(MAN['institutional_research_packages']['organization_access_control']); self.assertIn('organizationAccessControl:false',HELP)
+ def test_12_header_rule(self): self.assertIn('.scw-institutional-research-packages{',CSS); self.assertIn('border-top:4px solid #000',CSS)
+ def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.57.0','0.56.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0580'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0570',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.56.0.json').exists())
+if __name__=='__main__': unittest.main()
