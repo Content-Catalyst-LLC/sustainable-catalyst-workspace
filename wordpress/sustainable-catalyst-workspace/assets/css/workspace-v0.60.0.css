@@ -689,3 +689,20 @@
 @media(max-width:900px){.scw-research-overview{grid-template-columns:1fr}.scw-research-overview-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.scw-research-tool-nav{position:relative}.scw-research-tool-nav button{padding:11px 12px}.scw-research-overview-grid{grid-template-columns:1fr}}
 @media print{.scw-shell [data-scw-workspace-section][hidden],.scw-shell [data-scw-research-surface-panel][hidden]{display:none!important}}
+
+
+/* v0.60.0 — Public Product Beta II */
+.scw-public-beta-ii{border-top:4px solid #000;padding:28px 0 36px;background:#fff;}
+.scw-public-beta-ii[hidden]{display:none!important;}
+.scw-beta-ii-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:start;border-bottom:1px solid #ddd;padding-bottom:20px;}
+.scw-beta-ii-head h2{margin:4px 0 10px;}
+.scw-beta-ii-head p{max-width:82ch;margin:0;color:#555;line-height:1.65;}
+.scw-beta-ii-badge{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid #000;font-size:.7rem;font-weight:850;letter-spacing:.08em;}
+.scw-beta-ii-actions{display:flex;flex-wrap:wrap;gap:8px;padding:18px 0;}
+.scw-beta-ii-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.scw-beta-ii-check{position:relative;min-width:0;padding:16px 18px;border:1px solid #ddd;border-top:3px solid #000;background:#fff;}
+.scw-beta-ii-check>span{display:block;margin-bottom:6px;font-size:.66rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase;}
+.scw-beta-ii-check.is-attention{border-top-color:#ff0000;}.scw-beta-ii-check.is-limited{border-top-color:#ff0000;background:#fff8f8;}
+.scw-beta-ii-check strong{display:block;font-size:.95rem;}.scw-beta-ii-check p{margin:6px 0 10px;color:#555;font-size:.82rem;line-height:1.55;}
+.scw-beta-ii-status{margin:16px 0 0;color:#555;font-size:.82rem;}
+@media(max-width:760px){.scw-beta-ii-head,.scw-beta-ii-checks{grid-template-columns:1fr}.scw-beta-ii-badge{justify-self:start}.scw-beta-ii-actions .scw-button{width:100%;}}

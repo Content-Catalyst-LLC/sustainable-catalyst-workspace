@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-beta-field-snapshot-v1.schema.json",
+  "title": "Workspace Beta Field Snapshot",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "workspaceVersion",
+    "gate",
+    "privacy"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-beta-field-snapshot/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "gate": {
+      "$ref": "sc-workspace-beta-gate-v1.schema.json"
+    },
+    "diagnostic": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "automaticTelemetry",
+        "automaticSubmission",
+        "projectContentIncluded"
+      ],
+      "properties": {
+        "automaticTelemetry": {
+          "const": false
+        },
+        "automaticSubmission": {
+          "const": false
+        },
+        "projectContentIncluded": {
+          "const": false
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

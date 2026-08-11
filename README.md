@@ -1,6 +1,6 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.59.1 — Focused Application Shell & Route Isolation**
+Current release: **v0.60.0 — Public Product Beta II
 
 Workspace is the free, local-first Sustainable Catalyst research environment.
 

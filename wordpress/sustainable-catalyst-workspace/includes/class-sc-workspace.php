@@ -267,6 +267,11 @@ final class SC_Workspace {
             'callback' => array($this, 'security_privacy_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/public-product-beta-ii-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'public_product_beta_ii_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'knowledge_graph_contract'),
@@ -2081,6 +2086,30 @@ public function research_templates_contract() {
         ));
     }
 
+    public function public_product_beta_ii_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-public-product-beta-ii-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Public Product Beta II',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'beta_schema' => 'sc-workspace-public-beta-ii/1.0',
+            'gate_schema' => 'sc-workspace-beta-gate/1.0',
+            'field_snapshot_schema' => 'sc-workspace-beta-field-snapshot/1.0',
+            'focused_application_shell_required' => true,
+            'performance_gate_available' => true,
+            'security_privacy_gate_available' => true,
+            'recovery_gate_available' => true,
+            'privacy_minimized_field_snapshot' => true,
+            'hidden_readiness_score' => false,
+            'automatic_telemetry' => false,
+            'automatic_submission' => false,
+            'automatic_repair' => false,
+            'canonical_mutation' => false,
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2194,8 +2223,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0591',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.59.1.css',
+            'sc-workspace-v0600',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.60.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2459,6 +2488,20 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-public-beta-ii-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-ii-v1.js',
+            array('sc-workspace-field-diagnostics-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-security-privacy-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-public-beta-ii-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-ii-ui-v1.js',
+            array('sc-workspace-public-beta-ii-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-experience-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-experience-v1.js',
             array('sc-workspace-research-navigation-v1'),
@@ -2466,9 +2509,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0591',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.59.1.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-v0600',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.60.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2479,12 +2522,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0591'),
+            array('sc-workspace-v0600'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v0591', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0600', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2669,7 +2712,7 @@ public function research_templates_contract() {
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -2722,11 +2765,11 @@ public function research_templates_contract() {
             <section class="scw-public-beta-start" data-scw-workspace-section="start" aria-labelledby="scw-public-beta-title">
                 <div class="scw-public-beta-head">
                     <div>
-                        <div class="scw-kicker">PUBLIC BETA / START</div>
+                        <div class="scw-kicker">PUBLIC PRODUCT BETA II / START</div>
                         <h2 id="scw-public-beta-title">Begin with the work, not the software.</h2>
                         <p>Start a blank project, choose a guided pathway, or reopen recent work. Workspace remains local-first and usable without an account; public beta adds a clearer front door without changing the governance or persistence boundaries underneath it.</p>
                     </div>
-                    <div class="scw-public-beta-badge"><span>PUBLIC BETA</span><strong>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong></div>
+                    <div class="scw-public-beta-badge"><span>BETA II</span><strong>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong></div>
                 </div>
                 <div class="scw-public-beta-metrics" aria-label="Workspace beta summary">
                     <div><strong data-scw-beta-projects>0</strong><span>Active projects</span></div>
@@ -3488,6 +3531,14 @@ public function research_templates_contract() {
                     <section class="scw-security-privacy-panel scw-security-danger"><div class="scw-knowledge-panel-head"><span>05 / VERIFIED LOCAL DELETION</span><h3>Delete Workspace browser-local data</h3></div><p>This deletes Workspace-owned browser-local keys only. It does not delete account/cloud backups, WordPress records, previously exported files, or data already shared with another person/system.</p><button class="scw-button" type="button" data-scw-sec-preview-delete>Preview deletion scope</button><p class="scw-sec-delete-summary" data-scw-sec-delete-summary>Preview the deletion scope before enabling local deletion.</p><label class="scw-sec-delete-ack"><input type="checkbox" data-scw-sec-delete-ack> I understand account/cloud backups and previously exported/shared copies are outside this deletion.</label><label><span>Type <strong>DELETE WORKSPACE DATA</strong></span><input type="text" autocomplete="off" data-scw-sec-delete-phrase></label><button class="scw-button scw-button-danger" type="button" data-scw-sec-delete disabled>Delete browser-local Workspace data</button></section>
                 </div>
                 <div class="scw-security-privacy-status" data-scw-sec-status role="status" aria-live="polite"></div>
+            </section>
+
+            <section class="scw-public-beta-ii" data-scw-workspace-section="beta" data-scw-public-beta-ii hidden aria-labelledby="scw-public-beta-ii-title">
+                <div class="scw-beta-ii-head"><div><div class="scw-kicker">PUBLIC PRODUCT BETA II / READINESS</div><h2 id="scw-public-beta-ii-title">Test the complete Workspace, not just individual features.</h2><p>Run a local product gate across persistence, integrity, recovery, focused-route isolation, performance diagnostics, security/privacy controls, and release identity. The gate produces explicit checks, never a hidden readiness score.</p></div><span class="scw-beta-ii-badge" data-scw-beta-ii-badge>CHECKING</span></div>
+                <div class="scw-beta-ii-actions"><button class="scw-button scw-button-primary" type="button" data-scw-beta-ii-run>Run beta gate</button><button class="scw-button" type="button" data-scw-beta-ii-diagnostics>Open field diagnostics</button><button class="scw-button" type="button" data-scw-beta-ii-security>Open Security &amp; Privacy</button><button class="scw-button" type="button" data-scw-beta-ii-export>Export beta field snapshot</button></div>
+                <div class="scw-beta-ii-checks" data-scw-beta-ii-checks><div class="scw-beta-empty">Running local beta checks…</div></div>
+                <p class="scw-beta-ii-status" data-scw-beta-ii-status role="status" aria-live="polite">Beta gate has not run yet.</p>
+                <div class="scw-beta-boundary" role="note"><strong>Beta II boundary</strong><span>Checks run locally and are advisory. Workspace does not send behavioral telemetry, submit diagnostics automatically, repair data automatically, mutate research, or convert checklist results into a productivity/readiness score.</span></div>
             </section>
 
             <section class="scw-research-automation" data-scw-workspace-section="automation" data-scw-research-automation hidden aria-labelledby="scw-research-automation-title">

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-beta-gate-v1.schema.json",
+  "title": "Workspace Beta Gate",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "state",
+    "checks",
+    "attention"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-beta-gate/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "attention",
+        "limited"
+      ]
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "state",
+          "detail"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ready",
+              "attention",
+              "limited"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "route": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "attention": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

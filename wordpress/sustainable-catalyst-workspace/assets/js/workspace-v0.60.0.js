@@ -3383,6 +3383,7 @@ const researchTemplateCustomList = root.querySelector('[data-scw-research-templa
     const auditTrailSection = root.querySelector('[data-scw-workspace-section="audit"]');
     const performanceSection = root.querySelector('[data-scw-workspace-section="performance"]');
     const securityPrivacySection = root.querySelector('[data-scw-workspace-section="security"]');
+    const publicBetaIISection = root.querySelector('[data-scw-workspace-section="beta"]');
     const auditProject = root.querySelector('[data-scw-audit-project]');
     const auditSource = root.querySelector('[data-scw-audit-source]');
     const auditList = root.querySelector('[data-scw-audit-list]');
@@ -4834,6 +4835,7 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
       if (auditTrailSection) auditTrailSection.hidden = workspaceView !== 'audit';
       if (performanceSection) performanceSection.hidden = workspaceView !== 'performance';
       if (securityPrivacySection) securityPrivacySection.hidden = workspaceView !== 'security';
+      if (publicBetaIISection) publicBetaIISection.hidden = workspaceView !== 'beta';
       if (interoperabilitySection) interoperabilitySection.hidden = workspaceView !== 'interoperability';
       if (collaborationSection) collaborationSection.hidden = workspaceView !== 'collaboration';
       if (institutionalSection) institutionalSection.hidden = workspaceView !== 'institutional';

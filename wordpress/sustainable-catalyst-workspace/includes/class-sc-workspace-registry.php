@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0591';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0591';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0600';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0600';
+    const LEGACY_PENDING_KEY_V0591 = 'sc_workspace_registry_pending_v0591';
     const LEGACY_PENDING_KEY_V0590 = 'sc_workspace_registry_pending_v0590';
     const LEGACY_PENDING_KEY_V0580 = 'sc_workspace_registry_pending_v0580';
     const LEGACY_PENDING_KEY_V0570 = 'sc_workspace_registry_pending_v0570';
@@ -254,11 +255,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.59.0',
+            'previous_version' => '0.59.1',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Focused Application Shell & Route Isolation prevents inactive Workspace routes from leaking into the page layout and makes Integrated Research show one active tool surface at a time while retaining v0.59 security/privacy boundaries.',
+            'change_summary' => 'Public Product Beta II consolidates product-level readiness checks across local persistence, integrity, recovery, route isolation, performance, security/privacy, portability, and release identity while preserving the focused application shell and explicit-action governance.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.59 Security, Privacy & Data-Portability Audit remains intact. v0.59.1 is presentation-only: inactive routes are force-hidden, Research uses focused sub-surfaces, selected context is preserved, and the 4px editorial header rule is retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.59.1 Focused Application Shell remains intact. v0.60 adds local advisory beta gates and privacy-minimized field snapshots only: no behavioral telemetry, hidden readiness score, automatic submission, automatic repair, or canonical mutation. The 4px editorial header rule is retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
