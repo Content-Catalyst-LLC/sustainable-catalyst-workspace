@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0620';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0620';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0630';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0630';
+    const LEGACY_PENDING_KEY_V0620 = 'sc_workspace_registry_pending_v0620';
     const LEGACY_PENDING_KEY_V0610 = 'sc_workspace_registry_pending_v0610';
     const LEGACY_PENDING_KEY_V0600 = 'sc_workspace_registry_pending_v0600';
     const LEGACY_PENDING_KEY_V0591 = 'sc_workspace_registry_pending_v0591';
@@ -140,6 +141,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0620);
         delete_option(self::LEGACY_PENDING_KEY_V0610);
         delete_option(self::LEGACY_PENDING_KEY_V0600);
         delete_option(self::LEGACY_PENDING_KEY_V0591);
@@ -260,11 +262,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.61.0',
+            'previous_version' => '0.62.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Product Hardening II adds verified-save integrity receipts, a write transaction journal, interrupted-write detection, checksum-bound last-known-good snapshots, and explicit recovery candidate exports without changing canonical schemas.',
+            'change_summary' => 'Cross-Browser & Device Compatibility adds feature-detected import/export/history fallbacks, root-bound viewport adaptation, touch/embed awareness, and a privacy-minimized compatibility audit without changing canonical schemas.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.61 Product Hardening I remains intact. v0.62 hardens browser-local saves with a transaction journal and integrity receipts. FNV-1a is used only as a corruption detector, never as encryption, authentication, or a security signature. Recovery exports are explicit and may contain private research. No automatic canonical repair, overwrite, upload, telemetry, or hidden scoring.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.61 Product Hardening I and v0.62 Persistence Integrity remain intact. v0.63 uses feature detection rather than browser-family gating, adds FileReader and guarded download/history fallbacks, and adapts to root-bound viewport/embed conditions. Browser-family labels are diagnostic only. Compatibility reports omit raw user-agent strings and device identifiers. No automatic upload, telemetry, canonical repair, or hidden compatibility scoring.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -1,0 +1,35 @@
+import json, pathlib, unittest
+ROOT=pathlib.Path(__file__).resolve().parents[1]
+MAN=json.loads((ROOT/'release-manifest-v0.63.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.63.0.json').read_text())
+MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
+PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
+REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
+APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.63.0.js').read_text()
+COMPAT=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-browser-compatibility-v1.js').read_text()
+UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-browser-compatibility-ui-v1.js').read_text()
+NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
+FIELDUI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-field-resilience-ui-v1.js').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.63.0.css').read_text()
+AUX={n:(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js'/n).read_text() for n in ['sc-workspace-institutional-research-packages-ui-v1.js','sc-workspace-shared-review-handoff-ui-v1.js','sc-workspace-research-automation-ui-v1.js','sc-workspace-security-privacy-ui-v1.js','sc-workspace-field-diagnostics-v1.js','sc-workspace-public-beta-ii-ui-v1.js','sc-workspace-api-embed-ui-v1.js']}
+class T(unittest.TestCase):
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.63.0','0.62.0','Cross-Browser & Device Compatibility'));self.assertIn('Version: 0.63.0',MAIN)
+ def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0');self.assertFalse(MAN['schema_migration_required'])
+ def test_03_contract_schemas(self):
+  for n in ['sc-workspace-browser-compatibility-v1.schema.json','sc-workspace-browser-compatibility-matrix-v1.schema.json','sc-workspace-browser-compatibility-report-v1.schema.json']: json.loads((ROOT/'schemas'/n).read_text())
+ def test_04_feature_detection(self): self.assertIn('featureDetectionPrimary:true',COMPAT);self.assertIn('userAgentGating:false',COMPAT);self.assertIn('userAgentUsedForDisplayLabelOnly:true',COMPAT)
+ def test_05_file_fallback(self): self.assertIn("fileText?'file-text':fileReader?'file-reader':'unavailable'",COMPAT);self.assertIn('reader.readAsText(file)',COMPAT);self.assertGreaterEqual(APP.count('await readFileTextCompat(file)'),8)
+ def test_06_export_fallback(self): self.assertIn('MAX_DATA_URI_BYTES=1024*1024',COMPAT);self.assertIn("'data-uri-fallback'",COMPAT);self.assertIn('downloadJson(filename,payload,window)',APP)
+ def test_07_history_fallback(self): self.assertIn('safeHistory',COMPAT);self.assertIn("mode:'in-app-only'",COMPAT);self.assertIn('compat.safeHistory(window,historyMode,state)',FIELDUI)
+ def test_08_viewport_adapter(self): self.assertIn('applyViewport',COMPAT);self.assertIn('ResizeObserver',COMPAT);self.assertIn("root.style.setProperty('--scw-viewport-height'",COMPAT);self.assertIn('data-scw-device-class',CSS)
+ def test_09_embed_touch(self): self.assertIn('embedded(win)',COMPAT);self.assertIn("root.dataset.scwTouch",COMPAT);self.assertIn("root.dataset.scwEmbedded",COMPAT)
+ def test_10_privacy(self): self.assertIn('rawUserAgentIncluded:false',COMPAT);self.assertIn('deviceIdentifierIncluded:false',COMPAT);self.assertIn('projectContentIncluded:false',COMPAT);self.assertIn('automaticTelemetry:false',COMPAT)
+ def test_11_ui_route(self): self.assertIn('data-scw-browser-compatibility',PHP);self.assertIn('data-scw-workspace-view="compatibility"',PHP);self.assertIn("compatibility:'Compatibility'",NAV);self.assertIn('data-scw-compat-export-matrix',PHP)
+ def test_12_rest(self): self.assertIn("'/compatibility-contract'",PHP);self.assertIn('/wp-json/sc-workspace/v1/compatibility-contract',MAN['rest_routes'])
+ def test_13_manual_qa_boundary(self): self.assertTrue(MAN['cross_browser_device_compatibility']['manual_qa_required']);self.assertFalse(MAN['cross_browser_device_compatibility']['browser_family_feature_gating']);self.assertIn('do not replace manual browser/device QA',COMPAT)
+ def test_14_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.63.0','0.62.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0630'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0620',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.62.0.json').exists())
+ def test_15_css_editorial(self): self.assertIn('.scw-browser-compatibility{border-top:4px solid #000',CSS);self.assertIn('@supports (height:100dvh)',CSS)
+ def test_16_ui_runtime(self): self.assertIn('helper.applyViewport(root,window)',UI);self.assertIn('helper.report(version',UI);self.assertIn('helper.targetMatrix()',UI)
+ def test_17_secondary_workflows_use_compatibility_adapter(self):
+  joined='\n'.join(AUX.values());self.assertGreaterEqual(joined.count('SCWorkspaceBrowserCompatibility'),7);self.assertIn('readFileText(f,window)',joined);self.assertTrue('downloadJson' in joined or 'downloadText' in joined)
+if __name__=='__main__': unittest.main()

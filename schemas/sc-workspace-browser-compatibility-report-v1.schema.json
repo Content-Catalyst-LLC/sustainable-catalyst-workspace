@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-browser-compatibility-report-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Browser Compatibility Report",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "environment", "viewport", "capabilities", "assessment", "privacy", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-browser-compatibility-report/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "privacy": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

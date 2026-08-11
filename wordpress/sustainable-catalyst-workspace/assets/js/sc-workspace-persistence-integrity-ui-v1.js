@@ -6,7 +6,7 @@
     const version=String(root.dataset.version||'');const section=root.querySelector('[data-scw-persistence-integrity]');if(!section)return;
     const badge=section.querySelector('[data-scw-pi-badge]'),metrics=section.querySelector('[data-scw-pi-metrics]'),findings=section.querySelector('[data-scw-pi-findings]'),status=section.querySelector('[data-scw-pi-status]');
     const runButton=section.querySelector('[data-scw-pi-run]'),exportCurrent=section.querySelector('[data-scw-pi-export-current]'),exportGood=section.querySelector('[data-scw-pi-export-good]'),exportDiag=section.querySelector('[data-scw-pi-export-diagnostic]'),historyButton=section.querySelector('[data-scw-pi-open-history]');
-    const download=(name,payload)=>{const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);};
+    const download=(name,payload)=>{const compat=globalThis.SCWorkspaceBrowserCompatibility;if(compat?.downloadJson)return compat.downloadJson(name,payload,window);const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);return {ok:true,mode:'legacy-object-url'};};
     function render(){
       helper.reconcileJournal(window.localStorage,{workspaceVersion:version,storageSchemaVersion:Number(root.dataset.storageVersion||0)});
       const a=helper.inspect(window.localStorage);if(badge)badge.textContent=a.state.toUpperCase();

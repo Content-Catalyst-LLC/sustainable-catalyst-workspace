@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-browser-compatibility-matrix-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Compatibility Matrix",
+  "type": "object",
+  "required": ["schema", "generatedAt", "state", "findings", "summary", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-browser-compatibility-matrix/1.0"},
+    "state": {"enum": ["ready", "limited", "attention"]},
+    "findings": {"type": "array"},
+    "summary": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

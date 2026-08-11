@@ -15,7 +15,9 @@
       const next=helper.writeRouteState(window.sessionStorage,{view,researchSurface:researchSurfaceValue},routes,version);
       if(!suppressHistory&&helper.capabilities(window).historyApi){
         const state={...(window.history.state||{}),scWorkspace:{view:next.view,researchSurface:next.researchSurface}};
-        try{historyMode==='replace'?window.history.replaceState(state,''):window.history.pushState(state,'');}catch(_){}
+        const compat=globalThis.SCWorkspaceBrowserCompatibility;
+        if(compat?.safeHistory)compat.safeHistory(window,historyMode,state);
+        else try{historyMode==='replace'?window.history.replaceState(state,''):window.history.pushState(state,'');}catch(_){}
       }
       return next;
     }
@@ -48,7 +50,7 @@
     }
     runButton?.addEventListener('click',run);
     resetButton?.addEventListener('click',()=>{const out=helper.clearUiState(window.sessionStorage);restored=helper.writeRouteState(window.sessionStorage,{view:'start',researchSurface:'overview'},routes,version);if(status)status.textContent=`Navigation state reset (${out.removed.length} UI key${out.removed.length===1?'':'s'} removed). Projects and research were not touched.`;navigate('start','overview',false);});
-    exportButton?.addEventListener('click',()=>{const result=run(),payload=helper.snapshot(version,result.assessment,result.caps,result.recovery,result.routeState);const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`workspace-v${version}-resilience-snapshot.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);});
+    exportButton?.addEventListener('click',()=>{const result=run(),payload=helper.snapshot(version,result.assessment,result.caps,result.recovery,result.routeState),compat=globalThis.SCWorkspaceBrowserCompatibility;if(compat?.downloadJson)compat.downloadJson(`workspace-v${version}-resilience-snapshot.json`,payload,window);else{const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`workspace-v${version}-resilience-snapshot.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}});
     window.setTimeout(()=>{
       if(restored.view!=='start'||restored.researchSurface!=='overview')navigate(restored.view,restored.researchSurface,true);
       else remember(currentRoute(),currentRoute()==='research'?researchSurface():'overview','replace');

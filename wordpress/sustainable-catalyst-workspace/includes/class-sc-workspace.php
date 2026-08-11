@@ -94,7 +94,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.62.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.63.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -281,6 +281,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/persistence-integrity-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'persistence_integrity_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/compatibility-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'compatibility_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -2171,6 +2176,37 @@ public function research_templates_contract() {
         ));
     }
 
+    public function compatibility_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-browser-compatibility-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Cross-Browser & Device Compatibility',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'compatibility_schema' => 'sc-workspace-browser-compatibility/1.0',
+            'matrix_schema' => 'sc-workspace-browser-compatibility-matrix/1.0',
+            'report_schema' => 'sc-workspace-browser-compatibility-report/1.0',
+            'target_schema' => 'sc-workspace-browser-targets/1.0',
+            'feature_detection_primary' => true,
+            'user_agent_feature_gating' => false,
+            'file_text_filereader_fallback' => true,
+            'blob_object_url_export' => true,
+            'bounded_data_uri_export_fallback' => true,
+            'guarded_history_api' => true,
+            'in_app_navigation_fallback' => true,
+            'root_bound_viewport_adapter' => true,
+            'embedded_context_detection' => true,
+            'touch_pointer_detection' => true,
+            'manual_device_qa_required' => true,
+            'raw_user_agent_in_report' => false,
+            'device_fingerprinting' => false,
+            'automatic_upload' => false,
+            'telemetry' => false,
+            'canonical_mutation' => false,
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2284,8 +2320,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0620',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.62.0.css',
+            'sc-workspace-v0630',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.63.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2584,9 +2620,16 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0620',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.62.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1'),
+            'sc-workspace-browser-compatibility-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-browser-compatibility-v1.js',
+            array('sc-workspace-field-resilience-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0630',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.63.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2597,7 +2640,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0620'),
+            array('sc-workspace-v0630'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2615,8 +2658,15 @@ public function research_templates_contract() {
             SC_WORKSPACE_VERSION,
             true
         );
+        wp_enqueue_script(
+            'sc-workspace-browser-compatibility-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-browser-compatibility-ui-v1.js',
+            array('sc-workspace-focused-shell-v1', 'sc-workspace-browser-compatibility-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
 
-        wp_localize_script('sc-workspace-v0620', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0630', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2801,7 +2851,7 @@ public function research_templates_contract() {
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button><button type="button" data-scw-workspace-view="reliability">Reliability</button><button type="button" data-scw-workspace-view="integrity">Persistence Integrity</button>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button><button type="button" data-scw-workspace-view="reliability">Reliability</button><button type="button" data-scw-workspace-view="integrity">Persistence Integrity</button><button type="button" data-scw-workspace-view="compatibility">Compatibility</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -3645,6 +3695,15 @@ public function research_templates_contract() {
                 <div class="scw-pi-findings" data-scw-pi-findings><div class="scw-beta-empty">Running persistence integrity checks…</div></div>
                 <p class="scw-pi-status" data-scw-pi-status role="status" aria-live="polite">Persistence integrity audit has not run yet.</p>
                 <div class="scw-pi-boundary" role="note"><strong>Integrity is not encryption or automatic repair.</strong><span>The checksum receipt detects persistence integrity drift and unexpected byte changes; it is not a security signature. Recovery candidate exports contain private Workspace content and remain manual-review artifacts. Workspace never overwrites canonical research merely because an integrity check reports attention.</span></div>
+            </section>
+
+            <section class="scw-browser-compatibility" data-scw-workspace-section="compatibility" data-scw-browser-compatibility hidden aria-labelledby="scw-browser-compatibility-title">
+                <div class="scw-compat-head"><div><div class="scw-kicker">v0.63 / CROSS-BROWSER &amp; DEVICE COMPATIBILITY</div><h2 id="scw-browser-compatibility-title">Adapt to the browser without guessing from the browser name.</h2><p>Inspect the runtime paths Workspace can actually use for persistence, navigation, file import/export, viewport sizing, touch input, and WordPress embedding. Feature detection controls fallbacks; browser-family labels are diagnostic only.</p></div><span class="scw-compat-badge" data-scw-compat-badge>CHECKING</span></div>
+                <div class="scw-compat-summary" data-scw-compat-summary aria-label="Browser compatibility summary"></div>
+                <div class="scw-compat-actions"><button class="scw-button scw-button-primary" type="button" data-scw-compat-run>Run compatibility audit</button><button class="scw-button" type="button" data-scw-compat-export>Export compatibility report</button><button class="scw-button" type="button" data-scw-compat-export-matrix>Export target matrix</button></div>
+                <div class="scw-compat-findings" data-scw-compat-findings><div class="scw-beta-empty">Running local browser capability checks…</div></div>
+                <p class="scw-compat-status" data-scw-compat-status role="status" aria-live="polite">Compatibility audit has not run yet.</p>
+                <div class="scw-compat-boundary" role="note"><strong>Capability probes are not certification.</strong><span>v0.63 provides guarded fallbacks and automated capability fixtures, but it does not claim every physical browser/device combination has been manually certified. The exported target matrix is the field-QA checklist. Reports omit raw user-agent strings, device identifiers, project content, source URLs, query strings, and page fragments.</span></div>
             </section>
 
             <section class="scw-research-automation" data-scw-workspace-section="automation" data-scw-research-automation hidden aria-labelledby="scw-research-automation-title">

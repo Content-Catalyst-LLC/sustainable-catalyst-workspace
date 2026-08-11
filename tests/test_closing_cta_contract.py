@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.62.0.js'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.63.0.js'
 class ClosingCTAContractTests(unittest.TestCase):
     def test_closing_primary_action_is_new_project(self):
         p=PHP.read_text()
