@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-accessibility-checklist-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Manual Accessibility Checklist",
+  "type": "object",
+  "required": ["schema", "target", "claimBoundary", "requiredManualChecks", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-accessibility-checklist/1.0"},
+    "target": {"const": "WCAG 2.2 AA"},
+    "claimBoundary": {"type": "string", "minLength": 1},
+    "requiredManualChecks": {"type": "array", "minItems": 10, "items": {"type": "object", "required": ["id", "label", "procedure"]}},
+    "governance": {"type": "object", "required": ["manualReviewRequired", "automaticCertification", "telemetry", "canonicalMutation"]}
+  },
+  "additionalProperties": true
+}

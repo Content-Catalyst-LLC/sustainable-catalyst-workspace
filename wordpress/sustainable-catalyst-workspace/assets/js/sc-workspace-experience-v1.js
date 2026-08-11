@@ -21,6 +21,14 @@
     {id:'reconcile',area:'review',label:'Reconcile',description:'Selectively carry reviewed changes into a new project copy.',keywords:'review reconcile selective apply'},
     {id:'safety',area:'review',label:'Safety',description:'Inspect explicit action gates for high-impact operations.',keywords:'review safety gate preflight'},
     {id:'audit',area:'review',label:'Audit',description:'Inspect authoritative audit and governance records.',keywords:'review audit governance provenance'},
+    {id:'automation',area:'review',label:'Automation',description:'Inspect explicit local research routines and execution receipts.',keywords:'review automation routines'},
+    {id:'performance',area:'review',label:'Performance',description:'Inspect scale and large-project performance boundaries.',keywords:'review performance scale'},
+    {id:'security',area:'review',label:'Security & Privacy',description:'Inspect local security, privacy, deletion, and portability controls.',keywords:'review security privacy'},
+    {id:'beta',area:'review',label:'Beta Readiness',description:'Run the local public-product beta gate.',keywords:'review beta readiness'},
+    {id:'reliability',area:'review',label:'Reliability',description:'Inspect field-use and route recovery resilience.',keywords:'review reliability recovery'},
+    {id:'integrity',area:'review',label:'Persistence Integrity',description:'Inspect canonical local save and recovery integrity evidence.',keywords:'review persistence integrity recovery'},
+    {id:'compatibility',area:'review',label:'Compatibility',description:'Inspect browser/device capability fallbacks.',keywords:'review compatibility browser device'},
+    {id:'accessibility',area:'review',label:'Accessibility',description:'Audit keyboard, focus, semantic, motion, zoom, and screen-reader readiness.',keywords:'review accessibility keyboard focus wcag screen reader'},
     {id:'interoperability',area:'exchange',label:'Import & Interoperability',description:'Stage and review research/project interchange.',keywords:'exchange import export interoperability markdown csv zotero obsidian notion'},
     {id:'collaboration',area:'exchange',label:'Collaborate',description:'Prepare and exchange structured asynchronous reviews.',keywords:'exchange collaborate review comments'},
     {id:'api-embed',area:'exchange',label:'API & Embed',description:'Create explicit static read-only projections and durable references.',keywords:'exchange api embed reference readonly projection integration'},
@@ -123,8 +131,9 @@
       list.appendChild(button);
     });
   }
-  function openDialog(dialog,focusTarget){if(!dialog){return;}dialog.hidden=false;document.body.classList.add('scw-dialog-open');var target=focusTarget||dialog.querySelector('input,button,[tabindex="0"]');if(target){setTimeout(function(){target.focus();},0);}}
-  function closeDialog(dialog){if(!dialog){return;}dialog.hidden=true;document.body.classList.remove('scw-dialog-open');}
+  var dialogOpener=null;
+  function openDialog(dialog,focusTarget){if(!dialog){return;}dialogOpener=document.activeElement;dialog.hidden=false;document.body.classList.add('scw-dialog-open');var target=focusTarget||dialog.querySelector('input,button,[tabindex="0"]');if(target){setTimeout(function(){target.focus();},0);}}
+  function closeDialog(dialog){if(!dialog){return;}dialog.hidden=true;document.body.classList.remove('scw-dialog-open');var restore=dialogOpener;dialogOpener=null;if(restore&&typeof restore.focus==='function'){setTimeout(function(){try{restore.focus({preventScroll:true});}catch(e){restore.focus();}},0);}}
   function init(shell){
     if(!shell||shell.dataset.scwExperienceReady==='1'){return governanceState();}
     shell.dataset.scwExperienceReady='1';

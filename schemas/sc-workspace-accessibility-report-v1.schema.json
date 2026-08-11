@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-accessibility-report-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Accessibility Report",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "target", "assessment", "privacy", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-accessibility-report/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "target": {"const": "WCAG 2.2 AA"},
+    "privacy": {"type": "object", "required": ["projectContentIncluded", "objectContentIncluded", "sourceContentIncluded", "sourceUrlsIncluded", "deviceIdentifierIncluded", "rawUserAgentIncluded", "automaticSubmission"]},
+    "governance": {"type": "object", "required": ["automatedCertification", "manualAuditRequired", "canonicalMutation", "automaticRepair", "automaticUpload", "telemetry", "hiddenScore"]}
+  },
+  "additionalProperties": true
+}

@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0630';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0630';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0640';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0640';
+    const LEGACY_PENDING_KEY_V0630 = 'sc_workspace_registry_pending_v0630';
     const LEGACY_PENDING_KEY_V0620 = 'sc_workspace_registry_pending_v0620';
     const LEGACY_PENDING_KEY_V0610 = 'sc_workspace_registry_pending_v0610';
     const LEGACY_PENDING_KEY_V0600 = 'sc_workspace_registry_pending_v0600';
@@ -141,6 +142,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0630);
         delete_option(self::LEGACY_PENDING_KEY_V0620);
         delete_option(self::LEGACY_PENDING_KEY_V0610);
         delete_option(self::LEGACY_PENDING_KEY_V0600);
@@ -262,11 +264,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.62.0',
+            'previous_version' => '0.63.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Cross-Browser & Device Compatibility adds feature-detected import/export/history fallbacks, root-bound viewport adaptation, touch/embed awareness, and a privacy-minimized compatibility audit without changing canonical schemas.',
+            'change_summary' => 'Accessibility & Keyboard-First Product Audit strengthens keyboard navigation, focus management, dialog containment, semantic review, reduced-motion handling, zoom/reflow QA, and privacy-minimized accessibility diagnostics without changing canonical schemas.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.61 Product Hardening I and v0.62 Persistence Integrity remain intact. v0.63 uses feature detection rather than browser-family gating, adds FileReader and guarded download/history fallbacks, and adapts to root-bound viewport/embed conditions. Browser-family labels are diagnostic only. Compatibility reports omit raw user-agent strings and device identifiers. No automatic upload, telemetry, canonical repair, or hidden compatibility scoring.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.61-v0.63 hardening remains intact. v0.64 adds keyboard-first navigation, focus restoration and containment for modal dialogs, semantic/runtime accessibility auditing, stronger focus visibility, reduced-motion behavior, and an explicit manual WCAG 2.2 AA checklist. Automated checks are advisory and do not constitute accessibility certification. No telemetry, canonical mutation, hidden accessibility scoring, or automatic submission.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
