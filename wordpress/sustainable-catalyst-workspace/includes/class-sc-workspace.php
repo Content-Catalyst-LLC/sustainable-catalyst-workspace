@@ -94,7 +94,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.65.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.66.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -296,6 +296,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/field-use-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'field_use_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/import-export-compatibility-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'import_export_compatibility_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -2275,6 +2280,32 @@ public function research_templates_contract() {
         ));
     }
 
+
+    public function import_export_compatibility_contract() {
+        $project_versions = array('1.0','2.0','3.0','3.1','4.0','5.0','6.0','7.0','8.0','9.0','10.0','11.0','12.0','13.0','14.0','15.0','16.0','17.0','18.0','19.0','20.0');
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-import-export-compatibility-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Import, Export & Backward-Compatibility Hardening',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'export_schema' => 'sc-workspace-project-export/20.0',
+            'schema_migration_required' => false,
+            'supported_project_schemas' => array_map(function($version) { return 'sc-workspace-project/' . $version; }, $project_versions),
+            'supported_export_schemas' => array_map(function($version) { return 'sc-workspace-project-export/' . $version; }, $project_versions),
+            'supported_storage_versions' => range(1, 35),
+            'project_import_mode' => 'stage-review-new-local-copy',
+            'future_project_schema_downgrade' => false,
+            'automatic_import_commit' => false,
+            'automatic_overwrite' => false,
+            'automatic_trust_elevation' => false,
+            'server_import_pipeline' => false,
+            'external_network_lookup' => false,
+            'round_trip_export_check' => true,
+            'round_trip_checksum_purpose' => 'drift-detection-only-not-security',
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2388,8 +2419,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0650',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.65.0.css',
+            'sc-workspace-v0660',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.66.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2523,6 +2554,13 @@ public function research_templates_contract() {
             'sc-workspace-interchange-v2',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-interchange-v2.js',
             array(),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-import-export-compatibility-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-import-export-compatibility-v1.js',
+            array('sc-workspace-interchange-v2'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2709,9 +2747,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0650',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.65.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1'),
+            'sc-workspace-v0660',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.66.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2722,7 +2760,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0650'),
+            array('sc-workspace-v0660'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2755,7 +2793,7 @@ public function research_templates_contract() {
             true
         );
 
-        wp_localize_script('sc-workspace-v0650', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0660', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -3294,6 +3332,11 @@ public function research_templates_contract() {
                         <input type="file" accept="application/json,.json" data-scw-import-file hidden>
                     </div>
                 </div>
+                <div class="scw-project-import-stage" data-scw-project-import-stage hidden aria-live="polite"></div>
+                <div class="scw-project-import-actions">
+                    <button class="scw-button scw-button-primary" type="button" data-scw-project-import-commit disabled>Import staged copy</button>
+                    <button class="scw-button" type="button" data-scw-project-import-clear disabled>Clear staged import</button>
+                </div>
 
                 <form class="scw-create" data-scw-create-form hidden>
                     <label><span>Project name</span><input type="text" name="title" maxlength="120" required placeholder="Untitled project"></label>
@@ -3575,6 +3618,13 @@ public function research_templates_contract() {
                 <section class="scw-interoperability-history" aria-labelledby="scw-interoperability-history-heading">
                     <div class="scw-knowledge-panel-head"><span>03 / ACTIVITY</span><h3 id="scw-interoperability-history-heading">Recent interoperability activity</h3></div>
                     <div data-scw-interoperability-history></div>
+                    <div class="scw-interoperability-compatibility" aria-labelledby="scw-backward-compatibility-title">
+                        <div class="scw-editorial-kicker">BACKWARD COMPATIBILITY</div>
+                        <h3 id="scw-backward-compatibility-title">Know what Workspace will accept before you commit an import.</h3>
+                        <p>Project JSON is staged and classified locally. Supported historical schemas normalize only after explicit commit; newer future schemas are blocked rather than silently downgraded.</p>
+                        <div class="scw-backward-compatibility-matrix" data-scw-backward-compatibility-matrix></div>
+                        <button class="scw-button" type="button" data-scw-backward-compatibility-export>Export compatibility matrix</button>
+                    </div>
                 </section>
             </section>
 

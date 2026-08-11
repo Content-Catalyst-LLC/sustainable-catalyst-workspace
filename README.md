@@ -1,16 +1,17 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.64.0 — Accessibility & Keyboard-First Product Audit**
+Current release: **v0.66.0 — Import, Export & Backward-Compatibility Hardening**
 
-Workspace is the free, local-first Sustainable Catalyst research and decision environment. v0.64.0 hardens keyboard-first operation, focus management, dialog containment/restoration, semantic accessibility review, visible focus, reduced-motion and forced-colors behavior, and explicit zoom/reflow and screen-reader field QA. Workspace targets WCAG 2.2 AA; automated checks remain diagnostic and do not constitute accessibility certification.
+Workspace is the free, local-first Sustainable Catalyst research and decision environment. v0.66.0 hardens project interchange around an explicit **stage → review → commit-as-new-copy** boundary, historical Workspace project/export compatibility, future-schema rejection, and round-trip validation before current project exports are written.
 
 Canonical public route: `/platform/`
 
 Canonical Knowledge Library route: `/knowledge-libraries/`
 
-Core data contracts remain schema-stable at Storage 35, Project 20.0, Project Export 20.0, and Notebook Workspace 8.0.
+Core data contracts remain schema-stable at Storage 35, Project 20.0, Project Export 20.0, and Notebook Workspace 8.0. v0.66.0 does not migrate canonical Workspace data.
 
-v0.62.0 persistence protections remain in force: verified-save integrity receipts, an interrupted-write journal, checksum-bound last-known-good snapshots, and non-destructive recovery candidates. FNV-1a remains a corruption/drift detector only—not encryption, authentication, or a security signature.
+Project Import recognizes the documented Workspace Project and Project Export schema generations from 1.0 through 20.0, including 3.1. Selecting a file never commits it automatically. Supported legacy material is normalized only after explicit import commit and is always assigned a new local project ID; future project schemas are blocked rather than silently downgraded.
 
+Project Export now performs a current-schema round-trip projection check before writing the file. The FNV-1a fingerprint used by that check is a deterministic drift detector only—not encryption, authentication, or a security signature.
 
-v0.63.0 compatibility protections remain in force: feature-detected import/export/history fallbacks, root-bound viewport adaptation, touch/embed awareness, and privacy-minimized browser capability diagnostics.
+v0.65.0 responsive/field-use behavior and contextual Lab handoffs remain in force. v0.64.1 accessibility runtime/dependency protection, v0.63 browser compatibility fallbacks, and v0.62 persistence/recovery protections remain retained.

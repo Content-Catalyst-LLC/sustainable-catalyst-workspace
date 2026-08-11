@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-import-export-compatibility-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace import/export compatibility contract",
+  "type": "object",
+  "required": ["schema", "projectSchema", "importMode", "futureSchemaDowngrade"],
+  "properties": {
+    "schema": {"const": "sc-workspace-import-export-compatibility/1.0"},
+    "projectSchema": {"const": "sc-workspace-project/20.0"},
+    "importMode": {"const": "stage-review-new-local-copy"},
+    "supportedProjectSchemaFloor": {"type": "string"},
+    "futureSchemaDowngrade": {"const": false}
+  },
+  "additionalProperties": true
+}

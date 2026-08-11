@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-round-trip-receipt-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace export round-trip receipt",
+  "type": "object",
+  "required": ["schema", "ok", "equivalent", "beforeFingerprint", "afterFingerprint", "objectCount"],
+  "properties": {
+    "schema": {"const": "sc-workspace-round-trip-receipt/1.0"},
+    "ok": {"type": "boolean"},
+    "equivalent": {"type": "boolean"},
+    "reason": {"type": "string"},
+    "beforeFingerprint": {"type": "string"},
+    "afterFingerprint": {"type": "string"},
+    "objectCount": {"type": "integer", "minimum": 0},
+    "checksumPurpose": {"type": "string"}
+  },
+  "additionalProperties": true
+}

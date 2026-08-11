@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-import-assessment-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace staged project import assessment",
+  "type": "object",
+  "required": ["schema", "status", "reviewRequired", "automaticCommit", "automaticOverwrite", "currentProjectSchema", "warnings", "errors"],
+  "properties": {
+    "schema": {"const": "sc-workspace-import-assessment/1.0"},
+    "status": {"enum": ["ready", "blocked"]},
+    "reviewRequired": {"const": true},
+    "automaticCommit": {"const": false},
+    "automaticOverwrite": {"const": false},
+    "futureSchemaBlocked": {"type": "boolean"},
+    "kind": {"type": "string"},
+    "sourceProjectSchema": {"type": "string"},
+    "sourceExportSchema": {"type": "string"},
+    "currentProjectSchema": {"const": "sc-workspace-project/20.0"},
+    "currentExportSchema": {"const": "sc-workspace-project-export/20.0"},
+    "upgradeRequired": {"type": "boolean"},
+    "sourceProjectId": {"type": "string"},
+    "title": {"type": "string"},
+    "objectCount": {"type": "integer", "minimum": 0},
+    "idCollision": {"type": "boolean"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "createdAt": {"type": "string"}
+  },
+  "additionalProperties": true
+}

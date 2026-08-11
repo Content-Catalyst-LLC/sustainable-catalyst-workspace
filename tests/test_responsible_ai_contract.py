@@ -2,15 +2,15 @@ import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php'
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.65.0.js'
-CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.65.0.css'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.66.0.js'
+CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css'
 SCHEMA=ROOT/'schemas/sc-workspace-ai-assistance-v1.schema.json'
 PROJECT=ROOT/'schemas/sc-workspace-project-v12.schema.json'
-MANIFEST=ROOT/'release-manifest-v0.65.0.json'
+MANIFEST=ROOT/'release-manifest-v0.66.0.json'
 AI_ADAPTER=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-ai-adapter-v1.js'
 class ResponsibleAIContractTests(unittest.TestCase):
   def test_release_boundary(self):
-    m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.65.0'); self.assertEqual(m['previous_version'],'0.64.1'); self.assertEqual(m['storage_schema_version'],35); self.assertEqual(m['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(m['ai_assistance_schema'],'sc-workspace-ai-assistance/1.0'); self.assertIn('responsible_ai_assistance',m['capabilities'])
+    m=json.loads(MANIFEST.read_text()); self.assertEqual(m['version'],'0.66.0'); self.assertEqual(m['previous_version'],'0.65.0'); self.assertEqual(m['storage_schema_version'],35); self.assertEqual(m['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(m['ai_assistance_schema'],'sc-workspace-ai-assistance/1.0'); self.assertIn('responsible_ai_assistance',m['capabilities'])
   def test_schema_and_limits(self):
     s=json.loads(SCHEMA.read_text()); self.assertEqual(s['properties']['schema']['const'],'sc-workspace-ai-assistance/1.0'); self.assertEqual(s['properties']['sessions']['maxItems'],40); props=s['properties']['sessions']['items']['properties']; self.assertEqual(props['objectIds']['maxItems'],24); self.assertEqual(props['response']['maxLength'],30000)
   def test_project_contains_ai_assistance(self):
@@ -45,7 +45,7 @@ class ResponsibleAIContractTests(unittest.TestCase):
     self.assertTrue(m['ai_assistance']['citation_object_ids_must_be_selected_grounding_objects'])
     self.assertTrue(m['governance']['ai_response_citations_limited_to_selected_grounding_objects'])
   def test_v10_raw_project_import_compatibility(self):
-    j=JS.read_text(); self.assertIn('rawProject.schema !== LEGACY_PROJECT_SCHEMA_V10',j)
+    j=JS.read_text(); compat=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-import-export-compatibility-v1.js').read_text(); self.assertIn('classifyProjectPayload',j); self.assertIn("'10.0'",compat); self.assertIn("sc-workspace-project/",compat)
 
   def test_rest_ui_and_css(self):
     p=PHP.read_text(); c=CSS.read_text(); self.assertIn("'/ai-assistance-contract'",p); self.assertIn('public function ai_assistance_contract()',p); self.assertIn('RESPONSIBLE AI ASSISTANCE',p); self.assertIn('data-scw-project-mode="assist"',p); self.assertIn('.scw-ai{',c)
@@ -54,5 +54,5 @@ class ResponsibleAIContractTests(unittest.TestCase):
   def test_object_cleanup_and_clone_remap(self):
     j=JS.read_text(); self.assertIn('cleanAiAssistanceReferences(project, object.id)',j); self.assertIn('copy.aiAssistance.sessions=copy.aiAssistance.sessions.map',j); self.assertIn('objectMap.get(v)',j)
   def test_v10_project_export_import_compatibility(self):
-    j=JS.read_text(); self.assertIn("const EXPORT_SCHEMA = 'sc-workspace-project-export/20.0'",j); self.assertIn("LEGACY_EXPORT_SCHEMA_V10",j); self.assertIn('payload.schema === LEGACY_EXPORT_SCHEMA_V10',j)
+    j=JS.read_text(); compat=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-import-export-compatibility-v1.js').read_text(); self.assertIn("const EXPORT_SCHEMA = 'sc-workspace-project-export/20.0'",j); self.assertIn('classifyProjectPayload',j); self.assertIn("'10.0'",compat); self.assertIn("sc-workspace-project-export/",compat)
 if __name__=='__main__': unittest.main()

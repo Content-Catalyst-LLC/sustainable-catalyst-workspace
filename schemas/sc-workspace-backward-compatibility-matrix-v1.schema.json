@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-backward-compatibility-matrix-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace backward compatibility matrix",
+  "type": "object",
+  "required": ["schema", "current", "projectImport", "browserStorage", "portableProject", "interchange", "boundaries"],
+  "properties": {
+    "schema": {"const": "sc-workspace-backward-compatibility-matrix/1.0"},
+    "current": {"type": "object"},
+    "projectImport": {"type": "object"},
+    "browserStorage": {"type": "object"},
+    "portableProject": {"type": "object"},
+    "interchange": {"type": "object"},
+    "boundaries": {"type": "object"}
+  },
+  "additionalProperties": true
+}
