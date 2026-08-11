@@ -1,0 +1,15 @@
+const assert=require('assert');
+const api=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-first-run-onboarding-v1.js');
+assert.equal(api.STARTERS.length,5);
+assert.deepEqual(api.STARTERS.map(x=>x.id),['blank','research-investigation','analytical-assessment','decision-case','publication-preparation']);
+let v=api.validateDraft({title:'  Coastal resilience  ',description:'  Compare options  ',starter:'decision-case'});
+assert.equal(v.ok,true);assert.equal(v.draft.title,'Coastal resilience');assert.equal(v.draft.description,'Compare options');assert.equal(v.draft.starter,'decision-case');
+v=api.validateDraft({title:'',starter:'blank'});assert.equal(v.ok,false);assert.equal(v.errors[0].field,'title');
+let plan=api.creationPlan({title:'Grid planning',starter:'blank'});assert.equal(plan.ok,true);assert.equal(plan.createMode,'blank-project');assert.equal(plan.starter.workflow,'');
+plan=api.creationPlan({title:'Grid planning',starter:'research-investigation'});assert.equal(plan.ok,true);assert.equal(plan.createMode,'guided-project');assert.equal(plan.starter.workflow,'research-investigation');assert.equal(plan.requiresExplicitSubmit,true);assert.equal(plan.automaticUpload,false);assert.equal(plan.automaticSyncEnrollment,false);assert.equal(plan.automaticLifecycleAdvance,false);
+let env=api.environment({projectCount:0,activeProject:false,storageWritable:true,authenticated:false});assert.equal(env.firstRun,true);assert.equal(env.accountRequired,false);assert.equal(env.automaticUpload,false);assert.equal(env.blankProjectSupported,true);
+env=api.environment({projectCount:2,activeProject:true,storageWritable:true,authenticated:true});assert.equal(env.firstRun,false);assert.equal(env.projectCount,2);
+assert.match(api.boundary(false),/No account is required/);assert.match(api.boundary(true),/Signing in does not upload it/);
+const report=api.report('0.71.0',{projectCount:0,storageWritable:true,authenticated:false});assert.equal(report.schema,'sc-workspace-first-run-onboarding-report/1.0');assert.equal(report.workspaceVersion,'0.71.0');assert.equal(report.starterCount,5);assert.equal(report.privacy.projectTitleIncluded,false);assert.equal(report.privacy.projectDescriptionIncluded,false);assert.equal(report.governance.automaticProjectCreation,false);assert.equal(report.governance.automaticStarterSelection,false);assert.equal(report.governance.automaticUpload,false);assert.equal(report.governance.automaticSync,false);
+const contract=api.contract();assert.equal(contract.projectCreation,'explicit-submit');assert.equal(contract.firstRunDetection,'zero-local-projects');assert.equal(contract.schemaMigration,false);
+console.log('PASS - v0.71.0 first-run onboarding runtime');

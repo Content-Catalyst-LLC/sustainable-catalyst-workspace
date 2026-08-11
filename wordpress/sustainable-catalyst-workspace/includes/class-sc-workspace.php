@@ -104,7 +104,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.70.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.71.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -296,6 +296,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/public-product-beta-iii-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'public_product_beta_iii_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/first-run-onboarding-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'first_run_onboarding_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/field-resilience-contract', array(
@@ -2285,6 +2290,33 @@ public function research_templates_contract() {
         ));
     }
 
+    public function first_run_onboarding_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-first-run-onboarding-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'First-Run Onboarding & Project Creation',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'export_schema' => 'sc-workspace-project-export/20.0',
+            'schema_migration_required' => false,
+            'onboarding_schema' => 'sc-workspace-first-run-onboarding/1.0',
+            'draft_schema' => 'sc-workspace-first-project-draft/1.0',
+            'report_schema' => 'sc-workspace-first-run-onboarding-report/1.0',
+            'first_run_detection' => 'zero-local-projects',
+            'starter_count' => 5,
+            'starters' => array('blank','research-investigation','analytical-assessment','decision-case','publication-preparation'),
+            'project_creation' => 'explicit-submit',
+            'blank_projects_supported' => true,
+            'guest_use_first_class' => true,
+            'account_required' => false,
+            'automatic_project_creation' => false,
+            'automatic_starter_selection' => false,
+            'automatic_upload' => false,
+            'automatic_sync' => false,
+            'automatic_lifecycle_advance' => false,
+        ));
+    }
+
     public function field_resilience_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-resilience-contract/1.0',
@@ -2563,8 +2595,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0700',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.70.0.css',
+            'sc-workspace-v0710',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.71.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2905,6 +2937,13 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-first-run-onboarding-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-first-run-onboarding-v1.js',
+            array('sc-workspace-public-beta-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-long-session-performance-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-v1.js',
             array('sc-workspace-scale-performance-v1'),
@@ -2919,9 +2958,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0700',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.70.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1'),
+            'sc-workspace-v0710',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.71.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2932,7 +2971,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0700'),
+            array('sc-workspace-v0710'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2968,14 +3007,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v0700', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0710', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v0700', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0710', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2983,12 +3022,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v0700', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0710', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v0700', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0710', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -3241,6 +3280,27 @@ public function research_templates_contract() {
                     </div>
                     <div class="scw-public-beta-badge"><span>BETA III</span><strong>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong></div>
                 </div>
+                <section class="scw-first-run" data-scw-first-run aria-labelledby="scw-first-run-title">
+                    <div class="scw-first-run-copy">
+                        <div class="scw-editorial-kicker">FIRST RUN / YOUR FIRST PROJECT</div>
+                        <h3 id="scw-first-run-title">Name the work and choose only as much structure as you need.</h3>
+                        <p>Workspace creates the project locally after you submit this form. You can start blank or begin with an editable guided workflow; nothing is inferred, completed, uploaded, or enrolled in sync automatically.</p>
+                    </div>
+                    <form class="scw-first-run-form" data-scw-first-run-form novalidate>
+                        <label><span>Project name</span><input type="text" name="title" maxlength="120" required placeholder="What are you working on?" autocomplete="off"></label>
+                        <label><span>Purpose <em>optional</em></span><textarea name="description" rows="2" maxlength="600" placeholder="What are you trying to understand, analyze, decide, or prepare?"></textarea></label>
+                        <fieldset class="scw-first-run-starters"><legend>Starting shape</legend>
+                            <label><input type="radio" name="starter" value="blank" checked><span><strong>Blank project</strong><small>Start with an empty project and add structure later.</small></span></label>
+                            <label><input type="radio" name="starter" value="research-investigation"><span><strong>Research investigation</strong><small>Question → sources → evidence → analysis → briefing</small></span></label>
+                            <label><input type="radio" name="starter" value="analytical-assessment"><span><strong>Analytical assessment</strong><small>Variables → assumptions → methods → comparisons → findings</small></span></label>
+                            <label><input type="radio" name="starter" value="decision-case"><span><strong>Decision case</strong><small>Alternatives → criteria → evidence → risk → rationale</small></span></label>
+                            <label><input type="radio" name="starter" value="publication-preparation"><span><strong>Publication preparation</strong><small>Basis → outline → draft → review → export</small></span></label>
+                        </fieldset>
+                        <div class="scw-first-run-boundary" data-scw-first-run-boundary role="note">Creating a project saves it locally on this device. No account is required, and nothing is uploaded automatically.</div>
+                        <div class="scw-first-run-actions"><button class="scw-button scw-button-primary" type="submit">Create first project</button><button class="scw-button" type="button" data-scw-first-run-blank>Use the standard project form</button></div>
+                        <div class="scw-first-run-status" data-scw-first-run-status role="status" aria-live="polite"></div>
+                    </form>
+                </section>
                 <div class="scw-public-beta-metrics" aria-label="Workspace beta summary">
                     <div><strong data-scw-beta-projects>0</strong><span>Active projects</span></div>
                     <div><strong data-scw-beta-objects>0</strong><span>Canonical objects</span></div>

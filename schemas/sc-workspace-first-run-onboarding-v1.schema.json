@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-first-run-onboarding-v1.schema.json",
+  "title": "Workspace First-Run Onboarding",
+  "type": "object",
+  "required": ["schema", "firstRun", "projectCount", "accountRequired", "automaticUpload", "automaticSync"],
+  "properties": {
+    "schema": {"const": "sc-workspace-first-run-onboarding/1.0"},
+    "firstRun": {"type": "boolean"},
+    "projectCount": {"type": "integer", "minimum": 0},
+    "activeProject": {"type": "boolean"},
+    "storageWritable": {"type": "boolean"},
+    "authenticated": {"type": "boolean"},
+    "accountRequired": {"const": false},
+    "automaticUpload": {"const": false},
+    "automaticSync": {"const": false},
+    "automaticGuidedSelection": {"const": false},
+    "blankProjectSupported": {"const": true}
+  },
+  "additionalProperties": true
+}

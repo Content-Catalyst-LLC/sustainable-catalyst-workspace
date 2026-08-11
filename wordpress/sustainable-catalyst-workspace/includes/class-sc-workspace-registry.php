@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0700';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0700';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0710';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0710';
+    const LEGACY_PENDING_KEY_V0700 = 'sc_workspace_registry_pending_v0700';
     const LEGACY_PENDING_KEY_V0690 = 'sc_workspace_registry_pending_v0690';
     const LEGACY_PENDING_KEY_V0680 = 'sc_workspace_registry_pending_v0680';
     const LEGACY_PENDING_KEY_V0670 = 'sc_workspace_registry_pending_v0670';
@@ -150,6 +151,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0700);
         delete_option(self::LEGACY_PENDING_KEY_V0690);
         delete_option(self::LEGACY_PENDING_KEY_V0680);
         delete_option(self::LEGACY_PENDING_KEY_V0670);
@@ -280,12 +282,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.69.0',
+            'previous_version' => '0.70.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Public Product Beta III',
-            'change_summary' => 'Public Product Beta III validates Workspace as one coherent nine-stage research journey from discovery through deliberate export or handoff.',
+            'release_name' => 'First-Run Onboarding & Project Creation',
+            'change_summary' => 'First-run onboarding makes the initial project boundary explicit and lets a new user create a blank or guided local project from one focused Start surface.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Beta III topology checks are local-only, manual walkthrough marks live only in sessionStorage, and no hidden score or behavioral telemetry is introduced.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. First-run status is derived from zero local projects; project creation requires explicit submit and does not upload content, enroll sync, or advance lifecycle state.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

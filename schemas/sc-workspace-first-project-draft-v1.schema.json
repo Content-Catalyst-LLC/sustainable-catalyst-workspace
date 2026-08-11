@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-first-project-draft-v1.schema.json",
+  "title": "Workspace First Project Draft",
+  "type": "object",
+  "required": ["schema", "title", "description", "starter"],
+  "properties": {
+    "schema": {"const": "sc-workspace-first-project-draft/1.0"},
+    "title": {"type": "string", "maxLength": 120},
+    "description": {"type": "string", "maxLength": 600},
+    "starter": {"enum": ["blank", "research-investigation", "analytical-assessment", "decision-case", "publication-preparation"]}
+  },
+  "additionalProperties": false
+}
