@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-performance-session-report-v1.schema.json",
+  "title": "Workspace Performance Session Report",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "generatedAt", "session", "privacy", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-performance-session-report/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "generatedAt": {"type": "string"},
+    "session": {"type": "object"},
+    "privacy": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

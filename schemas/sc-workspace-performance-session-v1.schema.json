@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-performance-session-v1.schema.json",
+  "title": "Workspace Performance Session Summary",
+  "type": "object",
+  "required": ["schema", "generatedAt", "startedAt", "state", "findings", "counters", "render", "index", "memory", "boundedSamples"],
+  "properties": {
+    "schema": {"const": "sc-workspace-performance-session/1.0"},
+    "generatedAt": {"type": "string"},
+    "startedAt": {"type": "string"},
+    "ageMs": {"type": "number", "minimum": 0},
+    "state": {"enum": ["ready", "attention", "critical"]},
+    "findings": {"type": "array", "items": {"type": "string"}},
+    "counters": {"type": "object"},
+    "render": {"type": "object"},
+    "index": {"type": "object"},
+    "memory": {"type": "object"},
+    "boundedSamples": {"type": "object"}
+  },
+  "additionalProperties": true
+}

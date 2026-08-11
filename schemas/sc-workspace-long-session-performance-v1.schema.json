@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-long-session-performance-v1.schema.json",
+  "title": "Workspace Long-Session Performance Contract",
+  "type": "object",
+  "required": ["schema", "features", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-long-session-performance/1.0"},
+    "sessionSchema": {"const": "sc-workspace-performance-session/1.0"},
+    "reportSchema": {"const": "sc-workspace-performance-session-report/1.0"},
+    "budgets": {"type": "object"},
+    "features": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

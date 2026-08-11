@@ -94,7 +94,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.67.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.68.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -261,6 +261,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/scale-performance-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'scale_performance_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/long-session-performance-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'long_session_performance_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/security-privacy-contract', array(
@@ -2138,6 +2143,33 @@ public function research_templates_contract() {
         ));
     }
 
+    public function long_session_performance_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-long-session-performance-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Performance II: Long Sessions & Very Large Workspaces',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'session_schema' => 'sc-workspace-performance-session/1.0',
+            'report_schema' => 'sc-workspace-performance-session-report/1.0',
+            'bounded_in_memory_samples' => 120,
+            'long_task_threshold_ms' => 50,
+            'render_attention_ms' => 32,
+            'index_attention_ms' => 250,
+            'cooperative_chunk_yield' => true,
+            'revision_memoization' => true,
+            'bounded_render_windows' => true,
+            'persistent_profiling' => false,
+            'automatic_telemetry' => false,
+            'automatic_deletion' => false,
+            'automatic_archival' => false,
+            'automatic_compaction' => false,
+            'automatic_migration' => false,
+            'canonical_mutation' => false,
+        ));
+    }
+
     public function security_privacy_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-security-privacy-contract/1.0',
@@ -2462,8 +2494,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0670',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.67.0.css',
+            'sc-workspace-v0680',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.68.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2790,6 +2822,13 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-long-session-performance-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-v1.js',
+            array('sc-workspace-scale-performance-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-cross-device-continuity-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-cross-device-continuity-v1.js',
             array('sc-workspace-browser-compatibility-v1'),
@@ -2797,9 +2836,9 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0670',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.67.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1'),
+            'sc-workspace-v0680',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.68.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2810,7 +2849,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0670'),
+            array('sc-workspace-v0680'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2843,7 +2882,15 @@ public function research_templates_contract() {
             true
         );
 
-        wp_localize_script('sc-workspace-v0670', 'SCWorkspaceIdentity', array(
+        wp_enqueue_script(
+            'sc-workspace-long-session-performance-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
+            array('sc-workspace-v0680', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+
+        wp_localize_script('sc-workspace-v0680', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -3844,6 +3891,17 @@ public function research_templates_contract() {
                     <section><span>STORAGE</span><strong data-scw-scale-bytes>0 KB</strong><p data-scw-scale-quota>Browser quota estimate unavailable</p></section>
                     <section><span>DERIVED INDEX</span><strong data-scw-scale-index-ms>0 ms</strong><p data-scw-scale-cache>0 hit / 0 miss</p></section>
                     <section><span>RENDER WINDOW</span><strong data-scw-scale-window>120</strong><p>Integrated Knowledge renders a bounded initial result window and exposes more only on request.</p></section>
+                </div>
+                <div class="scw-performance-session" data-scw-performance-session>
+                    <div class="scw-knowledge-panel-head"><span>PERFORMANCE II / LONG SESSION</span><h3>Watch runtime pressure without profiling your research.</h3></div>
+                    <p>v0.68 keeps a bounded, memory-only set of timing counters for route changes, full Workspace renders, derived-index work, cooperative yields, and supported browser long-task signals. Project content, query text, source URLs, and device identifiers are never included.</p>
+                    <div class="scw-performance-session-metrics" aria-label="Long-session performance summary">
+                        <div><strong data-scw-perf-session-age>0 min</strong><span>session age</span></div><div><strong data-scw-perf-routes>0</strong><span>route changes</span></div><div><strong data-scw-perf-renders>0</strong><span>full renders</span></div><div><strong data-scw-perf-render-p95>0.0 ms</strong><span>render p95</span></div><div><strong data-scw-perf-index-p95>0.0 ms</strong><span>index p95</span></div><div><strong data-scw-perf-longtasks>0</strong><span>long tasks</span></div><div><strong data-scw-perf-yields>0</strong><span>cooperative yields</span></div><div><strong data-scw-perf-heap>Heap metric unavailable</strong><span>optional heap signal</span></div>
+                    </div>
+                    <div class="scw-scale-performance-actions"><button class="scw-button scw-button-primary" type="button" data-scw-perf-session-run>Run session profile</button><button class="scw-button" type="button" data-scw-perf-session-reset>Reset session counters</button><button class="scw-button" type="button" data-scw-perf-session-export>Export timing report</button></div>
+                    <ul class="scw-scale-performance-attention" data-scw-perf-session-findings><li>No advisory long-session signals</li></ul>
+                    <div class="scw-scale-performance-status" data-scw-perf-session-status role="status" aria-live="polite"></div>
+                    <div class="scw-scale-performance-boundary"><strong>Bounded and local</strong><span>At most 120 recent samples per metric stay in memory. There is no persistent profiling store, background submission, automatic cleanup of canonical research, or hidden productivity score.</span></div>
                 </div>
                 <div class="scw-scale-performance-actions"><button class="scw-button scw-button-primary" type="button" data-scw-scale-run>Run scale profile</button><button class="scw-button" type="button" data-scw-scale-clear-cache>Clear derived cache</button></div>
                 <ul class="scw-scale-performance-attention" data-scw-scale-attention><li>No advisory scale signals</li></ul>

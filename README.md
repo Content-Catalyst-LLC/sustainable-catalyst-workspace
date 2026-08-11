@@ -1,7 +1,7 @@
-# Sustainable Catalyst Workspace v0.67.0
+# Sustainable Catalyst Workspace v0.68.0
 
-## Cross-Device Continuity & Sync Hardening
+## Performance II: Long Sessions & Very Large Workspaces
 
-Free public, local-first research workspace with explicit account backup and conflict-safe cross-device continuity. v0.67.0 adds retry-safe sync operation IDs, interrupted-operation reconciliation, sync-safety restore points before cloud pulls, explicit device-migration packages that import as new local copies, duplicate migration guards, and a server boundary preventing manual backup from overwriting an active sync head.
+Free public, local-first research workspace with explicit account backup and conflict-safe cross-device continuity. v0.68.0 hardens long-running and large-project sessions with bounded memory-only performance sampling, render/route/derived-index timing, revision-aware reuse of Integrated Knowledge derivations, optional browser long-task and heap-pressure signals, bounded render-window utilities, and cooperative chunk-yield primitives for large derived work.
 
-Storage schema remains 35 and Project schema remains `sc-workspace-project/20.0`. No automatic or background synchronization is introduced.
+Performance diagnostics are advisory and privacy-minimized: they do not persist profiling data, transmit telemetry, include project/query/source content, delete or compact canonical work, or change project state. Storage schema remains 35 and Project schema remains `sc-workspace-project/20.0`.

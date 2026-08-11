@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0670';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0670';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0680';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0680';
+    const LEGACY_PENDING_KEY_V0670 = 'sc_workspace_registry_pending_v0670';
     const LEGACY_PENDING_KEY_V0661 = 'sc_workspace_registry_pending_v0661';
     const LEGACY_PENDING_KEY_V0660 = 'sc_workspace_registry_pending_v0660';
     const LEGACY_PENDING_KEY_V0650 = 'sc_workspace_registry_pending_v0650';
@@ -147,6 +148,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0670);
         delete_option(self::LEGACY_PENDING_KEY_V0661);
         delete_option(self::LEGACY_PENDING_KEY_V0660);
         delete_option(self::LEGACY_PENDING_KEY_V0650);
@@ -274,12 +276,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.66.1',
+            'previous_version' => '0.67.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Cross-Device Continuity & Sync Hardening',
-            'change_summary' => 'Cross-Device Continuity & Sync Hardening adds retry-safe sync operation IDs, interrupted-operation recovery, pull safety restore points, explicit device migration, and protected account-backup boundaries.',
+            'release_name' => 'Performance II: Long Sessions & Very Large Workspaces',
+            'change_summary' => 'Performance II adds bounded memory-only session profiling, route/render/index timing, cooperative large-work yields, and explicit long-session pressure diagnostics.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Sync stays explicit with no background synchronization. Device migration imports as a new local copy and never transfers device identity or automatic sync enrollment.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Performance samples stay bounded in memory, are not uploaded automatically, and never mutate canonical research.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
