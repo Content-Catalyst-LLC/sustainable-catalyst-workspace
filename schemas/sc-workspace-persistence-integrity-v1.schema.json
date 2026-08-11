@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-persistence-integrity-v1.schema.json",
+  "title": "Workspace Persistence Integrity Receipt",
+  "type": "object",
+  "required": ["schema", "verifiedAt", "workspaceVersion", "storageSchemaVersion", "algorithm", "currentChecksum", "currentBytes", "canonicalKey", "integrityPurpose"],
+  "properties": {
+    "schema": {"const": "sc-workspace-persistence-integrity/1.0"},
+    "verifiedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "storageSchemaVersion": {"type": "integer", "minimum": 0},
+    "algorithm": {"const": "fnv1a32"},
+    "currentChecksum": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+    "currentBytes": {"type": "integer", "minimum": 0},
+    "lastGoodChecksum": {"type": "string"},
+    "transactionId": {"type": "string"},
+    "canonicalKey": {"const": "sc_workspace"},
+    "integrityPurpose": {"const": "corruption-detection-not-security"}
+  },
+  "additionalProperties": true
+}

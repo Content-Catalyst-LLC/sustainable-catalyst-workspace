@@ -1,17 +1,17 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.61.0.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.61.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.62.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.62.0.json').read_text())
 PREV=json.loads((ROOT/'history/release-manifest-v0.50.0.json').read_text())
 MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.61.0.js').read_text()
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.62.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-grounded-research-assistant-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.61.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.62.0.css').read_text()
 class GroundedResearchAssistantII(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.61.0','0.60.0','Product Hardening I: Browser, Recovery & Field-Use Resilience')); self.assertIn('Version: 0.61.0',MAIN); self.assertEqual(PREV['release_name'],'Workspace Experience Consolidation')
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.62.0','0.61.0','Product Hardening II: Persistence, Corruption & Recovery Integrity')); self.assertIn('Version: 0.62.0',MAIN); self.assertEqual(PREV['release_name'],'Workspace Experience Consolidation')
  def test_02_schema_stable(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertFalse(MAN['schema_migration_required']); self.assertTrue(MAN['migration']['grounded_research_assistant_only_release']); self.assertFalse(MAN['migration']['grounded_research_canonical_data_rewrite'])
  def test_03_schemas(self):
   self.assertEqual(MAN['grounded_research_assistant_schema'],'sc-workspace-grounded-research-assistant/1.0'); self.assertEqual(MAN['grounded_research_request_schema'],'sc-workspace-grounded-research-request/1.0'); self.assertEqual(MAN['grounded_research_response_schema'],'sc-workspace-grounded-research-response/1.0')
@@ -24,8 +24,8 @@ class GroundedResearchAssistantII(unittest.TestCase):
  def test_09_ui(self):
   for t in ('data-scw-grounded-research-assistant','data-scw-grounded-add-selected','data-scw-grounded-form','data-scw-grounded-prompt','data-scw-grounded-response','data-scw-grounded-materialize'): self.assertIn(t,PHP)
   self.assertIn('scw-grounded-research-layout',CSS); self.assertIn('renderGroundedResearchAssistant()',JS)
- def test_10_rest_and_assets(self): self.assertIn("'/grounded-research-assistant-contract'",PHP); self.assertIn('public function grounded_research_assistant_contract()',PHP); self.assertIn('/wp-json/sc-workspace/v1/grounded-research-assistant-contract',MAN['rest_routes']); self.assertIn('sc-workspace-grounded-research-assistant-v1.js',PHP); self.assertIn('workspace-v0.61.0.js',PHP); self.assertIn('workspace-v0.61.0.css',PHP)
+ def test_10_rest_and_assets(self): self.assertIn("'/grounded-research-assistant-contract'",PHP); self.assertIn('public function grounded_research_assistant_contract()',PHP); self.assertIn('/wp-json/sc-workspace/v1/grounded-research-assistant-contract',MAN['rest_routes']); self.assertIn('sc-workspace-grounded-research-assistant-v1.js',PHP); self.assertIn('workspace-v0.62.0.js',PHP); self.assertIn('workspace-v0.62.0.css',PHP)
  def test_11_browser_local(self): self.assertTrue(MAN['grounded_research_assistant']['browser_local_library']); self.assertTrue(MAN['migration']['grounded_research_library_browser_local']); self.assertIn("STORAGE_KEY='sc_workspace_grounded_research_assistant_v1'",HELP); self.assertIn('localStorage.setItem(api.STORAGE_KEY',JS)
- def test_12_registry_and_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.61.0','0.60.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0610'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0500 = 'sc_workspace_registry_pending_v0500'",REGPHP); self.assertTrue((ROOT/'history/workspace-product-record-v0.50.0.json').exists())
+ def test_12_registry_and_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.62.0','0.61.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0620'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0500 = 'sc_workspace_registry_pending_v0500'",REGPHP); self.assertTrue((ROOT/'history/workspace-product-record-v0.50.0.json').exists())
  def test_13_v050_experience_retained(self): self.assertIn('.scw-editorial-header-bar{height:4px',CSS); self.assertEqual(MAN['workspace_experience']['editorial_header_rule_px'],4); self.assertIn('sc-workspace-experience-v1.js',PHP); self.assertEqual(PREV['experience_schema'],'sc-workspace-experience/1.0')
 if __name__=='__main__': unittest.main()

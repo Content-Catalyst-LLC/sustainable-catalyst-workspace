@@ -16,10 +16,11 @@
     'sc_workspace_institutional_receipt_v1','sc_workspace_ai_request_v1','sc_workspace_ai_response_v1',
     'sc_workspace_notebook_assistance_request_v1','sc_workspace_notebook_assistance_response_v1'
   ]);
-  const RECOVERY_KEYS=new Set(['sc_workspace_last_good_v1','sc_workspace_recovery_v0_8_2']);
+  const RECOVERY_KEYS=new Set(['sc_workspace_last_good_v1','sc_workspace_recovery_v0_8_2','sc_workspace_persistence_txn_v0620']);
   const KNOWN_STORES=Object.freeze([
     ['sc_workspace','Canonical Workspace state','canonical-private'],['sc_workspace_v0_1','Legacy Workspace state','legacy-private'],
     ['sc_workspace_last_good_v1','Last-known-good recovery snapshot','recovery-private'],['sc_workspace_recovery_v0_8_2','Damaged-state recovery envelope','recovery-private'],
+    ['sc_workspace_persistence_integrity_v0620','Verified-save integrity receipt','integrity-local'],['sc_workspace_persistence_txn_v0620','Persistence write transaction journal','recovery-local'],
     ['sc_workspace_device_v1','Local device identifier','identity-local'],['sc_workspace_handoff_v2','Portable handoff ledger','exchange-private'],
     ['sc_workspace_handoff_return_v1','Handoff return packet','exchange-private'],['sc_workspace_processed_returns_v1','Processed return identifiers','exchange-local'],
     ['sc_workspace_notebook_capture_v1','Notebook capture session','research-private'],['sc_workspace_notebook_assistance_request_v1','Notebook assistance request','assistance-private'],

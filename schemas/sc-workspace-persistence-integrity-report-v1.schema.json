@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-persistence-integrity-report-v1.schema.json",
+  "title": "Workspace Persistence Integrity Report",
+  "type": "object",
+  "required": ["schema", "generatedAt", "state", "current", "metadata", "lastGood", "transaction", "quarantine", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-persistence-integrity-report/1.0"},
+    "generatedAt": {"type": "string"},
+    "state": {"enum": ["ready", "limited", "attention"]},
+    "current": {"type": "object"},
+    "metadata": {"type": "object"},
+    "lastGood": {"type": "object"},
+    "transaction": {"type": "object"},
+    "quarantine": {"type": "boolean"},
+    "governance": {
+      "type": "object",
+      "required": ["canonicalMutation", "automaticRepair", "automaticRestore", "automaticUpload", "telemetry", "checksumSecurityClaim"],
+      "properties": {
+        "canonicalMutation": {"const": false},
+        "automaticRepair": {"const": false},
+        "automaticRestore": {"const": false},
+        "automaticUpload": {"const": false},
+        "telemetry": {"const": false},
+        "checksumSecurityClaim": {"const": false}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

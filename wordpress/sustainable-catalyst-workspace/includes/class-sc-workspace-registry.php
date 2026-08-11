@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0610';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0610';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0620';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0620';
+    const LEGACY_PENDING_KEY_V0610 = 'sc_workspace_registry_pending_v0610';
     const LEGACY_PENDING_KEY_V0600 = 'sc_workspace_registry_pending_v0600';
     const LEGACY_PENDING_KEY_V0591 = 'sc_workspace_registry_pending_v0591';
     const LEGACY_PENDING_KEY_V0590 = 'sc_workspace_registry_pending_v0590';
@@ -139,6 +140,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0610);
         delete_option(self::LEGACY_PENDING_KEY_V0600);
         delete_option(self::LEGACY_PENDING_KEY_V0591);
         delete_option(self::LEGACY_PENDING_KEY_V0590);
@@ -258,11 +260,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.60.0',
+            'previous_version' => '0.61.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Product Hardening I improves browser/session route resilience, recovery-state visibility, stale UI-state sanitization, and field-use diagnostics while preserving local-first explicit-action governance.',
+            'change_summary' => 'Product Hardening II adds verified-save integrity receipts, a write transaction journal, interrupted-write detection, checksum-bound last-known-good snapshots, and explicit recovery candidate exports without changing canonical schemas.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.60 Public Product Beta II remains intact. v0.61 adds browser/session route resilience and recovery-state visibility and privacy-minimized field snapshots only: no behavioral telemetry, hidden readiness score, automatic submission, automatic repair, or canonical mutation. The 4px editorial header rule is retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.61 Product Hardening I remains intact. v0.62 hardens browser-local saves with a transaction journal and integrity receipts. FNV-1a is used only as a corruption detector, never as encryption, authentication, or a security signature. Recovery exports are explicit and may contain private research. No automatic canonical repair, overwrite, upload, telemetry, or hidden scoring.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

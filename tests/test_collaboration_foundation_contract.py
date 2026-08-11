@@ -1,10 +1,10 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.61.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.61.0.css';MANIFEST=ROOT/'release-manifest-v0.61.0.json'
+JS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.62.0.js';PHP=ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php';CSS=ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.62.0.css';MANIFEST=ROOT/'release-manifest-v0.62.0.json'
 class CollaborationFoundationContract(unittest.TestCase):
  def test_manifest(self):
-  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.61.0');self.assertEqual(m['previous_version'],'0.60.0');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0');self.assertEqual(m['collaboration_schema'],'sc-workspace-collaboration/1.0')
+  m=json.loads(MANIFEST.read_text());self.assertEqual(m['version'],'0.62.0');self.assertEqual(m['previous_version'],'0.61.0');self.assertEqual(m['storage_schema_version'],35);self.assertEqual(m['project_schema'],'sc-workspace-project/20.0');self.assertEqual(m['collaboration_schema'],'sc-workspace-collaboration/1.0')
  def test_schema(self):
   s=json.loads((ROOT/'schemas/sc-workspace-collaboration-v1.schema.json').read_text());self.assertEqual(s['properties']['schema']['const'],'sc-workspace-collaboration/1.0');rp=json.loads((ROOT/'schemas/sc-workspace-review-package-v1.schema.json').read_text());self.assertEqual(rp['properties']['schema']['const'],'sc-workspace-review-package/1.0')
  def test_storage_migration_only(self):

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-persistence-transaction-v1.schema.json",
+  "title": "Workspace Persistence Write Transaction",
+  "type": "object",
+  "required": ["schema", "transactionId", "startedAt", "workspaceVersion", "storageSchemaVersion", "status", "algorithm", "targetChecksum", "targetBytes"],
+  "properties": {
+    "schema": {"const": "sc-workspace-persistence-transaction/1.0"},
+    "transactionId": {"type": "string"},
+    "startedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "storageSchemaVersion": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["prepared", "failed"]},
+    "algorithm": {"const": "fnv1a32"},
+    "previousChecksum": {"type": "string"},
+    "previousBytes": {"type": "integer", "minimum": 0},
+    "targetChecksum": {"type": "string", "pattern": "^[0-9a-f]{8}$"},
+    "targetBytes": {"type": "integer", "minimum": 0},
+    "lastGoodCaptured": {"type": "boolean"},
+    "failedAt": {"type": "string"},
+    "error": {"type": "string"}
+  },
+  "additionalProperties": true
+}
