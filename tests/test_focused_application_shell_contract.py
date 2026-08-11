@@ -6,14 +6,14 @@ ROOT = Path(__file__).resolve().parents[1]
 PHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN = (ROOT / 'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 REGPHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-CSS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.64.1.css').read_text()
+CSS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.65.0.css').read_text()
 JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-focused-shell-v1.js').read_text()
-MAN = json.loads((ROOT / 'release-manifest-v0.64.1.json').read_text())
-REG = json.loads((ROOT / 'registry/workspace-product-record-v0.64.1.json').read_text())
+MAN = json.loads((ROOT / 'release-manifest-v0.65.0.json').read_text())
+REG = json.loads((ROOT / 'registry/workspace-product-record-v0.65.0.json').read_text())
 
 class FocusedApplicationShellContract(unittest.TestCase):
     def test_release_lineage(self):
-        self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.64.1', '0.64.0', 'Accessibility Runtime & Desktop Layout Recovery'))
+        self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.65.0', '0.64.1', 'Responsive & Field-Use Experience'))
 
     def test_schema_stable(self):
         self.assertEqual(MAN['storage_schema_version'], 35)
@@ -21,12 +21,12 @@ class FocusedApplicationShellContract(unittest.TestCase):
         self.assertFalse(MAN['focused_application_shell']['schema_migration'])
 
     def test_plugin_version(self):
-        self.assertIn('Version: 0.64.1', MAIN)
-        self.assertIn("define('SC_WORKSPACE_VERSION', '0.64.1');", MAIN)
+        self.assertIn('Version: 0.65.0', MAIN)
+        self.assertIn("define('SC_WORKSPACE_VERSION', '0.65.0');", MAIN)
 
     def test_current_assets(self):
-        self.assertIn('assets/css/workspace-v0.64.1.css', PHP)
-        self.assertIn('assets/js/workspace-v0.64.1.js', PHP)
+        self.assertIn('assets/css/workspace-v0.65.0.css', PHP)
+        self.assertIn('assets/js/workspace-v0.65.0.js', PHP)
         self.assertIn('assets/js/sc-workspace-focused-shell-v1.js', PHP)
 
     def test_top_level_hidden_enforcement(self):
@@ -61,10 +61,10 @@ class FocusedApplicationShellContract(unittest.TestCase):
         self.assertIn('visibilityPlan', JS)
 
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0641'", REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0650'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0590', REGPHP)
-        self.assertEqual(REG['public_version'], '0.64.1')
-        self.assertEqual(REG['previous_version'], '0.64.0')
+        self.assertEqual(REG['public_version'], '0.65.0')
+        self.assertEqual(REG['previous_version'], '0.64.1')
 
     def test_v059_history_retained(self):
         self.assertTrue((ROOT/'history/release-manifest-v0.59.0.json').exists())

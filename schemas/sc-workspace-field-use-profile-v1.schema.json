@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-field-use-profile-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Field-Use Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "width",
+    "height",
+    "viewport",
+    "orientation",
+    "shortViewport",
+    "input",
+    "touch",
+    "coarsePointer",
+    "finePointer",
+    "privacy",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-field-use-profile/1.0"
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "viewport": {
+      "enum": [
+        "wide",
+        "compact",
+        "narrow"
+      ]
+    },
+    "orientation": {
+      "enum": [
+        "landscape",
+        "portrait",
+        "unknown"
+      ]
+    },
+    "shortViewport": {
+      "type": "boolean"
+    },
+    "input": {
+      "enum": [
+        "fine",
+        "coarse",
+        "mixed"
+      ]
+    },
+    "touch": {
+      "type": "boolean"
+    },
+    "coarsePointer": {
+      "type": "boolean"
+    },
+    "finePointer": {
+      "type": "boolean"
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "rawUserAgentIncluded",
+        "deviceIdentifierIncluded",
+        "persisted",
+        "automaticTelemetry",
+        "automaticSubmission"
+      ],
+      "properties": {
+        "rawUserAgentIncluded": {
+          "const": false
+        },
+        "deviceIdentifierIncluded": {
+          "const": false
+        },
+        "persisted": {
+          "const": false
+        },
+        "automaticTelemetry": {
+          "const": false
+        },
+        "automaticSubmission": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "featureDetectionPrimary",
+        "canonicalMutation",
+        "deviceFingerprinting"
+      ],
+      "properties": {
+        "featureDetectionPrimary": {
+          "const": true
+        },
+        "canonicalMutation": {
+          "const": false
+        },
+        "deviceFingerprinting": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

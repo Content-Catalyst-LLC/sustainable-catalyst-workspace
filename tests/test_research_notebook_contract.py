@@ -1,16 +1,16 @@
 import json, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.64.1.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.64.1.json').read_text())
-JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.64.1.js').read_text()
+MAN=json.loads((ROOT/'release-manifest-v0.65.0.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.65.0.json').read_text())
+JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.65.0.js').read_text()
 HELPER=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.64.1.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.65.0.css').read_text()
 MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 class ResearchNotebookContract(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.64.1','0.64.0','Accessibility Runtime & Desktop Layout Recovery'))
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.65.0','0.64.1','Responsive & Field-Use Experience'))
  def test_02_schema_migration(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertFalse(MAN['schema_migration_required']); self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35)); self.assertTrue(MAN['migration']['project_schema_unchanged'])
  def test_03_notebook_schemas(self): self.assertEqual(MAN['notebook_workspace_schema'],'sc-workspace-notebook-workspace/8.0'); self.assertEqual(MAN['notebook_schema'],'sc-workspace-notebook/3.0'); self.assertEqual(MAN['notebook_block_schema'],'sc-workspace-notebook-block/3.0'); self.assertEqual(MAN['notebook_export_schema'],'sc-workspace-notebook-export/8.0')
  def test_04_schema_files(self):
@@ -26,6 +26,6 @@ class ResearchNotebookContract(unittest.TestCase):
  def test_13_migration_runtime(self): self.assertIn('function migrateV27(raw)',JS); self.assertIn('if (raw.schemaVersion === 27) return migrateV27(raw);',JS); self.assertIn("const LEGACY_PROJECT_SCHEMA_V12 = 'sc-workspace-project/12.0'",JS); self.assertIn('notebooks: notebookWorkspaceTemplate()',JS)
  def test_14_project_boundary(self): self.assertTrue(MAN['research_notebook']['project_bound']); self.assertTrue(MAN['research_notebook']['account_backup_inherits_project_boundary']); self.assertTrue(MAN['research_notebook']['cross_device_sync_inherits_project_boundary']); self.assertTrue(MAN['research_notebook']['restore_points_include_notebooks'])
  def test_15_helper_contract(self): self.assertIn('sc-workspace-notebook-workspace/8.0',HELPER); self.assertIn('exportNotebook',HELPER); self.assertIn("case'excerpt':return'evidence'",HELPER.replace(' ','')); self.assertIn("case'question':case'claim':return'analysis'",HELPER.replace(' ',''))
- def test_16_registry_and_plugin(self): self.assertEqual(REG['public_version'],'0.64.1'); self.assertEqual(REG['previous_version'],'0.64.0'); self.assertIn('Accessibility Runtime & Desktop Layout Recovery',REG['change_summary']); self.assertIn('Version: 0.64.1',MAIN); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0641'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0320',REGPHP)
+ def test_16_registry_and_plugin(self): self.assertEqual(REG['public_version'],'0.65.0'); self.assertEqual(REG['previous_version'],'0.64.1'); self.assertIn('Responsive & Field-Use Experience',REG['change_summary']); self.assertIn('Version: 0.65.0',MAIN); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0650'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0320',REGPHP)
  def test_17_history_and_library(self): self.assertTrue((ROOT/'history/release-manifest-v0.32.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.32.0.json').exists()); self.assertEqual(MAN['canonical_library_path'],'/knowledge-libraries/'); self.assertIn('/knowledge-libraries/',PHP)
 if __name__=='__main__': unittest.main()

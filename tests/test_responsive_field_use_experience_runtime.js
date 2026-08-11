@@ -1,0 +1,11 @@
+const assert=require('assert');
+const api=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-field-use-v1.js');
+assert.equal(api.SCHEMA,'sc-workspace-field-use-profile/1.0');
+assert.deepEqual(api.classify(1400,900),{viewport:'wide',shortViewport:false,orientation:'landscape'});
+assert.deepEqual(api.classify(900,1200),{viewport:'compact',shortViewport:false,orientation:'portrait'});
+assert.deepEqual(api.classify(600,650),{viewport:'narrow',shortViewport:true,orientation:'portrait'});
+const vars={};const el={dataset:{},style:{setProperty:(k,v)=>vars[k]=v},getBoundingClientRect:()=>({width:834})};
+const env={innerWidth:834,innerHeight:640,navigator:{maxTouchPoints:5},matchMedia:(q)=>({matches:q.includes('coarse')}),document:{documentElement:{clientWidth:834,clientHeight:640}}};
+const p=api.apply(el,env);assert.equal(p.viewport,'compact');assert.equal(p.input,'coarse');assert.equal(p.shortViewport,true);assert.equal(el.dataset.scwViewport,'compact');assert.equal(el.dataset.scwInput,'coarse');assert.equal(el.dataset.scwShortViewport,'1');assert.equal(vars['--scw-field-width'],'834px');
+const c=api.contract();assert.equal(c.deviceFingerprinting,false);assert.equal(c.profilePersistence,false);assert.equal(c.telemetry,false);assert.equal(c.canonicalMutation,false);assert.equal(c.manualDeviceQaRequired,true);assert.equal(c.phonePriority,'capture-review-light-editing');
+console.log('PASS - v0.65.0 responsive field-use runtime');

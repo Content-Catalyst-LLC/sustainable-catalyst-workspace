@@ -3,8 +3,8 @@ from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 VIEWPORTS=[1600,1440,1280,1024,768,390]
 fixture=(ROOT/'tests/fixtures/v0641_layout_fixture.html').read_text()
-css=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.64.1.css').read_text()
-fixture=fixture.replace('<link rel="stylesheet" href="../../wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.64.1.css">', f'<style>{css}</style>')
+css=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.65.0.css').read_text()
+fixture=fixture.replace('<link rel="stylesheet" href="../../wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.65.0.css">', f'<style>{css}</style>')
 with sync_playwright() as p:
     browser=p.chromium.launch(headless=True, executable_path='/usr/bin/chromium', args=['--no-sandbox'])
     for width in VIEWPORTS:

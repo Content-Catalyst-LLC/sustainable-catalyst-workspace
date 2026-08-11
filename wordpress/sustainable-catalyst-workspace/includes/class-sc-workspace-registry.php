@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0641';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0641';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0650';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0650';
+    const LEGACY_PENDING_KEY_V0641 = 'sc_workspace_registry_pending_v0641';
     const LEGACY_PENDING_KEY_V0640 = 'sc_workspace_registry_pending_v0640';
     const LEGACY_PENDING_KEY_V0630 = 'sc_workspace_registry_pending_v0630';
     const LEGACY_PENDING_KEY_V0620 = 'sc_workspace_registry_pending_v0620';
@@ -143,6 +144,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0641);
         delete_option(self::LEGACY_PENDING_KEY_V0640);
         delete_option(self::LEGACY_PENDING_KEY_V0630);
         delete_option(self::LEGACY_PENDING_KEY_V0620);
@@ -266,11 +268,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.64.0',
+            'previous_version' => '0.64.1',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Accessibility Runtime & Desktop Layout Recovery removes the circular accessibility-script dependency, hardens desktop hero and focused-research grids against intrinsic-width collapse, and adds explicit regression gates without changing canonical schemas.',
+            'release_name' => 'Responsive & Field-Use Experience',
+            'change_summary' => 'Responsive & Field-Use Experience adds runtime viewport/input profiling, touch-safe interaction targets, tablet and narrow-window reflow hardening, short-viewport dialog safeguards, and deliberate Lab handoffs without changing canonical schemas.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.64 accessibility behavior remains intact. v0.64.1 is a production hotfix: the accessibility runtime no longer depends on itself, the WordPress enqueue graph is cycle-checked, and desktop editorial/research grids explicitly discard intrinsic minimum-width pressure. No telemetry, canonical mutation, schema migration, or accessibility-certification claim is introduced.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.64 accessibility and v0.64.1 layout/runtime recovery remain intact. v0.65 uses ephemeral viewport and pointer capability profiling only; it does not fingerprint devices, persist a device class, mutate canonical research, upload telemetry, or claim that every physical device has been certified. Contextual Lab links are deliberate navigation handoffs.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

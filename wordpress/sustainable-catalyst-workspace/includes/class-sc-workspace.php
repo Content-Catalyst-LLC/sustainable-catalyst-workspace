@@ -94,7 +94,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.64.1 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.65.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -291,6 +291,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/accessibility-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'accessibility_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/field-use-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'field_use_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
@@ -2242,6 +2247,34 @@ public function research_templates_contract() {
         ));
     }
 
+    public function field_use_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-field-use-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Responsive & Field-Use Experience',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'profile_schema' => 'sc-workspace-field-use-profile/1.0',
+            'feature_detection_primary' => true,
+            'viewport_classes' => array('wide', 'compact', 'narrow'),
+            'input_profiles' => array('fine', 'coarse', 'mixed'),
+            'short_viewport_detection' => true,
+            'touch_safe_targets' => true,
+            'tablet_reflow' => true,
+            'narrow_window_reflow' => true,
+            'phone_priority' => 'capture-review-light-editing',
+            'dense_surfaces_remain_available' => true,
+            'contextual_lab_handoffs' => true,
+            'device_fingerprinting' => false,
+            'profile_persistence' => false,
+            'automatic_upload' => false,
+            'telemetry' => false,
+            'canonical_mutation' => false,
+            'manual_device_qa_required' => true,
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2355,8 +2388,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0641',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.64.1.css',
+            'sc-workspace-v0650',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.65.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2669,9 +2702,16 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0641',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.64.1.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1'),
+            'sc-workspace-field-use-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-field-use-v1.js',
+            array('sc-workspace-browser-compatibility-v1', 'sc-workspace-accessibility-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0650',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.65.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2682,7 +2722,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0641'),
+            array('sc-workspace-v0650'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2715,7 +2755,7 @@ public function research_templates_contract() {
             true
         );
 
-        wp_localize_script('sc-workspace-v0641', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0650', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2753,7 +2793,7 @@ public function research_templates_contract() {
         $return_url = SC_Workspace_Platform::canonical_url();
         ob_start();
         ?>
-        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="public-beta" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -2927,6 +2967,7 @@ public function research_templates_contract() {
                     <div class="scw-experience-dialog-head"><div><span>ORIENTATION</span><h3 id="scw-experience-help-title">One Workspace, five primary areas.</h3></div><button class="scw-experience-dialog-close" type="button" data-scw-dialog-close aria-label="Close Workspace help">×</button></div>
                     <div class="scw-experience-help-body">
                         <p class="scw-experience-help-intro">The primary navigation stays deliberately small. Specialized tools appear within Research, Review, and Exchange rather than competing at the top level.</p>
+                        <p class="scw-field-use-guidance">On compact or touch devices, Workspace prioritizes capture, review, and lightweight editing. Dense graph, comparison, and composition surfaces remain available and use bounded scrolling instead of forcing the page wider.</p>
                         <div class="scw-experience-shortcuts" aria-label="Keyboard shortcuts">
                             <div><kbd>⌘/Ctrl + K</kbd><span>Open command palette</span></div><div><kbd>Alt + 1…5</kbd><span>Open Start through Exchange</span></div><div><kbd>/</kbd><span>Focus search in the current view</span></div><div><kbd>Esc</kbd><span>Close Workspace dialogs</span></div>
                         </div>
@@ -4542,6 +4583,7 @@ public function research_templates_contract() {
                         <p>Review return activity or import a structured return package when you need it. The underlying handoff IDs and privacy checks remain intact.</p>
                     </div>
                     <div class="scw-handoff-actions">
+                        <a class="scw-button scw-lab-handoff" href="<?php echo esc_url(home_url('/lab/')); ?>">Open the Lab</a>
                         <button class="scw-button" type="button" data-scw-handoff-check>Check return inbox</button>
                         <button class="scw-button" type="button" data-scw-handoff-import>Import return JSON</button>
                         <button class="scw-button" type="button" data-scw-handoff-template>Export return template</button>
@@ -4659,7 +4701,7 @@ public function research_templates_contract() {
                     <article><b>02</b><div><strong>Analysis and modeling</strong><p>Register datasets, variables, assumptions, methods, comparisons, and findings.</p></div><span>Analytical record</span></article>
                     <article><b>03</b><div><strong>Decision and trade-offs</strong><p>Compare alternatives, criteria, uncertainty, risks, mitigations, and rationale.</p></div><span>Decision record</span></article>
                     <article><b>04</b><div><strong>Systems and structured thinking</strong><p>Use Canvas boards to arrange relationships among evidence, analysis, decisions, systems, and stakeholders.</p></div><span>Structured synthesis</span></article>
-                    <article><b>05</b><div><strong>Connected tools and reusable artifacts</strong><p>Move stable project context into Sustainable Catalyst tools and return structured artifacts to the originating project.</p></div><span>Portable project context</span></article>
+                    <article><b>05</b><div><strong>Connected tools and reusable artifacts</strong><p>Move stable project context into Sustainable Catalyst tools and return structured artifacts to the originating project.</p><a class="scw-pathway-link" href="<?php echo esc_url(home_url('/lab/')); ?>">Explore the Lab <span aria-hidden="true">→</span></a></div><span>Portable project context</span></article>
                     <article><b>06</b><div><strong>Personal knowledge</strong><p>Search canonical objects across projects, inspect provenance and references, discover related work, and organize reusable collections.</p></div><span>Cross-project local index</span></article>
                     <article><b>07</b><div><strong>Import and interoperability</strong><p>Stage outside files locally, review provenance, and move structured artifacts into or out of Workspace without silent overwrite.</p></div><span>Portable interchange</span></article>
                     <article><b>08</b><div><strong>Share and portable projects</strong><p>Create integrity-checked whole-project copies or static review snapshots without cloud sync, public links, or live collaboration.</p></div><span>Portable project</span></article>
