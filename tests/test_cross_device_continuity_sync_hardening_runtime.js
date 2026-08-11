@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('fs'),vm=require('vm'),path=require('path'),assert=require('assert');
+const src=fs.readFileSync(path.join(__dirname,'../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-cross-device-continuity-v1.js'),'utf8');
+const ctx={globalThis:{}}; vm.createContext(ctx); vm.runInContext(src,ctx); const api=ctx.globalThis.SCWorkspaceCrossDeviceContinuity;
+assert(api); assert.strictEqual(api.SCHEMA,'sc-workspace-cross-device-continuity/1.0');
+const fixed=()=> '2026-08-11T20:00:00.000Z';
+const op=api.operation({projectId:'p1',kind:'push',expectedRevision:4,localFingerprint:'abc'},()=> 'op-1',fixed);
+assert.strictEqual(op.id,'op-1'); assert.strictEqual(op.state,'pending'); assert.strictEqual(op.expectedRevision,4);
+const interrupted=api.markInterrupted([op],fixed); assert.strictEqual(interrupted[0].state,'interrupted'); assert(api.pendingFor(interrupted,'p1'));
+const done=api.complete(op,'ok',fixed); assert.strictEqual(done.state,'completed'); assert.strictEqual(done.completedAt,fixed());
+const failed=api.fail(op,'network',false,fixed); assert.strictEqual(failed.state,'failed');
+const pkg=api.migrationPackage({id:'p1',title:'Project',persistence:{scope:'device'},recentTools:['x']},{serverRevision:7,lastSyncedFingerprint:'f',enabled:true},'0.67.0','sha',fixed);
+assert.strictEqual(pkg.schema,'sc-workspace-device-migration/1.0'); assert.strictEqual(pkg.transport.importMode,'new-local-copy'); assert.strictEqual(pkg.transport.syncEnrollmentTransferred,false); assert.strictEqual(pkg.privacy.deviceIdentityIncluded,false); assert.strictEqual(pkg.privacy.accountProfileIncluded,false); assert.deepStrictEqual(Array.from(pkg.project.recentTools),[]);
+const inspected=api.inspectMigration(pkg); assert.strictEqual(inspected.ok,true); assert.strictEqual(inspected.serverRevision,7); assert.strictEqual(api.migrationKey('p1','sha'),'p1::sha');
+const bad=JSON.parse(JSON.stringify(pkg)); bad.transport.syncEnrollmentTransferred=true; assert.strictEqual(api.inspectMigration(bad).ok,false);
+console.log('PASS - v0.67.0 cross-device continuity runtime');

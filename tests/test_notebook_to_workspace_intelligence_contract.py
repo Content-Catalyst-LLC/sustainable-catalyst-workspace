@@ -17,7 +17,7 @@ class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
     def test_01_release_lineage(self):
         self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']),
                          ('0.66.0', '0.65.0', 'Import, Export & Backward-Compatibility Hardening'))
-        self.assertIn('Version: 0.66.1', MAIN)
+        self.assertIn('Version: 0.67.0', MAIN)
 
     def test_02_storage_and_project_migration(self):
         self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']),
@@ -98,7 +98,7 @@ class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
     def test_10_project_and_account_contracts_advance(self):
         self.assertIn("'schema' => 'sc-workspace-project-contract/20.0'", PHP)
         self.assertIn("'export_schema' => 'sc-workspace-project-export/20.0'", PHP)
-        self.assertIn("array('sc-workspace-project/19.0','sc-workspace-project/18.0','sc-workspace-project/17.0'", PHP)
+        self.assertIn("array('sc-workspace-project/20.0','sc-workspace-project/19.0','sc-workspace-project/18.0'", PHP)
 
     def test_11_v034_knowledge_links_preserved(self):
         rn = MAN['research_notebook']
@@ -111,7 +111,7 @@ class NotebookToWorkspaceIntelligenceContract(unittest.TestCase):
 
     def test_12_registry_lineage(self):
         self.assertEqual((REG['public_version'], REG['previous_version']), ('0.66.0','0.65.0'))
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0661'", REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0670'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0360', REGPHP)
 
 if __name__ == '__main__':

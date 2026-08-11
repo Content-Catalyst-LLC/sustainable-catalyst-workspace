@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0661';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0661';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0670';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0670';
+    const LEGACY_PENDING_KEY_V0661 = 'sc_workspace_registry_pending_v0661';
     const LEGACY_PENDING_KEY_V0660 = 'sc_workspace_registry_pending_v0660';
     const LEGACY_PENDING_KEY_V0650 = 'sc_workspace_registry_pending_v0650';
     const LEGACY_PENDING_KEY_V0641 = 'sc_workspace_registry_pending_v0641';
@@ -146,6 +147,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0661);
         delete_option(self::LEGACY_PENDING_KEY_V0660);
         delete_option(self::LEGACY_PENDING_KEY_V0650);
         delete_option(self::LEGACY_PENDING_KEY_V0641);
@@ -272,12 +274,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.66.0',
+            'previous_version' => '0.66.1',
             'release_date' => '2026-08-11',
-            'release_name' => 'WordPress Plugin Header Metadata Recovery',
-            'change_summary' => 'WordPress Plugin Header Metadata Recovery keeps required plugin metadata inside the WordPress 8 KB header parsing window so uploaded package version, author, and requirements are recognized reliably.',
+            'release_name' => 'Cross-Device Continuity & Sync Hardening',
+            'change_summary' => 'Cross-Device Continuity & Sync Hardening adds retry-safe sync operation IDs, interrupted-operation recovery, pull safety restore points, explicit device migration, and protected account-backup boundaries.',
             'superseded_by' => '',
-            'manual_notes' => 'Packaging/runtime metadata hotfix only. Storage 35 / Project 20.0 remain schema-stable. v0.66 import/export hardening remains unchanged. Required WordPress plugin headers are deliberately kept within the first 8 KB of the main plugin file.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Sync stays explicit with no background synchronization. Device migration imports as a new local copy and never transfers device identity or automatic sync enrollment.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

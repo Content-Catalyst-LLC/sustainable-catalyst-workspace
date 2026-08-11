@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Sync Operation",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "projectId",
+    "kind",
+    "state",
+    "expectedRevision"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-sync-operation/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "push",
+        "pull",
+        "resolve-local",
+        "resolve-cloud",
+        "recreate-head"
+      ]
+    },
+    "state": {
+      "enum": [
+        "pending",
+        "interrupted",
+        "completed",
+        "failed",
+        "superseded"
+      ]
+    },
+    "expectedRevision": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

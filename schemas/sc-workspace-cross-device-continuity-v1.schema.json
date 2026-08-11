@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Cross-Device Continuity",
+  "type": "object",
+  "required": [
+    "schema",
+    "operations",
+    "migrations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-cross-device-continuity/1.0"
+    },
+    "operations": {
+      "type": "array"
+    },
+    "migrations": {
+      "type": "array"
+    }
+  }
+}

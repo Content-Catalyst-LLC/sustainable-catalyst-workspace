@@ -94,7 +94,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.66.1 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.67.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -346,6 +346,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/sync-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'sync_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/continuity-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'continuity_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/version-history-contract', array(
@@ -1664,6 +1669,9 @@ public function research_templates_contract() {
             'safe_remote_pull_requires_no_competing_local_change' => true,
             'conflict_remote_can_open_as_copy' => true,
             'accepting_cloud_preserves_local_conflict_copy' => true,
+            'pull_creates_sync_safety_restore_point' => true,
+            'idempotent_operation_retry' => true,
+            'interrupted_sync_reconciliation' => true,
             'accepting_local_requires_explicit_confirmation' => true,
             'integrity_algorithm' => 'SHA-256',
             'server_store' => 'wordpress-user-meta',
@@ -1672,6 +1680,32 @@ public function research_templates_contract() {
             'project_change_review' => true,
             'change_review_automatic_apply' => false,
             'change_review_hidden_score' => false,
+        ));
+    }
+
+    public function continuity_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-cross-device-continuity-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'continuity_schema' => 'sc-workspace-cross-device-continuity/1.0',
+            'operation_schema' => 'sc-workspace-sync-operation/1.0',
+            'migration_schema' => 'sc-workspace-device-migration/1.0',
+            'schema_migration_required' => false,
+            'revision_precondition_required' => true,
+            'idempotent_sync_operation_id' => true,
+            'interrupted_operation_reconciliation' => true,
+            'pull_creates_sync_safety_restore_point' => true,
+            'restore_mode' => 'new-local-copy',
+            'device_migration_import_mode' => 'new-local-copy',
+            'device_migration_transfers_sync_enrollment' => false,
+            'duplicate_migration_guard' => true,
+            'manual_backup_can_overwrite_sync_head' => false,
+            'automatic_sync' => false,
+            'background_sync' => false,
+            'device_identity_in_migration_package' => false,
+            'account_profile_in_migration_package' => false,
         ));
     }
 
@@ -1866,6 +1900,7 @@ public function research_templates_contract() {
             'storageMode' => isset($record['storageMode']) ? (string) $record['storageMode'] : 'manual-backup',
             'bytes' => isset($record['bytes']) ? (int) $record['bytes'] : 0,
             'objectCount' => isset($record['objectCount']) ? (int) $record['objectCount'] : 0,
+            'lastOperationId' => isset($record['lastOperationId']) ? (string) $record['lastOperationId'] : '',
         );
     }
 
@@ -1897,7 +1932,7 @@ public function research_templates_contract() {
         }
         $project = isset($payload['project']) && is_array($payload['project']) ? $payload['project'] : null;
         $project_id = isset($payload['sourceProjectId']) ? sanitize_key((string) $payload['sourceProjectId']) : '';
-        if (!$project || $project_id === '' || !in_array(($project['schema'] ?? ''), array('sc-workspace-project/19.0','sc-workspace-project/18.0','sc-workspace-project/17.0','sc-workspace-project/16.0','sc-workspace-project/15.0','sc-workspace-project/14.0','sc-workspace-project/13.0','sc-workspace-project/12.0'), true)) {
+        if (!$project || $project_id === '' || !in_array(($project['schema'] ?? ''), array('sc-workspace-project/20.0','sc-workspace-project/19.0','sc-workspace-project/18.0','sc-workspace-project/17.0','sc-workspace-project/16.0','sc-workspace-project/15.0','sc-workspace-project/14.0','sc-workspace-project/13.0','sc-workspace-project/12.0'), true)) {
             return new WP_Error('scw_invalid_cloud_project', 'A valid Workspace project is required.', array('status' => 400));
         }
         $canonical = wp_json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
@@ -1908,6 +1943,13 @@ public function research_templates_contract() {
         $store = $this->cloud_store_read();
         $existing = isset($store[$project_id]) && is_array($store[$project_id]) ? $store[$project_id] : null;
         $current_revision = $existing ? max(0, (int) ($existing['revision'] ?? 1)) : 0;
+        $operation_id = $is_sync ? sanitize_text_field((string) ($payload['operationId'] ?? '')) : '';
+        if ($is_sync && $operation_id !== '' && $existing && hash_equals((string) ($existing['lastOperationId'] ?? ''), $operation_id)) {
+            return rest_ensure_response(array('ok' => true, 'replayed' => true, 'item' => $this->cloud_metadata($existing)));
+        }
+        if ($is_manual && $existing && (($existing['storageMode'] ?? '') === 'sync-head')) {
+            return new WP_Error('scw_manual_backup_sync_head_conflict', 'Manual backup cannot replace an active sync head. Use explicit Sync now so the revision precondition protects the cloud state.', array('status' => 409, 'current' => $this->cloud_metadata($existing)));
+        }
         if ($is_sync) {
             $expected_revision = isset($payload['expectedRevision']) ? max(0, (int) $payload['expectedRevision']) : -1;
             if ($expected_revision !== $current_revision) {
@@ -1932,6 +1974,7 @@ public function research_templates_contract() {
             'storageMode' => $is_sync ? 'sync-head' : 'manual-backup',
             'bytes' => $bytes,
             'objectCount' => isset($project['objects']) && is_array($project['objects']) ? count($project['objects']) : 0,
+            'lastOperationId' => $operation_id,
             'package' => $payload,
         );
         $candidate = $store;
@@ -2419,8 +2462,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0660',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.66.0.css',
+            'sc-workspace-v0670',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.67.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2747,9 +2790,16 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0660',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.66.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1'),
+            'sc-workspace-cross-device-continuity-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-cross-device-continuity-v1.js',
+            array('sc-workspace-browser-compatibility-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0670',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.67.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2760,7 +2810,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0660'),
+            array('sc-workspace-v0670'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2793,7 +2843,7 @@ public function research_templates_contract() {
             true
         );
 
-        wp_localize_script('sc-workspace-v0660', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0670', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2913,6 +2963,11 @@ public function research_templates_contract() {
                         <button class="scw-button" type="button" data-scw-sync-resolve-cloud hidden>Use cloud here · preserve local copy</button>
                     </div>
                     <div class="scw-sync-boundary" role="note"><strong>No background synchronization</strong><span>Enabling sync stores local enrollment metadata only. Project content moves only after an explicit Sync now or conflict-resolution action. Shared team sync and institutional storage remain outside Workspace.</span></div>
+                    <div class="scw-sync-continuity" data-scw-sync-continuity>
+                        <div class="scw-sync-continuity-head"><strong>Device migration &amp; interrupted-sync recovery</strong><span>Migration files preserve project content and a sync baseline, never device identity or automatic enrollment.</span></div>
+                        <div class="scw-sync-continuity-actions"><button class="scw-button" type="button" data-scw-sync-migration-export>Export migration package</button><button class="scw-button" type="button" data-scw-sync-migration-import>Import migration package</button><input type="file" accept="application/json,.json" data-scw-sync-migration-file hidden></div>
+                        <div class="scw-sync-migration-status" data-scw-sync-migration-status role="status" aria-live="polite">Migration imports always create a new local copy. Sync must be enrolled again explicitly on the receiving device.</div>
+                    </div>
                 </section>
                 <section class="scw-readiness" aria-labelledby="scw-readiness-title">
                     <div class="scw-readiness-head"><div><div class="scw-kicker">LOCAL HEALTH &amp; RECOVERY</div><h3 id="scw-readiness-title">Inspect the browser boundary before it becomes a problem.</h3></div><span class="scw-readiness-badge" data-scw-readiness-badge>NOT CHECKED</span></div>

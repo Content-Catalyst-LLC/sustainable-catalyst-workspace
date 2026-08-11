@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Device Migration Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "source",
+    "continuity",
+    "privacy",
+    "transport",
+    "project"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-device-migration/1.0"
+    },
+    "source": {
+      "type": "object"
+    },
+    "continuity": {
+      "type": "object"
+    },
+    "privacy": {
+      "type": "object"
+    },
+    "transport": {
+      "type": "object"
+    },
+    "project": {
+      "type": "object"
+    }
+  }
+}
