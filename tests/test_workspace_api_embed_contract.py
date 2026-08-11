@@ -11,7 +11,7 @@ UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-api-em
 NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class ApiEmbedContract(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 0.68.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 0.69.0',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertTrue(MAN['api_embed']['schema_migration'] is False)
  def test_03_schemas(self):
   for n in ['sc-workspace-durable-reference-v1.schema.json','sc-workspace-readonly-projection-v1.schema.json','sc-workspace-readonly-api-envelope-v1.schema.json','sc-workspace-embed-descriptor-v1.schema.json']: self.assertTrue((ROOT/'schemas'/n).exists())
@@ -22,7 +22,7 @@ class ApiEmbedContract(unittest.TestCase):
  def test_08_embed_renderer(self): self.assertIn('sc_workspace_api_embed_script_url',MAIN); self.assertIn('data-sc-workspace-embed',HELP); self.assertIn('noLiveDataFetch:true',HELP); self.assertIn('sc-workspace-api-embed-v1.js',PHP)
  def test_09_ui(self): self.assertIn('data-scw-api-embed',PHP); self.assertIn('data-scw-api-create',PHP); self.assertIn('data-scw-api-copy-embed',PHP); self.assertIn('sc-workspace-api-embed-ui-v1.js',PHP)
  def test_10_navigation(self): self.assertIn("'api-embed':'API & Embed'",NAV); self.assertIn('data-scw-workspace-view="api-embed"',PHP)
- def test_11_registry(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0680'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0540',REGPHP)
+ def test_11_registry(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0690'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0540',REGPHP)
  def test_12_history(self): self.assertTrue((ROOT/'history/release-manifest-v0.54.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.54.0.json').exists())
  def test_13_header_rule(self): self.assertIn('border-top:4px solid #000',CSS); self.assertIn('.scw-editorial-header-bar{height:4px',CSS)
  def test_14_docs_and_governance(self): self.assertTrue((ROOT/'docs/WORKSPACE_API_EMBED_FOUNDATION_V0550.md').exists()); self.assertFalse(MAN['api_embed']['automatic_publication']); self.assertFalse(MAN['api_embed']['automatic_canonical_mutation'])

@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0680';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0680';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0690';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0690';
+    const LEGACY_PENDING_KEY_V0680 = 'sc_workspace_registry_pending_v0680';
     const LEGACY_PENDING_KEY_V0670 = 'sc_workspace_registry_pending_v0670';
     const LEGACY_PENDING_KEY_V0661 = 'sc_workspace_registry_pending_v0661';
     const LEGACY_PENDING_KEY_V0660 = 'sc_workspace_registry_pending_v0660';

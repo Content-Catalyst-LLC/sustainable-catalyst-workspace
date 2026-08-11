@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-recovery-disaster-report-v1.schema.json",
+  "title": "Workspace Recovery Disaster Report",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "state",
+    "passed",
+    "total",
+    "scenarios",
+    "privacy",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-recovery-disaster-report/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "pass",
+        "attention"
+      ]
+    },
+    "passed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "scenarios": {
+      "type": "array"
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "projectContentIncluded",
+        "automaticSubmission"
+      ],
+      "properties": {
+        "projectContentIncluded": {
+          "const": false
+        },
+        "automaticSubmission": {
+          "const": false
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "sandboxedSimulation",
+        "canonicalMutation",
+        "backgroundNetwork"
+      ],
+      "properties": {
+        "sandboxedSimulation": {
+          "const": true
+        },
+        "canonicalMutation": {
+          "const": false
+        },
+        "backgroundNetwork": {
+          "const": false
+        }
+      }
+    }
+  }
+}

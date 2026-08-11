@@ -74,8 +74,8 @@ class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
         self.assertFalse(MANIFEST['governance']['behavioral_telemetry'])
         self.assertFalse(MANIFEST['governance']['productivity_score'])
     def test_registry_lineage_advances_with_safe_actions_storage_migration(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0680'",REG)
-        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0680'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0690'",REG)
+        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0690'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200'",REG)

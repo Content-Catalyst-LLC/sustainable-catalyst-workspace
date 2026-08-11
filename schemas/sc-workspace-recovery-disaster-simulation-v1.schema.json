@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-recovery-disaster-simulation-v1.schema.json",
+  "title": "Workspace Recovery Disaster Simulation",
+  "type": "object",
+  "required": [
+    "schema",
+    "scenarios",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-recovery-disaster-simulation/1.0"
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "canonicalMutation",
+        "productionDataInjection",
+        "automaticRepair"
+      ],
+      "properties": {
+        "canonicalMutation": {
+          "const": false
+        },
+        "productionDataInjection": {
+          "const": false
+        },
+        "automaticRepair": {
+          "const": false
+        }
+      }
+    }
+  }
+}
