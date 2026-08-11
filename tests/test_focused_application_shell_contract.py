@@ -21,8 +21,8 @@ class FocusedApplicationShellContract(unittest.TestCase):
         self.assertFalse(MAN['focused_application_shell']['schema_migration'])
 
     def test_plugin_version(self):
-        self.assertIn('Version: 0.66.0', MAIN)
-        self.assertIn("define('SC_WORKSPACE_VERSION', '0.66.0');", MAIN)
+        self.assertIn('Version: 0.66.1', MAIN)
+        self.assertIn("define('SC_WORKSPACE_VERSION', '0.66.1');", MAIN)
 
     def test_current_assets(self):
         self.assertIn('assets/css/workspace-v0.66.0.css', PHP)
@@ -61,7 +61,7 @@ class FocusedApplicationShellContract(unittest.TestCase):
         self.assertIn('visibilityPlan', JS)
 
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0660'", REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0661'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0590', REGPHP)
         self.assertEqual(REG['public_version'], '0.66.0')
         self.assertEqual(REG['previous_version'], '0.65.0')

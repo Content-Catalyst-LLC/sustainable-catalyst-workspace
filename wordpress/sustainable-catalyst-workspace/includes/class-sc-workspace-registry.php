@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0660';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0660';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0661';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0661';
+    const LEGACY_PENDING_KEY_V0660 = 'sc_workspace_registry_pending_v0660';
     const LEGACY_PENDING_KEY_V0650 = 'sc_workspace_registry_pending_v0650';
     const LEGACY_PENDING_KEY_V0641 = 'sc_workspace_registry_pending_v0641';
     const LEGACY_PENDING_KEY_V0640 = 'sc_workspace_registry_pending_v0640';
@@ -145,6 +146,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0660);
         delete_option(self::LEGACY_PENDING_KEY_V0650);
         delete_option(self::LEGACY_PENDING_KEY_V0641);
         delete_option(self::LEGACY_PENDING_KEY_V0640);
@@ -270,12 +272,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.65.0',
+            'previous_version' => '0.66.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Import, Export & Backward-Compatibility Hardening',
-            'change_summary' => 'Import, Export & Backward-Compatibility Hardening stages project imports for review, preserves historical Workspace project/export compatibility, blocks future-schema downgrades, enforces import-as-new-copy, and validates current project exports through a deterministic round-trip check.',
+            'release_name' => 'WordPress Plugin Header Metadata Recovery',
+            'change_summary' => 'WordPress Plugin Header Metadata Recovery keeps required plugin metadata inside the WordPress 8 KB header parsing window so uploaded package version, author, and requirements are recognized reliably.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.66 does not auto-upgrade on file selection, overwrite an existing project, downgrade future schemas, elevate imported trust, or create a server import pipeline. Historical project/export schemas are classified locally and normalize only after explicit staged-import commit. Export round-trip fingerprints are drift detectors, not security signatures.',
+            'manual_notes' => 'Packaging/runtime metadata hotfix only. Storage 35 / Project 20.0 remain schema-stable. v0.66 import/export hardening remains unchanged. Required WordPress plugin headers are deliberately kept within the first 8 KB of the main plugin file.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

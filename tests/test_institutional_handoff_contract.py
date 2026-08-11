@@ -41,7 +41,7 @@ class InstitutionalHandoffContract(unittest.TestCase):
  def test_rest_contract(self):
   p=PHP.read_text();self.assertIn("'/institutional-handoff-contract'",p);self.assertIn('institutional_handoff_contract',p);self.assertIn("'storage_schema_version' => 35",p)
  def test_registry_lineage(self):
-  r=REG.read_text();self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0660'",r);self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0660'",r);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",r);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",r)
+  r=REG.read_text();self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0661'",r);self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0661'",r);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",r);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",r)
  def test_css(self):
   c=CSS.read_text();self.assertIn('/* v0.21.0 — Institutional Handoff */',c);self.assertIn('.scw-institutional-boundary',c);self.assertIn('.scw-institutional-readiness',c)
 if __name__=='__main__': unittest.main()
