@@ -272,6 +272,11 @@ final class SC_Workspace {
             'callback' => array($this, 'public_product_beta_ii_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/field-resilience-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'field_resilience_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/knowledge-graph-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'knowledge_graph_contract'),
@@ -2110,6 +2115,29 @@ public function research_templates_contract() {
         ));
     }
 
+    public function field_resilience_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-field-resilience-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Product Hardening I — Browser, Recovery & Field-Use Resilience',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'schema_migration_required' => false,
+            'route_state_schema' => 'sc-workspace-route-state/1.0',
+            'resilience_schema' => 'sc-workspace-field-resilience/1.0',
+            'snapshot_schema' => 'sc-workspace-resilience-snapshot/1.0',
+            'safe_route_restore' => true,
+            'browser_back_forward' => true,
+            'stale_ui_state_sanitization' => true,
+            'recovery_state_classification' => true,
+            'navigation_reset_only' => true,
+            'canonical_mutation' => false,
+            'automatic_repair' => false,
+            'automatic_upload' => false,
+            'telemetry' => false,
+        ));
+    }
+
     public function field_diagnostics_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-diagnostics-contract/1.0',
@@ -2223,8 +2251,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0600',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.60.0.css',
+            'sc-workspace-v0610',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.61.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2509,9 +2537,16 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0600',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.60.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1'),
+            'sc-workspace-field-resilience-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-field-resilience-v1.js',
+            array('sc-workspace-research-navigation-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-v0610',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.61.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2522,12 +2557,19 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0600'),
+            array('sc-workspace-v0610'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-field-resilience-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-field-resilience-ui-v1.js',
+            array('sc-workspace-focused-shell-v1', 'sc-workspace-field-resilience-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v0600', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0610', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -2712,7 +2754,7 @@ public function research_templates_contract() {
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button><button type="button" data-scw-workspace-view="reliability">Reliability</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -3539,6 +3581,14 @@ public function research_templates_contract() {
                 <div class="scw-beta-ii-checks" data-scw-beta-ii-checks><div class="scw-beta-empty">Running local beta checks…</div></div>
                 <p class="scw-beta-ii-status" data-scw-beta-ii-status role="status" aria-live="polite">Beta gate has not run yet.</p>
                 <div class="scw-beta-boundary" role="note"><strong>Beta II boundary</strong><span>Checks run locally and are advisory. Workspace does not send behavioral telemetry, submit diagnostics automatically, repair data automatically, mutate research, or convert checklist results into a productivity/readiness score.</span></div>
+            </section>
+
+            <section class="scw-field-resilience" data-scw-workspace-section="reliability" data-scw-field-resilience hidden aria-labelledby="scw-field-resilience-title">
+                <div class="scw-resilience-head"><div><div class="scw-kicker">PRODUCT HARDENING I / RELIABILITY</div><h2 id="scw-field-resilience-title">Recover the interface before it becomes a recovery problem.</h2><p>Inspect browser capability, saved UI position, route isolation, and local recovery state. Workspace remembers only safe navigation state here; project and research data stay in their existing canonical stores.</p></div><span class="scw-resilience-badge" data-scw-resilience-badge>CHECKING</span></div>
+                <div class="scw-resilience-actions"><button class="scw-button scw-button-primary" type="button" data-scw-resilience-run>Run reliability check</button><button class="scw-button" type="button" data-scw-resilience-reset>Reset navigation state</button><button class="scw-button" type="button" data-scw-resilience-export>Export resilience snapshot</button></div>
+                <div class="scw-resilience-findings" data-scw-resilience-findings><div class="scw-beta-empty">Running local reliability checks…</div></div>
+                <p class="scw-resilience-status" data-scw-resilience-status role="status" aria-live="polite">Reliability check has not run yet.</p>
+                <div class="scw-resilience-boundary" role="note"><strong>Navigation recovery is not data recovery.</strong><span>Reset navigation state removes only Workspace UI-position keys. It does not delete projects, notebooks, citations, tasks, recovery snapshots, or other canonical research. Invalid or expired UI routes fall back to Start instead of trapping the application.</span></div>
             </section>
 
             <section class="scw-research-automation" data-scw-workspace-section="automation" data-scw-research-automation hidden aria-labelledby="scw-research-automation-title">

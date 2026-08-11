@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-route-state-v1.schema.json",
+  "title": "Workspace Route State",
+  "type": "object",
+  "required": ["schema", "view", "researchSurface", "version", "at"],
+  "properties": {
+    "schema": {"const": "sc-workspace-route-state/1.0"},
+    "view": {"type": "string", "minLength": 1, "maxLength": 80},
+    "researchSurface": {"enum": ["overview", "search", "collections", "cross-project", "tasks", "assistant", "citations", "composition"]},
+    "version": {"type": "string", "maxLength": 40},
+    "at": {"type": "string"},
+    "sanitized": {"type": "boolean"},
+    "reason": {"type": "string", "maxLength": 80}
+  },
+  "additionalProperties": false
+}

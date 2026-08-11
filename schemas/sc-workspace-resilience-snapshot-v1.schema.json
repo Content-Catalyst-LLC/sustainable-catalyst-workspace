@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-resilience-snapshot-v1.schema.json",
+  "title": "Workspace Resilience Snapshot",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "assessment", "caps", "recovery", "routeState", "privacy"],
+  "properties": {
+    "schema": {"const": "sc-workspace-resilience-snapshot/1.0"},
+    "generatedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "assessment": {"$ref": "sc-workspace-field-resilience-v1.schema.json"},
+    "caps": {"type": "object"},
+    "recovery": {"type": "object"},
+    "routeState": {"type": "object"},
+    "privacy": {
+      "type": "object",
+      "required": ["projectContentIncluded", "objectContentIncluded", "sourceUrlsIncluded", "deviceIdentifierIncluded", "automaticTelemetry", "automaticSubmission"],
+      "properties": {
+        "projectContentIncluded": {"const": false},
+        "objectContentIncluded": {"const": false},
+        "sourceUrlsIncluded": {"const": false},
+        "deviceIdentifierIncluded": {"const": false},
+        "automaticTelemetry": {"const": false},
+        "automaticSubmission": {"const": false}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

@@ -706,3 +706,15 @@
 .scw-beta-ii-check strong{display:block;font-size:.95rem;}.scw-beta-ii-check p{margin:6px 0 10px;color:#555;font-size:.82rem;line-height:1.55;}
 .scw-beta-ii-status{margin:16px 0 0;color:#555;font-size:.82rem;}
 @media(max-width:760px){.scw-beta-ii-head,.scw-beta-ii-checks{grid-template-columns:1fr}.scw-beta-ii-badge{justify-self:start}.scw-beta-ii-actions .scw-button{width:100%;}}
+
+
+/* v0.61.0 — Product Hardening I: Browser, Recovery & Field-Use Resilience */
+.scw-field-resilience{border-top:4px solid #000;padding:28px 0 36px;background:#fff;color:#171717}
+.scw-field-resilience[hidden]{display:none!important}
+.scw-resilience-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:start;padding-bottom:20px;border-bottom:1px solid #ddd}
+.scw-resilience-head h2{margin:5px 0 10px;font-size:clamp(1.55rem,3vw,2.45rem);line-height:1.08;letter-spacing:-.035em}.scw-resilience-head p{max-width:82ch;margin:0;color:#555;line-height:1.65}
+.scw-resilience-badge{display:inline-flex;align-items:center;min-height:32px;padding:6px 10px;border:1px solid #000;font-size:.68rem;font-weight:850;letter-spacing:.08em}
+.scw-resilience-actions{display:flex;flex-wrap:wrap;gap:8px;padding:18px 0}.scw-resilience-findings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.scw-resilience-finding{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:15px 16px;border:1px solid #ddd;border-top:3px solid #000;background:#fff}.scw-resilience-finding.is-attention,.scw-resilience-finding.is-limited{border-top-color:#ff0000}.scw-resilience-finding>span{font-size:.64rem;font-weight:850;letter-spacing:.08em}.scw-resilience-finding strong{display:block;font-size:.92rem}.scw-resilience-finding p{margin:5px 0;color:#555;font-size:.8rem;line-height:1.5}.scw-resilience-finding small{color:#777;font-size:.68rem}
+.scw-resilience-status{margin:16px 0 0;color:#555;font-size:.82rem}.scw-resilience-boundary{display:grid;gap:5px;margin-top:18px;padding:14px 16px;border-left:4px solid #000;background:#f7f7f7;font-size:.78rem;line-height:1.55}
+@media(max-width:760px){.scw-resilience-head,.scw-resilience-findings{grid-template-columns:1fr}.scw-resilience-badge{justify-self:start}.scw-resilience-actions .scw-button{width:100%;min-height:44px}}

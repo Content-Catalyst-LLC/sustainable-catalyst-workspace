@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-field-resilience-v1.schema.json",
+  "title": "Workspace Field Resilience Assessment",
+  "type": "object",
+  "required": ["schema", "generatedAt", "state", "findings", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-field-resilience/1.0"},
+    "generatedAt": {"type": "string"},
+    "state": {"enum": ["ready", "limited", "attention"]},
+    "findings": {"type": "array", "items": {"type": "object"}},
+    "governance": {
+      "type": "object",
+      "required": ["canonicalMutation", "automaticRepair", "automaticDeletion", "automaticUpload", "telemetry"],
+      "properties": {
+        "canonicalMutation": {"const": false},
+        "automaticRepair": {"const": false},
+        "automaticDeletion": {"const": false},
+        "automaticUpload": {"const": false},
+        "telemetry": {"const": false}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

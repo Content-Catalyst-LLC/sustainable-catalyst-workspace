@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0600';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0600';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0610';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0610';
+    const LEGACY_PENDING_KEY_V0600 = 'sc_workspace_registry_pending_v0600';
     const LEGACY_PENDING_KEY_V0591 = 'sc_workspace_registry_pending_v0591';
     const LEGACY_PENDING_KEY_V0590 = 'sc_workspace_registry_pending_v0590';
     const LEGACY_PENDING_KEY_V0580 = 'sc_workspace_registry_pending_v0580';
@@ -138,6 +139,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0600);
+        delete_option(self::LEGACY_PENDING_KEY_V0591);
         delete_option(self::LEGACY_PENDING_KEY_V0590);
         delete_option(self::LEGACY_PENDING_KEY_V0580);
         delete_option(self::LEGACY_PENDING_KEY_V0570);
@@ -255,11 +258,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.59.1',
+            'previous_version' => '0.60.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Public Product Beta II consolidates product-level readiness checks across local persistence, integrity, recovery, route isolation, performance, security/privacy, portability, and release identity while preserving the focused application shell and explicit-action governance.',
+            'change_summary' => 'Product Hardening I improves browser/session route resilience, recovery-state visibility, stale UI-state sanitization, and field-use diagnostics while preserving local-first explicit-action governance.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.59.1 Focused Application Shell remains intact. v0.60 adds local advisory beta gates and privacy-minimized field snapshots only: no behavioral telemetry, hidden readiness score, automatic submission, automatic repair, or canonical mutation. The 4px editorial header rule is retained.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.60 Public Product Beta II remains intact. v0.61 adds browser/session route resilience and recovery-state visibility and privacy-minimized field snapshots only: no behavioral telemetry, hidden readiness score, automatic submission, automatic repair, or canonical mutation. The 4px editorial header rule is retained.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -3384,6 +3384,7 @@ const researchTemplateCustomList = root.querySelector('[data-scw-research-templa
     const performanceSection = root.querySelector('[data-scw-workspace-section="performance"]');
     const securityPrivacySection = root.querySelector('[data-scw-workspace-section="security"]');
     const publicBetaIISection = root.querySelector('[data-scw-workspace-section="beta"]');
+    const reliabilitySection = root.querySelector('[data-scw-workspace-section="reliability"]');
     const auditProject = root.querySelector('[data-scw-audit-project]');
     const auditSource = root.querySelector('[data-scw-audit-source]');
     const auditList = root.querySelector('[data-scw-audit-list]');
@@ -4811,7 +4812,7 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
     }
 
     function setWorkspaceView(view, moveFocus = false) {
-      const navApi=navigationApi(); const candidate=String(view||''); const fallbackViews=['start','projects','research','notebook','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','interoperability','collaboration','institutional','share']; const validView=navApi?(candidate==='start'||navApi.areaForView(candidate)!=='start'):fallbackViews.includes(candidate); workspaceView=validView?candidate:'start';
+      const navApi=navigationApi(); const candidate=String(view||''); const fallbackViews=['start','projects','research','notebook','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','automation','performance','security','beta','reliability','interoperability','collaboration','institutional','share']; const validView=navApi?(candidate==='start'||navApi.areaForView(candidate)!=='start'):fallbackViews.includes(candidate); workspaceView=validView?candidate:'start';
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
         button.classList.toggle('is-active', selected);
@@ -4836,6 +4837,7 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
       if (performanceSection) performanceSection.hidden = workspaceView !== 'performance';
       if (securityPrivacySection) securityPrivacySection.hidden = workspaceView !== 'security';
       if (publicBetaIISection) publicBetaIISection.hidden = workspaceView !== 'beta';
+      if (reliabilitySection) reliabilitySection.hidden = workspaceView !== 'reliability';
       if (interoperabilitySection) interoperabilitySection.hidden = workspaceView !== 'interoperability';
       if (collaborationSection) collaborationSection.hidden = workspaceView !== 'collaboration';
       if (institutionalSection) institutionalSection.hidden = workspaceView !== 'institutional';

@@ -1,11 +1,13 @@
 # Sustainable Catalyst Workspace
 
-Current release: **v0.60.0 — Public Product Beta II
+Current release: **v0.61.0 — Product Hardening I: Browser, Recovery & Field-Use Resilience**
 
-Workspace is the free, local-first Sustainable Catalyst research environment.
+Workspace is the free, local-first Sustainable Catalyst research and decision environment. v0.61.0 hardens the Public Product Beta II experience with safe route restoration, browser back/forward handling, stale UI-state sanitization, recovery-state classification, and privacy-minimized field resilience diagnostics.
 
-v0.59.0 adds explicitly scoped, frozen institutional research packages over the Integrated Knowledge Workspace. A package can include selected canonical research plus optional recorded provenance, related Citation Library references, Research Tasks, and Collaboration review context. Each package includes a disclosure manifest and deterministic integrity fingerprint. Package creation and export are deliberate disclosure actions; they do not publish, upload, refresh, or mutate the source project.
+Canonical public route: `/platform/`
 
-The existing v0.19 Catalyst Intelligence institutional promotion/receipt path remains available as a product-specific compatibility workflow. v0.57 packages are broader institutional handoff artifacts and do not establish organization access control or automatically import into another product.
+Canonical Knowledge Library route: `/knowledge-libraries/`
 
-Storage remains **35**, Project remains **20.0**, Project Export remains **20.0**, Notebook Workspace remains **8.0**, and the established **4px Sustainable Catalyst editorial header rule** is retained.
+Core data contracts remain schema-stable at Storage 35, Project 20.0, Project Export 20.0, and Notebook Workspace 8.0.
+
+Reliability safeguards are advisory and presentation/runtime-only. They do not repair, rewrite, upload, or delete canonical research automatically.
