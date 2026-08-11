@@ -1,0 +1,17 @@
+const assert=require('assert');
+const api=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-public-beta-iii-v1.js');
+assert.equal(api.STEPS.length,9);
+assert.deepEqual(api.STEPS.map(x=>x.id),['discover','capture','organize','analyze','synthesize','decide','compose','review','export-handoff']);
+const signals={};for(const step of api.STEPS)signals[step.id]={routePresent:true,surfacePresent:true,actionPresent:true};
+const ready=api.assessSignals(signals);assert.equal(ready.state,'ready');assert.equal(ready.ready,9);assert.equal(ready.total,9);
+const attention=api.assessSignals({...signals,compose:{routePresent:true,surfacePresent:false,actionPresent:true}});assert.equal(attention.state,'attention');assert.equal(attention.ready,8);
+const map=new Map();const storage={getItem:k=>map.has(k)?map.get(k):null,setItem:(k,v)=>map.set(k,String(v)),removeItem:k=>map.delete(k)};
+let manual=api.readManual(storage);assert.equal(manual.reviewedCount,0);assert.equal(manual.complete,false);
+for(const step of api.STEPS)manual=api.setReviewed(storage,step.id,true);
+assert.equal(manual.reviewedCount,9);assert.equal(manual.complete,true);assert.equal(map.size,1);
+const report=api.report('0.70.0',ready,manual);assert.equal(report.schema,'sc-workspace-product-journey-report/1.0');assert.equal(report.state,'review-complete');assert.equal(report.journey.length,9);
+for(const k of ['projectContentIncluded','objectTextIncluded','sourceUrlsIncluded','queryTextIncluded','deviceIdentifierIncluded','rawUserAgentIncluded','automaticSubmission'])assert.equal(report.privacy[k],false,k);
+for(const k of ['hiddenScore','automaticTelemetry','automaticMutation','automaticCompletion','behavioralTracking'])assert.equal(report.governance[k],false,k);
+manual=api.resetManual(storage);assert.equal(manual.reviewedCount,0);assert.equal(map.size,0);
+const contract=api.contract();assert.equal(contract.stepCount,9);assert.equal(contract.manualReviewStorage,'session-only');assert.equal(contract.governance.canonicalMutation,false);
+console.log('PASS - v0.70.0 Public Product Beta III runtime');

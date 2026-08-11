@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-product-journey-report-v1.schema.json",
+  "title": "Workspace Product Journey Report",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "state",
+    "topology",
+    "walkthrough",
+    "privacy",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-product-journey-report/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "attention",
+        "manual-review-pending",
+        "review-complete"
+      ]
+    },
+    "topology": {
+      "type": "object"
+    },
+    "walkthrough": {
+      "type": "object"
+    },
+    "journey": {
+      "type": "array"
+    },
+    "privacy": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

@@ -34,14 +34,14 @@
     if(id==='interrupted-write'){
       if(!persistence)return outcome(id,false,'persistence helper unavailable','interrupted journal reconciles non-destructively');
       const previous=JSON.stringify({storageVersion:35,projects:[],updatedAt:'before'}),next=JSON.stringify({storageVersion:35,projects:[],updatedAt:'after'}),st=memoryStorage({[persistence.CURRENT_KEY]:previous});
-      const staged=persistence.stage(st,{previousRaw:previous,nextRaw:next,workspaceVersion:'0.69.0',storageSchemaVersion:35});
-      const rec=persistence.reconcileJournal(st,{workspaceVersion:'0.69.0',storageSchemaVersion:35});
+      const staged=persistence.stage(st,{previousRaw:previous,nextRaw:next,workspaceVersion:'0.70.0',storageSchemaVersion:35});
+      const rec=persistence.reconcileJournal(st,{workspaceVersion:'0.70.0',storageSchemaVersion:35});
       return outcome(id,Boolean(staged?.ok)&&rec.state==='resolved-prewrite'&&st.getItem(persistence.CURRENT_KEY)===previous,rec.state,'resolved-prewrite with previous canonical bytes retained');
     }
     if(id==='storage-exhaustion'){
       if(!persistence)return outcome(id,false,'persistence helper unavailable','failed write preserves previous canonical bytes');
       const previous=JSON.stringify({storageVersion:35,projects:[],updatedAt:'before'}),st=memoryStorage({[persistence.CURRENT_KEY]:previous},{failWrites:true});
-      const out=safeCall(()=>persistence.stage(st,{previousRaw:previous,nextRaw:'{}',workspaceVersion:'0.69.0',storageSchemaVersion:35}),e=>({ok:false,error:e.name||e.message}));
+      const out=safeCall(()=>persistence.stage(st,{previousRaw:previous,nextRaw:'{}',workspaceVersion:'0.70.0',storageSchemaVersion:35}),e=>({ok:false,error:e.name||e.message}));
       return outcome(id,!out?.ok&&st.getItem(persistence.CURRENT_KEY)===previous,out?.reason||out?.error||'write refused','save is not verified and old canonical bytes remain');
     }
     if(id==='malformed-import'){
@@ -72,7 +72,7 @@
   }
   function runAll(deps={}){
     const scenarios=SCENARIOS.map(s=>({...s,result:runScenario(s.id,deps)})),passed=scenarios.filter(x=>x.result.pass).length;
-    return {schema:REPORT_SCHEMA,workspaceVersion:String(deps.workspaceVersion||'0.69.0').slice(0,40),generatedAt:new Date().toISOString(),state:passed===scenarios.length?'pass':'attention',passed,total:scenarios.length,scenarios,privacy:{projectContentIncluded:false,rawCanonicalStateIncluded:false,sourceUrlsIncluded:false,queryTextIncluded:false,deviceIdentifierIncluded:false,automaticSubmission:false},governance:{sandboxedSimulation:true,canonicalMutation:false,automaticRepair:false,automaticRestore:false,automaticImportCommit:false,automaticSync:false,backgroundNetwork:false}};
+    return {schema:REPORT_SCHEMA,workspaceVersion:String(deps.workspaceVersion||'0.70.0').slice(0,40),generatedAt:new Date().toISOString(),state:passed===scenarios.length?'pass':'attention',passed,total:scenarios.length,scenarios,privacy:{projectContentIncluded:false,rawCanonicalStateIncluded:false,sourceUrlsIncluded:false,queryTextIncluded:false,deviceIdentifierIncluded:false,automaticSubmission:false},governance:{sandboxedSimulation:true,canonicalMutation:false,automaticRepair:false,automaticRestore:false,automaticImportCommit:false,automaticSync:false,backgroundNetwork:false}};
   }
   function contract(){return {schema:SCHEMA,reportSchema:REPORT_SCHEMA,scenarioSchema:SCENARIO_SCHEMA,scenarios:SCENARIOS.map(x=>x.id),features:{sandboxedFailureInjection:true,corruptState:true,interruptedWrite:true,storageExhaustion:true,malformedImport:true,staleRestore:true,syncConflict:true,missingReference:true,futureVersionMismatch:true},governance:{canonicalMutation:false,automaticRepair:false,automaticRestore:false,automaticImportCommit:false,automaticSync:false,backgroundNetwork:false,productionDataInjection:false}};}
   return Object.freeze({SCHEMA,REPORT_SCHEMA,SCENARIO_SCHEMA,SCENARIOS,memoryStorage,runScenario,runAll,contract});

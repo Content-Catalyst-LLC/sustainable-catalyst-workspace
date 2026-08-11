@@ -1,7 +1,11 @@
-# Sustainable Catalyst Workspace v0.69.0
+# Sustainable Catalyst Workspace v0.70.0
 
-## Product Recovery & Disaster Simulation
+**Public Product Beta III**
 
-Free public, local-first research workspace with explicit account backup and conflict-safe cross-device continuity. v0.69.0 adds a sandboxed disaster-recovery drill suite that exercises corruption detection, interrupted writes, simulated storage exhaustion, malformed imports, restore-as-copy boundaries, sync conflicts, missing references, and future-version mismatches without injecting failures into canonical Workspace data.
+Sustainable Catalyst Workspace is a free, local-first environment for keeping questions, evidence, analysis, decisions, composition, review, and deliberate handoff connected. v0.70.0 validates the product as one coherent nine-stage journey: **Discover → Capture → Organize → Analyze → Synthesize → Decide → Compose → Review → Export / Handoff**.
 
-Recovery diagnostics remain advisory and privacy-minimized. Storage schema remains 35 and Project schema remains `sc-workspace-project/20.0`.
+Beta III adds a local topology check, session-only manual walkthrough marks, and a privacy-minimized journey report. These are product-validation aids rather than readiness scores: they do not infer successful work, track behavior, upload telemetry, or mutate canonical project state.
+
+Canonical formats remain schema-stable at **Storage 35**, **Project `sc-workspace-project/20.0`**, and **Project Export `sc-workspace-project-export/20.0`**.
+
+See `RELEASE_NOTES_0.70.0.md`, `VALIDATION_REPORT_0.70.0.md`, and `docs/PUBLIC_PRODUCT_BETA_III_V0700.md` for release details.

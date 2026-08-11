@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-product-journey-checkpoint-v1.schema.json",
+  "title": "Workspace Product Journey Checkpoint",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "label",
+    "state",
+    "routePresent",
+    "surfacePresent",
+    "actionPresent"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-product-journey-checkpoint/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "number": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "attention"
+      ]
+    },
+    "route": {
+      "type": "string"
+    },
+    "surface": {
+      "type": "string"
+    },
+    "external": {
+      "type": "boolean"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "routePresent": {
+      "type": "boolean"
+    },
+    "surfacePresent": {
+      "type": "boolean"
+    },
+    "actionPresent": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

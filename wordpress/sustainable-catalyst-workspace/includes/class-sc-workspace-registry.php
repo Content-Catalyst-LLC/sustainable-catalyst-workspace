@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0690';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0690';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0700';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0700';
+    const LEGACY_PENDING_KEY_V0690 = 'sc_workspace_registry_pending_v0690';
     const LEGACY_PENDING_KEY_V0680 = 'sc_workspace_registry_pending_v0680';
     const LEGACY_PENDING_KEY_V0670 = 'sc_workspace_registry_pending_v0670';
     const LEGACY_PENDING_KEY_V0661 = 'sc_workspace_registry_pending_v0661';
@@ -149,6 +150,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0690);
+        delete_option(self::LEGACY_PENDING_KEY_V0680);
         delete_option(self::LEGACY_PENDING_KEY_V0670);
         delete_option(self::LEGACY_PENDING_KEY_V0661);
         delete_option(self::LEGACY_PENDING_KEY_V0660);
@@ -277,12 +280,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.67.0',
+            'previous_version' => '0.69.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Performance II: Long Sessions & Very Large Workspaces',
-            'change_summary' => 'Performance II adds bounded memory-only session profiling, route/render/index timing, cooperative large-work yields, and explicit long-session pressure diagnostics.',
+            'release_name' => 'Public Product Beta III',
+            'change_summary' => 'Public Product Beta III validates Workspace as one coherent nine-stage research journey from discovery through deliberate export or handoff.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Performance samples stay bounded in memory, are not uploaded automatically, and never mutate canonical research.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Beta III topology checks are local-only, manual walkthrough marks live only in sessionStorage, and no hidden score or behavioral telemetry is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

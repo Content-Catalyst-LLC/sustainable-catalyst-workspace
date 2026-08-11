@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-public-beta-iii-v1.schema.json",
+  "title": "Workspace Public Product Beta III",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "state",
+    "ready",
+    "total",
+    "checks",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-public-beta-iii/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "attention"
+      ]
+    },
+    "ready": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "total": {
+      "const": 9
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "$ref": "sc-workspace-product-journey-checkpoint-v1.schema.json"
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "hiddenScore",
+        "automaticTelemetry",
+        "automaticSubmission",
+        "automaticMutation",
+        "automaticCompletion",
+        "behavioralTracking"
+      ],
+      "properties": {
+        "hiddenScore": {
+          "const": false
+        },
+        "automaticTelemetry": {
+          "const": false
+        },
+        "automaticSubmission": {
+          "const": false
+        },
+        "automaticMutation": {
+          "const": false
+        },
+        "automaticCompletion": {
+          "const": false
+        },
+        "behavioralTracking": {
+          "const": false
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}
