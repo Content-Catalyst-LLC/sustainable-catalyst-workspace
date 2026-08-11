@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0640';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0640';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0641';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0641';
+    const LEGACY_PENDING_KEY_V0640 = 'sc_workspace_registry_pending_v0640';
     const LEGACY_PENDING_KEY_V0630 = 'sc_workspace_registry_pending_v0630';
     const LEGACY_PENDING_KEY_V0620 = 'sc_workspace_registry_pending_v0620';
     const LEGACY_PENDING_KEY_V0610 = 'sc_workspace_registry_pending_v0610';
@@ -142,6 +143,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0640);
         delete_option(self::LEGACY_PENDING_KEY_V0630);
         delete_option(self::LEGACY_PENDING_KEY_V0620);
         delete_option(self::LEGACY_PENDING_KEY_V0610);
@@ -264,11 +266,11 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.63.0',
+            'previous_version' => '0.64.0',
             'release_date' => '2026-08-10',
-            'change_summary' => 'Accessibility & Keyboard-First Product Audit strengthens keyboard navigation, focus management, dialog containment, semantic review, reduced-motion handling, zoom/reflow QA, and privacy-minimized accessibility diagnostics without changing canonical schemas.',
+            'change_summary' => 'Accessibility Runtime & Desktop Layout Recovery removes the circular accessibility-script dependency, hardens desktop hero and focused-research grids against intrinsic-width collapse, and adds explicit regression gates without changing canonical schemas.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.61-v0.63 hardening remains intact. v0.64 adds keyboard-first navigation, focus restoration and containment for modal dialogs, semantic/runtime accessibility auditing, stronger focus visibility, reduced-motion behavior, and an explicit manual WCAG 2.2 AA checklist. Automated checks are advisory and do not constitute accessibility certification. No telemetry, canonical mutation, hidden accessibility scoring, or automatic submission.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.64 accessibility behavior remains intact. v0.64.1 is a production hotfix: the accessibility runtime no longer depends on itself, the WordPress enqueue graph is cycle-checked, and desktop editorial/research grids explicitly discard intrinsic minimum-width pressure. No telemetry, canonical mutation, schema migration, or accessibility-certification claim is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

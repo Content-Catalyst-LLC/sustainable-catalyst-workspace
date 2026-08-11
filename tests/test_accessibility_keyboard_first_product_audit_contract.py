@@ -1,19 +1,19 @@
 from pathlib import Path
 import json, unittest
 ROOT=Path(__file__).resolve().parents[1]
-MAN=json.loads((ROOT/'release-manifest-v0.64.0.json').read_text())
-REG=json.loads((ROOT/'registry/workspace-product-record-v0.64.0.json').read_text())
+MAN=json.loads((ROOT/'release-manifest-v0.64.1.json').read_text())
+REG=json.loads((ROOT/'registry/workspace-product-record-v0.64.1.json').read_text())
 MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.64.0.js').read_text()
+APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.64.1.js').read_text()
 A11Y=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-accessibility-v1.js').read_text()
 A11YUI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-accessibility-ui-v1.js').read_text()
 NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
 EXP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-experience-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.64.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.64.1.css').read_text()
 class T(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.64.0','0.63.0','Accessibility & Keyboard-First Product Audit'));self.assertIn('Version: 0.64.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.64.1','0.64.0','Accessibility Runtime & Desktop Layout Recovery'));self.assertIn('Version: 0.64.1',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0');self.assertFalse(MAN['schema_migration_required'])
  def test_03_contract_schemas(self):
   for n in ['sc-workspace-accessibility-v1.schema.json','sc-workspace-accessibility-report-v1.schema.json','sc-workspace-accessibility-checklist-v1.schema.json']: json.loads((ROOT/'schemas'/n).read_text())
@@ -30,5 +30,5 @@ class T(unittest.TestCase):
  def test_12_command_palette(self): self.assertIn("id:'accessibility'",EXP);self.assertIn('keyboard focus wcag screen reader',EXP)
  def test_13_css(self): self.assertIn(':focus-visible{outline:3px solid currentColor!important',CSS);self.assertIn('@media(prefers-reduced-motion:reduce)',CSS);self.assertIn('@media(forced-colors:active)',CSS);self.assertIn('min-height:44px',CSS)
  def test_14_ui(self): self.assertIn('helper.enhance(root,window)',A11YUI);self.assertIn('helper.audit(root,window)',A11YUI);self.assertIn('helper.checklist()',A11YUI);self.assertIn('This is not an accessibility certification.',A11YUI)
- def test_15_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.64.0','0.63.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0640'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0630',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.63.0.json').exists())
+ def test_15_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.64.1','0.64.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0641'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0630',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.64.0.json').exists())
 if __name__=='__main__': unittest.main()

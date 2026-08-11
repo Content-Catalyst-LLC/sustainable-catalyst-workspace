@@ -36,6 +36,6 @@ out=C.downloadText('big.txt','x'.repeat(C.MAX_DATA_URI_BYTES+1),'text/plain',dat
 // Browser labels are diagnostic, not feature gates.
 assert.strictEqual(C.browserFamily('Mozilla/5.0 Version/18.0 Safari/605.1.15'),'Safari');assert.strictEqual(C.browserFamily('Mozilla/5.0 Edg/140.0'),'Edge');assert.strictEqual(C.platformFamily({userAgent:'',platform:'Win32',maxTouchPoints:0}),'Windows');
 // Privacy-minimized report and explicit manual-QA target matrix.
-const report=C.report('0.64.0',C.capability(modern),C.assess(C.capability(modern)));assert.strictEqual(report.privacy.rawUserAgentIncluded,false);assert.strictEqual(report.privacy.deviceIdentifierIncluded,false);assert.strictEqual(report.governance.userAgentUsedForDisplayLabelOnly,true);
+const report=C.report('0.64.1',C.capability(modern),C.assess(C.capability(modern)));assert.strictEqual(report.privacy.rawUserAgentIncluded,false);assert.strictEqual(report.privacy.deviceIdentifierIncluded,false);assert.strictEqual(report.governance.userAgentUsedForDisplayLabelOnly,true);
 const targets=C.targetMatrix();assert.strictEqual(targets.schema,C.TARGET_SCHEMA);assert.ok(targets.browserFamilies.includes('Safari / WebKit'));assert.ok(targets.claimBoundary.includes('do not replace manual browser/device QA'));
-console.log('PASS - Workspace v0.64.0 Accessibility & Keyboard-First Product Audit runtime');
+console.log('PASS - Workspace v0.64.1 Accessibility Runtime & Desktop Layout Recovery runtime');
