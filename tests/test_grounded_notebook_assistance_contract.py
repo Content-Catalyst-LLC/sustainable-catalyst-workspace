@@ -11,7 +11,7 @@ MAIN=(ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-worksp
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 class GroundedNotebookAssistanceContract(unittest.TestCase):
  def test_01_lineage(self):
-  self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 0.77.0',MAIN)
+  self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 0.78.0',MAIN)
  def test_02_schema_migration(self):
   self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35)); self.assertTrue(MAN['migration']['project_schema_unchanged']); self.assertIn('function migrateV32(raw)',JS); self.assertIn('if (raw.schemaVersion === 32) return migrateV32(raw);',JS)
  def test_03_assistance_schemas(self):
@@ -31,5 +31,5 @@ class GroundedNotebookAssistanceContract(unittest.TestCase):
  def test_09_rest_contract(self):
   self.assertIn("'notebook_workspace_schema' => 'sc-workspace-notebook-workspace/8.0'",PHP); self.assertIn("'notebook_assistance_schema' => 'sc-workspace-notebook-assistance/1.0'",PHP); self.assertIn("'grounded_assistance_citations_required' => true",PHP); self.assertIn("'grounded_assistance_automatic_submission' => false",PHP)
  def test_10_history_registry(self):
-  self.assertTrue((ROOT/'history/release-manifest-v0.36.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.36.0.json').exists()); self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0770'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0360',REGPHP)
+  self.assertTrue((ROOT/'history/release-manifest-v0.36.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.36.0.json').exists()); self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0780'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0360',REGPHP)
 if __name__=='__main__': unittest.main()

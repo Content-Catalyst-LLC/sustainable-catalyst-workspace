@@ -29,6 +29,7 @@
     {id:'integrity',area:'review',label:'Persistence Integrity',description:'Inspect canonical local save and recovery integrity evidence.',keywords:'review persistence integrity recovery'},
     {id:'compatibility',area:'review',label:'Compatibility',description:'Inspect browser/device capability fallbacks.',keywords:'review compatibility browser device'},
     {id:'accessibility',area:'review',label:'Accessibility',description:'Audit keyboard, focus, semantic, motion, zoom, and screen-reader readiness.',keywords:'review accessibility keyboard focus wcag screen reader'},
+    {id:'final-audit',area:'review',label:'Final Audit',description:'Run the combined accessibility and performance release audit.',keywords:'review final audit accessibility performance release candidate wcag budget'},
     {id:'interoperability',area:'exchange',label:'Import & Interoperability',description:'Stage and review research/project interchange.',keywords:'exchange import export interoperability markdown csv zotero obsidian notion'},
     {id:'collaboration',area:'exchange',label:'Collaborate',description:'Prepare and exchange structured asynchronous reviews.',keywords:'exchange collaborate review comments'},
     {id:'api-embed',area:'exchange',label:'API & Embed',description:'Create explicit static read-only projections and durable references.',keywords:'exchange api embed reference readonly projection integration'},

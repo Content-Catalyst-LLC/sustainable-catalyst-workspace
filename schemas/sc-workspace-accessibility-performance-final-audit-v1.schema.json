@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Accessibility & Performance Final Audit",
+  "type": "object",
+  "required": [
+    "schema",
+    "generatedAt",
+    "target",
+    "state",
+    "automatedReleaseGate",
+    "summary",
+    "findings",
+    "budgets",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-accessibility-performance-final-audit/1.0"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "manual-review",
+        "attention",
+        "blocked"
+      ]
+    },
+    "automatedReleaseGate": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "state",
+          "label",
+          "detail"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "accessibility",
+              "performance"
+            ]
+          },
+          "state": {
+            "enum": [
+              "pass",
+              "attention",
+              "blocked",
+              "manual"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "manual": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "budgets": {
+      "type": "object"
+    },
+    "claimBoundary": {
+      "type": "string"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

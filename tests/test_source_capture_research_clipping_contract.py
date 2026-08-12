@@ -15,7 +15,7 @@ NOTEBOOK = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-worksp
 class SourceCaptureResearchClippingContract(unittest.TestCase):
     def test_01_release_lineage(self):
         self.assertEqual((MAN['version'], MAN['previous_version'], MAN['release_name']), ('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'))
-        self.assertIn('Version: 0.77.0', MAIN)
+        self.assertIn('Version: 0.78.0', MAIN)
 
     def test_02_schema_migration(self):
         self.assertEqual((MAN['storage_schema_version'], MAN['project_schema'], MAN['export_schema']), (35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'))
@@ -114,7 +114,7 @@ class SourceCaptureResearchClippingContract(unittest.TestCase):
     def test_16_registry_and_history(self):
         self.assertEqual((REG['public_version'], REG['previous_version']), ('0.66.0','0.65.0'))
         self.assertIn('Import, Export & Backward-Compatibility Hardening', REG['change_summary'])
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0770'", REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0780'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0320', REGPHP)
         self.assertTrue((ROOT / 'history/release-manifest-v0.32.0.json').exists())
         self.assertTrue((ROOT / 'history/workspace-product-record-v0.32.0.json').exists())

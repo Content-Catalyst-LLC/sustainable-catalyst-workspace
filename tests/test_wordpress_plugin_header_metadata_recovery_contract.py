@@ -20,18 +20,18 @@ class HeaderRecovery(unittest.TestCase):
    'name':r'^[ \t\/*#@]*Plugin Name:(.*)$','version':r'^[ \t\/*#@]*Version:(.*)$','author':r'^[ \t\/*#@]*Author:(.*)$',
    'wp':r'^[ \t\/*#@]*Requires at least:(.*)$','php':r'^[ \t\/*#@]*Requires PHP:(.*)$'}
   found={k:(re.search(v,WINDOW,re.I|re.M).group(1).strip() if re.search(v,WINDOW,re.I|re.M) else None) for k,v in patterns.items()}
-  self.assertEqual(found,{'name':'Sustainable Catalyst Workspace','version':'0.77.0','author':'Content Catalyst LLC','wp':'6.4','php':'8.0'})
+  self.assertEqual(found,{'name':'Sustainable Catalyst Workspace','version':'0.78.0','author':'Content Catalyst LLC','wp':'6.4','php':'8.0'})
  def test_04_header_is_compact(self):
   self.assertLess(B.find(b'Description:'),1024); self.assertLess(B.find(b'Requires PHP:'),512)
   self.assertLess(len(re.search(r'/\*\*(.*?)\*/',T,re.S).group(0).encode()),2048)
- def test_05_plugin_constant(self): self.assertIn("define('SC_WORKSPACE_VERSION', '0.77.0');",T)
+ def test_05_plugin_constant(self): self.assertIn("define('SC_WORKSPACE_VERSION', '0.78.0');",T)
  def test_06_registry_lineage(self):
-  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0770'",REGPHP)
-  self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0770'",REGPHP)
+  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0780'",REGPHP)
+  self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0780'",REGPHP)
   self.assertIn("LEGACY_PENDING_KEY_V0660",REGPHP)
-  self.assertIn("'previous_version' => '0.76.0'",REGPHP)
+  self.assertIn("'previous_version' => '0.77.0'",REGPHP)
  def test_07_schema_stability(self):
   self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['schema_migration_required'])
  def test_08_v066_assets_retained(self):
-  self.assertIn('workspace-v0.77.0.css',PHP); self.assertIn('workspace-v0.77.0.js',PHP)
+  self.assertIn('workspace-v0.78.0.css',PHP); self.assertIn('workspace-v0.78.0.js',PHP)
 if __name__=='__main__': unittest.main()

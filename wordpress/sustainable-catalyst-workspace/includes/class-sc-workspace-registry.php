@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0770';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0770';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0780';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0780';
+    const LEGACY_PENDING_KEY_V0770 = 'sc_workspace_registry_pending_v0770';
     const LEGACY_PENDING_KEY_V0760 = 'sc_workspace_registry_pending_v0760';
     const LEGACY_PENDING_KEY_V0750 = 'sc_workspace_registry_pending_v0750';
     const LEGACY_PENDING_KEY_V0740 = 'sc_workspace_registry_pending_v0740';
@@ -157,6 +158,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0770);
         delete_option(self::LEGACY_PENDING_KEY_V0760);
         delete_option(self::LEGACY_PENDING_KEY_V0750);
         delete_option(self::LEGACY_PENDING_KEY_V0740);
@@ -294,12 +296,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.76.0',
+            'previous_version' => '0.77.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Security & Privacy Audit II',
-            'change_summary' => 'Adds privacy-minimized browser security inspection and release-time gates for REST permissions, dynamic code primitives, secret-like literals, network boundaries, WordPress metadata, and script dependency integrity.',
+            'release_name' => 'Accessibility & Performance Final Audit',
+            'change_summary' => 'Adds a combined final accessibility/performance release gate with explicit blocking thresholds, privacy-minimized evidence, and a manual field-QA checklist for screen readers, contrast, zoom/reflow, touch devices, and representative long sessions.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Audit II is a bounded product security control rather than a penetration test; no automatic remediation, deletion, upload, disclosure, telemetry, or canonical project mutation is introduced.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Automated final-audit gates can block critical structural/performance regressions, but WCAG conformance and field-performance certification still require explicit human validation; no automatic optimization, deletion, upload, telemetry, or canonical mutation is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

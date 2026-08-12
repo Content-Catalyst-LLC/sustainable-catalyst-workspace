@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Final Field QA Checklist",
+  "type": "object",
+  "required": [
+    "schema",
+    "target",
+    "claimBoundary",
+    "requiredManualChecks",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-accessibility-performance-final-checklist/1.0"
+    },
+    "target": {
+      "type": "string"
+    },
+    "claimBoundary": {
+      "type": "string"
+    },
+    "requiredManualChecks": {
+      "type": "array",
+      "minItems": 10,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "label",
+          "procedure"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "procedure": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
