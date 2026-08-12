@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0800';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0800';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0810';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0810';
+    const LEGACY_PENDING_KEY_V0800 = 'sc_workspace_registry_pending_v0800';
     const LEGACY_PENDING_KEY_V0790 = 'sc_workspace_registry_pending_v0790';
     const LEGACY_PENDING_KEY_V0780 = 'sc_workspace_registry_pending_v0780';
     const LEGACY_PENDING_KEY_V0770 = 'sc_workspace_registry_pending_v0770';
@@ -160,6 +161,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0800);
         delete_option(self::LEGACY_PENDING_KEY_V0790);
         delete_option(self::LEGACY_PENDING_KEY_V0780);
         delete_option(self::LEGACY_PENDING_KEY_V0770);
@@ -300,12 +302,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.79.0',
-            'release_date' => '2026-08-11',
-            'release_name' => 'Workspace Release Candidate I',
-            'change_summary' => 'Establishes Workspace Release Candidate I with a formal feature freeze, RC runtime/package gates, rollback-artifact requirements, and explicit human field-validation boundaries while preserving the canonical schema baseline.',
+            'previous_version' => '0.80.0',
+            'release_date' => '2026-08-12',
+            'release_name' => 'WordPress & Deployment Hardening',
+            'change_summary' => 'Hardens WordPress activation, partial-package bootstrap behavior, current asset/version coherence, deployment diagnostics, registry retry coverage, and v0.80 rollback readiness while preserving the Release Candidate schema freeze.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.80.0 is the formal feature-freeze boundary; remaining pre-1.0 work is limited to defects, deployment, compatibility, accessibility, performance, recovery, security/privacy, documentation, packaging/rollback, and explicit field-validation findings.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.81.0 stays inside the v0.80 feature freeze and adds deployment/rollback safeguards only; it does not migrate or inspect browser-local project data.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

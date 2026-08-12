@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-wordpress-deployment-hardening-v1.schema.json",
+  "title": "Workspace WordPress Deployment Hardening",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "state", "automatedDeploymentGate", "knownAutomatedBlockerCount", "checks", "manualFieldItems", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-wordpress-deployment-hardening/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "state": {"enum": ["deployment-automated-ready", "blocked"]},
+    "automatedDeploymentGate": {"type": "boolean"},
+    "knownAutomatedBlockerCount": {"type": "integer", "minimum": 0},
+    "checks": {"type": "array"},
+    "manualFieldItems": {"type": "array"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

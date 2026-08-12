@@ -1,7 +1,7 @@
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 R=Path(__file__).resolve().parents[1]; V=[(1440,1000),(1024,800),(834,1112),(768,1024),(430,900),(390,844)]
-f=(R/'tests/fixtures/v080_workspace_release_candidate_i_fixture.html').read_text();css=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.80.0.css').read_text();f=f.replace('<link rel="stylesheet" href="../../wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.80.0.css">',f'<style>{css}</style>')
+f=(R/'tests/fixtures/v080_workspace_release_candidate_i_fixture.html').read_text();css=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.81.0.css').read_text();f=f.replace('<link rel="stylesheet" href="../../wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.81.0.css">',f'<style>{css}</style>')
 with sync_playwright() as p:
  b=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
  for w,h in V:

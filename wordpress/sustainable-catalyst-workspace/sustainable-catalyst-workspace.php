@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Version: 0.80.0
+ * Version: 0.81.0
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -15,17 +15,65 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '0.80.0');
+define('SC_WORKSPACE_VERSION', '0.81.0');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
 
-require_once SC_WORKSPACE_DIR . 'includes/class-sc-workspace-registry.php';
-require_once SC_WORKSPACE_DIR . 'includes/class-sc-workspace-platform.php';
-require_once SC_WORKSPACE_DIR . 'includes/class-sc-workspace.php';
+/**
+ * Fail closed when an uploaded/replaced plugin is incomplete. Missing bootstrap
+ * files must not become a site-wide fatal error.
+ */
+function sc_workspace_bootstrap_failure($missing_files) {
+    $GLOBALS['sc_workspace_bootstrap_failure_files'] = array_values((array) $missing_files);
+    add_action('admin_notices', function () {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        $count = count(isset($GLOBALS['sc_workspace_bootstrap_failure_files']) ? $GLOBALS['sc_workspace_bootstrap_failure_files'] : array());
+        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v0.81.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
+    });
+}
 
-register_activation_hook(__FILE__, array('SC_Workspace_Registry', 'activate'));
+$sc_workspace_bootstrap_files = array(
+    'deployment' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-deployment.php',
+    'registry' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-registry.php',
+    'platform' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-platform.php',
+    'workspace' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace.php',
+);
+$sc_workspace_bootstrap_missing = array();
+foreach ($sc_workspace_bootstrap_files as $sc_workspace_label => $sc_workspace_file) {
+    if (!is_file($sc_workspace_file) || !is_readable($sc_workspace_file)) {
+        $sc_workspace_bootstrap_missing[] = $sc_workspace_label;
+    }
+}
+if ($sc_workspace_bootstrap_missing) {
+    sc_workspace_bootstrap_failure($sc_workspace_bootstrap_missing);
+    return;
+}
 
+require_once $sc_workspace_bootstrap_files['deployment'];
+require_once $sc_workspace_bootstrap_files['registry'];
+require_once $sc_workspace_bootstrap_files['platform'];
+require_once $sc_workspace_bootstrap_files['workspace'];
+
+function sc_workspace_activate() {
+    $preflight = SC_Workspace_Deployment_Hardening::activate();
+    if (empty($preflight['ok'])) {
+        if (function_exists('deactivate_plugins')) {
+            deactivate_plugins(plugin_basename(__FILE__));
+        }
+        $reason = !empty($preflight['missing_required_file_count'])
+            ? ((int) $preflight['missing_required_file_count']) . ' required release file(s) are missing or unreadable.'
+            : 'The declared WordPress/PHP runtime requirements are not satisfied.';
+        wp_die(esc_html('Sustainable Catalyst Workspace v0.81.0 activation preflight failed: ' . $reason));
+    }
+    SC_Workspace_Registry::activate();
+}
+register_activation_hook(__FILE__, 'sc_workspace_activate');
+
+SC_Workspace_Deployment_Hardening::observe('runtime');
+add_action('admin_notices', array('SC_Workspace_Deployment_Hardening', 'admin_notice'));
 SC_Workspace_Platform::instance();
 SC_Workspace::instance();
 

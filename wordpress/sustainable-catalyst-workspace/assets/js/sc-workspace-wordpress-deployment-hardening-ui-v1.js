@@ -1,0 +1,18 @@
+(function(){
+  'use strict';
+  function start(root){
+    const section=root?.querySelector?.('[data-scw-wordpress-deployment-hardening]'),api=globalThis.SCWorkspaceWordPressDeploymentHardening;
+    if(!root||!section||!api||section.dataset.scwDeploymentReady==='1')return;
+    section.dataset.scwDeploymentReady='1';
+    const q=s=>section.querySelector(s),compat=globalThis.SCWorkspaceBrowserCompatibility,version=String(root.dataset.version||''),badge=q('[data-scw-deploy-badge]'),status=q('[data-scw-deploy-status]'),checksEl=q('[data-scw-deploy-checks]'),manualEl=q('[data-scw-deploy-manual]'),assetsEl=q('[data-scw-deploy-assets]');let latest=null;
+    function download(name,payload){if(compat?.downloadJson)return compat.downloadJson(name,payload,window);try{const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return{ok:true};}catch(error){return{ok:false,reason:String(error?.message||error)}}}
+    function renderList(el,items,manual=false){if(!el)return;el.innerHTML='';items.forEach(item=>{const li=document.createElement('li'),flag=document.createElement('span'),body=document.createElement('div'),strong=document.createElement('strong'),p=document.createElement('p');flag.textContent=manual?'MANUAL':String(item.state||'').toUpperCase();strong.textContent=item.label;p.textContent=item.detail||item.procedure||'';body.append(strong,p);li.append(flag,body);el.appendChild(li);});}
+    function renderAssets(result){if(!assetsEl)return;assetsEl.innerHTML='';[['Expected script',result.assets.expectedScript],['Expected stylesheet',result.assets.expectedStyle],['Stale cumulative scripts',String(result.assets.staleScriptCount)],['Stale cumulative stylesheets',String(result.assets.staleStyleCount)]].forEach(([label,value])=>{const d=document.createElement('div'),s=document.createElement('span'),b=document.createElement('strong');s.textContent=label;b.textContent=value;d.append(s,b);assetsEl.appendChild(d);});}
+    function run(){latest=api.assess(root,{env:window,document});if(badge){badge.textContent=latest.automatedDeploymentGate?'DEPLOYMENT GATE PASS':'DEPLOYMENT BLOCKED';badge.classList.toggle('is-blocked',!latest.automatedDeploymentGate);}renderList(checksEl,latest.checks,false);renderList(manualEl,latest.manualFieldItems,true);renderAssets(latest);if(status)status.textContent=latest.automatedDeploymentGate?`Automated WordPress/deployment coherence passes. ${latest.manualFieldItems.length} production checks remain manual.`:`${latest.knownAutomatedBlockerCount} deployment blocker(s) detected. Do not treat project storage as a cache repair target.`;return latest;}
+    q('[data-scw-deploy-run]')?.addEventListener('click',run);
+    q('[data-scw-deploy-export]')?.addEventListener('click',()=>{const out=download(`workspace-v${version}-wordpress-deployment-report.json`,api.report(version,run()));if(!out?.ok&&status)status.textContent=`Deployment report export could not start (${out?.reason||'unknown error'}).`;});
+    q('[data-scw-deploy-checklist]')?.addEventListener('click',()=>{const out=download(`workspace-v${version}-wordpress-deployment-checklist.json`,api.checklist(version));if(!out?.ok&&status)status.textContent=`Deployment checklist export could not start (${out?.reason||'unknown error'}).`;});
+    run();
+  }
+  const boot=()=>document.querySelectorAll('[data-sc-workspace]').forEach(start);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();

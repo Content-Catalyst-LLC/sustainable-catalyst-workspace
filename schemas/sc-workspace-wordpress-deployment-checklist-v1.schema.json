@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-wordpress-deployment-checklist-v1.schema.json",
+  "title": "Workspace WordPress Deployment Checklist",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "rollbackRelease", "items", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-wordpress-deployment-checklist/1.0"},
+    "generatedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "rollbackRelease": {"const": "0.80.0"},
+    "items": {"type": "array"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

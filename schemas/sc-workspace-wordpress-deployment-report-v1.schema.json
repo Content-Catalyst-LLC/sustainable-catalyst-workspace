@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-wordpress-deployment-report-v1.schema.json",
+  "title": "Workspace WordPress Deployment Report",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "privacy", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-wordpress-deployment-report/1.0"},
+    "generatedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "assessment": {"type": ["object", "null"]},
+    "privacy": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}
