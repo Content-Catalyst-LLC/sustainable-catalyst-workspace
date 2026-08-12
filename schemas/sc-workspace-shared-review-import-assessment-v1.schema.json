@@ -1,0 +1,22 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Shared Review Import Assessment",
+  "type":"object",
+  "required":["schema","ok","duplicate","sourceState","requiresOwnerAcknowledgement","commitAllowed"],
+  "properties":{
+    "schema":{"const":"sc-workspace-shared-review-import-assessment/1.0"},
+    "ok":{"type":"boolean"},
+    "duplicate":{"type":"boolean"},
+    "sourceState":{"enum":["current","stale","legacy-unverifiable","missing-project","duplicate","unverified"]},
+    "requiresOwnerAcknowledgement":{"type":"boolean"},
+    "commitAllowed":{"type":"boolean"},
+    "responseFingerprint":{"type":"string"},
+    "packageFingerprint":{"type":"string"},
+    "sourceRevisionFingerprint":{"type":"string"},
+    "currentRevisionFingerprint":{"type":"string"},
+    "missingScopeObjectIds":{"type":"array","items":{"type":"string"}},
+    "ownerActorId":{"type":"string"},
+    "ownerIdentityCryptographicallyVerified":{"const":false},
+    "message":{"type":"string"}
+  }
+}

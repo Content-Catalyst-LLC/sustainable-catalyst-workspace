@@ -1,1 +1,58 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"Sustainable Catalyst Workspace Shared Review Response","type":"object","required":["schema","handoffId","projectId","packageFingerprint","actorId","decision","comments","proposals","fingerprint"],"properties":{"schema":{"const":"sc-workspace-shared-review-response/1.0"},"handoffId":{"type":"string"},"projectId":{"type":"string"},"packageFingerprint":{"type":"string"},"actorId":{"type":"string"},"decision":{"enum":["no-decision","approved","changes-requested"]},"summary":{"type":"string"},"comments":{"type":"array","maxItems":400},"proposals":{"type":"array","maxItems":250},"fingerprint":{"type":"string","minLength":8}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Shared Review Response",
+  "type": "object",
+  "required": [
+    "schema",
+    "handoffId",
+    "projectId",
+    "packageFingerprint",
+    "actorId",
+    "decision",
+    "comments",
+    "proposals",
+    "fingerprint"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-shared-review-response/1.0"
+    },
+    "handoffId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "packageFingerprint": {
+      "type": "string"
+    },
+    "actorId": {
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "no-decision",
+        "approved",
+        "changes-requested"
+      ]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "comments": {
+      "type": "array",
+      "maxItems": 400
+    },
+    "proposals": {
+      "type": "array",
+      "maxItems": 250
+    },
+    "fingerprint": {
+      "type": "string",
+      "minLength": 8
+    },
+    "sourceRevisionFingerprint": {
+      "type": "string"
+    }
+  }
+}

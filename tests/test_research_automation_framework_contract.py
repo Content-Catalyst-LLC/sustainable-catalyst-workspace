@@ -10,7 +10,7 @@ HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-rese
 UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-automation-ui-v1.js').read_text()
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class TestResearchAutomationFramework(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.56.0','0.55.0','Research Automation Framework')); self.assertIn('Version: 0.72.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.56.0','0.55.0','Research Automation Framework')); self.assertIn('Version: 0.73.0',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['research_automation']['schema_migration'])
  def test_03_route(self): self.assertIn('/wp-json/sc-workspace/v1/research-automation-contract',MAN['rest_routes']); self.assertIn("'/research-automation-contract'",PHP)
  def test_04_types(self): self.assertEqual(MAN['research_automation']['routine_types'],['recurring-import','source-review','verification-check','synthesis-refresh','workflow-action'])
@@ -22,5 +22,5 @@ class TestResearchAutomationFramework(unittest.TestCase):
  def test_10_portability(self): self.assertIn('sc-workspace-research-automation-export/1.0',HELP); self.assertIn('fingerprint mismatch',HELP)
  def test_11_unresolved_visible(self): self.assertIn('currently unresolved',HELP); self.assertTrue(MAN['research_automation']['unresolved_targets_visible'])
  def test_12_header_rule(self): self.assertIn('.scw-auto-head{',CSS); self.assertIn('border-top:4px solid #000',CSS)
- def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0720'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0560',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.56.0.json').exists())
+ def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0730'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0560',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.56.0.json').exists())
 if __name__=='__main__': unittest.main()

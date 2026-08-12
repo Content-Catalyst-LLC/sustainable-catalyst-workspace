@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Collaboration & Shared Review Hardening Contract",
+  "type":"object",
+  "required":["schema","source_revision_fingerprint","stale_response_detection","duplicate_response_commit_blocked","canonical_mutation"],
+  "properties":{
+    "schema":{"const":"sc-workspace-collaboration-review-hardening/1.0"},
+    "source_revision_fingerprint":{"const":true},
+    "stale_response_detection":{"const":true},
+    "duplicate_response_commit_blocked":{"const":true},
+    "stale_response_requires_owner_acknowledgement":{"const":true},
+    "canonical_mutation":{"const":false},
+    "live_coediting":{"const":false},
+    "server_collaboration":{"const":false}
+  }
+}

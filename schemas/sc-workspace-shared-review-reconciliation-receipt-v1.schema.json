@@ -1,0 +1,23 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Sustainable Catalyst Workspace Shared Review Reconciliation Receipt",
+  "type":"object",
+  "required":["schema","id","handoffId","projectId","packageFingerprint","responseFingerprint","sourceState","ownerAcknowledged","createdAt"],
+  "properties":{
+    "schema":{"const":"sc-workspace-shared-review-reconciliation-receipt/1.0"},
+    "id":{"type":"string","minLength":1},
+    "handoffId":{"type":"string","minLength":1},
+    "projectId":{"type":"string","minLength":1},
+    "packageFingerprint":{"type":"string","minLength":8},
+    "responseFingerprint":{"type":"string","minLength":8},
+    "sourceRevisionFingerprint":{"type":"string"},
+    "currentRevisionFingerprint":{"type":"string"},
+    "sourceState":{"enum":["current","stale","legacy-unverifiable","missing-project"]},
+    "ownerAcknowledged":{"type":"boolean"},
+    "ownerActorId":{"type":"string"},
+    "decision":{"enum":["no-decision","approved","changes-requested"]},
+    "addedComments":{"type":"integer","minimum":0},
+    "addedProposals":{"type":"integer","minimum":0},
+    "createdAt":{"type":"string"}
+  }
+}

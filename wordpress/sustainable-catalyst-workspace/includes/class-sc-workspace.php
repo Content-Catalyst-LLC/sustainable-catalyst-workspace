@@ -29,6 +29,9 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0720, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0710, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0700, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0690, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0680, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0670, '') === '1' ||
@@ -104,7 +107,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.72.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.73.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -306,6 +309,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/workflow-guidance-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'workflow_guidance_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/collaboration-review-hardening-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'collaboration_review_hardening_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/field-resilience-contract', array(
@@ -2346,6 +2354,34 @@ public function research_templates_contract() {
         ));
     }
 
+    public function collaboration_review_hardening_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-collaboration-review-hardening-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Collaboration & Shared Review Hardening',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'export_schema' => 'sc-workspace-project-export/20.0',
+            'schema_migration_required' => false,
+            'assessment_schema' => 'sc-workspace-shared-review-import-assessment/1.0',
+            'receipt_schema' => 'sc-workspace-shared-review-reconciliation-receipt/1.0',
+            'source_revision_fingerprint' => true,
+            'stale_response_detection' => true,
+            'duplicate_response_commit_blocked' => true,
+            'stale_response_requires_owner_acknowledgement' => true,
+            'legacy_package_revision_state' => 'unverifiable-requires-owner-acknowledgement',
+            'reviewer_identity' => 'declarative-not-cryptographically-verified',
+            'owner_identity' => 'declarative-not-cryptographically-verified',
+            'response_import' => 'stage-assess-explicit-reconcile',
+            'reconciliation_receipt' => true,
+            'canonical_mutation' => false,
+            'proposal_acceptance_applies_change' => false,
+            'live_coediting' => false,
+            'server_collaboration' => false,
+            'automatic_send' => false,
+        ));
+    }
+
     public function field_resilience_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-resilience-contract/1.0',
@@ -2624,8 +2660,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0720',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.72.0.css',
+            'sc-workspace-v0730',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.73.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2994,8 +3030,8 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0720',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.72.0.js',
+            'sc-workspace-v0730',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.73.0.js',
             array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
@@ -3004,7 +3040,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-workflow-guidance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
-            array('sc-workspace-v0720', 'sc-workspace-workflow-guidance-v1'),
+            array('sc-workspace-v0730', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3015,7 +3051,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0720'),
+            array('sc-workspace-v0730'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3051,14 +3087,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v0720', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0730', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v0720', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0730', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3066,12 +3102,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v0720', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0730', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v0720', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0730', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -3954,13 +3990,13 @@ public function research_templates_contract() {
 
             <section class="scw-collaboration" data-scw-workspace-section="collaboration" hidden aria-labelledby="scw-collaboration-title">
                 <div class="scw-collaboration-head">
-                    <div><div class="scw-editorial-kicker">SHARED REVIEW &amp; RESEARCH HANDOFF</div><h2 id="scw-collaboration-title">Package a deliberate research scope for external review, then bring responses back through a controlled gate.</h2><p>v0.54.0 builds on the v0.53 collaboration architecture with frozen, explicitly scoped review packages; fingerprint-matched reviewer responses; staged response import; and controlled handoff into comments and proposals. It still does not provide live co-editing, automatic sending, or automatic application of proposed changes.</p></div>
+                    <div><div class="scw-editorial-kicker">SHARED REVIEW &amp; RESEARCH HANDOFF</div><h2 id="scw-collaboration-title">Package a deliberate research scope for external review, then reconcile responses without losing revision context.</h2><p>v0.73.0 hardens the asynchronous review boundary with scoped source-revision fingerprints, stale-response detection, duplicate-response blocking, explicit owner acknowledgement when source research has moved, and local reconciliation receipts. Reviewer and owner identities remain declarative rather than cryptographically verified; Workspace still does not provide live co-editing, automatic sending, or automatic application of proposed changes.</p></div>
                 </div>
                 <section class="scw-shared-review-handoff" data-scw-shared-review-handoff aria-labelledby="scw-shared-review-title">
                     <div class="scw-shared-review-head"><div><span>V0.54 / CONTROLLED HANDOFF</span><h3 id="scw-shared-review-title">Freeze only the research material a reviewer actually needs.</h3><p>A prepared handoff stores an explicit object scope as a frozen package. Later project edits do not rewrite that package. Returned responses must match its fingerprint before Workspace will stage them.</p></div><div class="scw-shared-review-metrics"><div><strong data-scw-handoff-metric-total>0</strong><span>handoffs</span></div><div><strong data-scw-handoff-metric-active>0</strong><span>active</span></div><div><strong data-scw-handoff-metric-staged>0</strong><span>staged</span></div><div><strong data-scw-handoff-metric-unresolved>0</strong><span>unresolved</span></div></div></div>
                     <div class="scw-shared-review-grid">
                         <section class="scw-shared-review-panel"><div class="scw-knowledge-panel-head"><span>01 / DEFINE</span><h3>Create a scoped handoff</h3></div><form data-scw-handoff-form><label><span>Project</span><select name="projectId" data-scw-handoff-project required><option value="">Choose project</option></select></label><label><span>Handoff title</span><input name="title" maxlength="220" required placeholder="e.g. External review of evidence and recommendation"></label><label><span>Purpose</span><textarea name="purpose" rows="4" maxlength="4000" placeholder="What should the reviewer examine, challenge, or verify?"></textarea></label><fieldset><legend>Declared reviewers</legend><div class="scw-handoff-choice-list" data-scw-handoff-reviewers><span class="scw-handoff-empty">Choose a project first.</span></div></fieldset><fieldset><legend>Explicit review scope</legend><div class="scw-handoff-choice-list" data-scw-handoff-scope><span class="scw-handoff-empty">Choose a project first.</span></div></fieldset><button class="scw-button scw-button-primary" type="submit">Create handoff</button></form></section>
-                        <section class="scw-shared-review-panel"><div class="scw-knowledge-panel-head"><span>02 / FREEZE &amp; EXCHANGE</span><h3>Prepare the review package</h3></div><div class="scw-handoff-list" data-scw-handoff-list></div><div class="scw-handoff-active" data-scw-handoff-active><div class="scw-handoff-empty">Choose a handoff to prepare or review.</div></div><div class="scw-handoff-actions"><button class="scw-button" type="button" data-scw-handoff-prepare disabled>Prepare frozen package</button><button class="scw-button" type="button" data-scw-handoff-export disabled>Export package</button><button class="scw-button" type="button" data-scw-handoff-response-import disabled>Import response</button><input type="file" accept="application/json,.json" data-scw-handoff-response-file hidden><button class="scw-button scw-button-primary" type="button" data-scw-handoff-response-commit disabled>Commit staged response</button><button class="scw-button" type="button" data-scw-handoff-close disabled>Close handoff</button></div><pre data-scw-handoff-package-preview>No frozen review package prepared.</pre></section>
+                        <section class="scw-shared-review-panel"><div class="scw-knowledge-panel-head"><span>02 / FREEZE &amp; EXCHANGE</span><h3>Prepare and reconcile the review package</h3></div><div class="scw-handoff-list" data-scw-handoff-list></div><div class="scw-handoff-active" data-scw-handoff-active><div class="scw-handoff-empty">Choose a handoff to prepare or review.</div></div><div class="scw-review-integrity" data-scw-handoff-integrity role="status" aria-live="polite"><strong>NO PACKAGE ASSESSED</strong><span>Prepare a frozen package before importing a response.</span></div><label class="scw-review-owner-ack" data-scw-handoff-owner-ack-wrap hidden><input type="checkbox" data-scw-handoff-owner-ack> <span>I am acting as the declared handoff owner and explicitly choose to reconcile this response even though the source revision is stale or cannot be verified.</span></label><div class="scw-handoff-actions"><button class="scw-button" type="button" data-scw-handoff-prepare disabled>Prepare frozen package</button><button class="scw-button" type="button" data-scw-handoff-export disabled>Export package</button><button class="scw-button" type="button" data-scw-handoff-response-import disabled>Import response</button><input type="file" accept="application/json,.json" data-scw-handoff-response-file hidden><button class="scw-button scw-button-primary" type="button" data-scw-handoff-response-commit disabled>Reconcile staged response</button><button class="scw-button" type="button" data-scw-handoff-close disabled>Close handoff</button></div><pre data-scw-handoff-package-preview>No frozen review package prepared.</pre></section>
                     </div>
                     <section class="scw-shared-review-reviewer"><div class="scw-knowledge-panel-head"><span>03 / REVIEWER RESPONSE</span><h3>Prepare a package-matched response without touching the source Workspace.</h3></div><div class="scw-handoff-actions"><button class="scw-button" type="button" data-scw-reviewer-package-import>Import review package</button><input type="file" accept="application/json,.json" data-scw-reviewer-package-file hidden></div><p data-scw-reviewer-package-meta class="scw-handoff-meta">No review package loaded.</p><form data-scw-reviewer-response-form hidden><label><span>Reviewer</span><select name="actorId" data-scw-reviewer-actor required></select></label><label><span>Decision</span><select name="decision"><option value="no-decision">No decision</option><option value="approved">Approved</option><option value="changes-requested">Changes requested</option></select></label><label><span>Response summary</span><textarea name="summary" rows="4" maxlength="5000"></textarea></label><label><span>Response entry</span><select name="entryKind"><option value="comment">Comment</option><option value="proposal">Proposal</option></select></label><label><span>Target</span><select name="targetObjectId" data-scw-reviewer-target><option value="">Project-level</option></select></label><label><span>Comment / proposed change</span><textarea name="entryBody" rows="5" maxlength="8000"></textarea></label><button class="scw-button" type="submit">Export matched response</button></form></section>
                     <p data-scw-handoff-status class="scw-handoff-status" role="status" aria-live="polite">No handoff action pending.</p>
