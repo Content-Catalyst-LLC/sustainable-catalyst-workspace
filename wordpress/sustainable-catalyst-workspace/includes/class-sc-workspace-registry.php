@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0730';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0730';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0740';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0740';
+    const LEGACY_PENDING_KEY_V0730 = 'sc_workspace_registry_pending_v0730';
     const LEGACY_PENDING_KEY_V0720 = 'sc_workspace_registry_pending_v0720';
     const LEGACY_PENDING_KEY_V0710 = 'sc_workspace_registry_pending_v0710';
     const LEGACY_PENDING_KEY_V0700 = 'sc_workspace_registry_pending_v0700';
@@ -153,6 +154,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0730);
         delete_option(self::LEGACY_PENDING_KEY_V0720);
         delete_option(self::LEGACY_PENDING_KEY_V0710);
         delete_option(self::LEGACY_PENDING_KEY_V0700);
@@ -286,12 +288,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.72.0',
+            'previous_version' => '0.73.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Collaboration & Shared Review Hardening',
-            'change_summary' => 'Revision-bound review packages, stale-response detection, duplicate-response blocking, and explicit reconciliation receipts harden asynchronous collaboration without live co-editing.',
+            'release_name' => 'API, Embed & Integration Hardening',
+            'change_summary' => 'Fail-closed static API/embed validation, bounded payloads, trusted renderer origin checks, integrity verification before export, and privacy-minimized integration safety reports.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Shared review identities remain declarative; stale or legacy-unverifiable responses require explicit owner acknowledgement, and committed responses receive local reconciliation receipts without mutating canonical project content.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. No live server project API, credentialed fetch, postMessage bridge, remote write, or automatic publication is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

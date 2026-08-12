@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0730, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0720, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0710, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0700, '') === '1' ||
@@ -107,7 +108,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.73.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.74.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -259,6 +260,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/api-embed-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'api_embed_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/api-embed-hardening-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'api_embed_hardening_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/research-automation-contract', array(
@@ -1347,6 +1353,35 @@ public function research_templates_contract() {
             'automatic_publication' => false,
             'automatic_refresh' => false,
             'automatic_canonical_mutation' => false,
+            'credentialed_fetch' => false,
+            'post_message_bridge' => false,
+            'remote_write' => false,
+            'fail_closed_invalid_embed' => true,
+            'schema_migration' => false,
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+        ));
+    }
+
+    public function api_embed_hardening_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-api-embed-hardening/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'readonly_api_envelope_schema' => 'sc-workspace-readonly-api-envelope/1.0',
+            'embed_descriptor_schema' => 'sc-workspace-embed-descriptor/1.0',
+            'safety_report_schema' => 'sc-workspace-integration-safety-report/1.0',
+            'max_embed_payload_bytes' => 98304,
+            'max_api_payload_bytes' => 131072,
+            'trusted_renderer_transport' => 'https-with-localhost-development-exception',
+            'renderer_origin_must_match_configured_origin' => true,
+            'integrity_verification_before_export' => true,
+            'fail_closed_rendering' => true,
+            'credentialed_fetch' => false,
+            'post_message_bridge' => false,
+            'remote_write' => false,
+            'live_server_project_api' => false,
+            'canonical_mutation' => false,
+            'automatic_publication' => false,
             'schema_migration' => false,
             'storage_schema_version' => 35,
             'project_schema' => 'sc-workspace-project/20.0',
@@ -2660,8 +2695,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0730',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.73.0.css',
+            'sc-workspace-v0740',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.74.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -3030,8 +3065,8 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0730',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.73.0.js',
+            'sc-workspace-v0740',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.74.0.js',
             array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
@@ -3040,7 +3075,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-workflow-guidance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
-            array('sc-workspace-v0730', 'sc-workspace-workflow-guidance-v1'),
+            array('sc-workspace-v0740', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3051,7 +3086,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0730'),
+            array('sc-workspace-v0740'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3087,14 +3122,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v0730', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0740', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v0730', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0740', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3102,12 +3137,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v0730', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0740', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v0730', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0740', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -4259,10 +4294,10 @@ public function research_templates_contract() {
                 <div class="scw-auto-governance" role="note"><strong>Automation prepares work; it does not decide or mutate.</strong><span>No routine performs background network requests, automatic imports, automatic AI calls, automatic task creation, source verification, synthesis replacement, or canonical data mutation. Imported routines never execute automatically.</span></div>
             </section>
 
-            <section class="scw-api-embed" data-scw-workspace-section="api-embed" data-scw-api-embed data-renderer-url="<?php echo esc_url(sc_workspace_api_embed_script_url()); ?>" hidden aria-labelledby="scw-api-embed-title">
+            <section class="scw-api-embed" data-scw-workspace-section="api-embed" data-scw-api-embed data-renderer-url="<?php echo esc_url(sc_workspace_api_embed_script_url()); ?>" data-trusted-origin="<?php echo esc_url(home_url('/')); ?>" hidden aria-labelledby="scw-api-embed-title">
                 <div class="scw-api-embed-head">
-                    <div><div class="scw-editorial-kicker">WORKSPACE API &amp; EMBED FOUNDATION</div><h2 id="scw-api-embed-title">Expose a deliberate read-only projection—not your Workspace.</h2><p>Canonical research remains private and browser-local by default. Create an explicit static projection when a particular record should travel through an API envelope or embed. Durable references identify records but never grant access.</p></div>
-                    <div class="scw-api-boundary"><strong>Private by default</strong><span>No live server project API exists in this release. Public output contains only the fields you explicitly project into a static package.</span></div>
+                    <div><div class="scw-editorial-kicker">API, EMBED &amp; INTEGRATION HARDENING</div><h2 id="scw-api-embed-title">Expose a deliberate read-only projection through a bounded integration boundary.</h2><p>Canonical research remains private and browser-local by default. Create an explicit static projection when a particular record should travel through an API envelope or embed. Durable references identify records but never grant access.</p></div>
+                    <div class="scw-api-boundary"><strong>Private by default</strong><span>No live server project API exists. Export and embed paths fail closed when integrity, payload size, or trusted-renderer checks do not pass.</span></div>
                 </div>
                 <div class="scw-api-grid">
                     <section class="scw-api-panel"><div class="scw-knowledge-panel-head"><span>01 / SELECT &amp; DISCLOSE</span><h3>Create a read-only projection</h3></div>
@@ -4274,7 +4309,7 @@ public function research_templates_contract() {
                     </section>
                     <section class="scw-api-panel"><div class="scw-knowledge-panel-head"><span>02 / REFERENCE &amp; API</span><h3>Stable reference and static JSON envelope</h3></div>
                         <div class="scw-api-reference"><span>DURABLE REFERENCE</span><code data-scw-api-reference>No projection selected.</code></div>
-                        <div class="scw-api-actions"><button class="scw-button" type="button" data-scw-api-copy-ref disabled>Copy durable reference</button><button class="scw-button" type="button" data-scw-api-export-json disabled>Export read-only API JSON</button><button class="scw-button" type="button" data-scw-api-delete disabled>Delete projection</button></div>
+                        <div class="scw-api-actions"><button class="scw-button" type="button" data-scw-api-copy-ref disabled>Copy durable reference</button><button class="scw-button" type="button" data-scw-api-export-json disabled>Export read-only API JSON</button><button class="scw-button" type="button" data-scw-api-delete disabled>Delete projection</button><button class="scw-button" type="button" data-scw-api-verify disabled>Verify integration safety</button><button class="scw-button" type="button" data-scw-api-export-safety disabled>Export safety report</button></div>
                         <pre data-scw-api-json>No API envelope selected.</pre>
                     </section>
                 </div>
@@ -4282,7 +4317,8 @@ public function research_templates_contract() {
                     <div class="scw-api-embed-layout"><div data-scw-api-preview><div class="scw-api-empty">Create or select a projection to preview its read-only embed.</div></div><div><label><span>Embed HTML</span><textarea rows="12" readonly data-scw-api-html></textarea></label><button class="scw-button" type="button" data-scw-api-copy-embed disabled>Copy embed HTML</button></div></div>
                     <p class="scw-api-status" data-scw-api-status role="status" aria-live="polite">No projection has been disclosed.</p>
                 </section>
-                <div class="scw-api-governance" role="note"><strong>Identifiers are not credentials.</strong><span>A <code>scw://</code> durable reference is safe to use as a stable identifier only. It does not prove identity, confer permission, expose private local records, or act as an access token. Static fingerprints detect package changes; they are not signatures or authorization.</span></div>
+                <section class="scw-api-safety" aria-labelledby="scw-api-safety-title"><div class="scw-knowledge-panel-head"><span>04 / INTEGRATION SAFETY</span><h3 id="scw-api-safety-title">Verify the boundary before the projection travels.</h3></div><div data-scw-api-safety><div class="scw-api-empty">Select a projection to run integration safety checks.</div></div><p class="scw-api-note">Checks are local and diagnostic. They verify the projection fingerprint, bounded payload size, static read-only governance, and configured HTTPS renderer origin. They do not authenticate the recipient or turn a fingerprint into a signature.</p></section>
+                <div class="scw-api-governance" role="note"><strong>Identifiers are not credentials.</strong><span>A <code>scw://</code> durable reference is safe to use as a stable identifier only. It does not prove identity, confer permission, expose private local records, or act as an access token. Static fingerprints detect package changes; they are not signatures or authorization. Static embeds perform no credentialed fetch, postMessage bridge, or remote canonical mutation.</span></div>
             </section>
 
             <section class="scw-share" data-scw-workspace-section="share" hidden aria-labelledby="scw-share-title">

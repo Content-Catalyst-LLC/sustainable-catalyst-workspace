@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-api-embed-hardening-v1.schema.json",
+  "title": "Workspace API Embed Hardening v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "ok",
+    "api",
+    "embed",
+    "boundaries"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-api-embed-hardening/1.0"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "api": {
+      "type": "object"
+    },
+    "embed": {
+      "type": "object"
+    },
+    "boundaries": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

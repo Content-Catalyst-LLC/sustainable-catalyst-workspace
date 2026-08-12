@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-integration-safety-report-v1.schema.json",
+  "title": "Workspace Integration Safety Report v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "generatedAt",
+    "status",
+    "disclosureFields",
+    "fingerprintAlgorithm",
+    "api",
+    "embed",
+    "boundaries",
+    "privacy"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-integration-safety-report/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "blocked"
+      ]
+    },
+    "disclosureFields": {
+      "type": "object"
+    },
+    "fingerprintAlgorithm": {
+      "type": "string"
+    },
+    "api": {
+      "type": "object"
+    },
+    "embed": {
+      "type": "object"
+    },
+    "boundaries": {
+      "type": "object"
+    },
+    "privacy": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

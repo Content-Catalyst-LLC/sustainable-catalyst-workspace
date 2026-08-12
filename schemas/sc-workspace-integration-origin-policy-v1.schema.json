@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-integration-origin-policy-v1.schema.json",
+  "title": "Workspace Integration Origin Policy v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "trustedRendererOrigins",
+    "httpsRequired",
+    "credentialedFetch",
+    "postMessageBridge",
+    "remoteWrite"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-integration-origin-policy/1.0"
+    },
+    "trustedRendererOrigins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "httpsRequired": {
+      "const": true
+    },
+    "credentialedFetch": {
+      "const": false
+    },
+    "postMessageBridge": {
+      "const": false
+    },
+    "remoteWrite": {
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}

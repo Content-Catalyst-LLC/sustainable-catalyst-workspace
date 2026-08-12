@@ -10,7 +10,7 @@ REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspa
 class HotfixContract(unittest.TestCase):
  def test_01_lineage_and_schema_stability(self):
   self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'))
-  self.assertIn('Version: 0.73.0',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '0.73.0",MAIN)
+  self.assertIn('Version: 0.74.0',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '0.74.0",MAIN)
   self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0');self.assertFalse(MAN['schema_migration_required'])
  def test_02_accessibility_dependency_has_no_self_edge(self):
   block=re.search(r"wp_enqueue_script\(\s*'sc-workspace-accessibility-v1'.*?\n\s*\);",PHP,re.S).group(0)
@@ -18,8 +18,8 @@ class HotfixContract(unittest.TestCase):
   deps=re.search(r"array\((.*?)\)",block,re.S).group(1)
   self.assertNotIn("'sc-workspace-accessibility-v1'",deps)
  def test_03_current_assets(self):
-  self.assertIn("'sc-workspace-v0730'",PHP);self.assertIn('workspace-v0.73.0.css',PHP);self.assertIn('workspace-v0.73.0.js',PHP)
-  self.assertIn("array('sc-workspace-v0730')",PHP);self.assertIn("wp_localize_script('sc-workspace-v0730'",PHP)
+  self.assertIn("'sc-workspace-v0740'",PHP);self.assertIn('workspace-v0.74.0.css',PHP);self.assertIn('workspace-v0.74.0.js',PHP)
+  self.assertIn("array('sc-workspace-v0740')",PHP);self.assertIn("wp_localize_script('sc-workspace-v0740'",PHP)
  def test_04_hero_zero_minimum_tracks(self):
   self.assertIn('.scw-platform-hero-grid{grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr)}',CSS)
   self.assertIn('.scw-platform-hero-grid>*',CSS);self.assertIn('.scw-platform-preview',CSS);self.assertIn('min-width:0;max-width:100%',CSS)
@@ -33,7 +33,7 @@ class HotfixContract(unittest.TestCase):
   r=MAN['runtime_layout_recovery'];self.assertEqual(r['viewports'],[1600,1440,1280,1024,768,390]);self.assertTrue(r['full_wordpress_footer_render_manual_qa'])
  def test_08_registry_hotfix(self):
   self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0'));self.assertEqual(REG['release_name'],'Import, Export & Backward-Compatibility Hardening')
-  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0730'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0640',REGPHP)
+  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0740'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0640',REGPHP)
  def test_09_predecessor_history(self):
   self.assertTrue((ROOT/'history/release-manifest-v0.64.0.json').exists());self.assertTrue((ROOT/'history/workspace-product-record-v0.64.0.json').exists())
 if __name__=='__main__': unittest.main()

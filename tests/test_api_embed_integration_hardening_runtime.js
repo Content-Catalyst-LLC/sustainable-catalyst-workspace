@@ -1,0 +1,16 @@
+const assert=require('assert');
+const A=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-api-embed-v1.js');
+const entry={kind:'object',subtype:'source',projectId:'p1',projectTitle:'Project',id:'o1',title:'Title',summary:'Summary',content:'Content',tags:['a'],updatedAt:'2026-08-11T20:00:00Z',origin:'Workspace Object',provenance:{sourceTitle:'Source',sourceUrl:'https://example.com'}};
+let p=A.createProjection(entry,{fields:{summary:true,content:true}},()=> '2026-08-11T20:05:00Z',()=> 'proj-1');
+p=A.withFingerprint(p,'sha256:'+'a'.repeat(64));
+const d=A.embedDescriptor(p,'0.74.0','https://sustainablecatalyst.com/wp-content/plugins/sustainable-catalyst-workspace/assets/js/sc-workspace-api-embed-v1.js',{trustedOrigins:['https://sustainablecatalyst.com']});
+let v=A.validateDescriptor(d,{trustedOrigins:['https://sustainablecatalyst.com']}); assert(v.ok); assert(v.bytes<A.MAX_EMBED_BYTES); assert.equal(v.rendererOrigin,'https://sustainablecatalyst.com');
+assert(A.apiEnvelope(p,'0.74.0')); assert(A.apiAssessment(p,p.fingerprint).ok);
+let a=A.integrationAssessment(p,d,p.fingerprint,{trustedOrigins:['https://sustainablecatalyst.com']}); assert(a.ok); assert.equal(a.boundaries.remoteWrite,false); assert.equal(a.boundaries.credentialedFetch,false); assert.equal(a.boundaries.postMessage,false);
+const report=A.safetyReport(a,p,'0.74.0',()=> '2026-08-11T20:10:00Z'); assert.equal(report.status,'pass'); assert.equal(report.privacy.projectContentIncluded,false); assert.equal(report.privacy.durableReferenceIncluded,false);
+let evil=A.embedDescriptor(p,'0.74.0','https://evil.example/renderer.js',{trustedOrigins:['https://sustainablecatalyst.com']}); v=A.validateDescriptor(evil,{trustedOrigins:['https://sustainablecatalyst.com']}); assert(!v.ok); assert(v.errors.includes('renderer-origin-untrusted')); assert.equal(A.embedHtml(evil,evil.rendererUrl,{trustedOrigins:['https://sustainablecatalyst.com']}),'');
+let bad=JSON.parse(JSON.stringify(d)); bad.governance.postMessage=true; assert(!A.validateDescriptor(bad,{trustedOrigins:['https://sustainablecatalyst.com']}).ok);
+let tampered=JSON.parse(JSON.stringify(p)); tampered.data.summary='changed'; assert(!A.apiAssessment(tampered,p.fingerprint+'x').ok);
+const huge=JSON.parse(JSON.stringify(d)); huge.payload.projection.data.content='x'.repeat(A.MAX_EMBED_BYTES+1000); assert(!A.validateDescriptor(huge,{trustedOrigins:['https://sustainablecatalyst.com']}).ok);
+assert.equal(A.rendererAssessment('javascript:alert(1)',[]).ok,false); assert.equal(A.rendererAssessment('http://localhost/x.js',['http://localhost']).ok,true);
+console.log('PASS - v0.74.0 API, Embed & Integration Hardening runtime');
