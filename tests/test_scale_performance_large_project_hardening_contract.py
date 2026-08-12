@@ -12,7 +12,7 @@ APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.66.0.
 NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class TestScalePerformanceLargeProjectHardening(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 0.76.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 0.77.0',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['scale_performance']['schema_migration'])
  def test_03_contract_route(self): self.assertIn('/wp-json/sc-workspace/v1/scale-performance-contract',MAN['rest_routes']); self.assertIn("'/scale-performance-contract'",PHP); self.assertIn('scale_performance_contract',PHP)
  def test_04_derived_cache(self): self.assertTrue(MAN['scale_performance']['derived_index_cache']); self.assertIn('function deriveIntegrated',HELP); self.assertIn('cache.hits++',HELP); self.assertIn('deriveIntegrated(state,api)',APP)
@@ -23,7 +23,7 @@ class TestScalePerformanceLargeProjectHardening(unittest.TestCase):
  def test_09_performance_surface(self): self.assertIn('data-scw-workspace-view="performance"',PHP); self.assertIn('data-scw-scale-performance',PHP); self.assertIn('Run scale profile',PHP); self.assertIn("performance:'Performance'",NAV)
  def test_10_cache_clear_is_derived_only(self): self.assertIn('Clear derived cache',PHP); self.assertIn('Canonical Workspace data was unchanged',UI); self.assertIn('function clearCache',HELP)
  def test_11_header_rule(self): self.assertIn('.scw-scale-performance{border-top:4px solid #000',CSS)
- def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0760'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0570',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.58.0.json').exists())
+ def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0770'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0570',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.58.0.json').exists())
  def test_13_previous_institutional_release_retained(self):
   hist=json.loads((ROOT/'history/release-manifest-v0.57.0.json').read_text()); self.assertEqual(hist['release_name'],'Institutional Research Packages'); self.assertIn('sc-workspace-institutional-research-packages-v1.js',PHP)
 if __name__=='__main__': unittest.main()
