@@ -1,0 +1,14 @@
+(function(){
+  'use strict';
+  function start(root){
+    const section=root?.querySelector?.('[data-scw-beta-closure]'),api=globalThis.SCWorkspacePublicBetaIIIDefectClosure;if(!root||!section||!api||section.dataset.scwBetaClosureReady==='1')return;section.dataset.scwBetaClosureReady='1';
+    const q=s=>section.querySelector(s),compat=globalThis.SCWorkspaceBrowserCompatibility,version=String(root.dataset.version||''),badge=q('[data-scw-beta-closure-badge]'),status=q('[data-scw-beta-closure-status]'),checksEl=q('[data-scw-beta-closure-checks]'),closedEl=q('[data-scw-beta-closure-closed]'),manualEl=q('[data-scw-beta-closure-manual]');let latest=null;
+    function download(name,payload){if(compat?.downloadJson)return compat.downloadJson(name,payload,window);try{const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);return{ok:true};}catch(error){return{ok:false,reason:String(error?.message||error)}}}
+    function renderList(el,items,kind){if(!el)return;el.innerHTML='';items.forEach(item=>{const li=document.createElement('li'),flag=document.createElement('span'),body=document.createElement('div'),strong=document.createElement('strong'),p=document.createElement('p');flag.textContent=kind==='manual'?'MANUAL':kind==='closed'?'CLOSED':String(item.state||'').toUpperCase();strong.textContent=item.label;p.textContent=item.detail||item.procedure||'';body.append(strong,p);li.append(flag,body);el.appendChild(li);});}
+    function run(){latest=api.assess(root,{env:window});if(badge){badge.textContent=latest.automatedGate?'AUTOMATED BACKLOG CLOSED':'AUTOMATED BLOCKERS REMAIN';badge.classList.toggle('is-blocked',!latest.automatedGate);}renderList(checksEl,latest.checks,'checks');renderList(closedEl,latest.closedDefectClasses,'closed');renderList(manualEl,latest.manualFieldItems,'manual');if(status)status.textContent=latest.automatedGate?`Automated Beta III defect backlog is closed. ${latest.manualFieldItems.length} human field-validation item(s) remain explicit before Release Candidate field sign-off.`:`${latest.knownAutomatedBlockerCount} automated release blocker(s) remain. Resolve them before Release Candidate.`;return latest;}
+    q('[data-scw-beta-closure-run]')?.addEventListener('click',run);
+    q('[data-scw-beta-closure-export]')?.addEventListener('click',()=>{const out=download(`workspace-v${version}-public-beta-iii-defect-closure.json`,api.report(version,run()));if(!out?.ok&&status)status.textContent=`Defect-closure report export could not start (${out?.reason||'unknown error'}).`;});
+    run();
+  }
+  const boot=()=>document.querySelectorAll('[data-sc-workspace]').forEach(start);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();

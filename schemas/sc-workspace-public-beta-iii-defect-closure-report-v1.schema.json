@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-public-beta-iii-defect-closure-report-v1.schema.json",
+  "title": "Workspace Public Beta III Defect Closure Report",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "assessment", "privacy", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-public-beta-iii-defect-closure-report/1.0"},
+    "generatedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "assessment": {"type": "object"},
+    "privacy": {"type": "object"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}

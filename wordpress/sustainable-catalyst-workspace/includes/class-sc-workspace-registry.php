@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0780';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0780';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0790';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0790';
+    const LEGACY_PENDING_KEY_V0780 = 'sc_workspace_registry_pending_v0780';
     const LEGACY_PENDING_KEY_V0770 = 'sc_workspace_registry_pending_v0770';
     const LEGACY_PENDING_KEY_V0760 = 'sc_workspace_registry_pending_v0760';
     const LEGACY_PENDING_KEY_V0750 = 'sc_workspace_registry_pending_v0750';
@@ -158,6 +159,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0780);
         delete_option(self::LEGACY_PENDING_KEY_V0770);
         delete_option(self::LEGACY_PENDING_KEY_V0760);
         delete_option(self::LEGACY_PENDING_KEY_V0750);
@@ -296,12 +298,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.77.0',
+            'previous_version' => '0.78.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Accessibility & Performance Final Audit',
-            'change_summary' => 'Adds a combined final accessibility/performance release gate with explicit blocking thresholds, privacy-minimized evidence, and a manual field-QA checklist for screen readers, contrast, zoom/reflow, touch devices, and representative long sessions.',
+            'release_name' => 'Public Beta III Defect Closure',
+            'change_summary' => 'Closes the Public Beta III automated defect backlog with release-consistency, topology, recovery, security/privacy, accessibility/performance, WordPress metadata, and dependency gates while keeping human field-validation items explicit.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Automated final-audit gates can block critical structural/performance regressions, but WCAG conformance and field-performance certification still require explicit human validation; no automatic optimization, deletion, upload, telemetry, or canonical mutation is introduced.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.79.0 adds no new product subsystem; automated blockers must be zero while production browser/device, assistive-technology, long-session, two-device sync, and real handoff validation remain explicit human field work.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

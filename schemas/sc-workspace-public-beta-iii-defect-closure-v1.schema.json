@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-public-beta-iii-defect-closure-v1.schema.json",
+  "title": "Workspace Public Beta III Defect Closure",
+  "type": "object",
+  "required": ["schema", "generatedAt", "workspaceVersion", "state", "automatedGate", "knownAutomatedBlockerCount", "checks", "closedDefectClasses", "manualFieldItems", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-public-beta-iii-defect-closure/1.0"},
+    "generatedAt": {"type": "string"},
+    "workspaceVersion": {"type": "string"},
+    "state": {"enum": ["automated-closure-pass", "blocked"]},
+    "automatedGate": {"type": "boolean"},
+    "knownAutomatedBlockerCount": {"type": "integer", "minimum": 0},
+    "checks": {"type": "array", "items": {"type": "object", "required": ["id", "label", "state", "detail"]}},
+    "closedDefectClasses": {"type": "array", "items": {"type": "object", "required": ["id", "label", "detail"]}},
+    "manualFieldItems": {"type": "array", "items": {"type": "object", "required": ["id", "label", "procedure", "state"]}},
+    "claimBoundary": {"type": "string"},
+    "governance": {"type": "object"}
+  },
+  "additionalProperties": true
+}
