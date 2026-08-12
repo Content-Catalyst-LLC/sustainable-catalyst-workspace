@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Handoff Validation Policy v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "recipientRequired",
+    "purposeRequired",
+    "promotionSha256Required",
+    "receiptMatchRequired"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-handoff-validation-policy/1.0"
+    },
+    "recipientRequired": {
+      "const": true
+    },
+    "purposeRequired": {
+      "const": true
+    },
+    "promotionSha256Required": {
+      "const": true
+    },
+    "receiptMatchRequired": {
+      "const": true
+    },
+    "duplicateReceiptBlocked": {
+      "const": true
+    },
+    "automaticUpload": {
+      "const": false
+    },
+    "automaticIngestion": {
+      "const": false
+    },
+    "automaticSourceMutation": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

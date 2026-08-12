@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Transfer Validation v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "checks",
+    "status",
+    "transferAllowed"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-transfer-validation/1.0"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "checks": {
+      "type": "array"
+    },
+    "status": {
+      "enum": [
+        "pass",
+        "attention",
+        "blocked"
+      ]
+    },
+    "transferAllowed": {
+      "type": "boolean"
+    },
+    "stale": {
+      "type": "boolean"
+    },
+    "integrityVerified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

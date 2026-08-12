@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Validation Report v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "generatedAt",
+    "summary",
+    "items",
+    "privacy",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-validation-report/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "items": {
+      "type": "array"
+    },
+    "privacy": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
