@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-product-help-v1.schema.json",
+  "title": "Workspace Product Help",
+  "type": "object",
+  "required": ["schema", "topics", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-product-help/1.0"},
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "title", "summary", "route", "steps"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "category": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "summary": {"type": "string", "minLength": 1},
+          "route": {"type": "string", "minLength": 1},
+          "steps": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": ["advisoryOnly", "canonicalMutation", "automaticRecovery", "telemetry"],
+      "properties": {
+        "advisoryOnly": {"const": true},
+        "canonicalMutation": {"const": false},
+        "automaticRecovery": {"const": false},
+        "telemetry": {"const": false}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

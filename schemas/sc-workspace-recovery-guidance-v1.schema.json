@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-recovery-guidance-v1.schema.json",
+  "title": "Workspace Recovery Guidance",
+  "type": "object",
+  "required": ["schema", "issue", "recommendedTopic", "automaticAction"],
+  "properties": {
+    "schema": {"const": "sc-workspace-recovery-guidance/1.0"},
+    "issue": {"type": "string", "minLength": 1},
+    "recommendedTopic": {"type": "string", "minLength": 1},
+    "automaticAction": {"const": false}
+  },
+  "additionalProperties": false
+}

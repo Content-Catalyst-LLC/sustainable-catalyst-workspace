@@ -8,8 +8,8 @@ REGPHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-
 JS=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-public-beta-iii-v1.js').read_text()
 UI=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-public-beta-iii-ui-v1.js').read_text()
 NAV=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
-APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.75.0.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.75.0.css').read_text()
+APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.76.0.js').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.76.0.css').read_text()
 
 class PublicProductBetaIIIContract(unittest.TestCase):
     def test_release_lineage_and_schema_stability(self):
@@ -32,7 +32,7 @@ class PublicProductBetaIIIContract(unittest.TestCase):
         for k in ['hidden_readiness_score','automatic_completion','behavioral_tracking','automatic_telemetry','automatic_submission','canonical_mutation']:
             self.assertFalse(beta[k],k)
     def test_product_journey_is_routed_and_visible(self):
-        self.assertIn("views:['start','journey']",NAV)
+        self.assertIn("views:['start','journey','help']",NAV)
         self.assertIn("journey:'Product Journey'",NAV)
         self.assertIn("data-scw-workspace-view=\"journey\"",PHP)
         self.assertIn('data-scw-public-beta-iii',PHP)
@@ -56,8 +56,8 @@ class PublicProductBetaIIIContract(unittest.TestCase):
         self.assertEqual(REG['previous_version'],'0.69.0')
         self.assertEqual(REG['release_name'],'Public Product Beta III')
         self.assertIn('public_product_beta_iii',REG)
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0750'",REGPHP)
-        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0750'",REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0760'",REGPHP)
+        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0760'",REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0690',REGPHP)
         self.assertTrue((R/'history/release-manifest-v0.69.0.json').exists())
         self.assertTrue((R/'history/workspace-product-record-v0.69.0.json').exists())

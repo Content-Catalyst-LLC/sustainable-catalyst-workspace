@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0750';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0750';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0760';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0760';
+    const LEGACY_PENDING_KEY_V0750 = 'sc_workspace_registry_pending_v0750';
     const LEGACY_PENDING_KEY_V0740 = 'sc_workspace_registry_pending_v0740';
     const LEGACY_PENDING_KEY_V0730 = 'sc_workspace_registry_pending_v0730';
     const LEGACY_PENDING_KEY_V0720 = 'sc_workspace_registry_pending_v0720';
@@ -155,6 +156,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0750);
         delete_option(self::LEGACY_PENDING_KEY_V0740);
         delete_option(self::LEGACY_PENDING_KEY_V0730);
         delete_option(self::LEGACY_PENDING_KEY_V0720);
@@ -290,12 +292,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.74.0',
+            'previous_version' => '0.75.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Institutional Package & Handoff Validation',
-            'change_summary' => 'Validates frozen institutional package scope, disclosure manifests, recipient and purpose fields, source-revision staleness, promotion-package integrity, and institutional receipts before transfer or reconciliation.',
+            'release_name' => 'Documentation, Recovery Guidance & Product Help',
+            'change_summary' => 'Adds contextual product help, local-first storage explanations, recovery playbooks, and explicit guidance for backup, restore, import, sync conflict, shared review, and institutional handoff without automatic repair or mutation.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Workspace remains a personal source environment: no institutional tenant, automatic Catalyst Intelligence ingestion, server permission grant, or source-project conversion is introduced.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Product Help is advisory and privacy-minimized: no automatic repair, restore, upload, sync, telemetry, or canonical project mutation is introduced.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

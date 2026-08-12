@@ -1,13 +1,11 @@
-# Sustainable Catalyst Workspace v0.75.0
+# Sustainable Catalyst Workspace v0.76.0
 
-**Institutional Package & Handoff Validation**
+## Documentation, Recovery Guidance & Product Help
 
-Sustainable Catalyst Workspace is a free, local-first environment for keeping questions, evidence, analysis, decisions, composition, review, and deliberate handoff connected. v0.75.0 hardens the boundary between the personal Workspace and institutional transfer artifacts without turning Workspace into an institutional tenant or remotely writable service.
+Sustainable Catalyst Workspace is a free, local-first environment for keeping questions, evidence, analysis, decisions, composition, review, and deliberate handoff connected. v0.76.0 adds searchable product help and explicit recovery guidance without changing the canonical project model or automating repair.
 
-Institutional research packages now receive exact scope and disclosure-manifest checks, explicit recipient and purpose validation, and source-revision freshness review before export. Catalyst Intelligence promotion packages receive manifest consistency and SHA-256 integrity checks. Returned institutional receipts are matched to the locally prepared handoff and source project, checked for duplicate import, and require explicit acknowledgement when integrity or chronology remains unverifiable.
+The new **Start → Help & Recovery** surface explains local-first storage, account recovery backup, explicit sync, restore-as-copy, rejected imports, device migration, shared-review reconciliation, and institutional handoff. Guidance is advisory and privacy-minimized.
 
-Validation is explainable and non-scored. It does not grant organization access, auto-upload packages, auto-ingest content into Catalyst Intelligence, or convert the personal source project into an institutional record.
+Storage remains **35**. Project and Project Export remain **20.0**.
 
-Canonical formats remain schema-stable at **Storage 35**, **Project `sc-workspace-project/20.0`**, and **Project Export `sc-workspace-project-export/20.0`**.
-
-See `RELEASE_NOTES_0.75.0.md`, `VALIDATION_REPORT_0.75.0.md`, and `docs/INSTITUTIONAL_PACKAGE_HANDOFF_VALIDATION_V0750.md` for release details.
+See `RELEASE_NOTES_0.76.0.md`, `VALIDATION_REPORT_0.76.0.md`, and `docs/DOCUMENTATION_RECOVERY_GUIDANCE_PRODUCT_HELP_V0760.md` for release details.

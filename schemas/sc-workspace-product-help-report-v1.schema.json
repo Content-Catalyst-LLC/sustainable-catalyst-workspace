@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-product-help-report-v1.schema.json",
+  "title": "Workspace Product Help Report",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "generatedAt", "context", "privacy", "governance"],
+  "properties": {
+    "schema": {"const": "sc-workspace-product-help-report/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "generatedAt": {"type": "string"},
+    "context": {
+      "type": "object",
+      "required": ["view", "topicId", "category"],
+      "properties": {
+        "view": {"type": "string"},
+        "topicId": {"type": "string"},
+        "category": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "privacy": {
+      "type": "object",
+      "required": ["projectContentIncluded", "projectTitleIncluded", "sourceUrlsIncluded", "queryTextIncluded", "deviceIdentifierIncluded", "accountIdentityIncluded"],
+      "properties": {
+        "projectContentIncluded": {"const": false},
+        "projectTitleIncluded": {"const": false},
+        "sourceUrlsIncluded": {"const": false},
+        "queryTextIncluded": {"const": false},
+        "deviceIdentifierIncluded": {"const": false},
+        "accountIdentityIncluded": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "required": ["advisoryOnly", "canonicalMutation", "automaticRecovery", "automaticRestore", "automaticUpload", "telemetry"],
+      "properties": {
+        "advisoryOnly": {"const": true},
+        "canonicalMutation": {"const": false},
+        "automaticRecovery": {"const": false},
+        "automaticRestore": {"const": false},
+        "automaticUpload": {"const": false},
+        "telemetry": {"const": false}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
