@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-release-candidate-report-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Release Candidate Report",
+  "type":"object",
+  "required":["schema","generatedAt","workspaceVersion","assessment","privacy","governance"],
+  "properties":{
+    "schema":{"const":"sc-workspace-release-candidate-report/1.0"},
+    "generatedAt":{"type":"string"},
+    "workspaceVersion":{"type":"string"},
+    "assessment":{"type":["object","null"]},
+    "privacy":{"type":"object"},
+    "governance":{"type":"object"}
+  },
+  "additionalProperties":true
+}

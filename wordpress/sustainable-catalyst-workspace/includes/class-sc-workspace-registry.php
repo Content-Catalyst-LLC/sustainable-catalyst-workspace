@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0790';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0790';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0800';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0800';
+    const LEGACY_PENDING_KEY_V0790 = 'sc_workspace_registry_pending_v0790';
     const LEGACY_PENDING_KEY_V0780 = 'sc_workspace_registry_pending_v0780';
     const LEGACY_PENDING_KEY_V0770 = 'sc_workspace_registry_pending_v0770';
     const LEGACY_PENDING_KEY_V0760 = 'sc_workspace_registry_pending_v0760';
@@ -159,6 +160,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0790);
         delete_option(self::LEGACY_PENDING_KEY_V0780);
         delete_option(self::LEGACY_PENDING_KEY_V0770);
         delete_option(self::LEGACY_PENDING_KEY_V0760);
@@ -298,12 +300,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.78.0',
+            'previous_version' => '0.79.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'Public Beta III Defect Closure',
-            'change_summary' => 'Closes the Public Beta III automated defect backlog with release-consistency, topology, recovery, security/privacy, accessibility/performance, WordPress metadata, and dependency gates while keeping human field-validation items explicit.',
+            'release_name' => 'Workspace Release Candidate I',
+            'change_summary' => 'Establishes Workspace Release Candidate I with a formal feature freeze, RC runtime/package gates, rollback-artifact requirements, and explicit human field-validation boundaries while preserving the canonical schema baseline.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.79.0 adds no new product subsystem; automated blockers must be zero while production browser/device, assistive-technology, long-session, two-device sync, and real handoff validation remain explicit human field work.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.80.0 is the formal feature-freeze boundary; remaining pre-1.0 work is limited to defects, deployment, compatibility, accessibility, performance, recovery, security/privacy, documentation, packaging/rollback, and explicit field-validation findings.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -27,12 +27,12 @@ for i,m in enumerate(route_matches):
     if route.startswith('/cloud-'):
         check('cloud_permission' in block,'cloud route lacks authenticated permission: '+route)
 # Cookie-authenticated cloud writes must carry a WordPress REST nonce and same-origin credentials.
-current_shell=(PLUGIN/'assets/js/workspace-v0.79.0.js').read_text(errors='ignore')
+current_shell=(PLUGIN/'assets/js/workspace-v0.80.0.js').read_text(errors='ignore')
 check("'X-WP-Nonce': String(IDENTITY_CONFIG.restNonce)" in current_shell,'cloud request nonce header missing')
 check("credentials: 'same-origin'" in current_shell,'cloud request same-origin credential policy missing')
 # Current executable JS only: all unversioned helpers plus the current cumulative shell.
 assets=PLUGIN/'assets/js'
-js=[p for p in assets.glob('sc-workspace-*.js')]+[assets/'workspace-v0.79.0.js']
+js=[p for p in assets.glob('sc-workspace-*.js')]+[assets/'workspace-v0.80.0.js']
 for p in js:
     t=p.read_text(errors='ignore')
     for pattern,label in [(r'\beval\s*\(','eval'),(r'new\s+Function\s*\(','new Function'),(r'document\.write\s*\(','document.write')]:
@@ -48,7 +48,7 @@ fetches=[]
 for p in js:
     t=p.read_text(errors='ignore')
     if re.search(r'\bfetch\s*\(',t): fetches.append((p.name,t))
-check(len(fetches)==1 and fetches[0][0]=='workspace-v0.79.0.js','unexpected fetch-bearing current asset')
+check(len(fetches)==1 and fetches[0][0]=='workspace-v0.80.0.js','unexpected fetch-bearing current asset')
 current=fetches[0][1]
 check("fetch(cloudRestUrl(path), { credentials: 'same-origin'" in current,'cloud fetch is not same-origin credential-scoped')
 # External executable endpoints are not allowed in fetch/XHR/WebSocket/EventSource strings.
@@ -59,5 +59,5 @@ for p in js:
 for p in PLUGIN.rglob('*.php'):
     for line in p.read_text(errors='ignore').splitlines():
         if 'target="_blank"' in line and 'rel="noopener' not in line: fail('target=_blank without noopener in '+p.name)
-check('Version: 0.79.0' in MAIN,'plugin version mismatch')
-print('PASS - v0.79.0 inherited Security & Privacy Audit II source gates')
+check('Version: 0.80.0' in MAIN,'plugin version mismatch')
+print('PASS - v0.80.0 inherited Security & Privacy Audit II source gates')

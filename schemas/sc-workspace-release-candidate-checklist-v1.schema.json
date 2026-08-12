@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-release-candidate-checklist-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Release Candidate Field Checklist",
+  "type":"object",
+  "required":["schema","generatedAt","workspaceVersion","items","instructions","governance"],
+  "properties":{
+    "schema":{"const":"sc-workspace-release-candidate-checklist/1.0"},
+    "generatedAt":{"type":"string"},
+    "workspaceVersion":{"type":"string"},
+    "items":{"type":"array","items":{"type":"object"}},
+    "instructions":{"type":"string"},
+    "governance":{"type":"object"}
+  },
+  "additionalProperties":true
+}

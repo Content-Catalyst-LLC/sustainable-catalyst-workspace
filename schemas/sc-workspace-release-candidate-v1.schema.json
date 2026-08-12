@@ -1,0 +1,21 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-release-candidate-v1.schema.json",
+  "title":"Sustainable Catalyst Workspace Release Candidate",
+  "type":"object",
+  "required":["schema","generatedAt","workspaceVersion","state","automatedReleaseCandidateGate","knownAutomatedBlockerCount","checks","manualFieldItems","featureFreeze","claimBoundary","governance"],
+  "properties":{
+    "schema":{"const":"sc-workspace-release-candidate/1.0"},
+    "generatedAt":{"type":"string"},
+    "workspaceVersion":{"type":"string"},
+    "state":{"enum":["rc-automated-ready","blocked"]},
+    "automatedReleaseCandidateGate":{"type":"boolean"},
+    "knownAutomatedBlockerCount":{"type":"integer","minimum":0},
+    "checks":{"type":"array","items":{"type":"object"}},
+    "manualFieldItems":{"type":"array","items":{"type":"object"}},
+    "featureFreeze":{"type":"object"},
+    "claimBoundary":{"type":"string"},
+    "governance":{"type":"object"}
+  },
+  "additionalProperties":true
+}
