@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0710';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0710';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0720';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0720';
+    const LEGACY_PENDING_KEY_V0710 = 'sc_workspace_registry_pending_v0710';
     const LEGACY_PENDING_KEY_V0700 = 'sc_workspace_registry_pending_v0700';
     const LEGACY_PENDING_KEY_V0690 = 'sc_workspace_registry_pending_v0690';
     const LEGACY_PENDING_KEY_V0680 = 'sc_workspace_registry_pending_v0680';
@@ -151,6 +152,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0710);
         delete_option(self::LEGACY_PENDING_KEY_V0700);
         delete_option(self::LEGACY_PENDING_KEY_V0690);
         delete_option(self::LEGACY_PENDING_KEY_V0680);
@@ -282,12 +284,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.70.0',
+            'previous_version' => '0.71.0',
             'release_date' => '2026-08-11',
-            'release_name' => 'First-Run Onboarding & Project Creation',
-            'change_summary' => 'First-run onboarding makes the initial project boundary explicit and lets a new user create a blank or guided local project from one focused Start surface.',
+            'release_name' => 'Research Workflow Guidance & Empty-State Refinement',
+            'change_summary' => 'Contextual research guidance and actionable empty states help users identify the next explicit research action without scoring, inference, or automatic mutation.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. First-run status is derived from zero local projects; project creation requires explicit submit and does not upload content, enroll sync, or advance lifecycle state.',
+            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. Guidance is derived from visible local counts and remains advisory; it does not mark work complete, create tasks, invoke AI, or mutate canonical research.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

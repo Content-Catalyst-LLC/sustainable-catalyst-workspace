@@ -104,7 +104,7 @@ final class SC_Workspace {
         if (get_option(SC_Workspace_Registry::PENDING_KEY, '') !== '1') {
             return;
         }
-        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.71.0 release record is pending until Product Support and Feedback is active.</p></div>';
+        echo '<div class="notice notice-warning"><p><strong>Sustainable Catalyst Workspace:</strong> the canonical Product Registry was not available during activation. Workspace is active, but its v0.72.0 release record is pending until Product Support and Feedback is active.</p></div>';
     }
 
     public function register_rest_routes() {
@@ -301,6 +301,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/first-run-onboarding-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'first_run_onboarding_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v1', '/workflow-guidance-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'workflow_guidance_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/field-resilience-contract', array(
@@ -2317,6 +2322,30 @@ public function research_templates_contract() {
         ));
     }
 
+    public function workflow_guidance_contract() {
+        return rest_ensure_response(array(
+            'schema' => 'sc-workspace-workflow-guidance-contract/1.0',
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'release' => 'Research Workflow Guidance & Empty-State Refinement',
+            'storage_schema_version' => 35,
+            'project_schema' => 'sc-workspace-project/20.0',
+            'export_schema' => 'sc-workspace-project-export/20.0',
+            'schema_migration_required' => false,
+            'guidance_schema' => 'sc-workspace-workflow-guidance/1.0',
+            'empty_state_schema' => 'sc-workspace-empty-state-guidance/1.0',
+            'report_schema' => 'sc-workspace-workflow-guidance-report/1.0',
+            'guidance_mode' => 'derived-contextual-advisory',
+            'research_stages' => array('orient','frame','gather','extract','connect','synthesize','compose','review'),
+            'canonical_mutation' => false,
+            'automatic_completion' => false,
+            'automatic_task_creation' => false,
+            'automatic_ai' => false,
+            'hidden_readiness_score' => false,
+            'behavioral_tracking' => false,
+            'telemetry' => false,
+        ));
+    }
+
     public function field_resilience_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-field-resilience-contract/1.0',
@@ -2595,8 +2624,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v0710',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v0.71.0.css',
+            'sc-workspace-v0720',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v0.72.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2944,6 +2973,13 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
+            'sc-workspace-workflow-guidance-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-v1.js',
+            array('sc-workspace-integrated-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
             'sc-workspace-long-session-performance-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-v1.js',
             array('sc-workspace-scale-performance-v1'),
@@ -2958,9 +2994,17 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v0710',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v0.71.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1'),
+            'sc-workspace-v0720',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v0.72.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'sc-workspace-workflow-guidance-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
+            array('sc-workspace-v0720', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -2971,7 +3015,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v0710'),
+            array('sc-workspace-v0720'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3007,14 +3051,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v0710', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0720', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v0710', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0720', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3022,12 +3066,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v0710', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v0720', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v0710', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v0720', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'displayName' => $authenticated && $user ? $user->display_name : '',
             'loginUrl' => wp_login_url($return_url),
@@ -3368,6 +3412,10 @@ public function research_templates_contract() {
                     <button class="scw-research-route" type="button" data-scw-research-route="knowledge"><span>ORGANIZE</span><strong>Knowledge</strong><small>Work with Sources, Evidence, Datasets, Analysis, Decisions, and Documents.</small></button>
                     <button class="scw-research-route" type="button" data-scw-research-route="graph"><span>CONNECT</span><strong>Graph</strong><small>Inspect explicit relationships, provenance, and traceable connections.</small></button>
                 </div>
+                <aside class="scw-workflow-guidance" data-scw-workflow-guidance aria-labelledby="scw-workflow-guidance-title">
+                    <div class="scw-workflow-guidance-copy"><span data-scw-workflow-guidance-stage>ORIENT / CONTEXTUAL NEXT STEP</span><strong id="scw-workflow-guidance-title" data-scw-workflow-guidance-title>Choose or create a project first.</strong><p data-scw-workflow-guidance-detail>Research guidance becomes project-specific once Workspace has an active local project.</p></div>
+                    <button class="scw-button" type="button" data-scw-workflow-guidance-action>Go to Start</button>
+                </aside>
                 <div class="scw-integrated-metrics" aria-label="Integrated research metrics"><div><strong data-scw-integrated-total>0</strong><span>research records</span></div><div><strong data-scw-integrated-objects>0</strong><span>Workspace objects</span></div><div><strong data-scw-integrated-notebooks>0</strong><span>Notebook records</span></div><div><strong data-scw-integrated-research>0</strong><span>questions &amp; claims</span></div></div>
                 <nav class="scw-research-tool-nav" data-scw-research-tool-nav aria-label="Research workspace tools">
                     <button type="button" data-scw-research-surface="overview" aria-pressed="true">Overview</button>
@@ -3426,7 +3474,7 @@ public function research_templates_contract() {
                     <div class="scw-research-tasks-head"><div><span>RESEARCH TASKS / WORKFLOW STATE</span><h3 id="scw-research-tasks-title">Track what research needs next without changing the research itself.</h3><p>Create explicit tasks around selected Integrated Knowledge records. Task state, priority, ownership labels, due dates, and history stay separate from the canonical record so “done” never silently changes a claim, source, citation, Notebook block, or Document.</p></div><div class="scw-research-task-metrics"><div><strong data-scw-task-open>0</strong><span>open</span></div><div><strong data-scw-task-progress>0</strong><span>in progress</span></div><div><strong data-scw-task-blocked>0</strong><span>blocked</span></div><div><strong data-scw-task-unresolved>0</strong><span>unresolved</span></div></div></div>
                     <div class="scw-research-task-layout">
                         <form class="scw-research-task-form" data-scw-task-form><div class="scw-knowledge-panel-head"><span>01 / CREATE</span><h4>Task for selected research</h4></div><p data-scw-task-selected>No research result selected.</p><label><span>Task type</span><select name="type"><option value="review-needed">Review needed</option><option value="verify-claim">Verify claim</option><option value="source-required">Source required</option><option value="citation-incomplete">Citation incomplete</option><option value="ready-for-synthesis">Ready for synthesis</option><option value="follow-up">Follow-up</option><option value="custom">Custom</option></select></label><div class="scw-research-task-form-row"><label><span>Priority</span><select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option><option value="low">Low</option></select></label><label><span>Due date</span><input type="date" name="dueDate"></label></div><label><span>Owner label</span><input name="owner" maxlength="160" placeholder="Self, editor, reviewer"></label><label><span>Task note</span><textarea name="note" rows="3" maxlength="4000" placeholder="What needs to happen next?"></textarea></label><button class="scw-button scw-button-primary" type="submit" data-scw-task-create disabled>Create task for selected research</button></form>
-                        <div class="scw-research-task-board"><div class="scw-knowledge-panel-head"><span>02 / WORKFLOW</span><h4>Research task ledger</h4></div><div class="scw-research-task-filters"><label><span>Status</span><select data-scw-task-filter-status><option value="all">All states</option><option value="open">Open</option><option value="in-progress">In progress</option><option value="blocked">Blocked</option><option value="done">Done</option><option value="dismissed">Dismissed</option></select></label><label><span>Type</span><select data-scw-task-filter-type><option value="all">All types</option><option value="review-needed">Review needed</option><option value="verify-claim">Verify claim</option><option value="source-required">Source required</option><option value="citation-incomplete">Citation incomplete</option><option value="ready-for-synthesis">Ready for synthesis</option><option value="follow-up">Follow-up</option><option value="custom">Custom</option></select></label><label><span>Project</span><select data-scw-task-filter-project><option value="all">All projects</option></select></label><label><span>Resolution</span><select data-scw-task-filter-resolution><option value="all">All targets</option><option value="resolved">Resolved targets</option><option value="unresolved">Unresolved targets</option></select></label></div><div class="scw-research-task-list" data-scw-task-list><div class="scw-knowledge-empty-note">No research tasks yet.</div></div><div class="scw-research-task-actions"><button class="scw-button" type="button" data-scw-task-export>Export task library</button><button class="scw-button" type="button" data-scw-task-import>Import task library</button><input type="file" accept="application/json,.json" data-scw-task-import-file hidden><p data-scw-task-status role="status" aria-live="polite"></p></div></div>
+                        <div class="scw-research-task-board"><div class="scw-knowledge-panel-head"><span>02 / WORKFLOW</span><h4>Research task ledger</h4></div><div class="scw-research-task-filters"><label><span>Status</span><select data-scw-task-filter-status><option value="all">All states</option><option value="open">Open</option><option value="in-progress">In progress</option><option value="blocked">Blocked</option><option value="done">Done</option><option value="dismissed">Dismissed</option></select></label><label><span>Type</span><select data-scw-task-filter-type><option value="all">All types</option><option value="review-needed">Review needed</option><option value="verify-claim">Verify claim</option><option value="source-required">Source required</option><option value="citation-incomplete">Citation incomplete</option><option value="ready-for-synthesis">Ready for synthesis</option><option value="follow-up">Follow-up</option><option value="custom">Custom</option></select></label><label><span>Project</span><select data-scw-task-filter-project><option value="all">All projects</option></select></label><label><span>Resolution</span><select data-scw-task-filter-resolution><option value="all">All targets</option><option value="resolved">Resolved targets</option><option value="unresolved">Unresolved targets</option></select></label></div><div class="scw-research-task-list" data-scw-task-list><div class="scw-knowledge-empty-note">No research tasks yet. Select a research result first, then create a task only when a specific next action exists.</div></div><div class="scw-research-task-actions"><button class="scw-button" type="button" data-scw-task-export>Export task library</button><button class="scw-button" type="button" data-scw-task-import>Import task library</button><input type="file" accept="application/json,.json" data-scw-task-import-file hidden><p data-scw-task-status role="status" aria-live="polite"></p></div></div>
                     </div>
                     <div class="scw-notebook-boundary" role="note"><strong>Workflow state is not research state.</strong><span>Research Tasks are browser-local canonical pointers. Completing, blocking, dismissing, importing, exporting, or deleting a task never edits the record it references. Workspace does not generate tasks automatically or infer that research is complete.</span></div>
                 </section>
@@ -3465,7 +3513,7 @@ public function research_templates_contract() {
                     </div>
                     <div class="scw-notebook-boundary" role="note"><strong>Composition remains reviewable until you materialize it.</strong><span>Drafts are browser-local. Canonical research is referenced, not copied. Citation metadata comes only from the Citation Library. Workspace never creates a Document automatically, rewrites a source record, or invents citations.</span></div>
                 </section>
-                <div class="scw-integrated-layout" data-scw-research-surface-panel="search" hidden><div><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet.</div></div><div class="scw-integrated-more"><button class="scw-button" type="button" data-scw-integrated-load-more hidden>Load more</button></div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
+                <div class="scw-integrated-layout" data-scw-research-surface-panel="search" hidden><div><div class="scw-integrated-results" data-scw-integrated-results><div class="scw-knowledge-empty-note">No research records yet. Begin with a project question or capture a source; this index fills from canonical local records as the work develops.</div></div><div class="scw-integrated-more"><button class="scw-button" type="button" data-scw-integrated-load-more hidden>Load more</button></div></div><aside class="scw-integrated-detail" data-scw-integrated-detail><div class="scw-knowledge-empty-note">Select a result to inspect its canonical origin, ranking reasons, provenance, and related material.</div></aside></div>
                 <div class="scw-notebook-boundary" data-scw-research-surface-panel="search" hidden role="note"><strong>Retrieval over canonical records.</strong><span>Advanced Retrieval derives results from the Integrated Knowledge index at runtime. Saved searches are local browser preferences only. No server search index, semantic embeddings, automatic AI, inferred relationships, or canonical record mutation are introduced.</span></div>
             </section>
 
@@ -4345,6 +4393,8 @@ public function research_templates_contract() {
                         <div><strong data-scw-research-metric-evidence>0</strong><span>evidence objects</span></div>
                         <div><strong data-scw-research-metric-claims>0</strong><span>supported claims</span></div>
                     </div>
+
+                    <aside class="scw-project-research-guidance" data-scw-project-research-guidance aria-label="Contextual research guidance"><div><span data-scw-project-guidance-stage>FRAME / CONTEXTUAL NEXT STEP</span><strong data-scw-project-guidance-title>Frame the question before collecting material.</strong><p data-scw-project-guidance-detail>Guidance follows visible project state and never marks research complete for you.</p></div><button class="scw-button" type="button" data-scw-project-guidance-action>Open Research Questions</button></aside>
 
                     <div class="scw-research-grid">
                         <section class="scw-research-panel scw-research-panel-wide" aria-labelledby="scw-research-question-heading">

@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-empty-state-guidance-v1.schema.json",
+  "title":"Workspace Empty State Guidance",
+  "type":"object",
+  "required":["schema","kind","title","body","action"],
+  "properties":{"schema":{"const":"sc-workspace-empty-state-guidance/1.0"},"kind":{"type":"string","maxLength":40},"title":{"type":"string","maxLength":240},"body":{"type":"string","maxLength":1000},"action":{"type":"string","maxLength":120}},
+  "additionalProperties":false
+}

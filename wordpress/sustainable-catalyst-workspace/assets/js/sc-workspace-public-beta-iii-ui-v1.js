@@ -27,7 +27,7 @@
     q('[data-scw-beta-iii-run]')?.addEventListener('click',render);
     q('[data-scw-beta-iii-reset]')?.addEventListener('click',()=>{manual=api.resetManual(window.sessionStorage);render();});
     q('[data-scw-beta-iii-start]')?.addEventListener('click',()=>root.querySelector('[data-scw-workspace-view="start"]')?.click());
-    q('[data-scw-beta-iii-export]')?.addEventListener('click',()=>{topology=topology||api.assess(root);manual=api.readManual(window.sessionStorage);const payload=api.report(root.dataset.version||'0.71.0',topology,manual);const compat=globalThis.SCWorkspaceBrowserCompatibility;const out=compat?.downloadJson?.('sustainable-catalyst-workspace-public-beta-iii-journey.json',payload,window);if(status)status.textContent=out?.ok?'Beta III product-journey report exported. It contains topology and manual-review state only, not project content.':'The product-journey report could not be exported in this browser.';});
+    q('[data-scw-beta-iii-export]')?.addEventListener('click',()=>{topology=topology||api.assess(root);manual=api.readManual(window.sessionStorage);const payload=api.report(root.dataset.version||'0.72.0',topology,manual);const compat=globalThis.SCWorkspaceBrowserCompatibility;const out=compat?.downloadJson?.('sustainable-catalyst-workspace-public-beta-iii-journey.json',payload,window);if(status)status.textContent=out?.ok?'Beta III product-journey report exported. It contains topology and manual-review state only, not project content.':'The product-journey report could not be exported in this browser.';});
     root.querySelectorAll('[data-scw-open-product-journey]').forEach(button=>button.addEventListener('click',()=>root.querySelector('[data-scw-workspace-view="journey"]')?.click()));
     render();
   }

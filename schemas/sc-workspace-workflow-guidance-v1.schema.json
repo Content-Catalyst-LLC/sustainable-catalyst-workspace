@@ -1,0 +1,9 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://sustainablecatalyst.com/schemas/sc-workspace-workflow-guidance-v1.schema.json",
+  "title":"Workspace Workflow Guidance",
+  "type":"object",
+  "required":["schema","hasProject","projectCount","questions","sources","evidence","claims"],
+  "properties":{"schema":{"const":"sc-workspace-workflow-guidance/1.0"},"hasProject":{"type":"boolean"},"projectCount":{"type":"integer","minimum":0},"questions":{"type":"integer","minimum":0},"sources":{"type":"integer","minimum":0},"evidence":{"type":"integer","minimum":0},"claims":{"type":"integer","minimum":0},"notebookBlocks":{"type":"integer","minimum":0},"researchRecords":{"type":"integer","minimum":0},"researchTasks":{"type":"integer","minimum":0},"documents":{"type":"integer","minimum":0}},
+  "additionalProperties":false
+}
