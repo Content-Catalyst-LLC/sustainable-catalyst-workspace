@@ -8,5 +8,5 @@ class HistoricalGAReadinessContractTests(unittest.TestCase):
  def test_prerequisite_preserved(self):
   g=json.loads((R/'history/release-manifest-v0.84.0.json').read_text())['production_ga_readiness'];self.assertEqual(g['production_signoff_release'],'0.83.0');self.assertFalse(g['automatic_promotion_to_1_0'])
  def test_current_advances(self):
-  main=(R/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text();self.assertIn('Version: 1.10.0',main);self.assertTrue((R/'release-manifest-v1.0.1.json').exists())
+  main=(R/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text();self.assertIn('Version: 1.11.0',main);self.assertTrue((R/'release-manifest-v1.0.1.json').exists())
 if __name__=='__main__':unittest.main()

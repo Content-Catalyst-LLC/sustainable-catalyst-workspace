@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Extension Capability Grant",
+  "type": "object",
+  "required": [
+    "schema",
+    "extensionId",
+    "approvedCapabilities"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-extension-capability-grant/1.0"
+    },
+    "extensionId": {
+      "type": "string"
+    },
+    "approvedCapabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

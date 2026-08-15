@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace SDK Contract",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-sdk-contract/1.0"
+    }
+  },
+  "additionalProperties": true
+}

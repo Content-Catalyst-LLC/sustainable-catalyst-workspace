@@ -1,3 +1,13 @@
+# Sustainable Catalyst Workspace v1.11.0 — Developer API, SDK & Extension Contracts
+
+Workspace v1.11.0 publishes the first stable public extensibility boundary for Workspace. It adds a versioned Developer API contract, browser-local SDK, extension manifests, explicit capability grants, and portable extension envelopes across the existing Workspace object/search/Library/graph/handoff/review/audit/research-operations surfaces.
+
+Extensions are **read-only and descriptive by default**. v1.11.0 does not install arbitrary code, load remote extensions, expose mutation REST endpoints, carry secrets in manifests, place access tokens in URLs, bypass governance, or automatically mutate canonical project content.
+
+Canonical schemas remain frozen at Storage 35 / Project 20.0 / Export 20.0. Exact predecessor and rollback: v1.10.0.
+
+---
+
 # Sustainable Catalyst Workspace v1.10.0
 
 **Current release:** v1.10.0 — Workspace Automation & Research Operations.

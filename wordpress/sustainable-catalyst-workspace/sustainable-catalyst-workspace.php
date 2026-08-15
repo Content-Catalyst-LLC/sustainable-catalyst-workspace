@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Version: 1.10.0
+ * Version: 1.11.0
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '1.10.0');
+define('SC_WORKSPACE_VERSION', '1.11.0');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
@@ -31,7 +31,7 @@ function sc_workspace_bootstrap_failure($missing_files) {
             return;
         }
         $count = count(isset($GLOBALS['sc_workspace_bootstrap_failure_files']) ? $GLOBALS['sc_workspace_bootstrap_failure_files'] : array());
-        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v1.10.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
+        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v1.11.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
     });
 }
 
@@ -52,6 +52,7 @@ $sc_workspace_bootstrap_files = array(
     'review_rooms' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-review-rooms.php',
     'institutional_audit_studio' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-institutional-audit-studio.php',
     'research_operations' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-research-operations.php',
+    'developer_api' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-developer-api.php',
     'registry' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-registry.php',
     'platform' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace-platform.php',
     'workspace' => SC_WORKSPACE_DIR . 'includes/class-sc-workspace.php',
@@ -83,6 +84,7 @@ require_once $sc_workspace_bootstrap_files['cross_device_production'];
 require_once $sc_workspace_bootstrap_files['review_rooms'];
 require_once $sc_workspace_bootstrap_files['institutional_audit_studio'];
 require_once $sc_workspace_bootstrap_files['research_operations'];
+require_once $sc_workspace_bootstrap_files['developer_api'];
 require_once $sc_workspace_bootstrap_files['registry'];
 require_once $sc_workspace_bootstrap_files['platform'];
 require_once $sc_workspace_bootstrap_files['workspace'];
@@ -96,7 +98,7 @@ function sc_workspace_activate() {
         $reason = !empty($preflight['missing_required_file_count'])
             ? ((int) $preflight['missing_required_file_count']) . ' required release file(s) are missing or unreadable.'
             : 'The declared WordPress/PHP runtime requirements are not satisfied.';
-        wp_die(esc_html('Sustainable Catalyst Workspace v1.10.0 activation preflight failed: ' . $reason));
+        wp_die(esc_html('Sustainable Catalyst Workspace v1.11.0 activation preflight failed: ' . $reason));
     }
     SC_Workspace_Registry::activate();
 }
@@ -130,4 +132,9 @@ function sc_workspace_notebook_assistance_adapter_script_url() {
 /** Public read-only static embed renderer URL for explicitly disclosed Workspace projections. */
 function sc_workspace_api_embed_script_url() {
     return SC_WORKSPACE_URL . 'assets/js/sc-workspace-api-embed-v1.js';
+}
+
+/** Public browser-local Developer SDK helper URL for explicitly granted extensions. */
+function sc_workspace_developer_sdk_script_url() {
+    return SC_WORKSPACE_URL . 'assets/js/sc-workspace-developer-sdk-v1.js';
 }

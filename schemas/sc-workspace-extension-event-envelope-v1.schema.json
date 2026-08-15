@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Extension Event Envelope",
+  "type": "object",
+  "required": [
+    "schema",
+    "kind",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-extension-event-envelope/1.0"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "payload": {},
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

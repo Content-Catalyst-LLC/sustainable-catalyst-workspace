@@ -10,5 +10,5 @@ class KnowledgeGraphRelationshipExplorer(unittest.TestCase):
  def test_05_boundaries(self):
   g=MAN['knowledge_graph_explorer'];self.assertFalse(g['server_graph_database']);self.assertFalse(g['semantic_embeddings']);self.assertFalse(g['automatic_relationship_inference']);self.assertFalse(g['automatic_ai']);self.assertFalse(g['canonical_records_mutated'])
  def test_06_library(self): self.assertIn('library-record',MAN['knowledge_graph_explorer']['node_families']);self.assertIn('originates-in-library',JS)
- def test_07_preserved_under_current(self): self.assertIn('Version: 1.10.0',MAIN);self.assertTrue((R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-relationship-explorer-v2.js').exists())
+ def test_07_preserved_under_current(self): self.assertIn('Version: 1.11.0',MAIN);self.assertTrue((R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-relationship-explorer-v2.js').exists())
 if __name__=='__main__':unittest.main()

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Extension Manifest",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "version",
+    "requestedCapabilities"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-extension-manifest/1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedCapabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

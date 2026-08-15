@@ -7,5 +7,5 @@ class LabScientificWorkspaceIntegration(unittest.TestCase):
  def test_03_route(self): self.assertIn('/wp-json/sc-workspace/v1/lab-integration-contract',MAN['rest_routes']);self.assertIn("'/lab-integration-contract'",PHP)
  def test_04_features(self): self.assertEqual(len(MAN['lab_integration']['supported_workflows']),8);self.assertTrue(MAN['lab_integration']['traceability_edges_from_selected_context'])
  def test_05_boundaries(self): self.assertFalse(MAN['lab_integration']['automatic_context_upload']);self.assertFalse(MAN['lab_integration']['automatic_return_commit']);self.assertFalse(MAN['lab_integration']['automatic_ai'])
- def test_06_preserved_under_current(self): self.assertIn('Version: 1.10.0',MAIN);self.assertIn('buildContextPackage',JS)
+ def test_06_preserved_under_current(self): self.assertIn('Version: 1.11.0',MAIN);self.assertIn('buildContextPackage',JS)
 if __name__=='__main__':unittest.main()
