@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v170';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v170';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v180';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v180';
+    const LEGACY_PENDING_KEY_V170 = 'sc_workspace_registry_pending_v170';
     const LEGACY_PENDING_KEY_V160 = 'sc_workspace_registry_pending_v160';
     const LEGACY_PENDING_KEY_V150 = 'sc_workspace_registry_pending_v150';
     const LEGACY_PENDING_KEY_V140 = 'sc_workspace_registry_pending_v140';
@@ -174,6 +175,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V170);
         delete_option(self::LEGACY_PENDING_KEY_V160);
         delete_option(self::LEGACY_PENDING_KEY_V150);
         delete_option(self::LEGACY_PENDING_KEY_V140);
@@ -328,12 +330,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.6.0',
+            'previous_version' => '1.7.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Cross-Device Continuity & Account Sync Productionization',
-            'change_summary' => 'Productionizes cross-device continuity with deterministic sync planning, privacy-minimized sync receipts, explicit account continuity summaries, conflict-preserving actions, revision preconditions, and interrupted-operation reconciliation while keeping browser-local projects first-class.',
+            'release_name' => 'Shared Review Rooms & Controlled Collaboration',
+            'change_summary' => 'Adds browser-local shared review rooms with scoped invitations, immutable review snapshots, explicit review-state transitions, room audit events, portable room exchange, and controlled role capabilities without creating a server-enforced shared tenant.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Cross-device continuity stays opt-in per project and manual-action driven; no automatic enrollment, background sync, silent overwrite, device fingerprinting, AI, telemetry, or canonical cloud-first migration.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Review-room permissions are local governance records, invitations are never sent automatically, snapshots are explicit frozen copies, and no room action mutates canonical project content automatically.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

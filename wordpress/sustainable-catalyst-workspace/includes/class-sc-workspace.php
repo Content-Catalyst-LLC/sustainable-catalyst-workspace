@@ -444,6 +444,11 @@ final class SC_Workspace {
             'callback' => array($this, 'cross_device_production_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/shared-review-rooms-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'shared_review_rooms_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/field-use-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'field_use_contract'),
@@ -2930,6 +2935,10 @@ public function research_templates_contract() {
         return rest_ensure_response(SC_Workspace_Knowledge_Graph_Explorer::contract());
     }
 
+    public function shared_review_rooms_contract() {
+        return rest_ensure_response(SC_Workspace_Review_Rooms::contract());
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -3018,8 +3027,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v170',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v1.7.0.css',
+            'sc-workspace-v180',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v1.8.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -3513,9 +3522,24 @@ public function research_templates_contract() {
         );
 
         wp_enqueue_script(
-            'sc-workspace-v170',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v1.7.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1'),
+            'sc-workspace-review-rooms-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-review-rooms-v1.js',
+            array('sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-review-rooms-ui-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-review-rooms-ui-v1.js',
+            array('sc-workspace-review-rooms-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'sc-workspace-v180',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v1.8.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3523,56 +3547,56 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-production-signoff-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-signoff-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1'),
+            array('sc-workspace-v180', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-readiness-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-readiness-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
+            array('sc-workspace-v180', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-general-availability-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-general-availability-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
+            array('sc-workspace-v180', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-stabilization-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-stabilization-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
+            array('sc-workspace-v180', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-workflow-guidance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-workflow-guidance-v1'),
+            array('sc-workspace-v180', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-product-help-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-product-help-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-security-privacy-audit-ii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-security-privacy-audit-ii-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-institutional-validation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-institutional-validation-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3583,7 +3607,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v170'),
+            array('sc-workspace-v180'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3619,14 +3643,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-accessibility-performance-final-audit-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-accessibility-performance-final-audit-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3634,35 +3658,35 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-defect-closure-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-defect-closure-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-release-candidate-i-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-release-candidate-i-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-wordpress-deployment-hardening-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-production-smoke-cache-rollback-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-smoke-cache-rollback-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3670,12 +3694,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v170', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v180', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v170', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v180', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'displayName' => $authenticated && $user ? $user->display_name : '',
@@ -3715,7 +3739,7 @@ public function research_templates_contract() {
         ob_start();
         ?>
         <?php $deployment_state = SC_Workspace_Deployment_Hardening::diagnostics(); ?>
-        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="cross-device-production" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.7.0.js" data-scw-deployment-expected-style="workspace-v1.7.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="shared-review-rooms" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.8.0.js" data-scw-deployment-expected-style="workspace-v1.8.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -4615,8 +4639,17 @@ public function research_templates_contract() {
 
             <section class="scw-collaboration" data-scw-workspace-section="collaboration" hidden aria-labelledby="scw-collaboration-title">
                 <div class="scw-collaboration-head">
-                    <div><div class="scw-editorial-kicker">SHARED REVIEW &amp; RESEARCH HANDOFF</div><h2 id="scw-collaboration-title">Package a deliberate research scope for external review, then reconcile responses without losing revision context.</h2><p>v0.73.0 hardens the asynchronous review boundary with scoped source-revision fingerprints, stale-response detection, duplicate-response blocking, explicit owner acknowledgement when source research has moved, and local reconciliation receipts. Reviewer and owner identities remain declarative rather than cryptographically verified; Workspace still does not provide live co-editing, automatic sending, or automatic application of proposed changes.</p></div>
+                    <div><div class="scw-editorial-kicker">SHARED REVIEW ROOMS</div><h2 id="scw-collaboration-title">Create controlled review spaces around a frozen project scope without surrendering canonical ownership.</h2><p>v1.8.0 turns the existing collaboration, policy, and review-handoff foundation into explicit Shared Review Rooms. Rooms carry local role capabilities, deliberate invitations, immutable review snapshots, auditable review-state changes, and portable room exchange. They are controlled review records—not live co-editing, server ACLs, team cloud storage, or automatic canonical edits.</p></div>
                 </div>
+                <section class="scw-review-rooms" data-scw-review-rooms aria-labelledby="scw-review-rooms-title">
+                    <div class="scw-review-rooms-head"><div><span>V1.8 / CONTROLLED COLLABORATION</span><h3 id="scw-review-rooms-title">Shared Review Rooms</h3><p>Define who may review, freeze exactly what they should see, move the review through explicit states, and preserve a local audit trail. Existing Collaboration Architecture actors and policies remain the identity and ownership foundation.</p></div><div class="scw-review-room-metrics"><div><strong data-scw-review-room-metric-total>0</strong><span>rooms</span></div><div><strong data-scw-review-room-metric-active>0</strong><span>active</span></div><div><strong data-scw-review-room-metric-review>0</strong><span>in review</span></div><div><strong data-scw-review-room-metric-invites>0</strong><span>pending invites</span></div></div></div>
+                    <div class="scw-review-room-grid">
+                        <section class="scw-review-room-panel"><div class="scw-knowledge-panel-head"><span>01 / CREATE</span><h3>Define a room and review scope</h3></div><form data-scw-review-room-form><label><span>Project</span><select name="projectId" data-scw-review-room-project required><option value="">Choose project</option></select></label><label><span>Room owner</span><select name="ownerActorId" data-scw-review-room-owner required><option value="">Choose owner</option></select></label><label><span>Room title</span><input name="title" maxlength="220" required placeholder="e.g. Evidence and decision review"></label><label><span>Purpose</span><textarea name="purpose" rows="3" maxlength="4000"></textarea></label><fieldset><legend>Explicit snapshot scope</legend><div data-scw-review-room-scope class="scw-review-room-scope"><span>Choose a project first.</span></div></fieldset><button class="scw-button scw-button-primary" type="submit">Create review room</button></form></section>
+                        <section class="scw-review-room-panel"><div class="scw-knowledge-panel-head"><span>02 / ROOMS</span><h3>Open controlled review spaces</h3></div><div data-scw-review-room-list class="scw-review-room-list"></div></section>
+                    </div>
+                    <section class="scw-review-room-control"><div class="scw-knowledge-panel-head"><span>03 / CONTROL</span><h3>Invitations, snapshot, review state &amp; audit trail</h3></div><div data-scw-review-room-active></div><div class="scw-review-room-actions"><button class="scw-button" type="button" data-scw-review-room-freeze disabled>Freeze review snapshot</button><button class="scw-button" type="button" data-scw-review-room-export disabled>Export room package</button><button class="scw-button" type="button" data-scw-review-room-close disabled>Close room</button></div><div class="scw-review-room-control-grid"><form data-scw-review-room-invite-form hidden><label><span>Collaborator</span><select name="actorId" data-scw-review-room-invite-actor required></select></label><label><span>Room role</span><select name="role"><option value="editor">Editor</option><option value="reviewer" selected>Reviewer</option><option value="observer">Observer</option></select></label><button class="scw-button" type="submit">Record invitation</button></form><form data-scw-review-room-comment-form hidden><label><span>Actor</span><select name="actorId" data-scw-review-room-comment-actor required></select></label><label><span>Review note</span><textarea name="note" rows="3" maxlength="5000" required></textarea></label><button class="scw-button" type="submit">Add room comment</button></form><div class="scw-review-room-state"><label><span>Acting actor</span><select data-scw-review-room-state-actor></select></label><label><span>Review state</span><select data-scw-review-room-state><option value="draft">Draft</option><option value="open">Open</option><option value="in-review">In review</option><option value="changes-requested">Changes requested</option><option value="approved">Approved</option><option value="closed">Closed</option></select></label></div></div><p data-scw-review-room-status role="status" aria-live="polite">Review rooms are stored locally. No invitation has been sent externally.</p></section>
+                    <div class="scw-collaboration-boundary" role="note"><strong>Controlled review, not a shared tenant</strong><span>Room roles and invitations are local governance records. Snapshot contents move only when you explicitly export a room package. Workspace does not create server accounts, send invitations, enforce organization permissions, live-edit canonical content, or apply accepted review proposals automatically.</span></div>
+                </section>
                 <section class="scw-shared-review-handoff" data-scw-shared-review-handoff aria-labelledby="scw-shared-review-title">
                     <div class="scw-shared-review-head"><div><span>V0.54 / CONTROLLED HANDOFF</span><h3 id="scw-shared-review-title">Freeze only the research material a reviewer actually needs.</h3><p>A prepared handoff stores an explicit object scope as a frozen package. Later project edits do not rewrite that package. Returned responses must match its fingerprint before Workspace will stage them.</p></div><div class="scw-shared-review-metrics"><div><strong data-scw-handoff-metric-total>0</strong><span>handoffs</span></div><div><strong data-scw-handoff-metric-active>0</strong><span>active</span></div><div><strong data-scw-handoff-metric-staged>0</strong><span>staged</span></div><div><strong data-scw-handoff-metric-unresolved>0</strong><span>unresolved</span></div></div></div>
                     <div class="scw-shared-review-grid">
@@ -4680,7 +4713,7 @@ public function research_templates_contract() {
                     <div class="scw-collaboration-stage-actions"><button class="scw-button scw-button-primary" type="button" data-scw-collab-commit disabled>Commit staged review package</button><button class="scw-button" type="button" data-scw-collab-clear disabled>Clear</button></div>
                     <div class="scw-collaboration-history" data-scw-collab-history></div>
                 </section>
-                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Legacy portable-review roles continue to describe responsibility inside review packages; they are not server-enforced permissions. Imported comments never edit the source project automatically. Live co-editing, organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
+                <div class="scw-collaboration-boundary" role="note"><strong>Collaboration foundation, not a shared tenant</strong><span>Legacy portable-review roles continue to describe responsibility inside review packages; they are not server-enforced permissions. Review packages retain source-revision fingerprints for freshness checks. Imported comments never edit the source project automatically. Workspace does not provide live co-editing; organization membership, shared cloud storage, audit-grade access control, and administrative governance remain outside this personal Workspace release.</span></div>
             </section>
 
             <section class="scw-institutional" data-scw-workspace-section="institutional" hidden aria-labelledby="scw-institutional-title">
