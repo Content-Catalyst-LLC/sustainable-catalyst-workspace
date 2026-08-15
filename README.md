@@ -1,4 +1,6 @@
-# Sustainable Catalyst Workspace v1.0.0
+# Sustainable Catalyst Workspace v1.0.1
+
+Current release: **v1.0.1 — GA Field Stabilization & Production Evidence Closure**
 
 ## General Availability
 

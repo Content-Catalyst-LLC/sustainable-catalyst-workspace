@@ -1,0 +1,11 @@
+import json,unittest
+from pathlib import Path
+R=Path(__file__).resolve().parents[1]
+class GAFieldStabilizationContractTests(unittest.TestCase):
+ def test_release_identity(self):
+  m=json.loads((R/'release-manifest-v1.0.1.json').read_text());self.assertEqual((m['version'],m['previous_version'],m['release_name']),('1.0.1','1.0.0','GA Field Stabilization & Production Evidence Closure'));self.assertEqual(m['storage_schema_version'],35);self.assertFalse(m['schema_migration_required'])
+ def test_stabilization_boundary(self):
+  g=json.loads((R/'release-manifest-v1.0.1.json').read_text())['ga_field_stabilization'];self.assertTrue(g['field_evidence_required']);self.assertEqual(g['general_availability_release'],'1.0.0');self.assertEqual(g['rollback_release'],'1.0.0');self.assertFalse(g['automatic_release_certification']);self.assertFalse(g['project_content_in_report']);self.assertFalse(g['behavioral_telemetry'])
+ def test_only_new_route(self):
+  cur=json.loads((R/'release-manifest-v1.0.1.json').read_text());old=json.loads((R/'history/release-manifest-v1.0.0.json').read_text());self.assertEqual(set(cur['rest_routes'])-set(old['rest_routes']),{'/wp-json/sc-workspace/v1/ga-stabilization-contract'});self.assertEqual(cur['object_types'],old['object_types'])
+if __name__=='__main__':unittest.main()

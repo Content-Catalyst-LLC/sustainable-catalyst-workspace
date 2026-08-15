@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v100';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v100';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v101';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v101';
+    const LEGACY_PENDING_KEY_V100 = 'sc_workspace_registry_pending_v100';
     const LEGACY_PENDING_KEY_V0840 = 'sc_workspace_registry_pending_v0840';
     const LEGACY_PENDING_KEY_V0830 = 'sc_workspace_registry_pending_v0830';
     const LEGACY_PENDING_KEY_V0821 = 'sc_workspace_registry_pending_v0821';
@@ -166,6 +167,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V100);
         delete_option(self::LEGACY_PENDING_KEY_V0840);
         delete_option(self::LEGACY_PENDING_KEY_V0830);
         delete_option(self::LEGACY_PENDING_KEY_V0821);
@@ -312,10 +314,10 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.84.0',
-            'release_date' => '2026-08-14',
-            'release_name' => 'General Availability',
-            'change_summary' => 'Promotes Workspace to the 1.0 General Availability line after the frozen v0.84.0 readiness gate, preserving canonical schemas, local-first ownership, explicit recovery, and human-controlled release certification.',
+            'previous_version' => '1.0.0',
+            'release_date' => '2026-08-15',
+            'release_name' => 'GA Field Stabilization & Production Evidence Closure',
+            'change_summary' => 'Closes the first post-GA field-evidence loop without changing canonical Workspace data contracts or introducing behavioral telemetry.',
             'superseded_by' => '',
             'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.84.0 records readiness evidence and does not auto-promote Workspace to 1.0, inspect project content, purge caches, or perform rollback.',
             'verification_source' => 'wordpress_plugin',

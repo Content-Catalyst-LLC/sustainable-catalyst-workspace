@@ -22,7 +22,7 @@ class CrossDeviceSyncContract(unittest.TestCase):
  def test_account_limits(self): self.assertEqual(MAN['account_persistence']['max_projects_per_account'],25);self.assertEqual(MAN['account_persistence']['max_project_bytes'],2621440);self.assertEqual(MAN['account_persistence']['max_account_bytes'],26214400)
  def test_schema_files(self):
   for f in ['sc-workspace-cross-device-sync-v1.schema.json','sc-workspace-sync-push-v1.schema.json']: json.loads((ROOT/'schemas'/f).read_text())
- def test_registry_lineage(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v100'",REG);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",REG)
+ def test_registry_lineage(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v101'",REG);self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG);self.assertIn("LEGACY_PENDING_KEY_V0220 = 'sc_workspace_registry_pending_v0220'",REG)
  def test_css(self): self.assertIn('/* v0.22.0 — Cross-Device Sync & Conflict-Safe Recovery */',CSS);self.assertIn('.scw-sync-grid',CSS)
  def test_history(self): self.assertTrue((ROOT/'history/release-manifest-v0.21.0.json').exists());self.assertTrue((ROOT/'history/workspace-product-record-v0.21.0.json').exists())
 if __name__=='__main__':unittest.main()

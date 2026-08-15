@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-ga-stabilization/1.0",
+  "title": "Workspace GA Stabilization Record",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "checks",
+    "attestation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-ga-stabilization/1.0"
+    },
+    "workspaceVersion": {
+      "const": "1.0.1"
+    },
+    "fieldOperator": {
+      "type": "string"
+    },
+    "productionUrl": {
+      "type": "string"
+    },
+    "browserNotes": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "checks": {
+      "type": "object"
+    },
+    "attestation": {
+      "type": "boolean"
+    },
+    "closedAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

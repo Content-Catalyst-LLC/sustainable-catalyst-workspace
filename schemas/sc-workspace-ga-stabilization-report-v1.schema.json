@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-ga-stabilization-report/1.0",
+  "title": "Workspace GA Stabilization Report",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "status",
+    "checks",
+    "privacy",
+    "automation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-ga-stabilization-report/1.0"
+    },
+    "workspaceVersion": {
+      "const": "1.0.1"
+    },
+    "status": {
+      "enum": [
+        "closed",
+        "hold"
+      ]
+    },
+    "checks": {
+      "type": "array"
+    },
+    "privacy": {
+      "type": "object"
+    },
+    "automation": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}
