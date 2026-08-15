@@ -1,6 +1,14 @@
-# Sustainable Catalyst Workspace v1.8.0 — Shared Review Rooms & Controlled Collaboration
+# Sustainable Catalyst Workspace v1.9.0
 
-Current release: **v1.8.0 — Shared Review Rooms & Controlled Collaboration**
+**Current release:** v1.9.0 — Institutional Governance, Provenance & Audit Studio.
+
+
+## Institutional Governance, Provenance & Audit Studio
+
+Workspace v1.9.0 unifies the existing audit trail, version history, reconciliation receipts, review-room snapshots, decisions, institutional handoffs, knowledge graph, project lifecycle, citations, and provenance records into an explicit Institutional Audit Studio. Audit dossiers are derived from those authoritative ledgers, preserve evidence and decision lineage, support human-supplied attestations, and export portable reproducibility packages without copying canonical record bodies.
+
+The Audit Studio is an auditability surface, not an automated compliance engine. It does not calculate compliance scores, infer regulatory compliance, claim regulatory certification, submit evidence externally, mutate canonical records automatically, invoke AI automatically, or emit behavioral/query telemetry. Storage remains 35, Project remains `sc-workspace-project/20.0`, and Project Export remains `sc-workspace-project-export/20.0`.
+
 
 ## Shared Review Rooms & Controlled Collaboration
 

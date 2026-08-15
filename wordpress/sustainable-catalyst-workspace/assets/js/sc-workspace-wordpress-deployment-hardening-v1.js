@@ -10,14 +10,14 @@
   const RELEASE_VERSION='1.8.0';
   const PREVIOUS_RELEASE='1.7.0';
   const ROLLBACK_RELEASE='1.7.0';
-  const EXPECTED_SCRIPT='workspace-v1.8.0.js';
-  const EXPECTED_STYLE='workspace-v1.8.0.css';
+  const EXPECTED_SCRIPT='workspace-v1.9.0.js';
+  const EXPECTED_STYLE='workspace-v1.9.0.css';
   const checks=Object.freeze([
     ['root-version','Workspace runtime version','The rendered Workspace root must report the current v1.8.0 release.'],
     ['localized-version','Localized WordPress version','The WordPress-localized identity configuration must agree with the rendered runtime version.'],
     ['server-state','Server package state','The server-side deployment marker and required release files must be coherent.'],
-    ['current-script','Current cumulative JavaScript','The page must load workspace-v1.8.0.js rather than an older cumulative shell.'],
-    ['current-style','Current cumulative stylesheet','The page must load workspace-v1.8.0.css rather than an older cumulative stylesheet.'],
+    ['current-script','Current cumulative JavaScript','The page must load workspace-v1.9.0.js rather than an older cumulative shell.'],
+    ['current-style','Current cumulative stylesheet','The page must load workspace-v1.9.0.css rather than an older cumulative stylesheet.'],
     ['asset-query','WordPress asset cache version','Current cumulative assets must carry the current WordPress version query when query strings are present.'],
     ['release-stage','Release stage','The deployment must identify either the inherited release-candidate stage or the General Availability stage.'],
     ['release-candidate','Inherited Release Candidate runtime','The Release Candidate I runtime must still be available after deployment hardening.']

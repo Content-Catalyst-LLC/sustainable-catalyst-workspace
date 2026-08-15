@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v180';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v180';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v190';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v190';
+    const LEGACY_PENDING_KEY_V180 = 'sc_workspace_registry_pending_v180';
     const LEGACY_PENDING_KEY_V170 = 'sc_workspace_registry_pending_v170';
     const LEGACY_PENDING_KEY_V160 = 'sc_workspace_registry_pending_v160';
     const LEGACY_PENDING_KEY_V150 = 'sc_workspace_registry_pending_v150';
@@ -175,6 +176,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V180);
         delete_option(self::LEGACY_PENDING_KEY_V170);
         delete_option(self::LEGACY_PENDING_KEY_V160);
         delete_option(self::LEGACY_PENDING_KEY_V150);
@@ -330,12 +332,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.7.0',
+            'previous_version' => '1.8.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Shared Review Rooms & Controlled Collaboration',
-            'change_summary' => 'Adds browser-local shared review rooms with scoped invitations, immutable review snapshots, explicit review-state transitions, room audit events, portable room exchange, and controlled role capabilities without creating a server-enforced shared tenant.',
+            'release_name' => 'Institutional Governance, Provenance & Audit Studio',
+            'change_summary' => 'Adds a derived Institutional Audit Studio with explicit evidence scope, provenance and decision lineage, reproducible audit packages, user-supplied attestations, and institutional handoff linkage without compliance scoring or automatic canonical mutation.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Review-room permissions are local governance records, invitations are never sent automatically, snapshots are explicit frozen copies, and no room action mutates canonical project content automatically.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Audit dossiers derive from authoritative ledgers; attestations are user supplied and no audit action claims regulatory certification, submits externally, or mutates canonical records automatically.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

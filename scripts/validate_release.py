@@ -1,1 +1,1 @@
-from validate_shared_review_rooms_controlled_collaboration import *
+from validate_institutional_governance_provenance_audit_studio import *

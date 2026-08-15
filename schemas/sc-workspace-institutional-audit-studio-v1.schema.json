@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sc-workspace-institutional-audit-studio/1.0",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-audit-studio/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "evidenceFamilies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -10,8 +10,8 @@
   const RELEASE_VERSION='1.8.0';
   const PREVIOUS_RELEASE='1.7.0';
   const ROLLBACK_RELEASE='1.7.0';
-  const EXPECTED_SCRIPT='workspace-v1.8.0.js';
-  const EXPECTED_STYLE='workspace-v1.8.0.css';
+  const EXPECTED_SCRIPT='workspace-v1.9.0.js';
+  const EXPECTED_STYLE='workspace-v1.9.0.css';
   const manualItems=Object.freeze([
     ['public-page','Public Workspace smoke','Load the production Workspace as a normal visitor and confirm the complete application shell reaches the site footer without a PHP critical error.'],
     ['rest-identity','Production REST identity','Verify /wp-json/sc-workspace/v1/health and /production-certification-contract both report v1.8.0.'],

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sc-workspace-audit-provenance-record/1.0",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-audit-provenance-record/1.0"
+    },
+    "family": {
+      "type": "string"
+    },
+    "sourceId": {
+      "type": "string"
+    },
+    "sourceSubsystem": {
+      "type": "string"
+    },
+    "relationship": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

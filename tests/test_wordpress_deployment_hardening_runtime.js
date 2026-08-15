@@ -1,7 +1,7 @@
 const assert=require('assert');
 const A=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-wordpress-deployment-hardening-v1.js');
 function node(url,attr){return {getAttribute:(k)=>k===attr?url:''};}
-function doc(script='https://example.test/wp-content/plugins/workspace/assets/js/workspace-v1.8.0.js?ver=1.8.0',style='https://example.test/wp-content/plugins/workspace/assets/css/workspace-v1.8.0.css?ver=1.8.0',extraScripts=[]){return {querySelectorAll(sel){if(sel==='script[src]')return [node(script,'src'),...extraScripts.map(x=>node(x,'src'))];if(sel==='link[rel="stylesheet"][href]')return [node(style,'href')];return [];}}}
+function doc(script='https://example.test/wp-content/plugins/workspace/assets/js/workspace-v1.9.0.js?ver=1.8.0',style='https://example.test/wp-content/plugins/workspace/assets/css/workspace-v1.9.0.css?ver=1.8.0',extraScripts=[]){return {querySelectorAll(sel){if(sel==='script[src]')return [node(script,'src'),...extraScripts.map(x=>node(x,'src'))];if(sel==='link[rel="stylesheet"][href]')return [node(style,'href')];return [];}}}
 const root={dataset:{version:'1.8.0',releaseStage:'shared-review-rooms',scwDeploymentServerState:'server-ready'}};
 const env={SCWorkspaceIdentity:{workspaceVersion:'1.8.0'},SCWorkspaceReleaseCandidateI:{},document:doc()};
 let r=A.assess(root,{env,document:env.document});
