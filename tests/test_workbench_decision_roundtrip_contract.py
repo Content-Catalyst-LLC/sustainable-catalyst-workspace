@@ -8,5 +8,5 @@ class WorkbenchDecisionRoundtrip(unittest.TestCase):
  def test_04_route(self): self.assertIn('/wp-json/sc-workspace/v1/workbench-decision-roundtrip-contract',MAN['rest_routes']);self.assertIn("'/workbench-decision-roundtrip-contract'",PHP)
  def test_05_features(self): self.assertEqual(len(MAN['tool_roundtrip_integration']['workbench_workflows']),6);self.assertEqual(len(MAN['tool_roundtrip_integration']['decision_studio_workflows']),6);self.assertTrue(MAN['tool_roundtrip_integration']['destination_match_required'])
  def test_06_boundaries(self): self.assertFalse(MAN['tool_roundtrip_integration']['automatic_context_upload']);self.assertFalse(MAN['tool_roundtrip_integration']['automatic_return_commit']);self.assertFalse(MAN['tool_roundtrip_integration']['automatic_ai'])
- def test_07_preserved_under_current(self): self.assertIn('Version: 1.11.0',MAIN);self.assertIn('buildContextPackage',APP);self.assertIn('toWorkspaceReturnPacket',APP)
+ def test_07_preserved_under_current(self): self.assertIn('Version: 1.12.0',MAIN);self.assertIn('buildContextPackage',APP);self.assertIn('toWorkspaceReturnPacket',APP)
 if __name__=='__main__':unittest.main()

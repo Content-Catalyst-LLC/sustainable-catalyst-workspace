@@ -1,4 +1,8 @@
-# Sustainable Catalyst Workspace v1.11.0 — Developer API, SDK & Extension Contracts
+# Sustainable Catalyst Workspace
+
+## v1.12.0 — Large Workspace & Institutional Scale Hardening
+
+Workspace v1.12.0 hardens the GA product for very large local projects and institutional-scale research. It adds explicit scale envelopes, deterministic degradation plans, bounded rendering/indexing/graph strategies, recovery-first handling under critical pressure, and sharded institutional export planning. Canonical schemas remain frozen and no automatic deletion, compaction, archival, migration, server offload, AI, or telemetry is introduced.
 
 Workspace v1.11.0 publishes the first stable public extensibility boundary for Workspace. It adds a versioned Developer API contract, browser-local SDK, extension manifests, explicit capability grants, and portable extension envelopes across the existing Workspace object/search/Library/graph/handoff/review/audit/research-operations surfaces.
 

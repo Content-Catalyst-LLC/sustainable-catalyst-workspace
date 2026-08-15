@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Scale Envelope",
+  "type": "object",
+  "required": [
+    "schema",
+    "level",
+    "metrics",
+    "findings"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-scale-envelope/1.0"
+    },
+    "level": {
+      "enum": [
+        "normal",
+        "attention",
+        "critical"
+      ]
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "findings": {
+      "type": "array"
+    }
+  }
+}

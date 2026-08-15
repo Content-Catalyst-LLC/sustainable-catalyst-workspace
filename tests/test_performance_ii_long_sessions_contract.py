@@ -7,15 +7,15 @@ MAINP=ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-worksp
 MAIN=MAINP.read_text(); HEAD=MAINP.read_bytes()[:8192].decode('utf-8',errors='replace')
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v1.11.0.js').read_text()
+APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v1.12.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-long-session-performance-v1.js').read_text()
 UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-long-session-performance-ui-v1.js').read_text()
-CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.11.0.css').read_text()
+CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.12.0.css').read_text()
 class PerformanceII(unittest.TestCase):
  def test_01_lineage_and_wordpress_header(self):
   self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.68.0','0.67.0','Performance II: Long Sessions & Very Large Workspaces'))
-  self.assertIn('Version: 1.11.0',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '1.11.0",MAIN)
-  for label,value in [('Plugin Name','Sustainable Catalyst Workspace'),('Version','1.11.0'),('Author','Content Catalyst LLC'),('Requires at least','6.4'),('Requires PHP','8.0')]:
+  self.assertIn('Version: 1.12.0',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '1.12.0",MAIN)
+  for label,value in [('Plugin Name','Sustainable Catalyst Workspace'),('Version','1.12.0'),('Author','Content Catalyst LLC'),('Requires at least','6.4'),('Requires PHP','8.0')]:
    m=re.search(r'^[ \\t\\/*#@]*'+re.escape(label)+r':(.*)$',HEAD,re.I|re.M); self.assertTrue(m and m.group(1).strip()==value)
  def test_02_schema_stability(self):
   self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'))
@@ -24,8 +24,8 @@ class PerformanceII(unittest.TestCase):
   self.assertIn('/wp-json/sc-workspace/v1/long-session-performance-contract',MAN['rest_routes'])
   self.assertIn("'/long-session-performance-contract'",PHP); self.assertIn('public function long_session_performance_contract()',PHP)
   self.assertIn('sc-workspace-long-session-performance-v1.js',PHP); self.assertIn('sc-workspace-long-session-performance-ui-v1.js',PHP)
-  self.assertIn("'sc-workspace-v1110'",PHP); self.assertIn('workspace-v1.11.0.js',PHP); self.assertIn('workspace-v1.11.0.css',PHP)
-  self.assertIn("wp_localize_script('sc-workspace-v1110'",PHP)
+  self.assertIn("'sc-workspace-v1120'",PHP); self.assertIn('workspace-v1.12.0.js',PHP); self.assertIn('workspace-v1.12.0.css',PHP)
+  self.assertIn("wp_localize_script('sc-workspace-v1120'",PHP)
  def test_04_bounded_memory_only_profile(self):
   perf=MAN['long_session_performance']; self.assertEqual(perf['bounded_in_memory_samples'],120); self.assertFalse(perf['persistent_profiling']); self.assertFalse(perf['automatic_telemetry']); self.assertFalse(perf['automatic_submission'])
   self.assertIn('maxSamples:120',HELP); self.assertIn('boundedPush',HELP); self.assertIn('persisted:false',HELP)
@@ -48,7 +48,7 @@ class PerformanceII(unittest.TestCase):
   self.assertIn('No advisory long-session signals',PHP); self.assertIn('Canonical Workspace data was unchanged',UI); self.assertIn('Performance II: Long Sessions',CSS)
  def test_10_registry_history(self):
   self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.68.0','0.67.0','Performance II: Long Sessions & Very Large Workspaces'))
-  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v1110'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0670',REGPHP)
+  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v1120'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0670',REGPHP)
   self.assertTrue((ROOT/'history/release-manifest-v0.67.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.67.0.json').exists())
  def test_11_schemas_and_docs(self):
   for f in ['schemas/sc-workspace-long-session-performance-v1.schema.json','schemas/sc-workspace-performance-session-v1.schema.json','schemas/sc-workspace-performance-session-report-v1.schema.json','docs/PERFORMANCE_LONG_SESSIONS_V0680.md']:

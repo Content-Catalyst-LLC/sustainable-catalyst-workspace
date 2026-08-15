@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Institutional Scale Hardening",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-institutional-scale-hardening/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    }
+  }
+}

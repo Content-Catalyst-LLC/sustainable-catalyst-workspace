@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v1110';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v1110';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v1120';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v1120';
+    const LEGACY_PENDING_KEY_V1110 = 'sc_workspace_registry_pending_v1110';
     const LEGACY_PENDING_KEY_V1100 = 'sc_workspace_registry_pending_v1100';
     const LEGACY_PENDING_KEY_V190 = 'sc_workspace_registry_pending_v190';
     const LEGACY_PENDING_KEY_V180 = 'sc_workspace_registry_pending_v180';
@@ -178,6 +179,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V1110);
         delete_option(self::LEGACY_PENDING_KEY_V1100);
         delete_option(self::LEGACY_PENDING_KEY_V190);
         delete_option(self::LEGACY_PENDING_KEY_V180);
@@ -336,12 +338,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.10.0',
+            'previous_version' => '1.11.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Developer API, SDK & Extension Contracts',
-            'change_summary' => 'Publishes stable versioned Developer API and browser-local SDK contracts with explicit extension manifests, bounded capability grants, portable envelopes, and preserved Workspace governance boundaries.',
+            'release_name' => 'Large Workspace & Institutional Scale Hardening',
+            'change_summary' => 'Hardens Workspace for very large projects and institutional-scale use with deterministic scale envelopes, bounded rendering/indexing/graph plans, recovery-first critical mode, and sharded export planning without canonical schema changes.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Extensions are read-only/descriptive by default; grants are explicit portable records, not credentials. No arbitrary code execution, remote extension loading, mutation REST endpoints, secret-bearing manifests, AI, telemetry, or automatic canonical mutation.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Scale handling is advisory and local-first: no automatic deletion, compaction, archival, migration, upload, server offload, AI, telemetry, or canonical mutation.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
