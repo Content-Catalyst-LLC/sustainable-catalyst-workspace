@@ -74,12 +74,12 @@ class StabilityAccessibilityReleaseReadiness(unittest.TestCase):
         self.assertFalse(MANIFEST['governance']['behavioral_telemetry'])
         self.assertFalse(MANIFEST['governance']['productivity_score'])
     def test_registry_lineage_advances_with_safe_actions_storage_migration(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v120'",REG)
-        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v120'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v130'",REG)
+        self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v130'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG)
         self.assertIn("LEGACY_PENDING_KEY_V0200 = 'sc_workspace_registry_pending_v0200'",REG)
-        self.assertIn("'previous_version' => '1.1.0'",REG)
+        self.assertIn("'previous_version' => '1.2.0'",REG)
     def test_canonical_library_route_is_unchanged(self):
         self.assertEqual(MANIFEST['canonical_library_path'],'/knowledge-libraries/')
         self.assertIn('/knowledge-libraries/',PHP)

@@ -9,17 +9,17 @@ PHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
 DEP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-deployment.php').read_text()
 NAV=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
 EXP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-experience-v1.js').read_text()
-APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v1.2.0.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.2.0.css').read_text()
+APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v1.3.0.js').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.3.0.css').read_text()
 class DeploymentHardeningContract(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN.get('version'),MAN.get('previous_version'),MAN.get('release_name')),('0.81.0','0.80.0','WordPress & Deployment Hardening')); self.assertIn('Version: 1.2.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN.get('version'),MAN.get('previous_version'),MAN.get('release_name')),('0.81.0','0.80.0','WordPress & Deployment Hardening')); self.assertIn('Version: 1.3.0',MAIN)
  def test_02_schema_freeze(self):
   for k in ['storage_schema_version','project_schema','export_schema','object_schema','research_schema']: self.assertEqual(MAN.get(k),OLD.get(k))
   self.assertFalse(MAN.get('schema_migration_required')); self.assertEqual(MAN.get('object_types'),OLD.get('object_types'))
  def test_03_bootstrap_guard(self): self.assertIn('sc_workspace_bootstrap_failure',MAIN); self.assertIn('is_readable',MAIN); self.assertIn('class-sc-workspace-deployment.php',MAIN)
  def test_04_activation_preflight(self): self.assertIn('activation_preflight',DEP); self.assertIn('required_files',DEP); self.assertIn('MAX_HISTORY = 12',DEP); self.assertIn('project_data_mutated',DEP)
  def test_05_rest_contract(self): self.assertIn("'/deployment-hardening-contract'",PHP); self.assertIn('deployment_hardening_contract',PHP); self.assertIn('/wp-json/sc-workspace/v1/deployment-hardening-contract',MAN.get('rest_routes',[]))
- def test_06_current_assets(self): self.assertIn("'sc-workspace-v120'",PHP); self.assertIn('workspace-v1.2.0.js',PHP); self.assertIn('workspace-v1.2.0.css',PHP); self.assertNotIn("'sc-workspace-v0800'",PHP)
+ def test_06_current_assets(self): self.assertIn("'sc-workspace-v130'",PHP); self.assertIn('workspace-v1.3.0.js',PHP); self.assertIn('workspace-v1.3.0.css',PHP); self.assertNotIn("'sc-workspace-v0800'",PHP)
  def test_07_deployment_assets(self): self.assertIn('sc-workspace-wordpress-deployment-hardening-v1',PHP); self.assertIn('sc-workspace-wordpress-deployment-hardening-ui-v1',PHP); self.assertIn('/* v0.81.0 — WordPress & Deployment Hardening */',CSS)
  def test_08_root_server_state(self): self.assertIn('data-scw-deployment-server-state',PHP); self.assertIn('data-scw-deployment-files-complete',PHP); self.assertIn('data-scw-deployment-expected-script',PHP)
  def test_09_navigation_defect_closed(self):

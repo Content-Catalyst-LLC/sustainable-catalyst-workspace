@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-library-workspace-continuity-package-v1.schema.json",
+  "title": "Knowledge Library to Workspace Continuity Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "items"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-library-workspace-continuity/1.0"
+    },
+    "exportedAt": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": true
+}

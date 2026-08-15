@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-library-continuity-record-v1.schema.json",
+  "title": "Workspace Library Continuity Record",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "kind",
+    "title",
+    "origin"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-library-continuity/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "saved-search",
+        "watchlist",
+        "research-queue-item",
+        "source-bundle",
+        "personal-recommendation"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "private": {
+      "type": "boolean"
+    },
+    "origin": {
+      "type": "object",
+      "required": [
+        "system",
+        "libraryId",
+        "canonicalRoute"
+      ],
+      "properties": {
+        "system": {
+          "const": "knowledge-library"
+        },
+        "libraryId": {
+          "type": "string"
+        },
+        "collectionId": {
+          "type": "string"
+        },
+        "sourceUrl": {
+          "type": "string"
+        },
+        "canonicalRoute": {
+          "const": "/knowledge-libraries/"
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

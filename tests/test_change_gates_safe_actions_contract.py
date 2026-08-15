@@ -63,8 +63,8 @@ class ChangeGatesSafeActionsContract(unittest.TestCase):
         self.assertIn('/wp-json/sc-workspace/v1/change-review-contract',MAN['rest_routes']); self.assertIn('sc-workspace-project-diff-v1.js',PHP)
         self.assertIn('cloud-revision',MAN['change_review']['sources'])
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v120'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v120'",REG)
-        self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG); self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG); self.assertIn("'previous_version' => '1.1.0'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v130'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v130'",REG)
+        self.assertIn("LEGACY_PENDING_KEY_V0260 = 'sc_workspace_registry_pending_v0260'",REG); self.assertIn("LEGACY_PENDING_KEY_V0240 = 'sc_workspace_registry_pending_v0240'",REG); self.assertIn("'previous_version' => '1.2.0'",REG)
     def test_accessibility_and_forced_colors(self):
         self.assertIn('.scw-action-gate',CSS); self.assertIn('@media(forced-colors:active)',CSS)
         self.assertIn('aria-live="polite"',PHP); self.assertIn('role="dialog"',PHP)

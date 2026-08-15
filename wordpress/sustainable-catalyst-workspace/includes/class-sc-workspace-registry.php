@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v120';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v120';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v130';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v130';
+    const LEGACY_PENDING_KEY_V120 = 'sc_workspace_registry_pending_v120';
     const LEGACY_PENDING_KEY_V110 = 'sc_workspace_registry_pending_v110';
     const LEGACY_PENDING_KEY_V101 = 'sc_workspace_registry_pending_v101';
     const LEGACY_PENDING_KEY_V100 = 'sc_workspace_registry_pending_v100';
@@ -169,6 +170,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V120);
         delete_option(self::LEGACY_PENDING_KEY_V110);
         delete_option(self::LEGACY_PENDING_KEY_V101);
         delete_option(self::LEGACY_PENDING_KEY_V100);
@@ -318,12 +320,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.1.0',
+            'previous_version' => '1.2.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Universal Workspace Search & Knowledge Retrieval',
-            'change_summary' => 'Adds one local-first retrieval surface across projects, canonical objects, notebooks, research, analysis, decisions, briefing drafts, citation references, and research tasks with deterministic ranking and canonical-origin navigation.',
+            'release_name' => 'Research Projects & Library Continuity',
+            'change_summary' => 'Connects Workspace research projects with Knowledge Library saved searches, watchlists, research queue items, source bundles, and private personal recommendations through explicit provenance-preserving continuity handoffs.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Search is derived in-browser from canonical/local records; no server index, semantic embeddings, query telemetry, automatic AI, canonical mutation, or schema migration.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Library continuity is staged browser-locally and requires explicit Add to project promotion; no second account, automatic Library pull, background sync, behavioral telemetry, canonical Library mutation, or schema migration.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

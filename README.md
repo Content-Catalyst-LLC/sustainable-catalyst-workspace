@@ -1,10 +1,16 @@
-# Sustainable Catalyst Workspace v1.2.0
+# Sustainable Catalyst Workspace v1.3.0 — Research Projects & Library Continuity
 
-Current release: **v1.2.0 — Universal Workspace Search & Knowledge Retrieval**
+Current release: **v1.3.0 — Research Projects & Library Continuity**
+
+## Research Projects & Library Continuity
+
+Workspace v1.3.0 connects research projects with Knowledge Library saved searches, watchlists, research-queue items, source bundles, and private personal recommendations without creating a second Library datastore or account. Library context is staged browser-locally, preserves canonical Library identity and provenance, and requires an explicit **Add to project** action before promotion into a Workspace source object.
+
+The canonical Knowledge Library remains `/knowledge-libraries/`. Guest Workspace remains first-class; authenticated continuity reuses the existing WordPress identity. The continuity layer does not automatically pull Library data, run background synchronization, expose private recommendations, invoke AI, emit behavioral/query telemetry, or mutate canonical Library records.
 
 ## Universal Workspace Search
 
-Workspace v1.2.0 adds one local-first retrieval surface across projects, Workspace objects, notebooks and notebook blocks, research questions and claims, analysis questions, decisions, briefing drafts, Citation Library references, and explicit Research Tasks.
+Workspace v1.2.0 added one local-first retrieval surface across projects, Workspace objects, notebooks and notebook blocks, research questions and claims, analysis questions, decisions, briefing drafts, Citation Library references, and explicit Research Tasks.
 
 The search corpus is derived in-browser from existing records rather than copied into a second canonical datastore. It reuses Workspace's deterministic, explainable Advanced Retrieval ranking and keeps result origins inspectable so a search result can route back to the project or specialized surface that owns it.
 
