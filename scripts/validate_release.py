@@ -1,1 +1,1 @@
-from validate_institutional_governance_provenance_audit_studio import *
+from validate_workspace_automation_research_operations import *

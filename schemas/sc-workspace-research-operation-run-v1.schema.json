@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sc-workspace-research-operation-run/1.0",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-operation-run/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "operationId": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "findings": {
+      "type": "array"
+    },
+    "recommendedActions": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true
+}

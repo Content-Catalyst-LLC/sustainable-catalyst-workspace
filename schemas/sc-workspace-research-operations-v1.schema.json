@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sc-workspace-research-operations/1.0",
+  "type": "object",
+  "required": [
+    "schema"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-research-operations/1.0"
+    },
+    "operations": {
+      "type": "array"
+    },
+    "runs": {
+      "type": "array"
+    },
+    "receipts": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true
+}

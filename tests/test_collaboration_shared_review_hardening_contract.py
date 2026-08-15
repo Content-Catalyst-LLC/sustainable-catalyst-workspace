@@ -8,7 +8,7 @@ PHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
 REGPHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 HELP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-shared-review-handoff-v1.js').read_text()
 UI=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-shared-review-handoff-ui-v1.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.9.0.css').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.10.0.css').read_text()
 class CollaborationSharedReviewHardeningContract(unittest.TestCase):
  def test_release_lineage_schema_stability(self):
   self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.73.0','0.72.0','Collaboration & Shared Review Hardening'))
@@ -24,11 +24,11 @@ class CollaborationSharedReviewHardeningContract(unittest.TestCase):
   h=MAN['collaboration_review_hardening']; self.assertEqual(h['reviewer_identity'],'declarative-not-cryptographically-verified'); self.assertEqual(h['owner_identity'],'declarative-not-cryptographically-verified')
   self.assertFalse(MAN['governance']['shared_review_owner_identity_cryptographically_verified']); self.assertFalse(MAN['governance']['shared_review_reviewer_identity_cryptographically_verified'])
  def test_wordpress_current_assets_and_rest(self):
-  self.assertIn('Version: 1.9.0',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '1.9.0",MAIN); self.assertIn("'/collaboration-review-hardening-contract'",PHP); self.assertIn('collaboration_review_hardening_contract',PHP)
-  self.assertIn("'sc-workspace-v190'",PHP); self.assertIn('workspace-v1.9.0.js',PHP); self.assertIn('workspace-v1.9.0.css',PHP)
+  self.assertIn('Version: 1.10.0',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '1.10.0",MAIN); self.assertIn("'/collaboration-review-hardening-contract'",PHP); self.assertIn('collaboration_review_hardening_contract',PHP)
+  self.assertIn("'sc-workspace-v1100'",PHP); self.assertIn('workspace-v1.10.0.js',PHP); self.assertIn('workspace-v1.10.0.css',PHP)
  def test_registry_history_docs_schemas(self):
   self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.73.0','0.72.0','Collaboration & Shared Review Hardening'))
-  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v190'",REGPHP); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v190'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0720',REGPHP)
+  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v1100'",REGPHP); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v1100'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0720',REGPHP)
   self.assertTrue((R/'history/release-manifest-v0.72.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.72.0.json').exists())
   for f in ['schemas/sc-workspace-collaboration-review-hardening-v1.schema.json','schemas/sc-workspace-shared-review-import-assessment-v1.schema.json','schemas/sc-workspace-shared-review-reconciliation-receipt-v1.schema.json','docs/COLLABORATION_SHARED_REVIEW_HARDENING_V0730.md']: self.assertTrue((R/f).exists(),f)
  def test_css_and_review_text(self):

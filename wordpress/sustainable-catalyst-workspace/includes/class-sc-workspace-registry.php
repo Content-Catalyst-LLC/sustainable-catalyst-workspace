@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v190';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v190';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v1100';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v1100';
+    const LEGACY_PENDING_KEY_V190 = 'sc_workspace_registry_pending_v190';
     const LEGACY_PENDING_KEY_V180 = 'sc_workspace_registry_pending_v180';
     const LEGACY_PENDING_KEY_V170 = 'sc_workspace_registry_pending_v170';
     const LEGACY_PENDING_KEY_V160 = 'sc_workspace_registry_pending_v160';
@@ -176,6 +177,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V190);
         delete_option(self::LEGACY_PENDING_KEY_V180);
         delete_option(self::LEGACY_PENDING_KEY_V170);
         delete_option(self::LEGACY_PENDING_KEY_V160);
@@ -332,12 +334,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.8.0',
+            'previous_version' => '1.9.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Institutional Governance, Provenance & Audit Studio',
-            'change_summary' => 'Adds a derived Institutional Audit Studio with explicit evidence scope, provenance and decision lineage, reproducible audit packages, user-supplied attestations, and institutional handoff linkage without compliance scoring or automatic canonical mutation.',
+            'release_name' => 'Workspace Automation & Research Operations',
+            'change_summary' => 'Productionizes the browser-local Research Automation foundation into explicit Research Operations with deterministic due planning, eight research-maintenance operation types, blocked-target visibility, reviewable runs, and metadata-only SHA-256 receipts.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Audit dossiers derive from authoritative ledgers; attestations are user supplied and no audit action claims regulatory certification, submits externally, or mutates canonical records automatically.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Schedules are declarations only; operations run only on explicit user action. No background execution, automatic network requests, task creation, AI, telemetry, or canonical mutation.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

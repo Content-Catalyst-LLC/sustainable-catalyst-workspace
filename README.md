@@ -1,6 +1,14 @@
-# Sustainable Catalyst Workspace v1.9.0
+# Sustainable Catalyst Workspace v1.10.0
 
-**Current release:** v1.9.0 — Institutional Governance, Provenance & Audit Studio.
+**Current release:** v1.10.0 — Workspace Automation & Research Operations.
+
+## Workspace Automation & Research Operations
+
+Workspace v1.10.0 productionizes the existing local Research Automation foundation into deterministic, user-controlled Research Operations. Users can define saved-search refreshes, source-update checks, watchlist reviews, research-queue reviews, citation verification, provenance reviews, evidence refreshes, and project-maintenance operations; inspect due or blocked work; run operations explicitly; review draft runs; and export metadata-only SHA-256 receipts.
+
+Schedules are declarations rather than a background daemon. Workspace does not run operations in the background, automatically make network requests, create tasks, invoke AI, mutate canonical records, or emit behavioral/query telemetry. External freshness checks require deliberate user action, and legacy Research Automation routines remain available with explicit import rather than automatic migration. Storage remains 35, Project remains `sc-workspace-project/20.0`, and Project Export remains `sc-workspace-project-export/20.0`.
+
+See `RELEASE_NOTES_1.10.0.md` and `docs/WORKSPACE_AUTOMATION_RESEARCH_OPERATIONS_V1100.md`.
 
 
 ## Institutional Governance, Provenance & Audit Studio
