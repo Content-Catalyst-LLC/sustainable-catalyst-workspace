@@ -1,6 +1,16 @@
-# Sustainable Catalyst Workspace v1.6.0 — Workbench & Decision Studio Round-Trip Workflows
+# Sustainable Catalyst Workspace v1.7.0 — Cross-Device Continuity & Account Sync Productionization
 
-Current release: **v1.6.0 — Workbench & Decision Studio Round-Trip Workflows**
+Current release: **v1.7.0 — Cross-Device Continuity & Account Sync Productionization**
+
+## Cross-Device Continuity & Account Sync Productionization
+
+Workspace v1.7.0 productionizes the existing account-sync foundation without changing Workspace's local-first ownership model. Authenticated users can explicitly enroll an individual project for continuity, inspect a deterministic sync plan, run manual synchronization, preserve both sides of conflicts, recover interrupted operations, and export a metadata-only continuity receipt.
+
+The continuity planner distinguishes local-only work, first enrollment, safe push, guarded pull, remote-copy recovery, cloud-copy recreation, no-op, and conflict states. Revision preconditions and unchanged-local-baseline checks remain mandatory; silent last-write-wins behavior is prohibited. The local project remains canonical on the current device and the cloud head remains a continuity copy rather than a replacement canonical store.
+
+Guest Workspace remains first-class. Account sign-in does not automatically enroll projects, background synchronization is off, automatic upload is off, and continuity receipts exclude project contents, query text, source URLs, device identifiers, and account-profile data. Workspace does not introduce device fingerprinting, team/institutional sync, automatic AI, behavioral telemetry, query telemetry, or canonical schema migration. Storage remains 35, Project remains `sc-workspace-project/20.0`, and Project Export remains `sc-workspace-project-export/20.0`.
+
+See `RELEASE_NOTES_1.7.0.md` and `docs/CROSS_DEVICE_CONTINUITY_ACCOUNT_SYNC_PRODUCTIONIZATION_V170.md`.
 
 ## Workbench & Decision Studio Round-Trip Workflows
 
@@ -55,8 +65,3 @@ General Availability remains explicitly human-controlled. The v0.84.0 readiness 
 Workspace does not automatically certify a release, inspect project contents, purge caches, roll back, migrate canonical project data, or emit behavioral telemetry.
 
 See `RELEASE_NOTES_1.0.0.md` and `docs/GENERAL_AVAILABILITY_V100.md`.
-
-
-## v1.6.0 current release
-
-Workspace now supports explicit Workbench and Decision Studio round-trip context/return packages with exact project, handoff, destination, provenance, and traceability boundaries.

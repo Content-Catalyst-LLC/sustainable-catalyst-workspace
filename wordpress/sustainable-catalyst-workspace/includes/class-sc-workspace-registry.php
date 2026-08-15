@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v160';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v160';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v170';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v170';
+    const LEGACY_PENDING_KEY_V160 = 'sc_workspace_registry_pending_v160';
     const LEGACY_PENDING_KEY_V150 = 'sc_workspace_registry_pending_v150';
     const LEGACY_PENDING_KEY_V140 = 'sc_workspace_registry_pending_v140';
     const LEGACY_PENDING_KEY_V130 = 'sc_workspace_registry_pending_v130';
@@ -173,6 +174,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V160);
         delete_option(self::LEGACY_PENDING_KEY_V150);
         delete_option(self::LEGACY_PENDING_KEY_V140);
         delete_option(self::LEGACY_PENDING_KEY_V130);
@@ -326,12 +328,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.5.0',
+            'previous_version' => '1.6.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Workbench & Decision Studio Round-Trip Workflows',
-            'change_summary' => 'Adds governed Workbench and Decision Studio round trips with explicit context packages, typed return artifacts, destination matching, metadata preservation, and deterministic traceability back to selected Workspace context.',
+            'release_name' => 'Cross-Device Continuity & Account Sync Productionization',
+            'change_summary' => 'Productionizes cross-device continuity with deterministic sync planning, privacy-minimized sync receipts, explicit account continuity summaries, conflict-preserving actions, revision preconditions, and interrupted-operation reconciliation while keeping browser-local projects first-class.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Workbench and Decision Studio execution, context export, and returned-artifact materialization remain explicit; no automatic upload, execution, AI, telemetry, canonical mutation, or schema migration.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Cross-device continuity stays opt-in per project and manual-action driven; no automatic enrollment, background sync, silent overwrite, device fingerprinting, AI, telemetry, or canonical cloud-first migration.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

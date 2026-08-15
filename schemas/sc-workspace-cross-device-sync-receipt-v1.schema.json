@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Cross-Device Sync Receipt",
+  "type": "object",
+  "required": [
+    "schema",
+    "projectId",
+    "state",
+    "recommendedAction",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-cross-device-sync-receipt/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "recommendedAction": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "serverRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "remoteRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "localFingerprint": {
+      "type": "string"
+    },
+    "remoteFingerprint": {
+      "type": "string"
+    },
+    "baseFingerprint": {
+      "type": "string"
+    },
+    "pendingOperation": {
+      "type": "boolean"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

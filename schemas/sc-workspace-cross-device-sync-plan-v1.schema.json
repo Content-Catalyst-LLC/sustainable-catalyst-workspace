@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Cross-Device Sync Plan",
+  "type": "object",
+  "required": [
+    "schema",
+    "projectId",
+    "state",
+    "action",
+    "reason"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-cross-device-sync-plan/1.0"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "action": {
+      "enum": [
+        "local-only",
+        "enroll",
+        "push",
+        "pull-safe",
+        "open-remote-copy",
+        "recreate-cloud",
+        "noop",
+        "conflict"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "serverRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "remoteRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "localFingerprint": {
+      "type": "string"
+    },
+    "remoteFingerprint": {
+      "type": "string"
+    },
+    "baseFingerprint": {
+      "type": "string"
+    },
+    "requiresConfirmation": {
+      "type": "boolean"
+    },
+    "safeAutomaticApply": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

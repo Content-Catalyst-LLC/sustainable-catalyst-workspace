@@ -9,7 +9,7 @@ check((REG['public_version'],REG['previous_version'])==('1.5.0','1.4.0'),'histor
 for k in ['storage_schema_version','project_schema','export_schema','object_schema','research_schema']:check(MAN[k]==OLD[k],'frozen '+k)
 check('/wp-json/sc-workspace/v1/lab-integration-contract' in MAN['rest_routes'],'historical route')
 g=MAN['lab_integration'];check(len(g['supported_workflows'])==8 and g['canonical_lab_route']=='/lab/','workflow/route');check(g['explicit_context_selection'] and g['traceability_edges_from_selected_context'],'explicit/traceability');check(not g['automatic_context_upload'] and not g['automatic_return_commit'] and not g['automatic_ai'],'boundaries')
-check('Version: 1.6.0' in MAIN and "SC_WORKSPACE_VERSION', '1.6.0'" in MAIN,'current runtime advanced')
+check('Version: 1.7.0' in MAIN and "SC_WORKSPACE_VERSION', '1.7.0'" in MAIN,'current runtime advanced')
 for t in ['sc-workspace-lab-integration/1.0','posterior-predictive-modeling','traceabilityEdgesFromSelectedContext']:check(t in LPHP,'PHP contract '+t)
 for t in ['buildContextPackage','toWorkspaceReturnPacket','scientific-return','automaticReturnCommit:false']:check(t in LJS,'JS bridge '+t)
 subprocess.run([sys.executable,str(R/'scripts/validate_knowledge_graph_relationship_explorer.py')],check=True,cwd=R)
