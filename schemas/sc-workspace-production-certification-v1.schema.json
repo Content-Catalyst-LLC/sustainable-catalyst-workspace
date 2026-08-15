@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Production Certification",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "packageAutomatedGate",
+    "productionCertified",
+    "checks",
+    "manualFieldItems"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-production-certification/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "packageAutomatedGate": {
+      "type": "boolean"
+    },
+    "productionCertified": {
+      "const": false
+    },
+    "checks": {
+      "type": "array"
+    },
+    "manualFieldItems": {
+      "type": "array"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Production Certification Checklist",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "rollbackRelease",
+    "items"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-production-certification-checklist/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "rollbackRelease": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 5
+    }
+  }
+}

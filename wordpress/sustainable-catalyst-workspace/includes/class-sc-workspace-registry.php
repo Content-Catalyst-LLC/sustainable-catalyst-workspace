@@ -5,8 +5,10 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0810';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0810';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0821';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0821';
+    const LEGACY_PENDING_KEY_V0820 = 'sc_workspace_registry_pending_v0820';
+    const LEGACY_PENDING_KEY_V0810 = 'sc_workspace_registry_pending_v0810';
     const LEGACY_PENDING_KEY_V0800 = 'sc_workspace_registry_pending_v0800';
     const LEGACY_PENDING_KEY_V0790 = 'sc_workspace_registry_pending_v0790';
     const LEGACY_PENDING_KEY_V0780 = 'sc_workspace_registry_pending_v0780';
@@ -161,6 +163,8 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0820);
+        delete_option(self::LEGACY_PENDING_KEY_V0810);
         delete_option(self::LEGACY_PENDING_KEY_V0800);
         delete_option(self::LEGACY_PENDING_KEY_V0790);
         delete_option(self::LEGACY_PENDING_KEY_V0780);
@@ -302,12 +306,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.80.0',
+            'previous_version' => '0.82.0',
             'release_date' => '2026-08-12',
-            'release_name' => 'WordPress & Deployment Hardening',
-            'change_summary' => 'Hardens WordPress activation, partial-package bootstrap behavior, current asset/version coherence, deployment diagnostics, registry retry coverage, and v0.80 rollback readiness while preserving the Release Candidate schema freeze.',
+            'release_name' => 'Production Certification Installer & Validation Lineage Repair',
+            'change_summary' => 'Repairs Release Candidate installer and validator lineage so source, post-rsync target, staged Git tree, WordPress header, registry, and cumulative assets must all identify the same current release before commit or push.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 remain schema-stable. v0.81.0 stays inside the v0.80 feature freeze and adds deployment/rollback safeguards only; it does not migrate or inspect browser-local project data.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.82.1 repairs deployment lineage only; inherited historical validators preserve their original contract versions while discovering the current installed release dynamically.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -1,11 +1,13 @@
-# Sustainable Catalyst Workspace v0.81.0
+# Sustainable Catalyst Workspace v0.82.1
 
-## WordPress & Deployment Hardening
+## Production Certification Installer & Validation Lineage Repair
 
-Sustainable Catalyst Workspace is a free, local-first environment for keeping questions, evidence, analysis, decisions, composition, review, and deliberate handoff connected. v0.81.0 hardens WordPress activation, upgrade, deployment, asset-version coherence, diagnostics, and rollback behavior on top of the v0.80.0 Release Candidate I feature-freeze baseline.
+Sustainable Catalyst Workspace is a free, local-first environment for carrying questions, evidence, analysis, decisions, composition, review, and deliberate handoff across Sustainable Catalyst.
 
-The product remains **feature-frozen** for the pre-1.0 certification sequence. This release adds no new product subsystem and does not change canonical project data. The new **Review → Deployment** surface separates automated package/runtime coherence checks from production smoke testing, cache/CDN verification, and rollback rehearsal. Project storage remains application data and is never treated as disposable cache content.
+v0.82.1 is a surgical Release Candidate repair after the v0.82.0 installer stopped on an inherited Security & Privacy Audit II plugin-version mismatch. The release does not add a new product subsystem and does not change canonical project/storage formats.
 
-Storage remains **35**. Project and Project Export remain **20.0**. No migration is required.
+The installer now verifies release lineage before rsync, immediately after rsync into the Git target, and again before commit/push. Inherited validators preserve their historical release contracts while deriving the currently installed WordPress/runtime/cumulative-asset version from the live source tree.
 
-See `RELEASE_NOTES_0.81.0.md`, `VALIDATION_REPORT_0.81.0.md`, `docs/WORDPRESS_DEPLOYMENT_HARDENING_V0810.md`, and `docs/WORKSPACE_RELEASE_CANDIDATE_I_V0800.md` for release details.
+Canonical contracts remain frozen at Storage 35, Project `sc-workspace-project/20.0`, and Project Export `sc-workspace-project-export/20.0`.
+
+See `RELEASE_NOTES_0.82.1.md`, `VALIDATION_REPORT_0.82.1.md`, and `docs/PRODUCTION_CERTIFICATION_INSTALLER_VALIDATION_LINEAGE_REPAIR_V0821.md`.

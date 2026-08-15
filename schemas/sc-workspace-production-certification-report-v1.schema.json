@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Production Certification Report",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "rollbackRelease",
+    "productionCertified"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-production-certification-report/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "rollbackRelease": {
+      "type": "string"
+    },
+    "productionCertified": {
+      "const": false
+    }
+  }
+}

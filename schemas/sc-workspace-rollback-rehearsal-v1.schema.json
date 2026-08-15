@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Rollback Rehearsal Record",
+  "type": "object",
+  "required": [
+    "schema",
+    "fromVersion",
+    "toVersion",
+    "projectPreservationVerified",
+    "performedByHuman"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-rollback-rehearsal/1.0"
+    },
+    "fromVersion": {
+      "type": "string"
+    },
+    "toVersion": {
+      "type": "string"
+    },
+    "projectPreservationVerified": {
+      "type": "boolean"
+    },
+    "performedByHuman": {
+      "const": true
+    }
+  }
+}

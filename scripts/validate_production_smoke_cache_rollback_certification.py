@@ -1,0 +1,26 @@
+from pathlib import Path
+from release_lineage import current_release, load_manifest, load_registry, validate_current_release_lineage
+R=Path(__file__).resolve().parents[1]; CUR=current_release(R)
+MAN=load_manifest(R,'0.82.0'); OLD=load_manifest(R,'0.81.0'); REG=load_registry(R,'0.82.0')
+P=R/'wordpress/sustainable-catalyst-workspace'; PHP=(P/'includes/class-sc-workspace.php').read_text(); DEP=(P/'includes/class-sc-workspace-deployment.php').read_text(); PROD=(P/'includes/class-sc-workspace-production-certification.php').read_text(); NAV=(P/'assets/js/sc-workspace-research-navigation-v1.js').read_text(); EXP=(P/'assets/js/sc-workspace-experience-v1.js').read_text(); RUN=(P/'assets/js/sc-workspace-production-smoke-cache-rollback-v1.js').read_text(); UI=(P/'assets/js/sc-workspace-production-smoke-cache-rollback-ui-v1.js').read_text(); APP=CUR.script_path.read_text(); CSS=CUR.style_path.read_text()
+def check(x,l):
+    if not x: raise SystemExit('FAIL - v0.82 Production Smoke, Cache & Rollback Certification gate: '+l)
+check(validate_current_release_lineage(R)['ok'],'current release lineage')
+check((MAN['version'],MAN['previous_version'],MAN['release_name'])==('0.82.0','0.81.0','Production Smoke, Cache & Rollback Certification'),'historical release lineage')
+check((REG['public_version'],REG['previous_version'],REG['release_name'])==('0.82.0','0.81.0','Production Smoke, Cache & Rollback Certification'),'historical registry lineage')
+for k in ['storage_schema_version','project_schema','export_schema','object_schema','research_schema']: check(MAN[k]==OLD[k],'frozen '+k)
+check(MAN['object_types']==OLD['object_types'] and MAN['schema_migration_required'] is False,'schema/object freeze')
+check('/wp-json/sc-workspace/v1/production-certification-contract' in MAN['rest_routes'],'historical REST contract')
+check(f"PREVIOUS_RELEASE = '{CUR.previous_version}'" in DEP and CUR.script_name in DEP and CUR.style_name in DEP,'current deployment predecessor/assets')
+check(f"PREVIOUS_RELEASE = '{CUR.previous_version}'" in PROD and "ROLLBACK_RELEASE = '0.81.0'" in PROD and CUR.script_name in PROD and CUR.style_name in PROD,'current production predecessor/rollback/assets')
+check(CUR.asset_handle in PHP and CUR.script_name in PHP and CUR.style_name in PHP,'current cumulative assets')
+check('sc-workspace-production-smoke-cache-rollback-v1' in PHP and 'sc-workspace-production-smoke-cache-rollback-ui-v1' in PHP,'certification assets enqueued')
+check('data-scw-production-certification' in PHP and 'Run package certification' in PHP and 'Export live field checklist' in PHP,'production certification UI')
+check("'production-certification'" in NAV and "id:'production-certification'" in EXP and "'production-certification'" in APP,'route integration')
+for token in [f"RELEASE_VERSION='{CUR.version}'",f"PREVIOUS_RELEASE='{CUR.previous_version}'",'packageAutomatedGate','productionCertified:false','automaticCachePurge:false','automaticRollback:false','automaticProductionCertification:false','projectDataRead:false','projectDataMutation:false']: check(token in RUN,'runtime '+token)
+check('data-scw-production-certification' in UI and 'PACKAGE READY / FIELD PENDING' in UI,'UI claim boundary')
+cert=MAN['production_smoke_cache_rollback_certification']
+for k in ['release_candidate','feature_freeze','package_smoke_gate','cache_version_coherence_gate','mixed_version_asset_detection','rollback_schema_compatible','rollback_artifact_required','rollback_rehearsal_tooling','production_smoke_script_required','live_production_checks_manual','production_certification_requires_live_field_checks']: check(cert.get(k) is True,k)
+for k in ['new_product_subsystem','schema_migration_required','automatic_production_certification','automatic_cache_purge','automatic_rollback','automatic_project_migration','project_data_inspected','project_data_mutated','behavioral_telemetry']: check(cert.get(k) is False,k)
+check(cert['rollback_release']=='0.81.0','historical rollback release')
+print(f'PASS - v0.82.0 Production Smoke, Cache & Rollback Certification source gate under current v{CUR.version}')
