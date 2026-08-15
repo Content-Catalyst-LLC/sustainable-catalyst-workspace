@@ -4,7 +4,7 @@ $data = file_get_contents($path, false, null, 0, 8192);
 if ($data === false) { fwrite(STDERR, "FAIL - read plugin header\n"); exit(1); }
 $headers = array(
   'Plugin Name' => 'Sustainable Catalyst Workspace',
-  'Version' => '0.83.0',
+  'Version' => '0.84.0',
   'Author' => 'Content Catalyst LLC',
   'Requires at least' => '6.4',
   'Requires PHP' => '8.0',

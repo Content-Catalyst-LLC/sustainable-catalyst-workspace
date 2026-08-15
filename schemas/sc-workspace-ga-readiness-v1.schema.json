@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-ga-readiness-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace GA Readiness Record",
+  "type": "object",
+  "required": ["schema", "releaseVersion", "previousRelease", "rollbackRelease", "releaseOwner", "productionUrl", "checks", "attestation", "updatedAt"],
+  "properties": {
+    "schema": {"const": "sc-workspace-ga-readiness/1.0"},
+    "releaseVersion": {"const": "0.84.0"},
+    "previousRelease": {"const": "0.83.0"},
+    "rollbackRelease": {"const": "0.83.0"},
+    "releaseOwner": {"type": "string"},
+    "productionUrl": {"type": "string"},
+    "checks": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "attestation": {"type": "boolean"},
+    "recordedAt": {"type": "string"},
+    "updatedAt": {"type": "string"}
+  },
+  "additionalProperties": false
+}

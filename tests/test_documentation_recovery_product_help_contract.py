@@ -9,13 +9,13 @@ REGPHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-
 HELP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-product-help-v1.js').read_text()
 UI=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-product-help-ui-v1.js').read_text()
 NAV=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
-APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.83.0.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.83.0.css').read_text()
+APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.84.0.js').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.84.0.css').read_text()
 
 class ProductHelpContract(unittest.TestCase):
  def test_01_lineage(self):
   self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.76.0','0.75.0','Documentation, Recovery Guidance & Product Help'))
-  self.assertIn('Version: 0.83.0',MAIN)
+  self.assertIn('Version: 0.84.0',MAIN)
  def test_02_schema_stable(self):
   self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(MAN['export_schema'],'sc-workspace-project-export/20.0'); self.assertFalse(MAN['schema_migration_required'])
  def test_03_rest_contract(self):
@@ -32,9 +32,9 @@ class ProductHelpContract(unittest.TestCase):
  def test_08_product_boundaries_visible(self):
   self.assertIn('Browser-local first',PHP); self.assertIn('Explicit recovery copy',PHP); self.assertIn('Conflict-safe, user initiated',PHP); self.assertIn('Prefer restore-as-copy',PHP); self.assertIn('avoid clearing browser storage',PHP)
  def test_09_assets(self):
-  self.assertIn("'sc-workspace-v0830'",PHP); self.assertIn('workspace-v0.83.0.js',PHP); self.assertIn('workspace-v0.83.0.css',PHP); self.assertIn('sc-workspace-product-help-v1',PHP); self.assertIn('sc-workspace-product-help-ui-v1',PHP); self.assertIn('/* v0.76.0 — Documentation, Recovery Guidance & Product Help */',CSS)
+  self.assertIn("'sc-workspace-v0840'",PHP); self.assertIn('workspace-v0.84.0.js',PHP); self.assertIn('workspace-v0.84.0.css',PHP); self.assertIn('sc-workspace-product-help-v1',PHP); self.assertIn('sc-workspace-product-help-ui-v1',PHP); self.assertIn('/* v0.76.0 — Documentation, Recovery Guidance & Product Help */',CSS)
  def test_10_registry_history(self):
-  self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.76.0','0.75.0','Documentation, Recovery Guidance & Product Help')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0830'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0750',REGPHP); self.assertTrue((R/'history/release-manifest-v0.75.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.75.0.json').exists())
+  self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.76.0','0.75.0','Documentation, Recovery Guidance & Product Help')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0840'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0750',REGPHP); self.assertTrue((R/'history/release-manifest-v0.75.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.75.0.json').exists())
  def test_11_artifacts(self):
   for f in ['schemas/sc-workspace-product-help-v1.schema.json','schemas/sc-workspace-recovery-guidance-v1.schema.json','schemas/sc-workspace-product-help-report-v1.schema.json','docs/DOCUMENTATION_RECOVERY_GUIDANCE_PRODUCT_HELP_V0760.md','RELEASE_NOTES_0.76.0.md']: self.assertTrue((R/f).exists(),f)
 if __name__=='__main__': unittest.main()

@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) {
 final class SC_Workspace_Production_Signoff {
     const CONTRACT_SCHEMA = 'sc-workspace-production-signoff-contract/1.0';
     const CERTIFICATE_SCHEMA = 'sc-workspace-production-signoff-certificate/1.0';
+    const SIGNOFF_RELEASE = '0.83.0';
     const PREVIOUS_RELEASE = '0.82.1';
     const ROLLBACK_RELEASE = '0.82.1';
 
@@ -40,7 +41,9 @@ final class SC_Workspace_Production_Signoff {
             'schema' => self::CONTRACT_SCHEMA,
             'certificate_schema' => self::CERTIFICATE_SCHEMA,
             'workspace_version' => SC_WORKSPACE_VERSION,
+            'signoff_release' => self::SIGNOFF_RELEASE,
             'release' => 'Live Production Certification & Release Sign-Off',
+            'historical_release_evidence' => true,
             'release_candidate' => true,
             'feature_freeze' => true,
             'storage_schema_version' => 35,

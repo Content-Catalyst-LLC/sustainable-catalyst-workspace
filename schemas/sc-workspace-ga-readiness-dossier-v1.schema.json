@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-ga-readiness-dossier-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace 1.0 Readiness Dossier",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "previousRelease", "rollbackRelease", "status", "readyForOneDotZeroDecision", "automaticPromotionToOneDotZero", "productionSignoffRelease", "productionSignoffValid", "releaseOwner", "productionUrl", "requiredCheckCount", "completedCheckCount", "checks", "humanAttestation", "projectContentIncluded", "telemetry"],
+  "properties": {
+    "schema": {"const": "sc-workspace-ga-readiness-dossier/1.0"},
+    "workspaceVersion": {"const": "0.84.0"},
+    "previousRelease": {"const": "0.83.0"},
+    "rollbackRelease": {"const": "0.83.0"},
+    "status": {"enum": ["hold", "ready-for-1.0-decision"]},
+    "readyForOneDotZeroDecision": {"type": "boolean"},
+    "automaticPromotionToOneDotZero": {"const": false},
+    "productionSignoffRelease": {"const": "0.83.0"},
+    "productionSignoffSchema": {"const": "sc-workspace-production-signoff-certificate/1.0"},
+    "productionSignoffValid": {"type": "boolean"},
+    "productionSignoffSignedAt": {"type": "string"},
+    "releaseOwner": {"type": "string"},
+    "productionUrl": {"type": "string"},
+    "recordedAt": {"type": "string"},
+    "requiredCheckCount": {"const": 9},
+    "completedCheckCount": {"type": "integer", "minimum": 0, "maximum": 9},
+    "checks": {"type": "array", "items": {"type": "object"}},
+    "humanAttestation": {"type": "boolean"},
+    "projectContentIncluded": {"const": false},
+    "automaticRollback": {"const": false},
+    "automaticCachePurge": {"const": false},
+    "telemetry": {"const": false}
+  },
+  "additionalProperties": false
+}

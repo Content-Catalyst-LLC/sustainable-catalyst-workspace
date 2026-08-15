@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0830';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0830';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0840';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0840';
+    const LEGACY_PENDING_KEY_V0830 = 'sc_workspace_registry_pending_v0830';
     const LEGACY_PENDING_KEY_V0821 = 'sc_workspace_registry_pending_v0821';
     const LEGACY_PENDING_KEY_V0820 = 'sc_workspace_registry_pending_v0820';
     const LEGACY_PENDING_KEY_V0810 = 'sc_workspace_registry_pending_v0810';
@@ -164,6 +165,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0830);
         delete_option(self::LEGACY_PENDING_KEY_V0821);
         delete_option(self::LEGACY_PENDING_KEY_V0820);
         delete_option(self::LEGACY_PENDING_KEY_V0810);
@@ -308,12 +310,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.82.1',
+            'previous_version' => '0.83.0',
             'release_date' => '2026-08-14',
-            'release_name' => 'Live Production Certification & Release Sign-Off',
-            'change_summary' => 'Adds explicit live-production field attestation and exportable release sign-off evidence without auto-certifying production or changing canonical project data.',
+            'release_name' => 'Production Sign-Off Closure & 1.0 Release Readiness',
+            'change_summary' => 'Closes the pre-1.0 production evidence loop by requiring a signed v0.83.0 production certificate and explicit human GA-readiness attestation before Workspace can be considered ready for a 1.0 release decision.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.83.0 requires human field evidence for production sign-off and does not infer, automate, or silently close any live validation item.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.84.0 records readiness evidence and does not auto-promote Workspace to 1.0, inspect project content, purge caches, or perform rollback.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

@@ -13,7 +13,7 @@ check(MAN['object_types']==OLD['object_types'] and MAN['schema_migration_require
 check('/wp-json/sc-workspace/v1/production-certification-contract' in MAN['rest_routes'],'historical REST contract')
 check(f"PREVIOUS_RELEASE = '{CUR.previous_version}'" in DEP and CUR.script_name in DEP and CUR.style_name in DEP,'current deployment predecessor/assets')
 CURRENT=load_manifest(R,CUR.version)
-rollback=(CURRENT.get('production_release_signoff') or CURRENT.get('production_certification_installer_validation_lineage_repair') or CURRENT.get('production_smoke_cache_rollback_certification') or {}).get('rollback_release',CUR.previous_version)
+rollback=(CURRENT.get('production_ga_readiness') or CURRENT.get('production_release_signoff') or CURRENT.get('production_certification_installer_validation_lineage_repair') or CURRENT.get('production_smoke_cache_rollback_certification') or {}).get('rollback_release',CUR.previous_version)
 check(f"PREVIOUS_RELEASE = '{CUR.previous_version}'" in PROD and f"ROLLBACK_RELEASE = '{rollback}'" in PROD and CUR.script_name in PROD and CUR.style_name in PROD,'current production predecessor/rollback/assets')
 check(CUR.asset_handle in PHP and CUR.script_name in PHP and CUR.style_name in PHP,'current cumulative assets')
 check('sc-workspace-production-smoke-cache-rollback-v1' in PHP and 'sc-workspace-production-smoke-cache-rollback-ui-v1' in PHP,'certification assets enqueued')
