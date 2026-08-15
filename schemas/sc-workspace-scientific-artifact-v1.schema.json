@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-scientific-artifact-v1.schema.json",
+  "title": "Workspace Scientific Artifact",
+  "type": "object",
+  "required": [
+    "schema",
+    "family",
+    "title"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-scientific-artifact/1.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "family": {
+      "enum": [
+        "dataset",
+        "derived-variable",
+        "model",
+        "graph",
+        "posterior-summary",
+        "diagnostic",
+        "experiment-result",
+        "scientific-report"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array"
+    },
+    "sourceUrl": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

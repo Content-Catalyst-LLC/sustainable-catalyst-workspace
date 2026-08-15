@@ -38,7 +38,7 @@ class PublicBetaProductReadiness(unittest.TestCase):
  def test_schema_contract(self):
   self.assertEqual(SCHEMA['properties']['schema']['const'],'sc-workspace-public-beta-readiness/1.0'); self.assertFalse(SCHEMA['properties']['governance']['properties']['hiddenScore']['const'])
  def test_registry_lineage(self):
-  self.assertEqual(REG['public_version'],'0.66.0'); self.assertEqual(REG['previous_version'],'0.65.0'); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v140'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0290",REGPHP)
+  self.assertEqual(REG['public_version'],'0.66.0'); self.assertEqual(REG['previous_version'],'0.65.0'); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v150'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0290",REGPHP)
  def test_plugin_and_rest_contract(self):
-  self.assertIn('Version: 1.4.0',MAIN); self.assertIn("'/public-beta-contract'",PHP); self.assertIn('public function public_beta_contract()',PHP); self.assertIn("'release_stage' => 'public-beta'",PHP)
+  self.assertIn('Version: 1.5.0',MAIN); self.assertIn("'/public-beta-contract'",PHP); self.assertIn('public function public_beta_contract()',PHP); self.assertIn("'release_stage' => 'public-beta'",PHP)
 if __name__=='__main__': unittest.main()

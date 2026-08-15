@@ -1,6 +1,14 @@
-# Sustainable Catalyst Workspace v1.4.0 — Knowledge Graph & Relationship Explorer
+# Sustainable Catalyst Workspace v1.5.0 — Lab & Scientific Workspace Integration
 
-Current release: **v1.4.0 — Knowledge Graph & Relationship Explorer**
+Current release: **v1.5.0 — Lab & Scientific Workspace Integration**
+
+## Lab & Scientific Workspace Integration
+
+Workspace v1.5.0 adds an explicit scientific round trip between Workspace and Lab. Users select the exact source, evidence, dataset, analysis, document, or export objects to carry into Lab; the portable context package preserves project/handoff identity, provenance, methodology, units, uncertainty, and relevant traceability. Lab returns are imported explicitly and materialize as canonical Workspace dataset, analysis, export, or document objects with deterministic derived-from lineage back to the selected context.
+
+The bridge does not automatically upload context, execute Lab workflows, commit returned artifacts, invoke AI, emit behavioral/query telemetry, or mutate canonical Lab records. Storage remains 35, Project remains `sc-workspace-project/20.0`, and Project Export remains `sc-workspace-project-export/20.0`.
+
+See `RELEASE_NOTES_1.5.0.md` and `docs/LAB_SCIENTIFIC_WORKSPACE_INTEGRATION_V150.md`.
 
 ## Knowledge Graph & Relationship Explorer
 

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-lab-scientific-return-v1.schema.json",
+  "title": "Workspace Lab Scientific Return Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "projectId",
+    "handoffId",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-lab-scientific-return/1.0"
+    },
+    "returnId": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "handoffId": {
+      "type": "string"
+    },
+    "returnedAt": {
+      "type": "string"
+    },
+    "sourceObjectIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "additionalProperties": true
+}

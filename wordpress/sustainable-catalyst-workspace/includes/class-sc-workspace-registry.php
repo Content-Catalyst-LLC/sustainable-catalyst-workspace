@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v140';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v140';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v150';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v150';
+    const LEGACY_PENDING_KEY_V140 = 'sc_workspace_registry_pending_v140';
     const LEGACY_PENDING_KEY_V130 = 'sc_workspace_registry_pending_v130';
     const LEGACY_PENDING_KEY_V120 = 'sc_workspace_registry_pending_v120';
     const LEGACY_PENDING_KEY_V110 = 'sc_workspace_registry_pending_v110';
@@ -171,6 +172,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V140);
         delete_option(self::LEGACY_PENDING_KEY_V130);
         delete_option(self::LEGACY_PENDING_KEY_V120);
         delete_option(self::LEGACY_PENDING_KEY_V110);
@@ -322,12 +324,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.3.0',
+            'previous_version' => '1.4.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Knowledge Graph & Relationship Explorer',
-            'change_summary' => 'Upgrades the local knowledge graph with explicit path tracing, incoming/outgoing backlink ledgers, Library provenance pointer nodes, edge explanations, and portable graph snapshots without inferred relationships or a duplicate graph database.',
+            'release_name' => 'Lab & Scientific Workspace Integration',
+            'change_summary' => 'Adds governed Workspace-to-Lab scientific context packages, workflow routing, typed scientific returns, metadata preservation, and deterministic traceability from selected context to returned Lab artifacts.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. The graph is derived at runtime from explicit Workspace relationships and local Library provenance pointers; no embeddings, server graph database, automatic inference, canonical mutation, telemetry, or schema migration.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Lab execution, context export, and returned-artifact materialization remain explicit; no automatic upload, execution, relationship inference, AI, telemetry, or schema migration.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

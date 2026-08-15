@@ -1,1 +1,1 @@
-from validate_knowledge_graph_relationship_explorer import *
+from validate_lab_scientific_workspace_integration import *

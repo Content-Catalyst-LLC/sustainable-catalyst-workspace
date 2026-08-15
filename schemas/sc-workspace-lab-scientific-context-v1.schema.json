@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-lab-scientific-context-v1.schema.json",
+  "title": "Workspace Lab Scientific Context Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "handoff",
+    "project",
+    "context",
+    "scientificContext",
+    "returnContract",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-lab-scientific-context/1.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "handoff": {
+      "type": "object"
+    },
+    "project": {
+      "type": "object"
+    },
+    "context": {
+      "type": "object"
+    },
+    "scientificContext": {
+      "type": "object"
+    },
+    "returnContract": {
+      "type": "object"
+    },
+    "governance": {
+      "type": "object"
+    },
+    "integrity": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

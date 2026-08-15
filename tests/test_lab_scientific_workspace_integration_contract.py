@@ -1,0 +1,17 @@
+import json,unittest
+from pathlib import Path
+R=Path(__file__).resolve().parents[1];P=R/'wordpress/sustainable-catalyst-workspace';MAN=json.loads((R/'release-manifest-v1.5.0.json').read_text());OLD=json.loads((R/'history/release-manifest-v1.4.0.json').read_text());REG=json.loads((R/'registry/workspace-product-record-v1.5.0.json').read_text());MAIN=(P/'sustainable-catalyst-workspace.php').read_text();PHP=(P/'includes/class-sc-workspace.php').read_text();APP=(P/'assets/js/workspace-v1.5.0.js').read_text();DEP=(P/'includes/class-sc-workspace-deployment.php').read_text();REGPHP=(P/'includes/class-sc-workspace-registry.php').read_text()
+class LabScientificWorkspaceIntegration(unittest.TestCase):
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('1.5.0','1.4.0','Lab & Scientific Workspace Integration'))
+ def test_02_registry(self): self.assertEqual((REG['public_version'],REG['previous_version']),('1.5.0','1.4.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v150'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V140',REGPHP)
+ def test_03_schema_freeze(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'));self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(OLD['storage_schema_version'],OLD['project_schema'],OLD['export_schema']))
+ def test_04_only_route(self): self.assertEqual(set(MAN['rest_routes'])-set(OLD['rest_routes']),{'/wp-json/sc-workspace/v1/lab-integration-contract'});self.assertIn("'/lab-integration-contract'",PHP)
+ def test_05_workflows(self): self.assertEqual(len(MAN['lab_integration']['supported_workflows']),8);self.assertIn('posterior-predictive-modeling',MAN['lab_integration']['supported_workflows']);self.assertEqual(MAN['lab_integration']['canonical_lab_route'],'/lab/')
+ def test_06_families(self): self.assertEqual(set(MAN['lab_integration']['return_artifact_families']),{'dataset','derived-variable','model','graph','posterior-summary','diagnostic','experiment-result','scientific-report'});self.assertEqual(MAN['lab_integration']['canonical_materialization']['graph'],'export')
+ def test_07_explicit_boundaries(self):
+  g=MAN['lab_integration'];self.assertTrue(g['explicit_context_selection']);self.assertTrue(g['round_trip_handoff_identity_required']);self.assertTrue(g['traceability_edges_from_selected_context']);self.assertFalse(g['automatic_context_upload']);self.assertFalse(g['automatic_return_commit']);self.assertFalse(g['automatic_ai']);self.assertFalse(g['behavioral_telemetry'])
+ def test_08_ui(self): self.assertIn('SCIENTIFIC WORKSPACE / LAB ROUND TRIP',PHP);self.assertIn('Open Lab with IDs',PHP);self.assertIn('Export scientific context',PHP);self.assertIn('Import Lab return',PHP)
+ def test_09_runtime(self): self.assertIn('data-release-stage="lab-scientific-integration"',PHP);self.assertIn('workspace-v1.5.0.js',PHP);self.assertIn('sc-workspace-lab-integration-v1',PHP);self.assertIn('Explicit Lab round trip',APP)
+ def test_10_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.4.0'",DEP);self.assertIn("ROLLBACK_RELEASE = '1.4.0'",DEP);self.assertIn('class-sc-workspace-lab-integration.php',DEP)
+ def test_11_identity(self): self.assertIn('Version: 1.5.0',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '1.5.0'",MAIN)
+if __name__=='__main__':unittest.main()
