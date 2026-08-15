@@ -14,7 +14,7 @@ NOTEBOOK=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-
 class NotebookCollectionsKnowledgeLinkingContract(unittest.TestCase):
     def test_01_release_lineage(self):
         self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'))
-        self.assertIn('Version: 1.1.0',MAIN)
+        self.assertIn('Version: 1.2.0',MAIN)
     def test_02_migration(self):
         self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'))
         self.assertEqual((MAN['migration']['storage_from'],MAN['migration']['storage_to']),(35,35))
@@ -52,7 +52,7 @@ class NotebookCollectionsKnowledgeLinkingContract(unittest.TestCase):
         self.assertIn("'automatic_link_inference' => false",PHP)
     def test_10_registry_lineage(self):
         self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0'))
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v110'",REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v120'",REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0360',REGPHP)
         self.assertTrue((ROOT/'history/release-manifest-v0.35.0.json').exists())
         self.assertTrue((ROOT/'history/workspace-product-record-v0.35.0.json').exists())

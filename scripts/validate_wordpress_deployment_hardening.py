@@ -12,7 +12,7 @@ check(CURRENT['object_types']==HIST['object_types'],'frozen object types')
 check('sc_workspace_bootstrap_failure' in MAIN and 'is_readable' in MAIN and 'return;' in MAIN,'safe bootstrap guard')
 check('SC_Workspace_Deployment_Hardening::activate()' in MAIN and 'activation_preflight' in DEP,'activation preflight')
 check('MAX_HISTORY = 12' in DEP and 'sc_workspace_deployment_history_v1' in DEP,'bounded deployment history')
-rollback=(CURRENT.get('workspace_home_project_cockpit') or CURRENT.get('ga_field_stabilization') or CURRENT.get('general_availability') or CURRENT.get('production_ga_readiness') or CURRENT.get('production_release_signoff') or CURRENT.get('production_certification_installer_validation_lineage_repair') or CURRENT.get('production_smoke_cache_rollback_certification') or {}).get('rollback_release',CUR.previous_version)
+rollback=CUR.previous_version
 check(f"PREVIOUS_RELEASE = '{CUR.previous_version}'" in DEP,'current semantic predecessor'); check(f"ROLLBACK_RELEASE = '{rollback}'" in DEP,'current declared rollback')
 check(CUR.script_name in DEP and CUR.style_name in DEP,'deployment current assets')
 check(CUR.asset_handle in PHP and CUR.script_name in PHP and CUR.style_name in PHP,'current versioned assets')

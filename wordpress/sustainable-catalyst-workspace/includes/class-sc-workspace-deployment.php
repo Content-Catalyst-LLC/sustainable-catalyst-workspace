@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '1.0.1';
-    const ROLLBACK_RELEASE = '1.0.1';
+    const PREVIOUS_RELEASE = '1.1.0';
+    const ROLLBACK_RELEASE = '1.1.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
 
@@ -26,8 +26,8 @@ final class SC_Workspace_Deployment_Hardening {
             'platform' => 'includes/class-sc-workspace-platform.php',
             'workspace' => 'includes/class-sc-workspace.php',
             'deployment' => 'includes/class-sc-workspace-deployment.php',
-            'current_script' => 'assets/js/workspace-v1.1.0.js',
-            'current_style' => 'assets/css/workspace-v1.1.0.css',
+            'current_script' => 'assets/js/workspace-v1.2.0.js',
+            'current_style' => 'assets/css/workspace-v1.2.0.css',
             'deployment_runtime' => 'assets/js/sc-workspace-wordpress-deployment-hardening-v1.js',
             'deployment_ui' => 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
             'production_certification' => 'includes/class-sc-workspace-production-certification.php',
@@ -45,6 +45,8 @@ final class SC_Workspace_Deployment_Hardening {
             'release_candidate_runtime' => 'assets/js/sc-workspace-release-candidate-i-v1.js',
             'workspace_home' => 'includes/class-sc-workspace-home.php',
             'workspace_home_runtime' => 'assets/js/sc-workspace-home-v1.js',
+            'universal_search' => 'includes/class-sc-workspace-universal-search.php',
+            'universal_search_runtime' => 'assets/js/sc-workspace-universal-search-v1.js',
         );
     }
 
@@ -162,8 +164,8 @@ final class SC_Workspace_Deployment_Hardening {
             'registry_pending' => $registry_pending,
             'wordpress_supported' => !empty($preflight['wordpress_supported']),
             'php_supported' => !empty($preflight['php_supported']),
-            'expected_script' => 'workspace-v1.1.0.js',
-            'expected_style' => 'workspace-v1.1.0.css',
+            'expected_script' => 'workspace-v1.2.0.js',
+            'expected_style' => 'workspace-v1.2.0.css',
             'asset_cache_strategy' => 'versioned-filename-plus-version-query',
             'rollback_release' => self::ROLLBACK_RELEASE,
             'rollback_schema_compatible' => true,

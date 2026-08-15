@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v110';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v110';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v120';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v120';
+    const LEGACY_PENDING_KEY_V110 = 'sc_workspace_registry_pending_v110';
     const LEGACY_PENDING_KEY_V101 = 'sc_workspace_registry_pending_v101';
     const LEGACY_PENDING_KEY_V100 = 'sc_workspace_registry_pending_v100';
     const LEGACY_PENDING_KEY_V0840 = 'sc_workspace_registry_pending_v0840';
@@ -168,6 +169,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V110);
         delete_option(self::LEGACY_PENDING_KEY_V101);
         delete_option(self::LEGACY_PENDING_KEY_V100);
         delete_option(self::LEGACY_PENDING_KEY_V0840);
@@ -316,12 +318,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.0.1',
+            'previous_version' => '1.1.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Workspace Home, Project Cockpit & Navigation Refinement',
-            'change_summary' => 'Introduces a clearer Home front door, project cockpit, deterministic next actions, and progressively disclosed Review navigation while preserving all established Workspace capabilities and data contracts.',
+            'release_name' => 'Universal Workspace Search & Knowledge Retrieval',
+            'change_summary' => 'Adds one local-first retrieval surface across projects, canonical objects, notebooks, research, analysis, decisions, briefing drafts, citation references, and research tasks with deterministic ranking and canonical-origin navigation.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v1.1.0 is an interface and navigation release: no automatic project mutation, AI invocation, behavioral telemetry, or schema migration.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Search is derived in-browser from canonical/local records; no server index, semantic embeddings, query telemetry, automatic AI, canonical mutation, or schema migration.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

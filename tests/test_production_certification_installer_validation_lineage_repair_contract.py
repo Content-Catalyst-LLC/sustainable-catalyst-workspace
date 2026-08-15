@@ -6,8 +6,8 @@ from release_lineage import current_release, load_manifest, load_registry, valid
 
 class InstallerValidationLineageRepair(unittest.TestCase):
     def test_01_current_release_discovery_is_not_pinned(self):
-        self.assertEqual(current_release(R).version,'1.1.0')
-        self.assertEqual(current_release(R).previous_version,'1.0.1')
+        self.assertEqual(current_release(R).version,'1.2.0')
+        self.assertEqual(current_release(R).previous_version,'1.1.0')
     def test_02_historical_v0821_is_frozen(self):
         man=load_manifest(R,'0.82.1'); reg=load_registry(R,'0.82.1')
         self.assertEqual((man['version'],man['previous_version'],man['release_name']),('0.82.1','0.82.0','Production Certification Installer & Validation Lineage Repair'))
@@ -16,9 +16,9 @@ class InstallerValidationLineageRepair(unittest.TestCase):
         cur=load_manifest(R,'0.82.1'); old=load_manifest(R,'0.82.0')
         self.assertEqual(cur['rest_routes'],old['rest_routes']); self.assertEqual(cur['storage_schema_version'],35); self.assertEqual(cur['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(cur['export_schema'],'sc-workspace-project-export/20.0'); self.assertFalse(cur['schema_migration_required'])
     def test_04_current_cumulative_assets_exist(self):
-        cur=current_release(R); self.assertTrue(cur.script_path.exists()); self.assertTrue(cur.style_path.exists()); self.assertEqual(cur.asset_handle,'sc-workspace-v110')
+        cur=current_release(R); self.assertTrue(cur.script_path.exists()); self.assertTrue(cur.style_path.exists()); self.assertEqual(cur.asset_handle,'sc-workspace-v120')
     def test_05_lineage_gate_passes_current_tree(self):
-        result=validate_current_release_lineage(R,'1.1.0','1.0.1'); self.assertTrue(result['ok'],result['errors'])
+        result=validate_current_release_lineage(R,'1.2.0','1.1.0'); self.assertTrue(result['ok'],result['errors'])
     def test_06_security_gate_derives_current_release(self):
         text=(R/'scripts/validate_security_privacy_audit_ii.py').read_text(); self.assertIn('current_release(R)',text); self.assertIn('CUR.script_path',text)
     def test_07_inherited_deployment_and_production_gates_are_dynamic(self):
@@ -30,12 +30,12 @@ class InstallerValidationLineageRepair(unittest.TestCase):
         self.assertIn("load_manifest(R,'0.82.1')",text)
     def test_09_live_runtime_predecessors_advance(self):
         dep=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-deployment.php').read_text(); prod=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-production-certification.php').read_text()
-        self.assertIn("PREVIOUS_RELEASE = '1.0.1'",dep); self.assertIn("PREVIOUS_RELEASE = '1.0.1'",prod)
+        self.assertIn("PREVIOUS_RELEASE = '1.1.0'",dep); self.assertIn("PREVIOUS_RELEASE = '1.1.0'",prod)
     def test_10_registry_retry_includes_v0821_legacy_state(self):
         text=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v110'",text); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v110'",text); self.assertIn('LEGACY_PENDING_KEY_V0821',text)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v120'",text); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v120'",text); self.assertIn('LEGACY_PENDING_KEY_V0821',text)
     def test_11_compact_wordpress_header(self):
-        raw=(R/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_bytes(); self.assertLess(raw.find(b'Version:'),512); self.assertLess(raw.find(b'Requires PHP:'),512); self.assertIn(b'Version: 1.1.0',raw[:8192])
+        raw=(R/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_bytes(); self.assertLess(raw.find(b'Version:'),512); self.assertLess(raw.find(b'Requires PHP:'),512); self.assertIn(b'Version: 1.2.0',raw[:8192])
     def test_12_historical_repair_policy_still_blocks_mismatch(self):
         p=load_manifest(R,'0.82.1')['production_certification_installer_validation_lineage_repair']
         self.assertTrue(p['source_archive_lineage_preflight']); self.assertTrue(p['post_rsync_lineage_gate']); self.assertTrue(p['pre_commit_lineage_gate']); self.assertTrue(p['no_commit_on_lineage_failure']); self.assertTrue(p['no_push_on_lineage_failure']); self.assertEqual(p['rollback_release'],'0.81.0')

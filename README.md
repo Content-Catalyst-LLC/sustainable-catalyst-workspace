@@ -1,6 +1,16 @@
-# Sustainable Catalyst Workspace v1.0.1
+# Sustainable Catalyst Workspace v1.2.0
 
-Current release: **v1.0.1 — GA Field Stabilization & Production Evidence Closure**
+Current release: **v1.2.0 — Universal Workspace Search & Knowledge Retrieval**
+
+## Universal Workspace Search
+
+Workspace v1.2.0 adds one local-first retrieval surface across projects, Workspace objects, notebooks and notebook blocks, research questions and claims, analysis questions, decisions, briefing drafts, Citation Library references, and explicit Research Tasks.
+
+The search corpus is derived in-browser from existing records rather than copied into a second canonical datastore. It reuses Workspace's deterministic, explainable Advanced Retrieval ranking and keeps result origins inspectable so a search result can route back to the project or specialized surface that owns it.
+
+Search remains deliberately bounded: no server index, semantic embeddings, hidden personalization, query telemetry, automatic AI, automatic semantic inference, or canonical record mutation. Storage remains 35, Project remains `sc-workspace-project/20.0`, and Project Export remains `sc-workspace-project-export/20.0`.
+
+See `RELEASE_NOTES_1.2.0.md` and `docs/UNIVERSAL_WORKSPACE_SEARCH_KNOWLEDGE_RETRIEVAL_V120.md`.
 
 ## General Availability
 
