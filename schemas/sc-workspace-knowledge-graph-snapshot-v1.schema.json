@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-knowledge-graph-snapshot-v1.schema.json",
+  "title": "Workspace Knowledge Graph Snapshot",
+  "type": "object",
+  "required": [
+    "schema",
+    "createdAt",
+    "counts",
+    "nodes",
+    "edges",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-knowledge-graph-snapshot/1.0"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "selectedNodeId": {
+      "type": "string"
+    },
+    "filters": {
+      "type": "object"
+    },
+    "counts": {
+      "type": "object"
+    },
+    "path": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "nodes": {
+      "type": "array"
+    },
+    "edges": {
+      "type": "array"
+    },
+    "governance": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

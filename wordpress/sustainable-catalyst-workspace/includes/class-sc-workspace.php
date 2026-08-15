@@ -424,6 +424,11 @@ final class SC_Workspace {
             'callback' => array($this, 'library_continuity_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/knowledge-graph-explorer-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'knowledge_graph_explorer_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/field-use-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'field_use_contract'),
@@ -2894,6 +2899,10 @@ public function research_templates_contract() {
         return rest_ensure_response(SC_Workspace_Library_Continuity::contract());
     }
 
+    public function knowledge_graph_explorer_contract() {
+        return rest_ensure_response(SC_Workspace_Knowledge_Graph_Explorer::contract());
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -2982,8 +2991,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v130',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v1.3.0.css',
+            'sc-workspace-v140',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v1.4.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -3145,6 +3154,13 @@ public function research_templates_contract() {
             'sc-workspace-relationship-explorer-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-relationship-explorer-v1.js',
             array('sc-workspace-integrated-knowledge-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-cross-project-knowledge-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-relationship-explorer-v2',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-relationship-explorer-v2.js',
+            array('sc-workspace-relationship-explorer-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-universal-search-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3454,9 +3470,9 @@ public function research_templates_contract() {
         );
 
         wp_enqueue_script(
-            'sc-workspace-v130',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v1.3.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1'),
+            'sc-workspace-v140',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v1.4.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3464,56 +3480,56 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-production-signoff-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-signoff-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1'),
+            array('sc-workspace-v140', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-readiness-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-readiness-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
+            array('sc-workspace-v140', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-general-availability-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-general-availability-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
+            array('sc-workspace-v140', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-stabilization-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-stabilization-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
+            array('sc-workspace-v140', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-workflow-guidance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-workflow-guidance-v1'),
+            array('sc-workspace-v140', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-product-help-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-product-help-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-security-privacy-audit-ii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-security-privacy-audit-ii-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-institutional-validation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-institutional-validation-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3524,7 +3540,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v130'),
+            array('sc-workspace-v140'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3560,14 +3576,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-accessibility-performance-final-audit-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-accessibility-performance-final-audit-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3575,35 +3591,35 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-defect-closure-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-defect-closure-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-release-candidate-i-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-release-candidate-i-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-wordpress-deployment-hardening-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-production-smoke-cache-rollback-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-smoke-cache-rollback-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3611,12 +3627,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v130', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v140', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v130', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v140', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'displayName' => $authenticated && $user ? $user->display_name : '',
@@ -3656,7 +3672,7 @@ public function research_templates_contract() {
         ob_start();
         ?>
         <?php $deployment_state = SC_Workspace_Deployment_Hardening::diagnostics(); ?>
-        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="library-continuity" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.3.0.js" data-scw-deployment-expected-style="workspace-v1.3.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="knowledge-graph-explorer" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.4.0.js" data-scw-deployment-expected-style="workspace-v1.4.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -4330,18 +4346,27 @@ public function research_templates_contract() {
                 </div>
                 <div class="scw-graph-controls">
                     <label class="scw-graph-search"><span>Search graph</span><input type="search" maxlength="240" data-scw-graph-search placeholder="Search projects, objects, provenance, tags"></label>
-                    <label><span>Node type</span><select data-scw-graph-node-type><option value="all">All nodes</option><option value="project">Projects</option><option value="provenance">Provenance</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option><option value="reference">Citation references</option><option value="synthesis">Syntheses</option><option value="canvas-node">Canvas nodes</option></select></label>
-                    <label><span>Relationship</span><select data-scw-graph-relation><option value="all">All relationships</option><option value="contains">Contains</option><option value="sourced-from">Sourced from</option><option value="same-source">Same source</option><option value="evidence-from">Evidence from</option><option value="uses">Uses</option><option value="informs">Informs</option><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="derived-from">Derived from</option><option value="produced-by">Produced by</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
+                    <label><span>Node type</span><select data-scw-graph-node-type><option value="all">All nodes</option><option value="project">Projects</option><option value="provenance">Provenance</option><option value="library-record">Library records</option><option value="source">Sources</option><option value="evidence">Evidence</option><option value="dataset">Datasets</option><option value="analysis">Analyses</option><option value="decision">Decisions</option><option value="document">Documents</option><option value="export">Exports</option><option value="notebook">Notebooks</option><option value="notebook-block">Notebook blocks</option><option value="research-question">Research questions</option><option value="research-claim">Research claims</option><option value="reference">Citation references</option><option value="synthesis">Syntheses</option><option value="canvas-node">Canvas nodes</option></select></label>
+                    <label><span>Relationship</span><select data-scw-graph-relation><option value="all">All relationships</option><option value="contains">Contains</option><option value="sourced-from">Sourced from</option><option value="same-source">Same source</option><option value="evidence-from">Evidence from</option><option value="uses">Uses</option><option value="informs">Informs</option><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="derived-from">Derived from</option><option value="produced-by">Produced by</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option><option value="originates-in-library">Originates in Library</option></select></label>
                     <label><span>Project</span><select data-scw-graph-project><option value="all">All projects</option></select></label>
                     <label><span>Scope</span><select data-scw-graph-scope><option value="active">Active projects</option><option value="all">Active + archived</option></select></label>
                     <label><span>Depth</span><select data-scw-graph-depth><option value="1">1 hop</option><option value="2">2 hops</option></select></label>
                 </div>
+                <div class="scw-graph-path-controls" data-scw-graph-path-controls>
+                    <label><span>Trace from</span><select data-scw-graph-path-from><option value="">Choose starting node</option></select></label>
+                    <label><span>Trace to</span><select data-scw-graph-path-to><option value="">Choose destination node</option></select></label>
+                    <button type="button" class="scw-button" data-scw-graph-path-trace>Trace explicit path</button>
+                    <button type="button" class="scw-button" data-scw-graph-path-clear>Clear path</button>
+                    <button type="button" class="scw-button" data-scw-graph-export>Export graph snapshot</button>
+                    <p data-scw-graph-path-status role="status" aria-live="polite"></p>
+                </div>
+                <div class="scw-graph-path" data-scw-graph-path><div class="scw-knowledge-empty-note">Choose two nodes to trace a path through recorded Workspace relationships.</div></div>
                 <div class="scw-graph-layout">
                     <section class="scw-graph-results-panel" aria-labelledby="scw-graph-results-heading"><div class="scw-knowledge-panel-head"><span>01 / SEARCH</span><h3 id="scw-graph-results-heading">Graph nodes</h3></div><div class="scw-graph-results" data-scw-graph-results></div></section>
                     <section class="scw-graph-canvas-panel" aria-labelledby="scw-graph-canvas-heading"><div class="scw-knowledge-panel-head"><span>02 / FOCUS</span><h3 id="scw-graph-canvas-heading">Relationship neighborhood</h3></div><svg class="scw-graph-svg" data-scw-graph-svg role="img" aria-label="Focused Workspace knowledge graph neighborhood"></svg><div class="scw-graph-detail" data-scw-graph-detail></div></section>
                     <aside class="scw-graph-relations-panel" aria-labelledby="scw-graph-relations-heading"><div class="scw-knowledge-panel-head"><span>03 / RELATIONSHIPS</span><h3 id="scw-graph-relations-heading">Why this node is connected</h3></div><div class="scw-graph-relations" data-scw-graph-relations></div></aside>
                 </div>
-                <div class="scw-knowledge-boundary" role="note"><strong>Inspectable graph, not inferred truth</strong><span>Workspace builds this graph locally from explicit project containment, Notebook links/backlinks, recorded provenance, promotion records, synthesis selections, Citation Library origins, traceability, research evidence links, analysis inputs, decision inputs, and deterministic same-source matches. It does not use semantic embeddings, a server graph database, or hidden relationship inference.</span></div>
+                <div class="scw-knowledge-boundary" role="note"><strong>Inspectable graph, not inferred truth</strong><span>Workspace builds this graph locally from explicit project containment, Notebook links/backlinks, recorded provenance, promotion records, synthesis selections, Citation Library origins, traceability, research evidence links, analysis inputs, decision inputs, and deterministic same-source matches. Path tracing and backlinks use only recorded graph edges. Library continuity appears as pointer nodes when explicit provenance exists. It does not use semantic embeddings, a server graph database, or hidden relationship inference.</span></div>
             </section>
 
             <section class="scw-activity-intelligence" data-scw-workspace-section="activity" hidden aria-labelledby="scw-activity-intelligence-title">
@@ -5459,7 +5484,7 @@ public function research_templates_contract() {
                             <div class="scw-trace-panel-head"><span>02 / LINEAGE</span><h4 id="scw-trace-lineage-heading">Connect how artifacts relate.</h4></div>
                             <form class="scw-trace-form" data-scw-lineage-form>
                                 <label><span>From object</span><select name="fromObjectId" data-scw-lineage-from required><option value="">Choose an object</option></select></label>
-                                <label><span>Relationship</span><select name="relation"><option value="derived-from">Derived from</option><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="uses">Uses</option><option value="produced-by">Produced by</option><option value="informs">Informs</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option></select></label>
+                                <label><span>Relationship</span><select name="relation"><option value="derived-from">Derived from</option><option value="supports">Supports</option><option value="references">References</option><option value="contrasts">Contrasts</option><option value="extends">Extends</option><option value="related">Related</option><option value="promoted-to">Promoted to</option><option value="synthesized-into">Synthesized into</option><option value="cited-as">Cited as</option><option value="supports-claim">Supports claim</option><option value="captured-from">Captured from</option><option value="contradicts">Contradicts</option><option value="uses">Uses</option><option value="produced-by">Produced by</option><option value="informs">Informs</option><option value="supersedes">Supersedes</option><option value="cites">Cites</option><option value="originates-in-library">Originates in Library</option></select></label>
                                 <label><span>To object</span><select name="toObjectId" data-scw-lineage-to required><option value="">Choose an object</option></select></label>
                                 <label><span>Note</span><input type="text" name="note" maxlength="500" placeholder="Optional relationship context"></label>
                                 <button class="scw-button" type="submit">Add lineage link</button>

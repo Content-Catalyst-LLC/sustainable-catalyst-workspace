@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v130';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v130';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v140';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v140';
+    const LEGACY_PENDING_KEY_V130 = 'sc_workspace_registry_pending_v130';
     const LEGACY_PENDING_KEY_V120 = 'sc_workspace_registry_pending_v120';
     const LEGACY_PENDING_KEY_V110 = 'sc_workspace_registry_pending_v110';
     const LEGACY_PENDING_KEY_V101 = 'sc_workspace_registry_pending_v101';
@@ -170,6 +171,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V130);
         delete_option(self::LEGACY_PENDING_KEY_V120);
         delete_option(self::LEGACY_PENDING_KEY_V110);
         delete_option(self::LEGACY_PENDING_KEY_V101);
@@ -320,12 +322,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.2.0',
+            'previous_version' => '1.3.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Research Projects & Library Continuity',
-            'change_summary' => 'Connects Workspace research projects with Knowledge Library saved searches, watchlists, research queue items, source bundles, and private personal recommendations through explicit provenance-preserving continuity handoffs.',
+            'release_name' => 'Knowledge Graph & Relationship Explorer',
+            'change_summary' => 'Upgrades the local knowledge graph with explicit path tracing, incoming/outgoing backlink ledgers, Library provenance pointer nodes, edge explanations, and portable graph snapshots without inferred relationships or a duplicate graph database.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Library continuity is staged browser-locally and requires explicit Add to project promotion; no second account, automatic Library pull, background sync, behavioral telemetry, canonical Library mutation, or schema migration.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. The graph is derived at runtime from explicit Workspace relationships and local Library provenance pointers; no embeddings, server graph database, automatic inference, canonical mutation, telemetry, or schema migration.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

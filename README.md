@@ -1,6 +1,14 @@
-# Sustainable Catalyst Workspace v1.3.0 — Research Projects & Library Continuity
+# Sustainable Catalyst Workspace v1.4.0 — Knowledge Graph & Relationship Explorer
 
-Current release: **v1.3.0 — Research Projects & Library Continuity**
+Current release: **v1.4.0 — Knowledge Graph & Relationship Explorer**
+
+## Knowledge Graph & Relationship Explorer
+
+Workspace v1.4.0 upgrades the existing deterministic research graph with explicit path tracing, incoming/outgoing backlink ledgers, visible edge explanations, Knowledge Library provenance pointer nodes, and portable graph snapshots. The graph remains derived at runtime from canonical local records; it does not create a server graph database or infer hidden semantic relationships.
+
+Path tracing is bounded to five hops and uses recorded relationships only. Snapshot export carries graph identifiers, labels, relationship metadata, filters, and an optional traced path without copying canonical object bodies.
+
+See `RELEASE_NOTES_1.4.0.md` and `docs/KNOWLEDGE_GRAPH_RELATIONSHIP_EXPLORER_V140.md`.
 
 ## Research Projects & Library Continuity
 
