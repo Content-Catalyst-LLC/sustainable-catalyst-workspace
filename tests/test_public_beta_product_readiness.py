@@ -23,7 +23,7 @@ class PublicBetaProductReadiness(unittest.TestCase):
  def test_no_automatic_boundary_expansion(self):
   self.assertFalse(MAN['public_beta']['automatic_cloud_upload']); self.assertFalse(MAN['public_beta']['background_sync']); self.assertFalse(MAN['public_beta']['automatic_telemetry']); self.assertFalse(MAN['public_beta']['hidden_readiness_score']); self.assertFalse(MAN['public_beta']['automatic_lifecycle_advance'])
  def test_start_view_is_default(self):
-  self.assertIn("let workspaceView = 'start'",JS); self.assertIn('data-scw-workspace-section="start"',PHP); self.assertIn('Begin with the work, not the software.',PHP)
+  self.assertIn("let workspaceView = 'start'",JS); self.assertIn('data-scw-workspace-section="start"',PHP); self.assertIn('Begin with the work in front of you.',PHP)
  def test_start_actions(self):
   self.assertIn('data-scw-beta-new',PHP); self.assertIn('data-scw-beta-continue',PHP); self.assertIn('/knowledge-libraries/',PHP); self.assertIn('startBetaGuidedProject',JS)
  def test_runtime_capability_surface(self):
@@ -38,7 +38,7 @@ class PublicBetaProductReadiness(unittest.TestCase):
  def test_schema_contract(self):
   self.assertEqual(SCHEMA['properties']['schema']['const'],'sc-workspace-public-beta-readiness/1.0'); self.assertFalse(SCHEMA['properties']['governance']['properties']['hiddenScore']['const'])
  def test_registry_lineage(self):
-  self.assertEqual(REG['public_version'],'0.66.0'); self.assertEqual(REG['previous_version'],'0.65.0'); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v101'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0290",REGPHP)
+  self.assertEqual(REG['public_version'],'0.66.0'); self.assertEqual(REG['previous_version'],'0.65.0'); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v110'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0290",REGPHP)
  def test_plugin_and_rest_contract(self):
-  self.assertIn('Version: 1.0.1',MAIN); self.assertIn("'/public-beta-contract'",PHP); self.assertIn('public function public_beta_contract()',PHP); self.assertIn("'release_stage' => 'public-beta'",PHP)
+  self.assertIn('Version: 1.1.0',MAIN); self.assertIn("'/public-beta-contract'",PHP); self.assertIn('public function public_beta_contract()',PHP); self.assertIn("'release_stage' => 'public-beta'",PHP)
 if __name__=='__main__': unittest.main()

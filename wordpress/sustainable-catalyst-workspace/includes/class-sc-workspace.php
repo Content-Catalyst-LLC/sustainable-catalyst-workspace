@@ -409,6 +409,11 @@ final class SC_Workspace {
             'callback' => array($this, 'ga_stabilization_contract'),
             'permission_callback' => '__return_true',
         ));
+        register_rest_route('sc-workspace/v1', '/workspace-home-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'workspace_home_contract'),
+            'permission_callback' => '__return_true',
+        ));
         register_rest_route('sc-workspace/v1', '/field-use-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'field_use_contract'),
@@ -2866,6 +2871,11 @@ public function research_templates_contract() {
         ));
     }
 
+
+    public function workspace_home_contract() {
+        return rest_ensure_response(SC_Workspace_Home::contract());
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -2954,8 +2964,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v101',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v1.0.1.css',
+            'sc-workspace-v110',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v1.1.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -2969,7 +2979,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-safe-actions-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-safe-actions-v1.js',
-            array('sc-workspace-project-diff-v1'),
+            array('sc-workspace-home-v1', 'sc-workspace-project-diff-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3402,8 +3412,16 @@ public function research_templates_contract() {
             true
         );
         wp_enqueue_script(
-            'sc-workspace-v101',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v1.0.1.js',
+            'sc-workspace-home-v1',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-home-v1.js',
+            array('sc-workspace-research-navigation-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'sc-workspace-v110',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v1.1.0.js',
             array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1'),
             SC_WORKSPACE_VERSION,
             true
@@ -3412,56 +3430,56 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-production-signoff-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-signoff-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1'),
+            array('sc-workspace-v110', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-readiness-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-readiness-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
+            array('sc-workspace-v110', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-general-availability-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-general-availability-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
+            array('sc-workspace-v110', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-stabilization-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-stabilization-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
+            array('sc-workspace-v110', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-workflow-guidance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-workflow-guidance-v1'),
+            array('sc-workspace-v110', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-product-help-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-product-help-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-security-privacy-audit-ii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-security-privacy-audit-ii-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-institutional-validation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-institutional-validation-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3472,7 +3490,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v101'),
+            array('sc-workspace-v110'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3508,14 +3526,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-accessibility-performance-final-audit-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-accessibility-performance-final-audit-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3523,35 +3541,35 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-defect-closure-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-defect-closure-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-release-candidate-i-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-release-candidate-i-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-wordpress-deployment-hardening-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-production-smoke-cache-rollback-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-smoke-cache-rollback-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3559,12 +3577,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v101', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v110', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v101', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v110', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'displayName' => $authenticated && $user ? $user->display_name : '',
@@ -3604,7 +3622,7 @@ public function research_templates_contract() {
         ob_start();
         ?>
         <?php $deployment_state = SC_Workspace_Deployment_Hardening::diagnostics(); ?>
-        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="ga-stabilization" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.0.1.js" data-scw-deployment-expected-style="workspace-v1.0.1.css" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="workspace-home" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.1.0.js" data-scw-deployment-expected-style="workspace-v1.1.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -3617,14 +3635,14 @@ public function research_templates_contract() {
                         <span>FREE ACCESS</span>
                         <span>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></span>
                         <span>ACCOUNT-AWARE</span>
-                        <span>PUBLIC BETA</span>
+                        <span>GENERAL AVAILABILITY</span>
                     </div>
                 </div>
             </div>
 
             <div class="scw-boundary" role="note">
                 <strong>Local-first by default</strong>
-                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional. Account recovery and cross-device sync are optional. Backups require an explicit action, sync requires explicit per-project enrollment, and nothing synchronizes in the background. Connected tools can return structured work to the originating project through the established local-first handoff contract. Research Notebook remains inside the same project boundary and does not upload or invoke AI automatically. Public beta does not change these boundaries.</span>
+                <span>Workspace remains fully usable without signing in. Projects are stored on this device. Sign-in is optional. Account recovery and cross-device sync are optional. Backups require an explicit action, sync requires explicit per-project enrollment, and nothing synchronizes in the background. Connected tools can return structured work to the originating project through the established local-first handoff contract. Research Notebook remains inside the same project boundary and does not upload or invoke AI automatically. Workspace 1.x keeps these boundaries explicit while improving the working interface.</span>
             </div>
 
             <details class="scw-settings-drawer" data-scw-settings-drawer>
@@ -3744,22 +3762,23 @@ public function research_templates_contract() {
             </div>
 
             <nav id="scw-workspace-main" class="scw-workspace-primary-nav" aria-label="Workspace areas" data-scw-workspace-view-nav data-scw-keyboard-nav="1" tabindex="-1">
-                <button type="button" class="is-active" data-scw-workspace-area="start" data-scw-workspace-view="start" aria-pressed="true" aria-current="page">Start</button>
+                <button type="button" class="is-active" data-scw-workspace-area="start" data-scw-workspace-view="start" aria-pressed="true" aria-current="page">Home</button>
                 <button type="button" data-scw-workspace-area="projects" data-scw-workspace-view="projects" aria-pressed="false">Projects</button>
                 <button type="button" data-scw-workspace-area="research" data-scw-workspace-view="research" aria-pressed="false">Research</button>
                 <button type="button" data-scw-workspace-area="review" data-scw-workspace-view="activity" aria-pressed="false">Review</button>
                 <button type="button" data-scw-workspace-area="exchange" data-scw-workspace-view="interoperability" aria-pressed="false">Exchange</button>
             </nav>
             <div class="scw-navigation-context" data-scw-navigation-context>
-                <div class="scw-navigation-context-copy"><span data-scw-navigation-path>Workspace / Start</span><strong data-scw-navigation-title>Start</strong><p data-scw-navigation-description>Begin, resume, or orient your Workspace.</p></div>
-                <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="start" aria-label="Start routes">
-                    <button type="button" data-scw-workspace-view="start">Start</button><button type="button" data-scw-workspace-view="journey">Product Journey</button><button type="button" data-scw-workspace-view="help">Help &amp; Recovery</button>
+                <div class="scw-navigation-context-copy"><span data-scw-navigation-path>Workspace / Home</span><strong data-scw-navigation-title>Home</strong><p data-scw-navigation-description>Resume active work, orient a project, or move directly to the next task.</p></div>
+                <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="start" aria-label="Home routes">
+                    <button type="button" data-scw-workspace-view="start">Home</button><button type="button" data-scw-workspace-view="journey">Product Journey</button><button type="button" data-scw-workspace-view="help">Help &amp; Recovery</button>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="research" aria-label="Research routes" hidden>
                     <button type="button" data-scw-workspace-view="research">Research home</button><button type="button" data-scw-workspace-view="notebook">Notebook</button><button type="button" data-scw-workspace-view="knowledge">Knowledge</button><button type="button" data-scw-workspace-view="graph">Graph</button>
                 </nav>
-                <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
-                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="safety">Safety</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button><button type="button" data-scw-workspace-view="reliability">Reliability</button><button type="button" data-scw-workspace-view="integrity">Persistence Integrity</button><button type="button" data-scw-workspace-view="compatibility">Compatibility</button><button type="button" data-scw-workspace-view="accessibility">Accessibility</button><button type="button" data-scw-workspace-view="final-audit">Final Audit</button><button type="button" data-scw-workspace-view="beta-closure">Beta Closure</button><button type="button" data-scw-workspace-view="release-candidate">Release Candidate</button><button type="button" data-scw-workspace-view="deployment">Deployment</button><button type="button" data-scw-workspace-view="production-certification">Production Certification</button><button type="button" data-scw-workspace-view="production-signoff">Production Sign-Off</button><button type="button" data-scw-workspace-view="ga-readiness">1.0 Readiness</button><button type="button" data-scw-workspace-view="general-availability">General Availability</button><button type="button" data-scw-workspace-view="ga-stabilization">GA Stabilization</button><button type="button" data-scw-workspace-view="recovery-drills">Recovery Drills</button>
+                <nav class="scw-workspace-context-nav scw-workspace-review-nav" data-scw-workspace-context-nav="review" aria-label="Review routes" hidden>
+                    <button type="button" data-scw-workspace-view="activity">Activity</button><button type="button" data-scw-workspace-view="lifecycle">Lifecycle</button><button type="button" data-scw-workspace-view="changes">Changes</button><button type="button" data-scw-workspace-view="audit">Audit</button><button type="button" data-scw-workspace-view="safety">Safety</button>
+                    <details class="scw-review-more"><summary>More review tools</summary><div class="scw-review-more-grid"><button type="button" data-scw-workspace-view="history">History</button><button type="button" data-scw-workspace-view="reconcile">Reconcile</button><button type="button" data-scw-workspace-view="automation">Automation</button><button type="button" data-scw-workspace-view="performance">Performance</button><button type="button" data-scw-workspace-view="security">Security &amp; Privacy</button><button type="button" data-scw-workspace-view="reliability">Reliability</button><button type="button" data-scw-workspace-view="integrity">Persistence Integrity</button><button type="button" data-scw-workspace-view="compatibility">Compatibility</button><button type="button" data-scw-workspace-view="accessibility">Accessibility</button><button type="button" data-scw-workspace-view="recovery-drills">Recovery Drills</button><button type="button" data-scw-workspace-view="deployment">Deployment</button><button type="button" data-scw-workspace-view="production-certification">Production Certification</button><button type="button" data-scw-workspace-view="production-signoff">Production Sign-Off</button><button type="button" data-scw-workspace-view="ga-readiness">1.0 Readiness</button><button type="button" data-scw-workspace-view="general-availability">General Availability</button><button type="button" data-scw-workspace-view="ga-stabilization">GA Stabilization</button><button type="button" data-scw-workspace-view="beta">Beta Readiness</button><button type="button" data-scw-workspace-view="final-audit">Final Audit</button><button type="button" data-scw-workspace-view="beta-closure">Beta Closure</button><button type="button" data-scw-workspace-view="release-candidate">Release Candidate</button></div></details>
                 </nav>
                 <nav class="scw-workspace-context-nav" data-scw-workspace-context-nav="exchange" aria-label="Exchange routes" hidden>
                     <button type="button" data-scw-workspace-view="interoperability">Import &amp; Interoperability</button><button type="button" data-scw-workspace-view="collaboration">Collaborate</button><button type="button" data-scw-workspace-view="api-embed">API &amp; Embed</button><button type="button" data-scw-workspace-view="institutional">Institutional</button><button type="button" data-scw-workspace-view="share">Share</button>
@@ -3810,15 +3829,27 @@ public function research_templates_contract() {
                 </section>
             </div>
 
-            <section class="scw-public-beta-start" data-scw-workspace-section="start" aria-labelledby="scw-public-beta-title">
+            <section class="scw-public-beta-start scw-workspace-home" data-scw-workspace-section="start" aria-labelledby="scw-public-beta-title">
                 <div class="scw-public-beta-head">
                     <div>
-                        <div class="scw-kicker">PUBLIC PRODUCT BETA III / START</div>
-                        <h2 id="scw-public-beta-title">Begin with the work, not the software.</h2>
-                        <p>Start a blank project, choose a guided pathway, reopen recent work, or walk the complete product journey. Workspace remains local-first and usable without an account; Beta III tests whether the whole path is coherent without changing the governance or persistence boundaries underneath it.</p>
+                        <div class="scw-kicker">WORKSPACE HOME / PROJECT COCKPIT</div>
+                        <h2 id="scw-public-beta-title">Return to the work in front of you.</h2>
+                        <p>Home summarizes active projects, recent work, research context, and deterministic next actions without turning Workspace into a dashboard of hidden scores. Start new work only when you need it; otherwise continue directly from the project cockpit.</p>
                     </div>
-                    <div class="scw-public-beta-badge"><span>BETA III</span><strong>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong></div>
+                    <div class="scw-public-beta-badge"><span>STABLE</span><strong>v<?php echo esc_html(SC_WORKSPACE_VERSION); ?></strong></div>
                 </div>
+                <section class="scw-project-cockpit" data-scw-project-cockpit aria-labelledby="scw-project-cockpit-title">
+                    <div class="scw-project-cockpit-head">
+                        <div><div class="scw-editorial-kicker">PROJECT COCKPIT</div><h3 id="scw-project-cockpit-title">One place to orient the active project.</h3><p data-scw-cockpit-summary>No active project yet. Create or open a project to populate the cockpit.</p></div>
+                        <div class="scw-project-cockpit-active"><span>ACTIVE PROJECT</span><strong data-scw-cockpit-title>None selected</strong><small data-scw-cockpit-updated>Local workspace</small></div>
+                    </div>
+                    <div class="scw-project-cockpit-metrics" aria-label="Workspace project summary"><div><strong data-scw-cockpit-projects>0</strong><span>Active projects</span></div><div><strong data-scw-cockpit-objects>0</strong><span>Objects</span></div><div><strong data-scw-cockpit-research>0</strong><span>Research records</span></div><div><strong data-scw-cockpit-notebooks>0</strong><span>Notebooks</span></div></div>
+                    <div class="scw-project-cockpit-grid">
+                        <section><span class="scw-editorial-kicker">CONTINUE</span><h4 data-scw-cockpit-next-title>Choose a project</h4><p data-scw-cockpit-next-detail>Your next action is derived only from visible project state.</p><div class="scw-project-cockpit-actions"><button class="scw-button scw-button-primary" type="button" data-scw-cockpit-open-project disabled>Open project</button><button class="scw-button" type="button" data-scw-cockpit-view="research">Research</button><button class="scw-button" type="button" data-scw-cockpit-view="notebook">Notebook</button></div></section>
+                        <section><span class="scw-editorial-kicker">WORK MODES</span><h4>Move inside the active project.</h4><div class="scw-project-cockpit-lanes"><button type="button" data-scw-cockpit-mode="objects"><strong>Evidence &amp; objects</strong><span>Sources, evidence, datasets and documents.</span></button><button type="button" data-scw-cockpit-mode="analysis"><strong>Analysis</strong><span>Questions, variables, assumptions and findings.</span></button><button type="button" data-scw-cockpit-mode="decision"><strong>Decision</strong><span>Alternatives, criteria, risk and rationale.</span></button><button type="button" data-scw-cockpit-mode="briefing"><strong>Compose</strong><span>Briefings and publication-ready outputs.</span></button></div></section>
+                    </div>
+                    <div class="scw-project-cockpit-boundary" role="note"><strong>Context, not scoring.</strong><span>The cockpit uses only local project state to summarize work and suggest explicit routes. It does not infer productivity, rank people, upload content, or run AI automatically.</span></div>
+                </section>
                 <section class="scw-first-run" data-scw-first-run aria-labelledby="scw-first-run-title">
                     <div class="scw-first-run-copy">
                         <div class="scw-editorial-kicker">FIRST RUN / YOUR FIRST PROJECT</div>
@@ -3840,7 +3871,7 @@ public function research_templates_contract() {
                         <div class="scw-first-run-status" data-scw-first-run-status role="status" aria-live="polite"></div>
                     </form>
                 </section>
-                <div class="scw-public-beta-metrics" aria-label="Workspace beta summary">
+                <div class="scw-public-beta-metrics" aria-label="Workspace local summary">
                     <div><strong data-scw-beta-projects>0</strong><span>Active projects</span></div>
                     <div><strong data-scw-beta-objects>0</strong><span>Canonical objects</span></div>
                     <div><strong data-scw-beta-milestones>0</strong><span>Lifecycle milestones</span></div>
@@ -3881,7 +3912,7 @@ public function research_templates_contract() {
                     <h3 id="scw-beta-recent-title">Continue where you left off.</h3>
                     <div class="scw-beta-recent-list" data-scw-beta-recent-list><div class="scw-beta-empty">No local projects yet. Start a blank project or choose a guided pathway above.</div></div>
                 </section>
-                <div class="scw-beta-boundary" role="note"><strong>Public beta boundary</strong><span>Guest use remains first-class. Sign-in is optional. Cloud backup and sync stay explicit. Lifecycle states remain human-declared. Workspace does not run behavioral telemetry or assign readiness/productivity scores.</span></div>
+                <div class="scw-beta-boundary" role="note"><strong>Workspace operating boundary</strong><span>Guest use remains first-class. Sign-in is optional. Cloud backup and sync stay explicit. Lifecycle states remain human-declared. Workspace does not run behavioral telemetry or assign readiness/productivity scores.</span></div>
             </section>
 
             <section class="scw-public-beta-iii" data-scw-workspace-section="journey" data-scw-public-beta-iii hidden aria-labelledby="scw-public-beta-iii-title">

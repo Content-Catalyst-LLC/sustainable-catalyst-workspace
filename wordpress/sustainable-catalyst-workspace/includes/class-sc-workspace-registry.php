@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v101';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v101';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v110';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v110';
+    const LEGACY_PENDING_KEY_V101 = 'sc_workspace_registry_pending_v101';
     const LEGACY_PENDING_KEY_V100 = 'sc_workspace_registry_pending_v100';
     const LEGACY_PENDING_KEY_V0840 = 'sc_workspace_registry_pending_v0840';
     const LEGACY_PENDING_KEY_V0830 = 'sc_workspace_registry_pending_v0830';
@@ -167,6 +168,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V101);
         delete_option(self::LEGACY_PENDING_KEY_V100);
         delete_option(self::LEGACY_PENDING_KEY_V0840);
         delete_option(self::LEGACY_PENDING_KEY_V0830);
@@ -314,12 +316,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.0.0',
+            'previous_version' => '1.0.1',
             'release_date' => '2026-08-15',
-            'release_name' => 'GA Field Stabilization & Production Evidence Closure',
-            'change_summary' => 'Closes the first post-GA field-evidence loop without changing canonical Workspace data contracts or introducing behavioral telemetry.',
+            'release_name' => 'Workspace Home, Project Cockpit & Navigation Refinement',
+            'change_summary' => 'Introduces a clearer Home front door, project cockpit, deterministic next actions, and progressively disclosed Review navigation while preserving all established Workspace capabilities and data contracts.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.84.0 records readiness evidence and does not auto-promote Workspace to 1.0, inspect project content, purge caches, or perform rollback.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v1.1.0 is an interface and navigation release: no automatic project mutation, AI invocation, behavioral telemetry, or schema migration.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

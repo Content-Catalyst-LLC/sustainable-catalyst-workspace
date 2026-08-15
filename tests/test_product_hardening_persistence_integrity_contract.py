@@ -11,7 +11,7 @@ UI=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-persis
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
 class T(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn('Version: 1.0.1',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn('Version: 1.1.0',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0');self.assertFalse(MAN['schema_migration_required'])
  def test_03_schemas(self):
   for n in ['sc-workspace-persistence-integrity-v1.schema.json','sc-workspace-persistence-transaction-v1.schema.json','sc-workspace-persistence-integrity-report-v1.schema.json','sc-workspace-recovery-candidate-v1.schema.json']: json.loads((ROOT/'schemas'/n).read_text())
@@ -24,6 +24,6 @@ class T(unittest.TestCase):
  def test_10_rest(self): self.assertIn("'/persistence-integrity-contract'",PHP);self.assertIn('/wp-json/sc-workspace/v1/persistence-integrity-contract',MAN['rest_routes'])
  def test_11_privacy_report(self): self.assertIn('projectContentIncluded:false',HELP);self.assertIn('rawStateIncluded:false',HELP);self.assertIn('containsCanonicalWorkspaceContent:true',HELP)
  def test_12_header(self): self.assertIn('.scw-persistence-integrity{border-top:4px solid #000',CSS)
- def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v101'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0610',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.61.0.json').exists())
+ def test_13_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v110'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0610',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.61.0.json').exists())
  def test_14_ui_runtime_contract(self): self.assertIn('helper.reconcileJournal',UI);self.assertIn('Run integrity audit',PHP);self.assertIn('Open History / Recovery',PHP)
 if __name__=='__main__': unittest.main()

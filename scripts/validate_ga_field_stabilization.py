@@ -5,7 +5,7 @@ R=Path(__file__).resolve().parents[1];CUR=current_release(R);P=R/'wordpress/sust
 MAN=load_manifest(R,'1.0.1');OLD=load_manifest(R,'1.0.0');REG=load_registry(R,'1.0.1');PHP=(P/'includes/class-sc-workspace.php').read_text();STAB=(P/'includes/class-sc-workspace-ga-stabilization.php').read_text();RUN=(P/'assets/js/sc-workspace-ga-stabilization-v1.js').read_text();APP=CUR.script_path.read_text();CSS=CUR.style_path.read_text();REGPHP=(P/'includes/class-sc-workspace-registry.php').read_text()
 def check(x,l):
     if not x: raise SystemExit('FAIL - v1.0.1 GA Field Stabilization gate: '+l)
-lineage=validate_current_release_lineage(R,'1.0.1','1.0.0');check(lineage['ok'],'current lineage: '+('; '.join(lineage['errors']) if lineage['errors'] else 'unknown'))
+lineage=validate_current_release_lineage(R);check(lineage['ok'],'current lineage: '+('; '.join(lineage['errors']) if lineage['errors'] else 'unknown'))
 check((MAN['version'],MAN['previous_version'],MAN['release_name'])==('1.0.1','1.0.0','GA Field Stabilization & Production Evidence Closure'),'release lineage')
 check((REG['public_version'],REG['previous_version'],REG['release_name'],REG['lifecycle_state'],REG['release_channel'])==('1.0.1','1.0.0','GA Field Stabilization & Production Evidence Closure','production','stable'),'registry identity')
 for k in ['storage_schema_version','project_schema','export_schema','object_schema','research_schema']:check(MAN[k]==OLD[k],'frozen '+k)
@@ -23,7 +23,7 @@ check("'/ga-stabilization-contract'" in PHP and 'ga_stabilization_contract' in P
 check('data-scw-ga-stabilization' in PHP and 'Close field stabilization' in PHP and 'Export stabilization report' in PHP,'stabilization UI shell')
 check('sc-workspace-ga-stabilization-v1' in PHP and 'sc-workspace-ga-stabilization-ui-v1' in PHP,'stabilization assets')
 check("'ga-stabilization'" in APP,'stabilization navigation route');check('/* v1.0.1 — GA Field Stabilization & Production Evidence Closure */' in CSS,'stabilization CSS marker')
-check("BACKUP_KEY = 'sc_workspace_registry_backup_v101'" in REGPHP and "LEGACY_PENDING_KEY_V100" in REGPHP,'registry retry lineage')
+cur_key=CUR.asset_handle.rsplit('-',1)[-1];check(("BACKUP_KEY = 'sc_workspace_registry_backup_%s'"%cur_key) in REGPHP and "LEGACY_PENDING_KEY_V100" in REGPHP,'current registry retry lineage')
 for f in ['schemas/sc-workspace-ga-stabilization-v1.schema.json','schemas/sc-workspace-ga-stabilization-report-v1.schema.json','docs/GA_FIELD_STABILIZATION_PRODUCTION_EVIDENCE_CLOSURE_V101.md','RELEASE_NOTES_1.0.1.md']:check((R/f).exists(),f)
 subprocess.run([sys.executable,str(R/'scripts/validate_general_availability.py')],check=True,cwd=R)
 print('PASS - v1.0.1 GA Field Stabilization & Production Evidence Closure source gate')

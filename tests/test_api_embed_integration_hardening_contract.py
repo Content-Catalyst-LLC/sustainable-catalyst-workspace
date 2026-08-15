@@ -8,7 +8,7 @@ PHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
 REGPHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 HELP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-api-embed-v1.js').read_text()
 UI=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-api-embed-ui-v1.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.0.1.css').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v1.1.0.css').read_text()
 class ApiEmbedIntegrationHardeningContract(unittest.TestCase):
  def test_release_and_schema_stability(self):
   self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.74.0','0.73.0','API, Embed & Integration Hardening')); self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(MAN['export_schema'],'sc-workspace-project-export/20.0'); self.assertFalse(MAN['schema_migration_required'])
@@ -20,9 +20,9 @@ class ApiEmbedIntegrationHardeningContract(unittest.TestCase):
   for x in ['MAX_EMBED_BYTES=98304','MAX_API_BYTES=131072','rendererAssessment','validateDescriptor','integrationAssessment','safetyReport','renderFailure','credentialedFetch:false','postMessage:false','remoteMutation:false']: self.assertIn(x,HELP)
   self.assertIn('data-scw-api-verify',PHP); self.assertIn('data-scw-api-export-safety',PHP); self.assertIn('data-scw-api-safety',PHP); self.assertIn('data-trusted-origin',PHP); self.assertIn('lastAssessment',UI)
  def test_rest_and_assets(self):
-  self.assertIn('Version: 1.0.1',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '1.0.1",MAIN); self.assertIn("'/api-embed-hardening-contract'",PHP); self.assertIn('api_embed_hardening_contract',PHP); self.assertIn('/wp-json/sc-workspace/v1/api-embed-hardening-contract',MAN['rest_routes']); self.assertIn("'sc-workspace-v101'",PHP); self.assertIn('workspace-v1.0.1.js',PHP); self.assertIn('workspace-v1.0.1.css',PHP)
+  self.assertIn('Version: 1.1.0',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '1.1.0",MAIN); self.assertIn("'/api-embed-hardening-contract'",PHP); self.assertIn('api_embed_hardening_contract',PHP); self.assertIn('/wp-json/sc-workspace/v1/api-embed-hardening-contract',MAN['rest_routes']); self.assertIn("'sc-workspace-v110'",PHP); self.assertIn('workspace-v1.1.0.js',PHP); self.assertIn('workspace-v1.1.0.css',PHP)
  def test_registry_history_and_artifacts(self):
-  self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.74.0','0.73.0','API, Embed & Integration Hardening')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v101'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0730',REGPHP); self.assertTrue((R/'history/release-manifest-v0.73.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.73.0.json').exists())
+  self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.74.0','0.73.0','API, Embed & Integration Hardening')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v110'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0730',REGPHP); self.assertTrue((R/'history/release-manifest-v0.73.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.73.0.json').exists())
   for f in ['schemas/sc-workspace-api-embed-hardening-v1.schema.json','schemas/sc-workspace-integration-safety-report-v1.schema.json','schemas/sc-workspace-integration-origin-policy-v1.schema.json','docs/API_EMBED_INTEGRATION_HARDENING_V0740.md']: self.assertTrue((R/f).exists(),f)
  def test_css(self): self.assertIn('/* v0.74.0 — API, Embed & Integration Hardening */',CSS); self.assertIn('.scw-api-safety-metrics',CSS)
 if __name__=='__main__': unittest.main()

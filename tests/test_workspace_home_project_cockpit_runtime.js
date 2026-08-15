@@ -1,0 +1,4 @@
+const assert=require('assert');const home=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-home-v1.js');
+const empty={projects:[],activeProjectId:''};let s=home.summarize(empty);assert.equal(s.projectCount,0);assert.equal(home.nextAction(null).key,'choose-project');
+const p={id:'p1',title:'Project',updatedAt:'2026-08-15T00:00:00Z',objects:[],research:{questions:[],claims:[]},notebooks:{notebooks:[]},analysis:{questions:[]},briefing:{drafts:[]}};s=home.summarize({projects:[p],activeProjectId:'p1'});assert.equal(s.activeProject.title,'Project');assert.equal(home.nextAction(p).key,'frame-work');
+p.objects=[{id:'o1'}];assert.equal(home.nextAction(p).key,'analyze');p.analysis.questions=[{id:'a1'}];assert.equal(home.nextAction(p).key,'compose');console.log('PASS - workspace home project cockpit runtime');

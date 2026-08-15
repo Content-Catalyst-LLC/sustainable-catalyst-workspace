@@ -11,7 +11,7 @@ JS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.66.0.j
 TPL=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-templates-v1.js').read_text()
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class V049Templates(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version']),('0.66.0','0.65.0')); self.assertIn('Version: 1.0.1',MAIN); self.assertEqual((FEATURE['version'],FEATURE['release_name']),('0.49.0','Research Templates & Reusable Workflows'))
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version']),('0.66.0','0.65.0')); self.assertIn('Version: 1.1.0',MAIN); self.assertEqual((FEATURE['version'],FEATURE['release_name']),('0.49.0','Research Templates & Reusable Workflows'))
  def test_02_schema_stable(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0')); self.assertFalse(MAN['schema_migration_required']); self.assertTrue(FEATURE['migration']['research_templates_only_release'])
  def test_03_template_schemas(self): self.assertEqual(MAN['research_template_library_schema'],'sc-workspace-research-template-library/1.0'); self.assertEqual(MAN['research_template_schema'],'sc-workspace-research-template/1.0'); self.assertEqual(MAN['research_template_export_schema'],'sc-workspace-research-template-export/1.0')
  def test_04_eight_builtins(self):
@@ -26,5 +26,5 @@ class V049Templates(unittest.TestCase):
  def test_09_portable_custom_templates(self): self.assertIn('exportPackage',TPL); self.assertIn('verifyPackage',TPL); self.assertIn('workspace-research-templates.json',JS); self.assertIn('fingerprint',TPL)
  def test_10_rest_contract(self): self.assertIn("'/research-templates-contract'",PHP); self.assertIn('public function research_templates_contract()',PHP); self.assertIn('/wp-json/sc-workspace/v1/research-templates-contract',MAN['rest_routes'])
  def test_11_governance_and_header(self): self.assertFalse(MAN['governance']['research_templates_store_project_content']); self.assertFalse(MAN['governance']['research_templates_store_findings']); self.assertFalse(MAN['governance']['research_templates_automatic_ai']); self.assertIn('.scw-editorial-header-bar{height:4px',CSS)
- def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v101'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0490 = 'sc_workspace_registry_pending_v0490'",REGPHP); self.assertTrue((ROOT/'history/workspace-product-record-v0.49.0.json').exists())
+ def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v110'",REGPHP); self.assertIn("LEGACY_PENDING_KEY_V0490 = 'sc_workspace_registry_pending_v0490'",REGPHP); self.assertTrue((ROOT/'history/workspace-product-record-v0.49.0.json').exists())
 if __name__=='__main__': unittest.main()

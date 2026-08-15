@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '1.0.0';
-    const ROLLBACK_RELEASE = '1.0.0';
+    const PREVIOUS_RELEASE = '1.0.1';
+    const ROLLBACK_RELEASE = '1.0.1';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
 
@@ -26,8 +26,8 @@ final class SC_Workspace_Deployment_Hardening {
             'platform' => 'includes/class-sc-workspace-platform.php',
             'workspace' => 'includes/class-sc-workspace.php',
             'deployment' => 'includes/class-sc-workspace-deployment.php',
-            'current_script' => 'assets/js/workspace-v1.0.1.js',
-            'current_style' => 'assets/css/workspace-v1.0.1.css',
+            'current_script' => 'assets/js/workspace-v1.1.0.js',
+            'current_style' => 'assets/css/workspace-v1.1.0.css',
             'deployment_runtime' => 'assets/js/sc-workspace-wordpress-deployment-hardening-v1.js',
             'deployment_ui' => 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
             'production_certification' => 'includes/class-sc-workspace-production-certification.php',
@@ -43,6 +43,8 @@ final class SC_Workspace_Deployment_Hardening {
             'general_availability_runtime' => 'assets/js/sc-workspace-general-availability-v1.js',
             'general_availability_ui' => 'assets/js/sc-workspace-general-availability-ui-v1.js',
             'release_candidate_runtime' => 'assets/js/sc-workspace-release-candidate-i-v1.js',
+            'workspace_home' => 'includes/class-sc-workspace-home.php',
+            'workspace_home_runtime' => 'assets/js/sc-workspace-home-v1.js',
         );
     }
 
@@ -144,7 +146,7 @@ final class SC_Workspace_Deployment_Hardening {
         return array(
             'schema' => self::SCHEMA,
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'release_stage' => 'general-availability',
+            'release_stage' => 'stable-product',
             'previous_release' => self::PREVIOUS_RELEASE,
             'state' => $ready ? 'server-ready' : 'attention',
             'server_ready' => $ready,
@@ -160,8 +162,8 @@ final class SC_Workspace_Deployment_Hardening {
             'registry_pending' => $registry_pending,
             'wordpress_supported' => !empty($preflight['wordpress_supported']),
             'php_supported' => !empty($preflight['php_supported']),
-            'expected_script' => 'workspace-v1.0.1.js',
-            'expected_style' => 'workspace-v1.0.1.css',
+            'expected_script' => 'workspace-v1.1.0.js',
+            'expected_style' => 'workspace-v1.1.0.css',
             'asset_cache_strategy' => 'versioned-filename-plus-version-query',
             'rollback_release' => self::ROLLBACK_RELEASE,
             'rollback_schema_compatible' => true,
@@ -181,7 +183,7 @@ final class SC_Workspace_Deployment_Hardening {
             return;
         }
         $missing = (int) $diagnostics['missing_required_file_count'];
-        $message = 'Sustainable Catalyst Workspace deployment warning: the active release does not pass the v0.84.0 server package check.';
+        $message = 'Sustainable Catalyst Workspace deployment warning: the active release does not pass the current stable server package check.';
         if ($missing > 0) {
             $message .= ' ' . $missing . ' required release file(s) are missing or unreadable.';
         }

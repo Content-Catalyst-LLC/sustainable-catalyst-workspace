@@ -7,7 +7,7 @@
   const SCHEMA='sc-workspace-release-candidate/1.0';
   const REPORT_SCHEMA='sc-workspace-release-candidate-report/1.0';
   const CHECKLIST_SCHEMA='sc-workspace-release-candidate-checklist/1.0';
-  const RELEASE_VERSION='1.0.1';
+  const RELEASE_VERSION='1.1.0';
   const STORAGE_VERSION='35';
   const PROJECT_SCHEMA='sc-workspace-project/20.0';
   const EXPORT_SCHEMA='sc-workspace-project-export/20.0';
@@ -58,7 +58,7 @@
   function assess(root,options={}){
     const env=options.env||globalThis,s=signals(root,env),checks=[];
     checks.push(finding('release-identity','Release identity',s.workspaceVersion===RELEASE_VERSION,`Workspace root reports ${s.workspaceVersion||'no version'}; expected ${RELEASE_VERSION}.`));
-    checks.push(finding('release-stage','Release Candidate stage',['release-candidate','general-availability','ga-stabilization'].includes(s.releaseStage),`Workspace stage is ${s.releaseStage||'unset'}; expected release-candidate, general-availability, or ga-stabilization.`));
+    checks.push(finding('release-stage','Release Candidate stage',['release-candidate','general-availability','ga-stabilization','workspace-home'].includes(s.releaseStage),`Workspace stage is ${s.releaseStage||'unset'}; expected release-candidate, general-availability, ga-stabilization, or workspace-home.`));
     checks.push(finding('schema-freeze','Canonical schema freeze',s.storageVersion===STORAGE_VERSION&&s.projectSchema===PROJECT_SCHEMA,`Storage ${s.storageVersion||'unset'} / Project ${s.projectSchema||'unset'}; expected Storage ${STORAGE_VERSION} / ${PROJECT_SCHEMA}.`));
     checks.push(finding('required-surfaces','Required certification surfaces',Object.values(s.surfaces).every(Boolean),Object.entries(s.surfaces).filter(([,v])=>!v).map(([k])=>k).join(', ')||'All required certification and hardening surfaces are present.'));
     checks.push(finding('required-runtimes','Required hardening runtimes',Object.values(s.modules).every(Boolean),Object.entries(s.modules).filter(([,v])=>!v).map(([k])=>k).join(', ')||'All required inherited hardening runtimes are available.'));

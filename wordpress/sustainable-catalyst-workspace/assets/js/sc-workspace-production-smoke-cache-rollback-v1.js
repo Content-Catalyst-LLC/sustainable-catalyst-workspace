@@ -7,11 +7,11 @@
   const SCHEMA='sc-workspace-production-certification/1.0';
   const REPORT_SCHEMA='sc-workspace-production-certification-report/1.0';
   const CHECKLIST_SCHEMA='sc-workspace-production-certification-checklist/1.0';
-  const RELEASE_VERSION='1.0.1';
-  const PREVIOUS_RELEASE='1.0.0';
-  const ROLLBACK_RELEASE='1.0.0';
-  const EXPECTED_SCRIPT='workspace-v1.0.1.js';
-  const EXPECTED_STYLE='workspace-v1.0.1.css';
+  const RELEASE_VERSION='1.1.0';
+  const PREVIOUS_RELEASE='1.0.1';
+  const ROLLBACK_RELEASE='1.0.1';
+  const EXPECTED_SCRIPT='workspace-v1.1.0.js';
+  const EXPECTED_STYLE='workspace-v1.1.0.css';
   const manualItems=Object.freeze([
     ['public-page','Public Workspace smoke','Load the production Workspace as a normal visitor and confirm the complete application shell reaches the site footer without a PHP critical error.'],
     ['rest-identity','Production REST identity','Verify /wp-json/sc-workspace/v1/health and /production-certification-contract both report v1.0.1.'],
@@ -51,7 +51,7 @@
     checks.push(finding('script','Current cumulative JavaScript',script.present&&script.stale.length===0&&script.cumulativeCount===1,script.present?`${EXPECTED_SCRIPT} is loaded; ${script.stale.length} stale cumulative script(s) detected.`:`${EXPECTED_SCRIPT} is missing.`));
     checks.push(finding('style','Current cumulative stylesheet',style.present&&style.stale.length===0&&style.cumulativeCount===1,style.present?`${EXPECTED_STYLE} is loaded; ${style.stale.length} stale cumulative stylesheet(s) detected.`:`${EXPECTED_STYLE} is missing.`));
     checks.push(finding('query','Current cache-busting version',versionQueryMatches(script.url)&&versionQueryMatches(style.url),'Current cumulative asset version queries match v1.0.1, or an offline fixture omits query strings.'));
-    checks.push(finding('stage','Release stage',['release-candidate','general-availability','ga-stabilization'].includes(releaseStage),`Workspace stage is ${releaseStage||'unset'}; expected release-candidate, general-availability, or ga-stabilization.`));
+    checks.push(finding('stage','Release stage',['release-candidate','general-availability','ga-stabilization','workspace-home'].includes(releaseStage),`Workspace stage is ${releaseStage||'unset'}; expected release-candidate, general-availability, ga-stabilization, or workspace-home.`));
     checks.push(finding('deployment-runtime','Inherited deployment hardening',Boolean(env.SCWorkspaceWordPressDeploymentHardening),env.SCWorkspaceWordPressDeploymentHardening?'v0.81 deployment hardening remains available.':'Deployment hardening runtime is unavailable.'));
     checks.push(finding('rc-runtime','Inherited Release Candidate runtime',Boolean(env.SCWorkspaceReleaseCandidateI),env.SCWorkspaceReleaseCandidateI?'Release Candidate runtime remains available.':'Release Candidate runtime is unavailable.'));
     const blocked=checks.filter(x=>x.state==='blocked').length;
