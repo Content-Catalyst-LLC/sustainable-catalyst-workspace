@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-decision-studio-return-v1.schema.json",
+  "title": "Workspace Decision Studio Return Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "projectId",
+    "handoffId",
+    "destination",
+    "artifacts"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-decision-studio-return/1.0"
+    }
+  },
+  "additionalProperties": true
+}

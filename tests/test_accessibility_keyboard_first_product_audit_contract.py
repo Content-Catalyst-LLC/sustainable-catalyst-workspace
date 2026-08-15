@@ -13,7 +13,7 @@ NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-resea
 EXP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-experience-v1.js').read_text()
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class T(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn('Version: 1.5.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn('Version: 1.6.0',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35);self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0');self.assertFalse(MAN['schema_migration_required'])
  def test_03_contract_schemas(self):
   for n in ['sc-workspace-accessibility-v1.schema.json','sc-workspace-accessibility-report-v1.schema.json','sc-workspace-accessibility-checklist-v1.schema.json']: json.loads((ROOT/'schemas'/n).read_text())
@@ -30,5 +30,5 @@ class T(unittest.TestCase):
  def test_12_command_palette(self): self.assertIn("id:'accessibility'",EXP);self.assertIn('keyboard focus wcag screen reader',EXP)
  def test_13_css(self): self.assertIn(':focus-visible{outline:3px solid currentColor!important',CSS);self.assertIn('@media(prefers-reduced-motion:reduce)',CSS);self.assertIn('@media(forced-colors:active)',CSS);self.assertIn('min-height:44px',CSS)
  def test_14_ui(self): self.assertIn('helper.enhance(root,window)',A11YUI);self.assertIn('helper.audit(root,window)',A11YUI);self.assertIn('helper.checklist()',A11YUI);self.assertIn('This is not an accessibility certification.',A11YUI)
- def test_15_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v150'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0630',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.64.0.json').exists())
+ def test_15_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v160'",REGPHP);self.assertIn('LEGACY_PENDING_KEY_V0630',REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.64.0.json').exists())
 if __name__=='__main__': unittest.main()

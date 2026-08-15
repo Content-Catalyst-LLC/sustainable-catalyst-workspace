@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-workbench-context-v1.schema.json",
+  "title": "Workspace Workbench Context Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "handoff",
+    "project",
+    "context",
+    "workingContext",
+    "returnContract",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-workbench-context/1.0"
+    }
+  },
+  "additionalProperties": true
+}

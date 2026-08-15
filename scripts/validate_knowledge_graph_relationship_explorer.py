@@ -14,7 +14,7 @@ g=MAN['knowledge_graph_explorer']
 for k in ['explicit_path_tracing','incoming_outgoing_backlink_ledger','edge_explanation_visible','library_continuity_pointers_included','universal_search_origin_routing','portable_graph_snapshot_export','derived_at_runtime']:check(g.get(k) is True,k)
 for k in ['snapshot_copies_canonical_bodies','server_graph_database','semantic_embeddings','automatic_relationship_inference','automatic_semantic_similarity_edges','automatic_ai','behavioral_telemetry','query_telemetry','canonical_records_mutated','schema_migration_required']:check(g.get(k) is False,k)
 check(g['max_path_depth']==5 and 'library-record' in g['node_families'],'path depth/library node')
-check('Version: 1.5.0' in MAIN and "SC_WORKSPACE_VERSION', '1.5.0'" in MAIN,'current WordPress runtime advanced')
+check('Version: 1.6.0' in MAIN and "SC_WORKSPACE_VERSION', '1.6.0'" in MAIN,'current WordPress runtime advanced')
 check("'/knowledge-graph-explorer-contract'" in PHP and 'knowledge_graph_explorer_contract' in PHP and 'sc-workspace-relationship-explorer-v2' in PHP,'historical route/helper preserved')
 for t in ['sc-workspace-knowledge-graph-explorer/1.0','sc-workspace-knowledge-graph-snapshot/1.0','maxPathDepth','serverGraphDatabase']:check(t in KPHP,'PHP contract '+t)
 for t in ['shortestPath','backlinks','edgeExplanation','snapshot','originates-in-library','library-record','canonicalBodiesCopied:false','automaticRelationshipInference:false']:check(t in KJS,'JS explorer '+t)

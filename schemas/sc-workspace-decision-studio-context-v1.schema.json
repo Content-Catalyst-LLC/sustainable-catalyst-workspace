@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-decision-studio-context-v1.schema.json",
+  "title": "Workspace Decision Studio Context Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "handoff",
+    "project",
+    "context",
+    "workingContext",
+    "returnContract",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-decision-studio-context/1.0"
+    }
+  },
+  "additionalProperties": true
+}

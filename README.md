@@ -1,6 +1,16 @@
-# Sustainable Catalyst Workspace v1.5.0 — Lab & Scientific Workspace Integration
+# Sustainable Catalyst Workspace v1.6.0 — Workbench & Decision Studio Round-Trip Workflows
 
-Current release: **v1.5.0 — Lab & Scientific Workspace Integration**
+Current release: **v1.6.0 — Workbench & Decision Studio Round-Trip Workflows**
+
+## Workbench & Decision Studio Round-Trip Workflows
+
+Workspace v1.6.0 turns the existing Workbench and Decision Studio handoffs into explicit, governed round trips. Users choose the project context to export, open the specialist tool with stable IDs only, and can later import typed return packages that must match the originating project, handoff, and destination before anything is materialized.
+
+Workbench supports calculation, simulation, optimization, engineering analysis, data transformation, and sensitivity analysis. Decision Studio supports decision packets, scenario comparison, tradeoff analysis, option assessment, risk review, and decision briefs. Returned artifacts preserve method, parameters, constraints, assumptions, scenarios, risks, units, uncertainty, and environment notes where supplied, and Workspace records deterministic `derived-from` traceability back to the explicitly selected outbound context.
+
+Workbench and Decision Studio remain the specialist execution environments. Workspace does not automatically upload context, execute specialist workflows, invoke AI, commit unmatched returns, emit behavioral/query telemetry, mutate canonical specialist records, or migrate Storage 35 / Project 20.0 / Export 20.0.
+
+See `RELEASE_NOTES_1.6.0.md` and `docs/WORKBENCH_DECISION_STUDIO_ROUNDTRIP_V160.md`.
 
 ## Lab & Scientific Workspace Integration
 
@@ -45,3 +55,8 @@ General Availability remains explicitly human-controlled. The v0.84.0 readiness 
 Workspace does not automatically certify a release, inspect project contents, purge caches, roll back, migrate canonical project data, or emit behavioral telemetry.
 
 See `RELEASE_NOTES_1.0.0.md` and `docs/GENERAL_AVAILABILITY_V100.md`.
+
+
+## v1.6.0 current release
+
+Workspace now supports explicit Workbench and Decision Studio round-trip context/return packages with exact project, handoff, destination, provenance, and traceability boundaries.
