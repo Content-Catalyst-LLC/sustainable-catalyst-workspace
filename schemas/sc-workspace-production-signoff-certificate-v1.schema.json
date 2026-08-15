@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-production-signoff-certificate-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Production Sign-Off Certificate",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "status", "signedOff", "reviewerLabel", "productionUrl", "checks", "humanAttestation"],
+  "properties": {
+    "schema": {"const": "sc-workspace-production-signoff-certificate/1.0"},
+    "workspaceVersion": {"const": "0.83.0"},
+    "previousRelease": {"const": "0.82.1"},
+    "rollbackRelease": {"const": "0.82.1"},
+    "release": {"const": "Live Production Certification & Release Sign-Off"},
+    "status": {"enum": ["pending", "signed-off"]},
+    "signedOff": {"type": "boolean"},
+    "reviewerLabel": {"type": "string"},
+    "productionUrl": {"type": "string"},
+    "signedAt": {"type": "string"},
+    "requiredCheckCount": {"type": "integer", "minimum": 14, "maximum": 14},
+    "attestedCheckCount": {"type": "integer", "minimum": 0, "maximum": 14},
+    "checks": {"type": "array", "minItems": 14, "maxItems": 14},
+    "humanAttestation": {"type": "boolean"},
+    "automaticCertification": {"const": false},
+    "automaticRollback": {"const": false},
+    "automaticCachePurge": {"const": false},
+    "projectContentIncluded": {"const": false},
+    "telemetry": {"const": false}
+  },
+  "additionalProperties": false
+}

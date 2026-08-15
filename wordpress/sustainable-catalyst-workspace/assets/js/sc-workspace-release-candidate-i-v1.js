@@ -7,13 +7,13 @@
   const SCHEMA='sc-workspace-release-candidate/1.0';
   const REPORT_SCHEMA='sc-workspace-release-candidate-report/1.0';
   const CHECKLIST_SCHEMA='sc-workspace-release-candidate-checklist/1.0';
-  const RELEASE_VERSION='0.82.1';
+  const RELEASE_VERSION='0.83.0';
   const STORAGE_VERSION='35';
   const PROJECT_SCHEMA='sc-workspace-project/20.0';
   const EXPORT_SCHEMA='sc-workspace-project-export/20.0';
   const FEATURE_FREEZE_POLICY='defect-fixes-certification-deployment-only';
   const AUTOMATED_GATES=Object.freeze([
-    ['release-identity','Release identity','The running Workspace must identify itself as the current v0.82.1 Release Candidate runtime.'],
+    ['release-identity','Release identity','The running Workspace must identify itself as the current v0.83.0 Release Candidate runtime.'],
     ['release-stage','Release Candidate stage','The application root must declare the release-candidate stage.'],
     ['schema-freeze','Canonical schema freeze','Storage 35 and Project 20.0 remain unchanged at the RC boundary.'],
     ['required-surfaces','Required certification surfaces','Beta Closure, Security & Privacy, Final Audit, Recovery Drills, Help, and the integration/handoff surfaces remain reachable.'],

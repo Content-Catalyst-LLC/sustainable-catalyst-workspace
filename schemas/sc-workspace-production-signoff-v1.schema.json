@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-production-signoff-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Production Sign-Off",
+  "type": "object",
+  "required": ["schema", "releaseVersion", "reviewerLabel", "productionUrl", "checks", "attestation"],
+  "properties": {
+    "schema": {"const": "sc-workspace-production-signoff/1.0"},
+    "releaseVersion": {"const": "0.83.0"},
+    "previousRelease": {"const": "0.82.1"},
+    "rollbackRelease": {"const": "0.82.1"},
+    "reviewerLabel": {"type": "string", "maxLength": 200},
+    "productionUrl": {"type": "string", "format": "uri", "maxLength": 2048},
+    "checks": {"type": "object", "additionalProperties": {"type": "boolean"}},
+    "attestation": {"type": "boolean"},
+    "signedAt": {"type": "string"},
+    "updatedAt": {"type": "string"}
+  },
+  "additionalProperties": false
+}

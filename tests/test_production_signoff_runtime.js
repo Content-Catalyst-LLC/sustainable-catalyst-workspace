@@ -1,0 +1,16 @@
+const assert=require('assert');
+const api=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-production-signoff-v1.js');
+assert.strictEqual(api.RELEASE_VERSION,'0.83.0');
+assert.strictEqual(api.PREVIOUS_RELEASE,'0.82.1');
+assert.strictEqual(api.REQUIREMENTS.length,14);
+let r=api.blank();
+assert.strictEqual(api.evaluate(r).complete,false);
+r.reviewerLabel='Production reviewer'; r.productionUrl='https://sustainablecatalyst.com/platform/'; r.attestation=true;
+for(const item of api.REQUIREMENTS) r.checks[item.id]=true;
+const done=api.complete(r,'2026-08-14T21:22:00.000Z');
+assert.strictEqual(done.evaluation.complete,true);
+const cert=api.certificate(done.record);
+assert.strictEqual(cert.signedOff,true);
+assert.strictEqual(cert.projectContentIncluded,false);
+assert.strictEqual(cert.automaticCertification,false);
+console.log('PASS - v0.83.0 production sign-off runtime');

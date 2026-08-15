@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v0821';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v0821';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v0830';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v0830';
+    const LEGACY_PENDING_KEY_V0821 = 'sc_workspace_registry_pending_v0821';
     const LEGACY_PENDING_KEY_V0820 = 'sc_workspace_registry_pending_v0820';
     const LEGACY_PENDING_KEY_V0810 = 'sc_workspace_registry_pending_v0810';
     const LEGACY_PENDING_KEY_V0800 = 'sc_workspace_registry_pending_v0800';
@@ -163,6 +164,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V0821);
         delete_option(self::LEGACY_PENDING_KEY_V0820);
         delete_option(self::LEGACY_PENDING_KEY_V0810);
         delete_option(self::LEGACY_PENDING_KEY_V0800);
@@ -306,12 +308,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '0.82.0',
-            'release_date' => '2026-08-12',
-            'release_name' => 'Production Certification Installer & Validation Lineage Repair',
-            'change_summary' => 'Repairs Release Candidate installer and validator lineage so source, post-rsync target, staged Git tree, WordPress header, registry, and cumulative assets must all identify the same current release before commit or push.',
+            'previous_version' => '0.82.1',
+            'release_date' => '2026-08-14',
+            'release_name' => 'Live Production Certification & Release Sign-Off',
+            'change_summary' => 'Adds explicit live-production field attestation and exportable release sign-off evidence without auto-certifying production or changing canonical project data.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.82.1 repairs deployment lineage only; inherited historical validators preserve their original contract versions while discovering the current installed release dynamically.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. v0.83.0 requires human field evidence for production sign-off and does not infer, automate, or silently close any live validation item.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

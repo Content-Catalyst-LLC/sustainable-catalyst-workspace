@@ -7,13 +7,13 @@ MAINP=ROOT/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-worksp
 MAIN=MAINP.read_text(); HEAD=MAINP.read_bytes()[:8192].decode('utf-8',errors='replace')
 PHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 REGPHP=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.82.1.js').read_text()
+APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.83.0.js').read_text()
 HELP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-cross-device-continuity-v1.js').read_text()
 class ContinuityHardening(unittest.TestCase):
  def test_01_lineage_and_header(self):
   self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.67.0','0.66.1','Cross-Device Continuity & Sync Hardening'))
-  self.assertIn('Version: 0.82.1',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '0.82.1",MAIN)
-  for label,value in [('Plugin Name','Sustainable Catalyst Workspace'),('Version','0.82.1'),('Author','Content Catalyst LLC'),('Requires at least','6.4'),('Requires PHP','8.0')]:
+  self.assertIn('Version: 0.83.0',MAIN); self.assertIn("SC_WORKSPACE_VERSION', '0.83.0",MAIN)
+  for label,value in [('Plugin Name','Sustainable Catalyst Workspace'),('Version','0.83.0'),('Author','Content Catalyst LLC'),('Requires at least','6.4'),('Requires PHP','8.0')]:
    m=re.search(r'^[ \\t\\/*#@]*'+re.escape(label)+r':(.*)$',HEAD,re.I|re.M); self.assertTrue(m and m.group(1).strip()==value)
  def test_02_canonical_schema_stability(self):
   self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'))
@@ -21,7 +21,7 @@ class ContinuityHardening(unittest.TestCase):
   self.assertEqual(MAN['account_persistence']['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(MAN['cross_device_sync']['storage_schema_version'],35)
  def test_03_assets_and_contract_route(self):
   self.assertIn("'sc-workspace-cross-device-continuity-v1'",PHP); self.assertIn('sc-workspace-cross-device-continuity-v1.js',PHP)
-  self.assertIn("'sc-workspace-v0821'",PHP); self.assertIn('workspace-v0.82.1.js',PHP); self.assertIn('workspace-v0.82.1.css',PHP)
+  self.assertIn("'sc-workspace-v0830'",PHP); self.assertIn('workspace-v0.83.0.js',PHP); self.assertIn('workspace-v0.83.0.css',PHP)
   self.assertIn("'/continuity-contract'",PHP); self.assertIn('public function continuity_contract()',PHP); self.assertIn('/wp-json/sc-workspace/v1/continuity-contract',MAN['rest_routes'])
  def test_04_current_project_schema_cloud_storage(self):
   self.assertIn("array('sc-workspace-project/20.0','sc-workspace-project/19.0'",PHP)
@@ -50,6 +50,6 @@ class ContinuityHardening(unittest.TestCase):
   for f in ['schemas/sc-workspace-cross-device-continuity-v1.schema.json','schemas/sc-workspace-sync-operation-v1.schema.json','schemas/sc-workspace-device-migration-v1.schema.json']:
    self.assertTrue((ROOT/f).exists())
   self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.67.0','0.66.1','Cross-Device Continuity & Sync Hardening'))
-  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0821'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0661',REGPHP)
+  self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0830'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0661',REGPHP)
   self.assertTrue((ROOT/'history/release-manifest-v0.66.1.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.66.1.json').exists())
 if __name__=='__main__': unittest.main()

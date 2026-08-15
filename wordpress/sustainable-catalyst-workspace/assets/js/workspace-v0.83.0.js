@@ -4992,7 +4992,7 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
     }
 
     function setWorkspaceView(view, moveFocus = false) {
-      const navApi=navigationApi(); const candidate=String(view||''); const fallbackViews=['start','journey','help','projects','research','notebook','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','automation','performance','security','beta','reliability','integrity','compatibility','accessibility','final-audit','beta-closure','release-candidate','deployment','production-certification','recovery-drills','interoperability','collaboration','institutional','share']; const validView=navApi?Object.values(navApi.AREAS||{}).some(area=>Array.isArray(area.views)&&area.views.includes(candidate)):fallbackViews.includes(candidate); workspaceView=validView?candidate:'start';
+      const navApi=navigationApi(); const candidate=String(view||''); const fallbackViews=['start','journey','help','projects','research','notebook','knowledge','graph','activity','lifecycle','history','changes','reconcile','safety','audit','automation','performance','security','beta','reliability','integrity','compatibility','accessibility','final-audit','beta-closure','release-candidate','deployment','production-certification','production-signoff','recovery-drills','interoperability','collaboration','institutional','share']; const validView=navApi?Object.values(navApi.AREAS||{}).some(area=>Array.isArray(area.views)&&area.views.includes(candidate)):fallbackViews.includes(candidate); workspaceView=validView?candidate:'start';
       longSessionMonitor?.markRoute(workspaceView);
       root.querySelectorAll('[data-scw-workspace-view]').forEach(button => {
         const selected = button.dataset.scwWorkspaceView === workspaceView;
@@ -6210,4 +6210,4 @@ if(researchTemplateImportFile)researchTemplateImportFile.addEventListener('chang
 
 /* v0.82.0 — Production Smoke, Cache & Rollback Certification */
 
-/* v0.82.1 — Production Certification Installer & Validation Lineage Repair */
+/* v0.83.0 — Production Certification Installer & Validation Lineage Repair */

@@ -9,11 +9,11 @@ PHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
 REGPHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 CORE=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-release-candidate-i-v1.js').read_text()
 UI=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-release-candidate-i-ui-v1.js').read_text()
-APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.82.1.js').read_text()
+APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.83.0.js').read_text()
 EXP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-experience-v1.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.82.1.css').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.83.0.css').read_text()
 class WorkspaceReleaseCandidateIContract(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.80.0','0.79.0','Workspace Release Candidate I')); self.assertIn('Version: 0.82.1',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.80.0','0.79.0','Workspace Release Candidate I')); self.assertIn('Version: 0.83.0',MAIN)
  def test_02_schema_freeze(self):
   for k in ['storage_schema_version','project_schema','export_schema','object_schema','research_schema']: self.assertEqual(MAN[k],OLD[k])
   self.assertEqual(MAN['object_types'],OLD['object_types']); self.assertFalse(MAN['schema_migration_required'])
@@ -30,9 +30,9 @@ class WorkspaceReleaseCandidateIContract(unittest.TestCase):
  def test_08_runtime_governance(self):
   for token in ['featureFreeze:true','newProductSubsystemsAllowed:false','canonicalSchemaChangesAllowed:false','automaticPromotionToStable:false','canonicalMutation:false','telemetry:false']: self.assertIn(token,CORE)
   self.assertIn('Production WordPress smoke test',CORE); self.assertIn('WordPress rollback rehearsal',CORE); self.assertIn('Real two-device continuity test',CORE)
- def test_09_assets(self): self.assertIn("'sc-workspace-v0821'",PHP); self.assertIn('workspace-v0.82.1.js',PHP); self.assertIn('workspace-v0.82.1.css',PHP); self.assertIn('sc-workspace-release-candidate-i-v1',PHP); self.assertIn('sc-workspace-release-candidate-i-ui-v1',PHP); self.assertIn('/* v0.80.0 — Workspace Release Candidate I */',CSS); self.assertIn("'release-candidate'",APP); self.assertIn("id:'release-candidate'",EXP)
- def test_10_registry(self): self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.80.0','0.79.0','Workspace Release Candidate I')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0821'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0790',REGPHP); self.assertTrue((R/'history/release-manifest-v0.79.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.79.0.json').exists())
+ def test_09_assets(self): self.assertIn("'sc-workspace-v0830'",PHP); self.assertIn('workspace-v0.83.0.js',PHP); self.assertIn('workspace-v0.83.0.css',PHP); self.assertIn('sc-workspace-release-candidate-i-v1',PHP); self.assertIn('sc-workspace-release-candidate-i-ui-v1',PHP); self.assertIn('/* v0.80.0 — Workspace Release Candidate I */',CSS); self.assertIn("'release-candidate'",APP); self.assertIn("id:'release-candidate'",EXP)
+ def test_10_registry(self): self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.80.0','0.79.0','Workspace Release Candidate I')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0830'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0790',REGPHP); self.assertTrue((R/'history/release-manifest-v0.79.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.79.0.json').exists())
  def test_11_packaging_policy(self): r=MAN['release_candidate_i']; self.assertTrue(r['package_integrity_required']); self.assertTrue(r['rollback_artifact_required']); self.assertTrue(r['manual_field_validation_outstanding']); self.assertEqual(r['known_automated_blocker_count'],0)
- def test_12_docs(self): self.assertTrue((R/'docs/WORKSPACE_RELEASE_CANDIDATE_I_V0800.md').exists()); self.assertTrue((R/'RELEASE_NOTES_0.80.0.md').exists()); self.assertIn('# Sustainable Catalyst Workspace v0.82.1',(R/'README.md').read_text()); self.assertIn('Production Certification Installer & Validation Lineage Repair',(R/'README.md').read_text())
+ def test_12_docs(self): self.assertTrue((R/'docs/WORKSPACE_RELEASE_CANDIDATE_I_V0800.md').exists()); self.assertTrue((R/'RELEASE_NOTES_0.80.0.md').exists()); self.assertIn('# Sustainable Catalyst Workspace v0.83.0',(R/'README.md').read_text()); self.assertIn('Live Production Certification & Release Sign-Off',(R/'README.md').read_text())
  def test_13_validator(self): self.assertTrue((R/'scripts/validate_workspace_release_candidate_i.py').exists())
 if __name__=='__main__': unittest.main()
