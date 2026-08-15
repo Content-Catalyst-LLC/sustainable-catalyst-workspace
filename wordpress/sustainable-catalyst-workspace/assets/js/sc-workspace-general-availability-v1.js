@@ -1,0 +1,29 @@
+(function(global){
+'use strict';
+const RELEASE_VERSION='1.0.0',PREVIOUS_RELEASE='0.84.0',ROLLBACK_RELEASE='0.84.0',READINESS_RELEASE='0.84.0';
+const READINESS_SCHEMA='sc-workspace-ga-readiness-dossier/1.0',SCHEMA='sc-workspace-general-availability/1.0',CERTIFICATE_SCHEMA='sc-workspace-general-availability-certificate/1.0';
+const STORAGE_KEY='sc_workspace_general_availability_v1',READINESS_STORAGE_KEY='sc_workspace_ga_readiness_v1';
+const REQUIREMENTS=[
+{id:'readiness-dossier',label:'Valid v0.84.0 readiness dossier',description:'The pre-1.0 readiness dossier must be READY and fully attested.'},
+{id:'release-identity',label:'v1.0.0 release identity',description:'The WordPress plugin, REST health, manifest, registry, and cumulative assets identify v1.0.0.'},
+{id:'package-integrity',label:'Package integrity',description:'Repository, WordPress artifact, manifest, notes, validation report, installer, verifier, and checksums are coherent.'},
+{id:'rollback-artifact',label:'v0.84.0 rollback artifact',description:'The exact v0.84.0 WordPress rollback package is retained and schema-compatible.'},
+{id:'live-wordpress-smoke',label:'Live WordPress smoke',description:'The production Workspace shell, REST identity, and cumulative assets are coherent after deployment.'},
+{id:'support-recovery',label:'Support and recovery readiness',description:'Rollback, recovery, troubleshooting, and project-preservation boundaries are understood.'},
+{id:'public-version-semantics',label:'Public 1.0 version semantics',description:'The release owner confirms that v1.0.0 represents the stable GA contract rather than a new schema or feature expansion.'},
+{id:'no-known-blocking-defects',label:'No known blocking defects',description:'Any blocking defect keeps this release record on HOLD and cannot be silently waived.'}
+];
+const now=()=>new Date().toISOString();
+function blank(){const checks={};REQUIREMENTS.forEach(r=>checks[r.id]=false);return {schema:SCHEMA,releaseVersion:RELEASE_VERSION,releaseOperator:'',productionUrl:'https://sustainablecatalyst.com/platform/',checks,attestation:false,releasedAt:'',updatedAt:now()};}
+function normalize(input){const s=input&&typeof input==='object'?input:{},o=blank();o.releaseOperator=String(s.releaseOperator||'').trim();o.productionUrl=String(s.productionUrl||o.productionUrl).trim();o.attestation=s.attestation===true;o.releasedAt=String(s.releasedAt||'');o.updatedAt=String(s.updatedAt||now());REQUIREMENTS.forEach(r=>o.checks[r.id]=!!(s.checks&&s.checks[r.id]));return o;}
+function validUrl(v){try{const u=new URL(v);return u.protocol==='https:'||u.protocol==='http:';}catch(e){return false;}}
+function readinessDossier(storage){try{const s=storage||global.localStorage;if(!s)return null;const raw=s.getItem(READINESS_STORAGE_KEY);if(!raw)return null;const record=JSON.parse(raw),api=global.SCWorkspaceGAReadiness;if(api&&typeof api.dossier==='function')return api.dossier(record);return null;}catch(e){return null;}}
+function validReadinessDossier(d){return !!(d&&d.schema===READINESS_SCHEMA&&d.workspaceVersion===READINESS_RELEASE&&d.status==='ready-for-1.0-decision'&&d.readyForOneDotZeroDecision===true&&d.humanAttestation===true&&d.requiredCheckCount===d.completedCheckCount);}
+function evaluate(input,dossier){const r=normalize(input),d=dossier===undefined?readinessDossier():dossier,ready=validReadinessDossier(d);const missing=REQUIREMENTS.filter(x=>x.id==='readiness-dossier'?!ready:!r.checks[x.id]).map(x=>x.id);const operatorOk=r.releaseOperator.length>0,urlOk=validUrl(r.productionUrl),attestationOk=r.attestation===true,released=missing.length===0&&operatorOk&&urlOk&&attestationOk;return {released,missing,operatorOk,urlOk,attestationOk,readinessValid:ready,completedCount:REQUIREMENTS.length-missing.length,requiredCount:REQUIREMENTS.length};}
+function complete(input,dossier,at){const r=normalize(input),e=evaluate(r,dossier);r.updatedAt=at||now();r.releasedAt=e.released?(at||now()):'';return {record:r,evaluation:e};}
+function certificate(input,dossier){const r=normalize(input),d=dossier===undefined?readinessDossier():dossier,e=evaluate(r,d);return {schema:CERTIFICATE_SCHEMA,workspaceVersion:RELEASE_VERSION,previousRelease:PREVIOUS_RELEASE,rollbackRelease:ROLLBACK_RELEASE,release:'General Availability',status:e.released?'released':'hold',generalAvailability:e.released,readinessRelease:READINESS_RELEASE,readinessSchema:READINESS_SCHEMA,readinessValid:e.readinessValid,releaseOperator:r.releaseOperator,productionUrl:r.productionUrl,releasedAt:e.released?r.releasedAt:'',requiredCheckCount:REQUIREMENTS.length,completedCheckCount:e.completedCount,checks:REQUIREMENTS.map(x=>({id:x.id,label:x.label,complete:x.id==='readiness-dossier'?e.readinessValid:!!r.checks[x.id]})),humanAttestation:r.attestation===true,projectContentIncluded:false,automaticReleaseCertification:false,automaticRollback:false,automaticCachePurge:false,telemetry:false};}
+function load(storage){try{const s=storage||global.localStorage;if(!s)return blank();const raw=s.getItem(STORAGE_KEY);return raw?normalize(JSON.parse(raw)):blank();}catch(e){return blank();}}
+function save(input,storage){const r=normalize(input);r.updatedAt=now();try{const s=storage||global.localStorage;if(s)s.setItem(STORAGE_KEY,JSON.stringify(r));}catch(e){}return r;}
+function clear(storage){try{const s=storage||global.localStorage;if(s)s.removeItem(STORAGE_KEY);}catch(e){}return blank();}
+const api={RELEASE_VERSION,PREVIOUS_RELEASE,ROLLBACK_RELEASE,READINESS_RELEASE,READINESS_SCHEMA,SCHEMA,CERTIFICATE_SCHEMA,STORAGE_KEY,READINESS_STORAGE_KEY,REQUIREMENTS,blank,normalize,readinessDossier,validReadinessDossier,evaluate,complete,certificate,load,save,clear};global.SCWorkspaceGeneralAvailability=api;if(typeof module!=='undefined'&&module.exports)module.exports=api;
+})(typeof window!=='undefined'?window:globalThis);

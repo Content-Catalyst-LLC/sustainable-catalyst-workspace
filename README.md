@@ -1,13 +1,13 @@
-# Sustainable Catalyst Workspace v0.84.0
+# Sustainable Catalyst Workspace v1.0.0
 
-## Production Sign-Off Closure & 1.0 Release Readiness
+## General Availability
 
 Sustainable Catalyst Workspace is a free, local-first environment for carrying questions, evidence, analysis, decisions, composition, review, and deliberate handoff across Sustainable Catalyst.
 
-v0.84.0 remains inside the pre-1.0 feature freeze. It does not add a new product subsystem. Instead, it turns the v0.83.0 live-production sign-off record into an explicit 1.0 readiness dossier: prior production evidence must be signed, the current release lineage must be coherent, the rollback baseline must be available, and a human operator must make the final readiness attestation.
+v1.0.0 establishes the stable General Availability contract after the v0.84.0 production-sign-off closure and readiness gate. It does not introduce a new project subsystem or canonical schema migration. Storage remains 35, Project remains `sc-workspace-project/20.0`, and Project Export remains `sc-workspace-project-export/20.0`.
 
-The build does **not** auto-promote Workspace to 1.0, infer that live checks passed, inspect project contents, purge caches, perform rollback, or mutate canonical project data.
+General Availability remains explicitly human-controlled. The v0.84.0 readiness dossier is predecessor evidence; the v1.0.0 release certificate stays on HOLD until the required live checks, release operator, production URL, and final attestation are complete.
 
-Canonical contracts remain frozen at Storage 35, Project `sc-workspace-project/20.0`, and Project Export `sc-workspace-project-export/20.0`.
+Workspace does not automatically certify a release, inspect project contents, purge caches, roll back, migrate canonical project data, or emit behavioral telemetry.
 
-See `RELEASE_NOTES_0.84.0.md`, `VALIDATION_REPORT_0.84.0.md`, and `docs/PRODUCTION_SIGNOFF_CLOSURE_1_0_RELEASE_READINESS_V0840.md`.
+See `RELEASE_NOTES_1.0.0.md` and `docs/GENERAL_AVAILABILITY_V100.md`.

@@ -7,18 +7,18 @@
   const SCHEMA='sc-workspace-production-certification/1.0';
   const REPORT_SCHEMA='sc-workspace-production-certification-report/1.0';
   const CHECKLIST_SCHEMA='sc-workspace-production-certification-checklist/1.0';
-  const RELEASE_VERSION='0.84.0';
-  const PREVIOUS_RELEASE='0.83.0';
-  const ROLLBACK_RELEASE='0.83.0';
-  const EXPECTED_SCRIPT='workspace-v0.84.0.js';
-  const EXPECTED_STYLE='workspace-v0.84.0.css';
+  const RELEASE_VERSION='1.0.0';
+  const PREVIOUS_RELEASE='0.84.0';
+  const ROLLBACK_RELEASE='0.84.0';
+  const EXPECTED_SCRIPT='workspace-v1.0.0.js';
+  const EXPECTED_STYLE='workspace-v1.0.0.css';
   const manualItems=Object.freeze([
     ['public-page','Public Workspace smoke','Load the production Workspace as a normal visitor and confirm the complete application shell reaches the site footer without a PHP critical error.'],
-    ['rest-identity','Production REST identity','Verify /wp-json/sc-workspace/v1/health and /production-certification-contract both report v0.84.0.'],
+    ['rest-identity','Production REST identity','Verify /wp-json/sc-workspace/v1/health and /production-certification-contract both report v1.0.0.'],
     ['logged-out-in','Anonymous and authenticated smoke','Open Workspace logged out and logged in and confirm local-first use remains available in both states.'],
     ['project-preservation','Existing local project preservation','Open a representative pre-upgrade browser-local project and verify its content before any sync, import, or restore action.'],
-    ['cache-coherence','WordPress/CDN/browser cache coherence','Verify the HTML, current cumulative JS, and current cumulative CSS all identify v0.84.0. If they do not, purge only page/asset caches—never Workspace project storage.'],
-    ['rollback','v0.83.0 rollback rehearsal','Replace v0.84.0 with the bundled v0.83.0 rollback plugin, verify the public shell and existing local project, then reinstall v0.84.0 and repeat the smoke.']
+    ['cache-coherence','WordPress/CDN/browser cache coherence','Verify the HTML, current cumulative JS, and current cumulative CSS all identify v1.0.0. If they do not, purge only page/asset caches—never Workspace project storage.'],
+    ['rollback','v0.84.0 rollback rehearsal','Replace v1.0.0 with the bundled v0.84.0 rollback plugin, verify the public shell and existing local project, then reinstall v1.0.0 and repeat the smoke.']
   ].map(([id,label,procedure])=>Object.freeze({id,label,procedure})));
   const stamp=()=>new Date().toISOString();
   const finding=(id,label,pass,detail)=>({id,label,state:pass?'pass':'blocked',detail:String(detail||'')});
@@ -27,7 +27,7 @@
     const attr=kind==='script'?'src':'href';
     const urls=nodes.map(n=>String(n.getAttribute?.(attr)||n[attr]||''));
     const current=urls.find(v=>v.includes(expected))||'';
-    const cumulative=urls.filter(v=>/workspace-v0\.\d+\.\d+\.(?:js|css)(?:\?|$)/.test(v));
+    const cumulative=urls.filter(v=>/workspace-v\d+\.\d+\.\d+\.(?:js|css)(?:\?|$)/.test(v));
     const stale=cumulative.filter(v=>!v.includes(expected));
     return {present:Boolean(current),url:current,cumulativeCount:cumulative.length,stale};
   }
@@ -50,8 +50,8 @@
     checks.push(finding('server','Deployment server state',serverState==='server-ready',`Server deployment state is ${serverState||'unset'}; expected server-ready.`));
     checks.push(finding('script','Current cumulative JavaScript',script.present&&script.stale.length===0&&script.cumulativeCount===1,script.present?`${EXPECTED_SCRIPT} is loaded; ${script.stale.length} stale cumulative script(s) detected.`:`${EXPECTED_SCRIPT} is missing.`));
     checks.push(finding('style','Current cumulative stylesheet',style.present&&style.stale.length===0&&style.cumulativeCount===1,style.present?`${EXPECTED_STYLE} is loaded; ${style.stale.length} stale cumulative stylesheet(s) detected.`:`${EXPECTED_STYLE} is missing.`));
-    checks.push(finding('query','Current cache-busting version',versionQueryMatches(script.url)&&versionQueryMatches(style.url),'Current cumulative asset version queries match v0.84.0, or an offline fixture omits query strings.'));
-    checks.push(finding('stage','Release Candidate stage',releaseStage==='release-candidate',`Workspace stage is ${releaseStage||'unset'}; expected release-candidate.`));
+    checks.push(finding('query','Current cache-busting version',versionQueryMatches(script.url)&&versionQueryMatches(style.url),'Current cumulative asset version queries match v1.0.0, or an offline fixture omits query strings.'));
+    checks.push(finding('stage','Release stage',['release-candidate','general-availability'].includes(releaseStage),`Workspace stage is ${releaseStage||'unset'}; expected release-candidate or general-availability.`));
     checks.push(finding('deployment-runtime','Inherited deployment hardening',Boolean(env.SCWorkspaceWordPressDeploymentHardening),env.SCWorkspaceWordPressDeploymentHardening?'v0.81 deployment hardening remains available.':'Deployment hardening runtime is unavailable.'));
     checks.push(finding('rc-runtime','Inherited Release Candidate runtime',Boolean(env.SCWorkspaceReleaseCandidateI),env.SCWorkspaceReleaseCandidateI?'Release Candidate runtime remains available.':'Release Candidate runtime is unavailable.'));
     const blocked=checks.filter(x=>x.state==='blocked').length;

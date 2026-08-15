@@ -41,7 +41,7 @@ class GuidedReconciliationContract(unittest.TestCase):
     def test_change_review_integration(self):
         self.assertIn('data-scw-change-reconcile',PHP); self.assertIn('SCWorkspaceProjectDiff',JS); self.assertIn('buildActiveReconciliation',JS)
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0840'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v0840'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '0.83.0'",REG)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v100'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v100'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '0.84.0'",REG)
     def test_accessibility_and_library_route(self):
         self.assertIn('@media(forced-colors:active)',CSS); self.assertIn('aria-live="polite"',PHP); self.assertEqual(MAN['canonical_library_path'],'/knowledge-libraries/'); self.assertIn('/knowledge-libraries/',PHP)
 if __name__=='__main__': unittest.main()

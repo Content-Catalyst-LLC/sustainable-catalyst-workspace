@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace General Availability Record",
+  "type": "object",
+  "required": [
+    "schema",
+    "releaseVersion",
+    "releaseOperator",
+    "productionUrl",
+    "checks",
+    "attestation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-general-availability/1.0"
+    },
+    "releaseVersion": {
+      "const": "1.0.0"
+    },
+    "releaseOperator": {
+      "type": "string"
+    },
+    "productionUrl": {
+      "type": "string"
+    },
+    "checks": {
+      "type": "object"
+    },
+    "attestation": {
+      "type": "boolean"
+    },
+    "releasedAt": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

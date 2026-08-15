@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace General Availability Certificate",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "status",
+    "generalAvailability",
+    "readinessValid",
+    "requiredCheckCount",
+    "completedCheckCount",
+    "humanAttestation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-general-availability-certificate/1.0"
+    },
+    "workspaceVersion": {
+      "const": "1.0.0"
+    },
+    "status": {
+      "enum": [
+        "released",
+        "hold"
+      ]
+    },
+    "generalAvailability": {
+      "type": "boolean"
+    },
+    "readinessValid": {
+      "type": "boolean"
+    },
+    "requiredCheckCount": {
+      "const": 8
+    },
+    "completedCheckCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "humanAttestation": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

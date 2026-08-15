@@ -11,7 +11,7 @@ COMP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-impo
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class T(unittest.TestCase):
  def test_01_lineage(self):
-  self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn('Version: 0.84.0',MAIN)
+  self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn('Version: 1.0.0',MAIN)
  def test_02_schema_stable(self):
   self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'));self.assertFalse(MAN['schema_migration_required']);self.assertTrue(MAN['migration']['import_export_compatibility_hardening_only_release']);self.assertFalse(MAN['migration']['import_export_canonical_data_rewrite'])
  def test_03_schemas(self):
@@ -34,7 +34,7 @@ class T(unittest.TestCase):
  def test_10_rest_contract(self):
   self.assertIn("'/import-export-compatibility-contract'",PHP);self.assertIn('public function import_export_compatibility_contract()',PHP);self.assertIn('/wp-json/sc-workspace/v1/import-export-compatibility-contract',MAN['rest_routes']);self.assertIn("'future_project_schema_downgrade' => false",PHP)
  def test_11_assets(self):
-  self.assertIn("'sc-workspace-import-export-compatibility-v1'",PHP);self.assertIn('sc-workspace-import-export-compatibility-v1.js',PHP);self.assertIn("'sc-workspace-v0840'",PHP);self.assertIn('workspace-v0.84.0.js',PHP);self.assertIn('workspace-v0.84.0.css',PHP)
+  self.assertIn("'sc-workspace-import-export-compatibility-v1'",PHP);self.assertIn('sc-workspace-import-export-compatibility-v1.js',PHP);self.assertIn("'sc-workspace-v100'",PHP);self.assertIn('workspace-v1.0.0.js',PHP);self.assertIn('workspace-v1.0.0.css',PHP)
  def test_12_existing_storage_compatibility(self):
   self.assertIn('if (raw.schemaVersion === 1 || raw.schema === 1)',APP);self.assertIn('if (raw.schemaVersion === 34) return migrateV34(raw);',APP);self.assertEqual(MAN['import_export_backward_compatibility']['supported_existing_storage_versions'],list(range(1,36)))
  def test_13_fixture_boundaries(self):
@@ -42,5 +42,5 @@ class T(unittest.TestCase):
  def test_14_governance(self):
   g=MAN['governance'];self.assertTrue(g['project_import_staged_review_required']);self.assertFalse(g['project_import_automatic_commit']);self.assertFalse(g['project_import_silent_overwrite']);self.assertTrue(g['project_import_new_local_copy_only']);self.assertFalse(g['future_project_schema_downgrade']);self.assertFalse(g['backward_compatibility_external_lookup']);self.assertFalse(g['backward_compatibility_server_pipeline'])
  def test_15_registry_history(self):
-  self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v0840'",REGPHP);self.assertIn("LEGACY_PENDING_KEY_V0650",REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.65.0.json').exists());self.assertTrue((ROOT/'history/workspace-product-record-v0.65.0.json').exists())
+  self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening'));self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v100'",REGPHP);self.assertIn("LEGACY_PENDING_KEY_V0650",REGPHP);self.assertTrue((ROOT/'history/release-manifest-v0.65.0.json').exists());self.assertTrue((ROOT/'history/workspace-product-record-v0.65.0.json').exists())
 if __name__=='__main__':unittest.main()
