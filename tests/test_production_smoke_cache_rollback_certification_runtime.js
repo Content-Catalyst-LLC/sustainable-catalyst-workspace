@@ -1,13 +1,13 @@
 const assert=require('assert');
 const A=require('../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-production-smoke-cache-rollback-v1.js');
 function node(url,attr){return {getAttribute:(k)=>k===attr?url:''};}
-function doc(script='https://example.test/workspace-v2.0.2.js?ver=2.0.2',style='https://example.test/workspace-v2.0.2.css?ver=2.0.2',extras=[]){return {querySelectorAll(sel){if(sel==='script[src]')return [node(script,'src'),...extras.map(x=>node(x,'src'))];if(sel==='link[rel="stylesheet"][href]')return [node(style,'href')];return [];}}}
-const root={dataset:{version:'2.0.2',releaseStage:'work-mode-cards-repair',scwDeploymentServerState:'server-ready'}};
-const env={SCWorkspaceIdentity:{workspaceVersion:'2.0.2'},SCWorkspaceWordPressDeploymentHardening:{},SCWorkspaceReleaseCandidateI:{},document:doc()};
+function doc(script='https://example.test/workspace-v2.0.3.js?ver=2.0.3',style='https://example.test/workspace-v2.0.3.css?ver=2.0.3',extras=[]){return {querySelectorAll(sel){if(sel==='script[src]')return [node(script,'src'),...extras.map(x=>node(x,'src'))];if(sel==='link[rel="stylesheet"][href]')return [node(style,'href')];return [];}}}
+const root={dataset:{version:'2.0.3',releaseStage:'root-scope-cockpit-recovery',scwDeploymentServerState:'server-ready'}};
+const env={SCWorkspaceIdentity:{workspaceVersion:'2.0.3'},SCWorkspaceWordPressDeploymentHardening:{},SCWorkspaceReleaseCandidateI:{},document:doc()};
 let r=A.assess(root,{env,document:env.document}); assert.equal(r.packageAutomatedGate,true); assert.equal(r.productionCertified,false); assert.equal(r.knownAutomatedBlockerCount,0); assert.equal(r.manualFieldItems.length,6);
 let staleDoc=doc(undefined,undefined,['https://example.test/workspace-v0.84.0.js?ver=0.84.0']); let stale=A.assess(root,{env:{...env,document:staleDoc},document:staleDoc}); assert.equal(stale.packageAutomatedGate,false); assert(stale.checks.some(x=>x.id==='script'&&x.state==='blocked'));
 let bad=A.assess({dataset:{version:'0.84.0',releaseStage:'ga-stabilization',scwDeploymentServerState:'server-ready'}},{env,document:env.document}); assert.equal(bad.packageAutomatedGate,false);
-const rep=A.report('2.0.2',r); assert.equal(rep.productionCertified,false); assert.equal(rep.rollbackRelease,'2.0.1'); assert.equal(rep.privacy.projectContentIncluded,false); assert.equal(rep.governance.automaticRollback,false);
-const list=A.checklist('2.0.2'); assert.equal(list.rollbackRelease,'2.0.1'); assert.equal(list.items.length,6); assert.equal(list.governance.automaticCompletion,false);
-const c=A.contract(); assert.equal(c.releaseVersion,'2.0.2'); assert.equal(c.previousRelease,'2.0.1'); assert.equal(c.liveProductionChecksManual,true); assert.equal(c.automaticProductionCertification,false);
+const rep=A.report('2.0.3',r); assert.equal(rep.productionCertified,false); assert.equal(rep.rollbackRelease,'2.0.2'); assert.equal(rep.privacy.projectContentIncluded,false); assert.equal(rep.governance.automaticRollback,false);
+const list=A.checklist('2.0.3'); assert.equal(list.rollbackRelease,'2.0.2'); assert.equal(list.items.length,6); assert.equal(list.governance.automaticCompletion,false);
+const c=A.contract(); assert.equal(c.releaseVersion,'2.0.3'); assert.equal(c.previousRelease,'2.0.2'); assert.equal(c.liveProductionChecksManual,true); assert.equal(c.automaticProductionCertification,false);
 console.log('PASS - current inherited Production Smoke, Cache & Rollback Certification runtime');

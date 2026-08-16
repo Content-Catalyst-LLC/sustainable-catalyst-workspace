@@ -15,9 +15,9 @@ class SharedReviewRooms(unittest.TestCase):
  def test_07_boundaries(self):
   g=MAN['shared_review_rooms'];self.assertTrue(g['permissions_are_local_governance_records']);self.assertFalse(g['server_acl_created']);self.assertFalse(g['automatic_invitation_delivery']);self.assertFalse(g['live_coediting']);self.assertFalse(g['team_cloud_storage']);self.assertFalse(g['automatic_canonical_mutation']);self.assertFalse(g['automatic_ai']);self.assertFalse(g['behavioral_telemetry'])
  def test_08_ui(self): self.assertIn('Shared Review Rooms',PHP);self.assertIn('Freeze review snapshot',PHP);self.assertIn('Record invitation',PHP);self.assertIn('Controlled review, not a shared tenant',PHP)
- def test_09_runtime(self): self.assertIn('data-release-stage="work-mode-cards-repair"',PHP);self.assertIn('workspace-v2.0.2.js',PHP);self.assertIn('sc-workspace-review-rooms-v1',PHP);self.assertIn('SCWorkspaceReviewRoomsUI',UI)
- def test_10_deployment(self): self.assertIn("PREVIOUS_RELEASE = '2.0.1'",DEP);self.assertIn("ROLLBACK_RELEASE = '2.0.1'",DEP);self.assertIn('class-sc-workspace-review-rooms.php',DEP)
- def test_11_identity(self): self.assertIn('Version: 2.0.2',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '2.0.2'",MAIN)
+ def test_09_runtime(self): self.assertIn('data-release-stage="root-scope-cockpit-recovery"',PHP);self.assertIn('workspace-v2.0.3.js',PHP);self.assertIn('sc-workspace-review-rooms-v1',PHP);self.assertIn('SCWorkspaceReviewRoomsUI',UI)
+ def test_10_deployment(self): self.assertIn("PREVIOUS_RELEASE = '2.0.2'",DEP);self.assertIn("ROLLBACK_RELEASE = '2.0.2'",DEP);self.assertIn('class-sc-workspace-review-rooms.php',DEP)
+ def test_11_identity(self): self.assertIn('Version: 2.0.3',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '2.0.3'",MAIN)
  def test_12_schemas(self):
   for f in ['sc-workspace-shared-review-room-v1.schema.json','sc-workspace-review-room-invitation-v1.schema.json','sc-workspace-review-room-snapshot-v1.schema.json','sc-workspace-review-room-event-v1.schema.json','sc-workspace-review-room-export-v1.schema.json']: self.assertTrue((R/'schemas'/f).exists())
  def test_13_model(self): self.assertIn("const STORAGE_KEY='sc_workspace_review_rooms_v1'",JS);self.assertIn('freezeSnapshot',JS);self.assertIn('exportRoom',JS);self.assertIn('serverAclCreated:false',JS)

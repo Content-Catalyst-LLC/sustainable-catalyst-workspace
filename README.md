@@ -1,3 +1,7 @@
+# Sustainable Catalyst Workspace v2.0.3 — Workspace Root Scope & Cockpit CSS Recovery
+
+**Current stable patch:** restores the live `.scw-root` application scope so cockpit and Work Mode Card CSS selectors match the rendered DOM. No data migration; v2.0.2 is the rollback baseline.
+
 # Sustainable Catalyst Workspace v2.0.2 — Work Mode Cards, Cockpit Hierarchy & Navigation-State Repair
 
 v2.0.2 repairs the Workspace Home cockpit by replacing the four Work Mode button/card hybrids with dedicated navigation cards. Evidence & objects, Analysis, Decision, and Compose now use equal-height card hierarchy, strong title/quiet copy/action structure, explicit active and disabled states, accessible focus treatment, and responsive stacking while preserving the existing project routes and mode semantics.

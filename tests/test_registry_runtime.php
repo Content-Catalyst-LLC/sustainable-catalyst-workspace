@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
 define('ABSPATH', __DIR__);
-define('SC_WORKSPACE_VERSION', '2.0.2');
+define('SC_WORKSPACE_VERSION', '2.0.3');
 $GLOBALS['scw_options'] = array();
 $GLOBALS['scw_actions'] = array();
 function get_option($key, $default = false) { return array_key_exists($key, $GLOBALS['scw_options']) ? $GLOBALS['scw_options'][$key] : $default; }
@@ -22,8 +22,8 @@ assert_true(SC_Workspace_Registry::register_product(), 'direct registry registra
 $r = get_option(SC_Workspace_Registry::OPTION_KEY);
 assert_true(isset($r['catalyst-intelligence']), 'existing commercial record preserved');
 assert_true(isset($r['sustainable-catalyst-workspace']), 'Workspace exists in direct registry');
-assert_true($r['sustainable-catalyst-workspace']['public_version'] === '2.0.2', 'Workspace version updated');
-assert_true($r['sustainable-catalyst-workspace']['previous_version'] === '2.0.1', 'previous version recorded');
+assert_true($r['sustainable-catalyst-workspace']['public_version'] === '2.0.3', 'Workspace version updated');
+assert_true($r['sustainable-catalyst-workspace']['previous_version'] === '2.0.2', 'previous version recorded');
 assert_true($r['sustainable-catalyst-workspace']['display_order'] === 400, 'Workspace remains before Catalyst Intelligence');
 assert_true($r['sustainable-catalyst-workspace']['custom_preserved'] === 'yes', 'unknown existing fields preserved');
 assert_true(get_option(SC_Workspace_Registry::BACKUP_KEY) === $before, 'pre-v2.0.2 registry backup created');
@@ -45,7 +45,7 @@ $count = 0;
 foreach ($r['products'] as $product) {
     if (($product['canonical_id'] ?? '') === 'sustainable-catalyst-workspace') {
         $count++;
-        assert_true($product['public_version'] === '2.0.2', 'list Workspace version updated');
+        assert_true($product['public_version'] === '2.0.3', 'list Workspace version updated');
     }
 }
 assert_true($count === 1, 'Workspace appears exactly once');

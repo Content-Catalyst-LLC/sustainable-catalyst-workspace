@@ -1,1 +1,1 @@
-from validate_work_mode_cards_cockpit_hierarchy import *
+from validate_root_scope_cockpit_css_recovery import *
