@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-2-0-candidate-boundary-v1.schema.json",
+  "title": "Workspace 2.0 Candidate Boundary",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-2-0-candidate-boundary/1.0"
+    },
+    "designation": {
+      "enum": [
+        "not-candidate",
+        "2.0-candidate"
+      ]
+    },
+    "humanConfirmed": {
+      "type": "boolean"
+    },
+    "v2SchemaIntroduced": {
+      "const": false
+    },
+    "automaticPromotion": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "designation",
+    "humanConfirmed",
+    "v2SchemaIntroduced",
+    "automaticPromotion"
+  ]
+}

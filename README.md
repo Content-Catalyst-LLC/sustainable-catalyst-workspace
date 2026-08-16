@@ -1,3 +1,7 @@
+# Sustainable Catalyst Workspace v1.15.0 — 1.x Product Maturity & 2.0 Candidate
+
+v1.15.0 closes the planned Workspace 1.x maturity line with an evidence-based Product Maturity Dossier, compatibility matrix, 1.x deprecation register, and a human-controlled 2.0 candidate boundary. There is no numeric readiness score, no v2 schema, no automatic migration, and no automatic 2.0 promotion. Storage 35 / Project 20.0 / Export 20.0 remain frozen, with v1.14.0 as the rollback baseline.
+
 # Sustainable Catalyst Workspace v1.14.0 — Public Research Packages & Portable Knowledge Objects
 
 Current release: explicit private-to-public research projection with portable knowledge objects, provenance, licensing, SHA-256 integrity, and local export. Canonical Workspace records remain private by default and unchanged.

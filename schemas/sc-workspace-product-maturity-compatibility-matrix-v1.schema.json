@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-product-maturity-compatibility-matrix-v1.schema.json",
+  "title": "Workspace Product Maturity Compatibility Matrix",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-product-maturity-compatibility-matrix/1.0"
+    },
+    "entries": {
+      "type": "array"
+    },
+    "v1ApiCompatibilityPreserved": {
+      "const": true
+    }
+  },
+  "required": [
+    "schema",
+    "entries",
+    "v1ApiCompatibilityPreserved"
+  ]
+}

@@ -14,8 +14,8 @@ final class SC_Workspace_Production_Certification {
     const CONTRACT_SCHEMA = 'sc-workspace-production-certification-contract/1.0';
     const REPORT_SCHEMA = 'sc-workspace-production-certification-report/1.0';
     const CHECKLIST_SCHEMA = 'sc-workspace-production-certification-checklist/1.0';
-    const PREVIOUS_RELEASE = '1.13.0';
-    const ROLLBACK_RELEASE = '1.13.0';
+    const PREVIOUS_RELEASE = '1.14.0';
+    const ROLLBACK_RELEASE = '1.14.0';
 
     public static function snapshot() {
         $deployment = class_exists('SC_Workspace_Deployment_Hardening')
@@ -28,8 +28,8 @@ final class SC_Workspace_Production_Certification {
             'release_stage' => 'release-candidate',
             'package_automated_gate' => $server_ready,
             'deployment_server_ready' => $server_ready,
-            'expected_script' => 'workspace-v1.14.0.js',
-            'expected_style' => 'workspace-v1.14.0.css',
+            'expected_script' => 'workspace-v1.15.0.js',
+            'expected_style' => 'workspace-v1.15.0.css',
             'asset_cache_strategy' => 'versioned-filename-plus-version-query',
             'rollback_release' => self::ROLLBACK_RELEASE,
             'rollback_schema_compatible' => true,

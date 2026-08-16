@@ -11,8 +11,8 @@ class PublicResearchPackages(unittest.TestCase):
   g=MAN['public_research_packages'];
   for k in ['canonical_workspace_records_mutated','automatic_publication','automatic_upload','automatic_network_request','automatic_ai','behavioral_telemetry','query_telemetry','schema_migration_required']: self.assertFalse(g[k])
  def test_06_integrity(self): self.assertEqual(MAN['public_research_packages']['integrity_algorithm'],'SHA-256');self.assertIn('sha256Hex',JS)
- def test_07_wordpress(self): self.assertIn('Version: 1.14.0',MAIN);self.assertIn("'/public-research-packages-contract'",PHP);self.assertIn('data-scw-public-research-packages',PHP);self.assertIn('data-release-stage="public-research-packages"',PHP)
- def test_08_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.13.0'",DEP);self.assertIn('class-sc-workspace-public-research-packages.php',DEP);self.assertIn('workspace-v1.14.0.js',DEP)
+ def test_07_wordpress(self): self.assertIn('Version: 1.15.0',MAIN);self.assertIn("'/public-research-packages-contract'",PHP);self.assertIn('data-scw-public-research-packages',PHP);self.assertIn('data-release-stage="product-maturity"',PHP)
+ def test_08_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.14.0'",DEP);self.assertIn('class-sc-workspace-public-research-packages.php',DEP);self.assertIn('workspace-v1.15.0.js',DEP)
  def test_09_registry(self): self.assertEqual((REG['public_version'],REG['previous_version']),('1.14.0','1.13.0'))
  def test_10_contract(self): self.assertIn('sc-workspace-portable-knowledge-object/1.0',H);self.assertIn('explicitPublicationConfirmationRequired',H)
 if __name__=='__main__':unittest.main()

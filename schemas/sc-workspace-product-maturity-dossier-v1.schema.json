@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-product-maturity-dossier-v1.schema.json",
+  "title": "Workspace Product Maturity Dossier",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-product-maturity-dossier/1.0"
+    },
+    "overallState": {
+      "enum": [
+        "ready",
+        "attention",
+        "blocked"
+      ]
+    },
+    "dimensions": {
+      "type": "array",
+      "minItems": 12
+    },
+    "numericScore": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "overallState",
+    "dimensions",
+    "numericScore"
+  ]
+}

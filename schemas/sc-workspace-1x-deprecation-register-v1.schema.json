@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-1x-deprecation-register-v1.schema.json",
+  "title": "Workspace 1.x Deprecation Register",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-1x-deprecation-register/1.0"
+    },
+    "items": {
+      "type": "array"
+    },
+    "automaticRemoval": {
+      "const": false
+    }
+  },
+  "required": [
+    "schema",
+    "items",
+    "automaticRemoval"
+  ]
+}
