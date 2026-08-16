@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v203';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v203';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v204';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v204';
+    const LEGACY_PENDING_KEY_V203 = 'sc_workspace_registry_pending_v203';
     const LEGACY_PENDING_KEY_V202 = 'sc_workspace_registry_pending_v202';
     const LEGACY_PENDING_KEY_V201 = 'sc_workspace_registry_pending_v201';
     const LEGACY_PENDING_KEY_V200 = 'sc_workspace_registry_pending_v200';
@@ -352,12 +353,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '2.0.2',
+            'previous_version' => '2.0.3',
             'release_date' => '2026-08-16',
-            'release_name' => 'Workspace Root Scope & Cockpit CSS Recovery',
-            'change_summary' => 'Restores the missing scw-root class on the live Workspace shell so mature root-scoped cockpit, layout, and Work Mode Card styles match the rendered DOM instead of falling back to theme controls.',
+            'release_name' => 'Visual Regression, Theme Isolation & Cross-Viewport Hardening',
+            'change_summary' => 'Hardens rendered Workspace controls and cockpit layouts against WordPress/theme CSS interference across desktop, tablet, and mobile viewports.',
             'superseded_by' => '',
-            'manual_notes' => 'Workspace v2.0.3 is a surgical CSS-scope recovery. Storage 35 / Project 20.0 / Export 20.0 remain unchanged; no project migration is required.',
+            'manual_notes' => 'Workspace v2.0.4 hardens rendered visual behavior across WordPress themes and desktop/tablet/mobile viewports. Storage 35 / Project 20.0 / Export 20.0 remain unchanged; no migration is required.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

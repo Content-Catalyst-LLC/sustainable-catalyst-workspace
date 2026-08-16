@@ -1,1 +1,1 @@
-from validate_root_scope_cockpit_css_recovery import *
+from validate_visual_regression_theme_isolation import *

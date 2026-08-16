@@ -1,3 +1,7 @@
+# Sustainable Catalyst Workspace v2.0.4 — Visual Regression, Theme Isolation & Cross-Viewport Hardening
+
+v2.0.4 hardens the live WordPress Workspace against theme-level CSS interference and viewport regressions. It adds a rendered visual-regression matrix at 1440, 1024, 768, and 390 pixels, protects the scoped button/card primitives from hostile theme rules, and requires zero horizontal overflow in the tested Workspace surfaces. No routing, data, storage, project, or export schema changes are introduced.
+
 # Sustainable Catalyst Workspace v2.0.3 — Workspace Root Scope & Cockpit CSS Recovery
 
 **Current stable patch:** restores the live `.scw-root` application scope so cockpit and Work Mode Card CSS selectors match the rendered DOM. No data migration; v2.0.2 is the rollback baseline.

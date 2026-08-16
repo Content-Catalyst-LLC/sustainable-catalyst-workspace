@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php').read_text()
 MAIN = (ROOT / 'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
 REGPHP = (ROOT / 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
-CSS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v2.0.3.css').read_text()
+CSS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v2.0.4.css').read_text()
 JS = (ROOT / 'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-focused-shell-v1.js').read_text()
 MAN = json.loads((ROOT / 'release-manifest-v0.66.0.json').read_text())
 REG = json.loads((ROOT / 'registry/workspace-product-record-v0.66.0.json').read_text())
@@ -21,12 +21,12 @@ class FocusedApplicationShellContract(unittest.TestCase):
         self.assertFalse(MAN['focused_application_shell']['schema_migration'])
 
     def test_plugin_version(self):
-        self.assertIn('Version: 2.0.3', MAIN)
-        self.assertIn("define('SC_WORKSPACE_VERSION', '2.0.3');", MAIN)
+        self.assertIn('Version: 2.0.4', MAIN)
+        self.assertIn("define('SC_WORKSPACE_VERSION', '2.0.4');", MAIN)
 
     def test_current_assets(self):
-        self.assertIn('assets/css/workspace-v2.0.3.css', PHP)
-        self.assertIn('assets/js/workspace-v2.0.3.js', PHP)
+        self.assertIn('assets/css/workspace-v2.0.4.css', PHP)
+        self.assertIn('assets/js/workspace-v2.0.4.js', PHP)
         self.assertIn('assets/js/sc-workspace-focused-shell-v1.js', PHP)
 
     def test_top_level_hidden_enforcement(self):
@@ -61,7 +61,7 @@ class FocusedApplicationShellContract(unittest.TestCase):
         self.assertIn('visibilityPlan', JS)
 
     def test_registry_lineage(self):
-        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v203'", REGPHP)
+        self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v204'", REGPHP)
         self.assertIn('LEGACY_PENDING_KEY_V0590', REGPHP)
         self.assertEqual(REG['public_version'], '0.66.0')
         self.assertEqual(REG['previous_version'], '0.65.0')

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Visual Regression Contract",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "viewportMatrix",
+    "hostileThemeFixture"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-visual-regression/2.0"
+    },
+    "workspaceVersion": {
+      "type": "string"
+    },
+    "viewportMatrix": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "hostileThemeFixture": {
+      "type": "boolean"
+    }
+  }
+}
