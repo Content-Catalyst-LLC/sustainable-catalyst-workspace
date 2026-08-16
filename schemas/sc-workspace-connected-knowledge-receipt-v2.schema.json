@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-connected-knowledge-receipt/2.0",
+  "title": "Connected Knowledge Receipt",
+  "type": "object",
+  "required": [
+    "schema",
+    "createdAt",
+    "bodyContentIncluded",
+    "automaticUpload",
+    "canonicalMutation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-knowledge-receipt/2.0"
+    },
+    "bodyContentIncluded": {
+      "const": false
+    },
+    "automaticUpload": {
+      "const": false
+    },
+    "canonicalMutation": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

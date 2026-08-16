@@ -1,3 +1,11 @@
+# Sustainable Catalyst Workspace v2.0.0 — Connected Knowledge Workspace
+
+v2.0.0 is the stable major-version promotion of the mature Workspace 1.x line. It introduces one Connected Knowledge v2 context boundary across Workspace, Knowledge Library, Site Intelligence, Lab, Workbench, Decision Studio, review/audit, public knowledge, and the Developer API while preserving specialist ownership and explicit user control.
+
+The major-version promotion does **not** force a project-data migration. Storage 35, `sc-workspace-project/20.0`, and `sc-workspace-project-export/20.0` remain accepted and supported. Existing v1 REST/API contracts remain available; any future v2-native project schema requires a separately governed compatibility and migration contract. Exact predecessor/rollback: v1.15.0.
+
+See `RELEASE_NOTES_2.0.0.md` and `docs/CONNECTED_KNOWLEDGE_WORKSPACE_V200.md`.
+
 # Sustainable Catalyst Workspace v1.15.0 — 1.x Product Maturity & 2.0 Candidate
 
 v1.15.0 closes the planned Workspace 1.x maturity line with an evidence-based Product Maturity Dossier, compatibility matrix, 1.x deprecation register, and a human-controlled 2.0 candidate boundary. There is no numeric readiness score, no v2 schema, no automatic migration, and no automatic 2.0 promotion. Storage 35 / Project 20.0 / Export 20.0 remain frozen, with v1.14.0 as the rollback baseline.

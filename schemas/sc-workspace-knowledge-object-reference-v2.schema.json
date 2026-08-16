@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-knowledge-object-reference/2.0",
+  "title": "Knowledge Object Reference",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "family",
+    "bodyIncluded"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-knowledge-object-reference/2.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family": {
+      "type": "string"
+    },
+    "bodyIncluded": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

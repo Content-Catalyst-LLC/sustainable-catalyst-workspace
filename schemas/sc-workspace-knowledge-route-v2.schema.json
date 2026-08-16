@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-knowledge-route/2.0",
+  "title": "Connected Knowledge Route",
+  "type": "object",
+  "required": [
+    "schema",
+    "destination",
+    "url",
+    "stableIdsOnly",
+    "contentInUrl"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-knowledge-route/2.0"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "stableIdsOnly": {
+      "const": true
+    },
+    "contentInUrl": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

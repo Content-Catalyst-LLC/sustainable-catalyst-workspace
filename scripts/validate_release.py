@@ -1,1 +1,1 @@
-from validate_product_maturity import *
+from validate_connected_knowledge_workspace_v2 import *

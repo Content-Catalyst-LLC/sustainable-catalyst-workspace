@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v1150';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v1150';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v200';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v200';
+    const LEGACY_PENDING_KEY_V1150 = 'sc_workspace_registry_pending_v1150';
     const LEGACY_PENDING_KEY_V1140 = 'sc_workspace_registry_pending_v1140';
     const LEGACY_PENDING_KEY_V1130 = 'sc_workspace_registry_pending_v1130';
     const LEGACY_PENDING_KEY_V1120 = 'sc_workspace_registry_pending_v1120';
@@ -182,6 +183,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V1150);
         delete_option(self::LEGACY_PENDING_KEY_V1140);
         delete_option(self::LEGACY_PENDING_KEY_V1130);
         delete_option(self::LEGACY_PENDING_KEY_V1120);
@@ -344,12 +346,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.14.0',
-            'release_date' => '2026-08-15',
-            'release_name' => '1.x Product Maturity & 2.0 Candidate',
-            'change_summary' => 'Closes the 1.x maturity line with an evidence-based Product Maturity Dossier, compatibility and deprecation registers, and a human-controlled 2.0 candidate boundary without introducing v2 schemas or automatic migration.',
+            'previous_version' => '1.15.0',
+            'release_date' => '2026-08-16',
+            'release_name' => 'Connected Knowledge Workspace',
+            'change_summary' => 'Promotes the mature 1.x line into a stable Connected Knowledge Workspace with a common v2 context contract, preserved v1 compatibility, and no forced data migration.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Candidate designation is human-controlled and does not itself promote Workspace to 2.0.',
+            'manual_notes' => 'Workspace 2.0 preserves Storage 35 / Project 20.0 / Export 20.0 as compatible launch contracts. Future v2-native schemas require an explicit migration contract rather than an implicit major-version rewrite.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

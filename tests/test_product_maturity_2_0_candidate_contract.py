@@ -8,8 +8,8 @@ class ProductMaturity(unittest.TestCase):
  def test_04_dimensions(self): self.assertEqual(len(MAN['product_maturity']['dimensions']),12);self.assertEqual(MAN['product_maturity']['states'],['ready','attention','blocked']);self.assertFalse(MAN['product_maturity']['numeric_score'])
  def test_05_candidate_boundary(self):
   g=MAN['product_maturity'];self.assertTrue(g['human_candidate_designation_required']);self.assertTrue(g['unresolved_blocker_prevents_candidate']);self.assertFalse(g['automatic_2_0_promotion']);self.assertFalse(g['v2_schema_introduced']);self.assertFalse(g['automatic_migration']);self.assertTrue(g['v1_api_compatibility_preserved'])
- def test_06_wordpress(self): self.assertIn('Version: 1.15.0',MAIN);self.assertIn("'/product-maturity-contract'",PHP);self.assertIn('data-scw-product-maturity',PHP);self.assertIn('data-release-stage="product-maturity"',PHP)
- def test_07_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.14.0'",DEP);self.assertIn('class-sc-workspace-product-maturity.php',DEP);self.assertIn('workspace-v1.15.0.js',DEP)
+ def test_06_wordpress(self): self.assertIn('Version: 2.0.0',MAIN);self.assertIn("'/product-maturity-contract'",PHP);self.assertIn('data-scw-product-maturity',PHP);self.assertIn('data-release-stage="connected-knowledge-workspace"',PHP)
+ def test_07_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.15.0'",DEP);self.assertIn('class-sc-workspace-product-maturity.php',DEP);self.assertIn('workspace-v2.0.0.js',DEP)
  def test_08_registry(self): self.assertEqual((REG['public_version'],REG['previous_version']),('1.15.0','1.14.0'))
  def test_09_runtime(self): self.assertIn('sc-workspace-2-0-candidate-boundary/1.0',JS);self.assertIn('numericScore:false',JS);self.assertIn('function candidateBoundary',JS)
  def test_10_files(self):

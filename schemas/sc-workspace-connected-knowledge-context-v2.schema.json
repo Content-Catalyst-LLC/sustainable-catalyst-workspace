@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-connected-knowledge-context/2.0",
+  "title": "Connected Knowledge Context",
+  "type": "object",
+  "required": [
+    "schema",
+    "createdAt",
+    "projectCount",
+    "referenceCount",
+    "references"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-knowledge-context/2.0"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "projectCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "referenceCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "references": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true
+}

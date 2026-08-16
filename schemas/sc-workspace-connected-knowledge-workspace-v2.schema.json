@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-connected-knowledge-workspace/2.0",
+  "title": "Connected Knowledge Workspace v2 Contract",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "surfaces",
+    "contextFamilies"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-knowledge-workspace/2.0"
+    },
+    "workspaceVersion": {
+      "const": "2.0.0"
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 11
+    },
+    "contextFamilies": {
+      "type": "array",
+      "minItems": 14
+    }
+  },
+  "additionalProperties": true
+}

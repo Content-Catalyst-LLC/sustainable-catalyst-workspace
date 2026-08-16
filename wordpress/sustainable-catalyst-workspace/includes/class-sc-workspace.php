@@ -29,6 +29,7 @@ final class SC_Workspace {
     public function retry_registry_registration() {
         if (
             get_option(SC_Workspace_Registry::PENDING_KEY, '') === '1' ||
+            get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V1150, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0800, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0790, '') === '1' ||
             get_option(SC_Workspace_Registry::LEGACY_PENDING_KEY_V0780, '') === '1' ||
@@ -477,6 +478,11 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v1', '/product-maturity-contract', array(
             'methods' => 'GET',
             'callback' => array($this, 'product_maturity_contract'),
+            'permission_callback' => '__return_true',
+        ));
+        register_rest_route('sc-workspace/v2', '/connected-knowledge-contract', array(
+            'methods' => 'GET',
+            'callback' => array($this, 'connected_knowledge_contract'),
             'permission_callback' => '__return_true',
         ));
         register_rest_route('sc-workspace/v1', '/research-operations-contract', array(
@@ -3002,6 +3008,10 @@ public function research_templates_contract() {
         return rest_ensure_response(SC_Workspace_Product_Maturity::contract());
     }
 
+    public function connected_knowledge_contract() {
+        return rest_ensure_response(SC_Workspace_Connected_Knowledge::contract());
+    }
+
     public function platform_contract() {
         return rest_ensure_response(array(
             'schema' => 'sc-workspace-platform-contract/1.2',
@@ -3090,8 +3100,8 @@ public function research_templates_contract() {
 
     private function enqueue_assets() {
         wp_enqueue_style(
-            'sc-workspace-v1150',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v1.15.0.css',
+            'sc-workspace-v200',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v2.0.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -3703,9 +3713,24 @@ public function research_templates_contract() {
         );
 
         wp_enqueue_script(
-            'sc-workspace-v1150',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v1.15.0.js',
-            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1', 'sc-workspace-institutional-audit-studio-v1', 'sc-workspace-institutional-audit-studio-ui-v1', 'sc-workspace-research-operations-v1', 'sc-workspace-research-operations-ui-v1', 'sc-workspace-developer-sdk-v1', 'sc-workspace-developer-api-ui-v1', 'sc-workspace-institutional-scale-hardening-v1', 'sc-workspace-institutional-scale-hardening-ui-v1', 'sc-workspace-connected-intelligence-v1', 'sc-workspace-connected-intelligence-ui-v1', 'sc-workspace-public-research-packages-v1', 'sc-workspace-public-research-packages-ui-v1', 'sc-workspace-product-maturity-v1', 'sc-workspace-product-maturity-ui-v1'),
+            'sc-workspace-connected-knowledge-v2',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-connected-knowledge-v2.js',
+            array('sc-workspace-connected-intelligence-v1', 'sc-workspace-product-maturity-v1'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+        wp_enqueue_script(
+            'sc-workspace-connected-knowledge-ui-v2',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-connected-knowledge-ui-v2.js',
+            array('sc-workspace-connected-knowledge-v2'),
+            SC_WORKSPACE_VERSION,
+            true
+        );
+
+        wp_enqueue_script(
+            'sc-workspace-v200',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v2.0.0.js',
+            array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1', 'sc-workspace-institutional-audit-studio-v1', 'sc-workspace-institutional-audit-studio-ui-v1', 'sc-workspace-research-operations-v1', 'sc-workspace-research-operations-ui-v1', 'sc-workspace-developer-sdk-v1', 'sc-workspace-developer-api-ui-v1', 'sc-workspace-institutional-scale-hardening-v1', 'sc-workspace-institutional-scale-hardening-ui-v1', 'sc-workspace-connected-intelligence-v1', 'sc-workspace-connected-intelligence-ui-v1', 'sc-workspace-public-research-packages-v1', 'sc-workspace-public-research-packages-ui-v1', 'sc-workspace-product-maturity-v1', 'sc-workspace-product-maturity-ui-v1', 'sc-workspace-connected-knowledge-v2', 'sc-workspace-connected-knowledge-ui-v2'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3713,56 +3738,56 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-production-signoff-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-signoff-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1'),
+            array('sc-workspace-v200', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-readiness-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-readiness-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
+            array('sc-workspace-v200', 'sc-workspace-ga-readiness-v1', 'sc-workspace-production-signoff-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-general-availability-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-general-availability-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
+            array('sc-workspace-v200', 'sc-workspace-general-availability-v1', 'sc-workspace-ga-readiness-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-ga-stabilization-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-ga-stabilization-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
+            array('sc-workspace-v200', 'sc-workspace-ga-stabilization-v1', 'sc-workspace-general-availability-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-workflow-guidance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-workflow-guidance-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-workflow-guidance-v1'),
+            array('sc-workspace-v200', 'sc-workspace-workflow-guidance-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-product-help-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-product-help-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-product-help-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-security-privacy-audit-ii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-security-privacy-audit-ii-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-institutional-validation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-institutional-validation-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-institutional-validation-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3773,7 +3798,7 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-focused-shell-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-focused-shell-v1.js',
-            array('sc-workspace-v1150'),
+            array('sc-workspace-v200'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3809,14 +3834,14 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-long-session-performance-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-long-session-performance-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-long-session-performance-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-accessibility-performance-final-audit-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-accessibility-performance-final-audit-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3824,35 +3849,35 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-defect-closure-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-defect-closure-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-release-candidate-i-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-release-candidate-i-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-wordpress-deployment-hardening-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-production-smoke-cache-rollback-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-production-smoke-cache-rollback-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
         wp_enqueue_script(
             'sc-workspace-recovery-disaster-simulation-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-recovery-disaster-simulation-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
@@ -3860,12 +3885,12 @@ public function research_templates_contract() {
         wp_enqueue_script(
             'sc-workspace-public-beta-iii-ui-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-public-beta-iii-ui-v1.js',
-            array('sc-workspace-v1150', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
+            array('sc-workspace-v200', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-browser-compatibility-v1'),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-v1150', 'SCWorkspaceIdentity', array(
+        wp_localize_script('sc-workspace-v200', 'SCWorkspaceIdentity', array(
             'authenticated' => $authenticated,
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'displayName' => $authenticated && $user ? $user->display_name : '',
@@ -3905,7 +3930,7 @@ public function research_templates_contract() {
         ob_start();
         ?>
         <?php $deployment_state = SC_Workspace_Deployment_Hardening::diagnostics(); ?>
-        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="product-maturity" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v1.15.0.js" data-scw-deployment-expected-style="workspace-v1.15.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="connected-knowledge-workspace" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v2.0.0.js" data-scw-deployment-expected-style="workspace-v2.0.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>
@@ -5237,6 +5262,15 @@ public function research_templates_contract() {
                 <div class="scw-auto-governance" role="note"><strong>Automation prepares work; it does not decide or mutate.</strong><span>No routine performs background network requests, automatic imports, automatic AI calls, automatic task creation, source verification, synthesis replacement, or canonical data mutation. Imported routines never execute automatically.</span></div>
             </section>
 
+
+            <section class="scw-connected-knowledge" data-scw-workspace-section="home" data-scw-connected-knowledge aria-labelledby="scw-connected-knowledge-title">
+                <div class="scw-review-rooms-head"><div><span>V2.0 / CONNECTED KNOWLEDGE</span><h2 id="scw-connected-knowledge-title">Connected Knowledge Workspace</h2><p>Use one explicit, provenance-aware context map across Workspace projects, research, Knowledge Library, Site Intelligence, Lab, Workbench, Decision Studio, review, audit, public knowledge, and developer extensions. Existing specialist products remain the canonical owners of their work.</p></div></div>
+                <div class="scw-scale-hardening-grid">
+                    <section class="scw-collab-contract-panel"><div class="scw-knowledge-panel-head"><span>01 / CONTEXT MAP</span><h3>See the connected knowledge boundary</h3></div><p>Build an ID-first view of the active local Workspace. Record bodies are not copied into the map.</p><div class="scw-collab-contract-actions"><button class="scw-button scw-button-primary" type="button" data-scw-connected-knowledge-build>Build context map</button><button class="scw-button" type="button" data-scw-connected-knowledge-export>Export continuity receipt</button></div><p data-scw-connected-knowledge-status role="status" aria-live="polite">No Connected Knowledge map has been prepared.</p></section>
+                    <section class="scw-collab-contract-panel"><div class="scw-knowledge-panel-head"><span>02 / CONNECTED SURFACES</span><h3>Prepare a governed route</h3></div><div class="scw-collab-contract-actions"><button class="scw-button" type="button" data-scw-connected-knowledge-route="knowledge-library">Library</button><button class="scw-button" type="button" data-scw-connected-knowledge-route="site-intelligence">Site Intelligence</button><button class="scw-button" type="button" data-scw-connected-knowledge-route="lab">Lab</button><button class="scw-button" type="button" data-scw-connected-knowledge-route="workbench">Workbench</button><button class="scw-button" type="button" data-scw-connected-knowledge-route="decision-studio">Decision Studio</button></div><pre data-scw-connected-knowledge-output>No context map prepared.</pre></section>
+                </div>
+                <div class="scw-api-governance" role="note"><strong>2.0 connects context; it does not seize ownership.</strong><span>v1 REST contracts remain available. Storage 35 / Project 20.0 / Export 20.0 remain compatible. There is no forced data migration, background federation, automatic specialist execution, automatic upload, automatic return commit, or hidden telemetry.</span></div>
+            </section>
 
             <section class="scw-connected-intelligence" data-scw-workspace-section="home" data-scw-connected-intelligence aria-labelledby="scw-connected-intelligence-title">
                 <div class="scw-review-rooms-head"><div><span>V1.13 / CONNECTED INTELLIGENCE</span><h2 id="scw-connected-intelligence-title">Connected Intelligence Workspace</h2><p>Carry explicit project context into the Knowledge Library, Site Intelligence, Lab, Workbench, or Decision Studio through one provenance-preserving context envelope. Specialist products keep their own execution domains and canonical records.</p></div></div>
