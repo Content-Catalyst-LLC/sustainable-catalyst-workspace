@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v200';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v200';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v201';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v201';
+    const LEGACY_PENDING_KEY_V200 = 'sc_workspace_registry_pending_v200';
     const LEGACY_PENDING_KEY_V1150 = 'sc_workspace_registry_pending_v1150';
     const LEGACY_PENDING_KEY_V1140 = 'sc_workspace_registry_pending_v1140';
     const LEGACY_PENDING_KEY_V1130 = 'sc_workspace_registry_pending_v1130';
@@ -183,6 +184,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V200);
         delete_option(self::LEGACY_PENDING_KEY_V1150);
         delete_option(self::LEGACY_PENDING_KEY_V1140);
         delete_option(self::LEGACY_PENDING_KEY_V1130);
@@ -346,12 +348,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.15.0',
+            'previous_version' => '2.0.0',
             'release_date' => '2026-08-16',
-            'release_name' => 'Connected Knowledge Workspace',
-            'change_summary' => 'Promotes the mature 1.x line into a stable Connected Knowledge Workspace with a common v2 context contract, preserved v1 compatibility, and no forced data migration.',
+            'release_name' => 'Button System, Control Alignment & Interaction-State Repair',
+            'change_summary' => 'Repairs the Workspace button system, control alignment, grouped-action wrapping, and interaction states across the v2 application without changing canonical project behavior.',
             'superseded_by' => '',
-            'manual_notes' => 'Workspace 2.0 preserves Storage 35 / Project 20.0 / Export 20.0 as compatible launch contracts. Future v2-native schemas require an explicit migration contract rather than an implicit major-version rewrite.',
+            'manual_notes' => 'Workspace v2.0.1 is a presentation and interaction-state repair. Storage 35 / Project 20.0 / Export 20.0 remain unchanged; no project migration is required.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,

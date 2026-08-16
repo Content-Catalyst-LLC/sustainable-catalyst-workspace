@@ -1,3 +1,11 @@
+# Sustainable Catalyst Workspace v2.0.1 — Button System, Control Alignment & Interaction-State Repair
+
+v2.0.1 is a surgical presentation and interaction-state repair on the Connected Knowledge Workspace v2.0.0 baseline. It normalizes the Workspace button primitive, preserves the red/black/white institutional hierarchy, aligns grouped controls, repairs connected-product wrapping, distinguishes informational/disabled states from clickable CTAs, and strengthens focus/touch/forced-colors behavior without changing action semantics or project data.
+
+Storage 35, `sc-workspace-project/20.0`, and `sc-workspace-project-export/20.0` remain unchanged. JavaScript action behavior is unchanged; there is no schema migration, automatic AI, telemetry, or canonical content mutation. Exact predecessor/rollback: v2.0.0.
+
+See `RELEASE_NOTES_2.0.1.md` and `docs/BUTTON_SYSTEM_CONTROL_ALIGNMENT_INTERACTION_STATE_REPAIR_V201.md`.
+
 # Sustainable Catalyst Workspace v2.0.0 — Connected Knowledge Workspace
 
 v2.0.0 is the stable major-version promotion of the mature Workspace 1.x line. It introduces one Connected Knowledge v2 context boundary across Workspace, Knowledge Library, Site Intelligence, Lab, Workbench, Decision Studio, review/audit, public knowledge, and the Developer API while preserving specialist ownership and explicit user control.

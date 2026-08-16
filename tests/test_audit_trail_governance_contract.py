@@ -20,6 +20,6 @@ class AuditTrailContract(unittest.TestCase):
   def test_no_scores_or_people_ranking(self): a=MAN['audit_trail']; self.assertFalse(a['hidden_governance_score']); self.assertFalse(a['people_ranking']); self.assertFalse(a['automatic_compliance_inference']); self.assertIn('No hidden governance score',PHP)
   def test_read_only_events(self): self.assertFalse(MAN['audit_trail']['events_editable']); self.assertIn('editable:false',HELP); self.assertIn('derived:true',HELP)
   def test_storage_attribute_corrected(self): self.assertIn('data-storage-version="35"',PHP); self.assertNotIn('data-storage-version="25"',PHP)
-  def test_registry_lineage(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v200'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v200'",REG); self.assertIn("LEGACY_PENDING_KEY_V0270",REG); self.assertIn("'previous_version' => '1.15.0'",REG)
+  def test_registry_lineage(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v201'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v201'",REG); self.assertIn("LEGACY_PENDING_KEY_V0270",REG); self.assertIn("'previous_version' => '2.0.0'",REG)
   def test_history_preserved(self): self.assertTrue((ROOT/'history/release-manifest-v0.27.0.json').exists()); self.assertTrue((ROOT/'history/workspace-product-record-v0.27.0.json').exists())
 if __name__=='__main__': unittest.main()

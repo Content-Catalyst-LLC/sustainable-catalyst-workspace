@@ -8,11 +8,11 @@ PHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
 REGPHP=(R/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-registry.php').read_text()
 CORE=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-public-beta-iii-defect-closure-v1.js').read_text()
 UI=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-public-beta-iii-defect-closure-ui-v1.js').read_text()
-APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v2.0.0.js').read_text()
+APP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v2.0.1.js').read_text()
 EXP=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-experience-v1.js').read_text()
-CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v2.0.0.css').read_text()
+CSS=(R/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v2.0.1.css').read_text()
 class PublicBetaIIIDefectClosureContract(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.79.0','0.78.0','Public Beta III Defect Closure')); self.assertIn('Version: 2.0.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.79.0','0.78.0','Public Beta III Defect Closure')); self.assertIn('Version: 2.0.1',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertEqual(MAN['export_schema'],'sc-workspace-project-export/20.0'); self.assertFalse(MAN['schema_migration_required'])
  def test_03_schemas(self):
   for f in ['sc-workspace-public-beta-iii-defect-closure-v1.schema.json','sc-workspace-public-beta-iii-defect-closure-report-v1.schema.json']:
@@ -25,8 +25,8 @@ class PublicBetaIIIDefectClosureContract(unittest.TestCase):
  def test_07_closed_defect_classes(self): self.assertEqual(len(MAN['public_beta_iii_defect_closure']['closed_defect_classes']),10); self.assertIn('wordpress-plugin-header-window-overflow',CORE); self.assertIn('desktop-grid-min-content-collapse',CORE); self.assertIn('accessibility-performance-critical-regression',CORE)
  def test_08_privacy_governance(self): self.assertIn('projectContentIncluded:false',CORE); self.assertIn('deviceIdentifierIncluded:false',CORE); self.assertIn('automaticRepair:false',CORE); self.assertIn('automaticMutation:false',CORE); self.assertIn('telemetry:false',CORE)
  def test_09_ui(self): self.assertIn('data-scw-beta-closure',PHP); self.assertIn('Run closure gate',PHP); self.assertIn('Export closure report',PHP); self.assertIn('AUTOMATED DEFECT CLOSURE',PHP); self.assertIn('data-scw-workspace-view="beta-closure"',PHP)
- def test_10_assets(self): self.assertIn("'sc-workspace-v200'",PHP); self.assertIn('workspace-v2.0.0.js',PHP); self.assertIn('workspace-v2.0.0.css',PHP); self.assertIn('sc-workspace-public-beta-iii-defect-closure-v1',PHP); self.assertIn('sc-workspace-public-beta-iii-defect-closure-ui-v1',PHP); self.assertIn('/* v0.79.0 — Public Beta III Defect Closure */',CSS); self.assertIn("'beta-closure'",APP); self.assertIn("id:'beta-closure'",EXP)
- def test_11_registry(self): self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.79.0','0.78.0','Public Beta III Defect Closure')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v200'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0780',REGPHP); self.assertTrue((R/'history/release-manifest-v0.78.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.78.0.json').exists())
+ def test_10_assets(self): self.assertIn("'sc-workspace-v201'",PHP); self.assertIn('workspace-v2.0.1.js',PHP); self.assertIn('workspace-v2.0.1.css',PHP); self.assertIn('sc-workspace-public-beta-iii-defect-closure-v1',PHP); self.assertIn('sc-workspace-public-beta-iii-defect-closure-ui-v1',PHP); self.assertIn('/* v0.79.0 — Public Beta III Defect Closure */',CSS); self.assertIn("'beta-closure'",APP); self.assertIn("id:'beta-closure'",EXP)
+ def test_11_registry(self): self.assertEqual((REG['public_version'],REG['previous_version'],REG['release_name']),('0.79.0','0.78.0','Public Beta III Defect Closure')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v201'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0780',REGPHP); self.assertTrue((R/'history/release-manifest-v0.78.0.json').exists()); self.assertTrue((R/'history/workspace-product-record-v0.78.0.json').exists())
  def test_12_docs(self): self.assertTrue((R/'docs/PUBLIC_BETA_III_DEFECT_CLOSURE_V0790.md').exists()); self.assertTrue((R/'RELEASE_NOTES_0.79.0.md').exists())
  def test_13_release_validator(self): self.assertTrue((R/'scripts/validate_public_beta_iii_defect_closure.py').exists())
 if __name__=='__main__': unittest.main()

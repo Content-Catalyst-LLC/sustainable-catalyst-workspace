@@ -20,5 +20,5 @@ class ReconciliationReceiptsContract(unittest.TestCase):
   def test_v25_migration_preserves(self):
     self.assertIn('function migrateV25(raw)',JS); seg=JS[JS.index('function migrateV25(raw)'):JS.index('function normalizeState',JS.index('function migrateV25(raw)'))]
     for token in ['raw.accountPersistence','raw.crossDeviceSync','raw.versionHistory','raw.safeActions','raw.reconciliation']: self.assertIn(token,seg)
-  def test_registry(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v200'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v200'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '1.15.0'",REG)
+  def test_registry(self): self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v201'",REG); self.assertIn("PENDING_KEY = 'sc_workspace_registry_pending_v201'",REG); self.assertIn("LEGACY_PENDING_KEY_V0260",REG); self.assertIn("'previous_version' => '2.0.0'",REG)
 if __name__=='__main__': unittest.main()

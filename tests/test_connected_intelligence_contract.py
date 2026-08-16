@@ -10,10 +10,10 @@ class ConnectedIntelligence(unittest.TestCase):
   g=MAN['connected_intelligence'];
   for k in ['explicit_context_selection','stable_ids_only_in_urls','portable_context_export','provenance_preserved','return_to_origin','context_receipts_metadata_only']: self.assertTrue(g[k])
   for k in ['automatic_cross_product_execution','automatic_network_request','automatic_context_upload','automatic_return_commit','automatic_ai','background_federation','canonical_specialist_records_mutated','behavioral_telemetry','query_telemetry','schema_migration_required']: self.assertFalse(g[k])
- def test_06_wordpress(self): self.assertIn('Version: 2.0.0',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '2.0.0'",MAIN);self.assertIn("'/connected-intelligence-contract'",PHP);self.assertIn('Connected Intelligence Workspace',PHP);self.assertIn('data-release-stage="connected-knowledge-workspace"',PHP)
+ def test_06_wordpress(self): self.assertIn('Version: 2.0.1',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '2.0.1'",MAIN);self.assertIn("'/connected-intelligence-contract'",PHP);self.assertIn('Connected Intelligence Workspace',PHP);self.assertIn('data-release-stage="button-system-repair"',PHP)
  def test_07_runtime(self):
   for x in ['sc-workspace-connected-intelligence/1.0','function buildContext','function route','function receipt','backgroundFederation:false']: self.assertIn(x,JS)
   self.assertIn('sc-workspace-connected-intelligence/1.0',H)
- def test_08_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.15.0'",DEP);self.assertIn("ROLLBACK_RELEASE = '1.15.0'",DEP);self.assertIn('workspace-v2.0.0.js',DEP);self.assertIn('class-sc-workspace-connected-intelligence.php',DEP)
+ def test_08_deployment(self): self.assertIn("PREVIOUS_RELEASE = '2.0.0'",DEP);self.assertIn("ROLLBACK_RELEASE = '2.0.0'",DEP);self.assertIn('workspace-v2.0.1.js',DEP);self.assertIn('class-sc-workspace-connected-intelligence.php',DEP)
  def test_09_registry(self): self.assertEqual((REG['public_version'],REG['previous_version']),('1.13.0','1.12.0'))
 if __name__=='__main__':unittest.main()

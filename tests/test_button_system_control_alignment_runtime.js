@@ -1,0 +1,11 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const css=fs.readFileSync(path.join(root,'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v2.0.1.css'),'utf8');
+assert(css.includes('--scw-control-height:40px'));
+assert(css.includes('min-height:var(--scw-control-height)'));
+assert(css.includes('.scw-connected-knowledge .scw-collab-contract-actions'));
+assert(css.includes('[data-scw-connected-export]{grid-column:1/-1}'));
+assert(css.includes('background:#f7f7f4'));
+assert(css.includes('cursor:not-allowed'));
+assert(css.includes('@media (forced-colors:active)'));
+console.log('PASS - v2.0.1 Button System CSS/runtime contract');
