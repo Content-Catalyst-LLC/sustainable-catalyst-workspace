@@ -12,7 +12,7 @@ class CrossDeviceProduction(unittest.TestCase):
  def test_07_receipt_privacy(self):
   g=MAN['cross_device_production'];self.assertTrue(g['production_receipt_export']);self.assertFalse(g['receipt_contains_project_content']);self.assertFalse(g['receipt_contains_query_text']);self.assertFalse(g['receipt_contains_source_urls']);self.assertFalse(g['receipt_contains_device_identifier'])
  def test_08_ui(self): self.assertIn('Production continuity plan',PHP);self.assertIn('Export continuity receipt',PHP);self.assertIn('Local-first continuity, not cloud-first storage',PHP)
- def test_09_runtime(self): self.assertIn('data-release-stage="connected-intelligence"',PHP);self.assertIn('workspace-v1.13.0.js',PHP);self.assertIn('sc-workspace-cross-device-production-v1',PHP)
- def test_10_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.12.0'",DEP);self.assertIn("ROLLBACK_RELEASE = '1.12.0'",DEP);self.assertIn('class-sc-workspace-cross-device-production.php',DEP)
- def test_11_identity(self): self.assertIn('Version: 1.13.0',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '1.13.0'",MAIN)
+ def test_09_runtime(self): self.assertIn('data-release-stage="public-research-packages"',PHP);self.assertIn('workspace-v1.14.0.js',PHP);self.assertIn('sc-workspace-cross-device-production-v1',PHP)
+ def test_10_deployment(self): self.assertIn("PREVIOUS_RELEASE = '1.13.0'",DEP);self.assertIn("ROLLBACK_RELEASE = '1.13.0'",DEP);self.assertIn('class-sc-workspace-cross-device-production.php',DEP)
+ def test_11_identity(self): self.assertIn('Version: 1.14.0',MAIN);self.assertIn("SC_WORKSPACE_VERSION', '1.14.0'",MAIN)
 if __name__=='__main__':unittest.main()

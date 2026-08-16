@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Public Research Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "title",
+    "visibility",
+    "manifest",
+    "objects",
+    "governance",
+    "fingerprint"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-public-research-package/1.0"
+    }
+  },
+  "additionalProperties": true
+}

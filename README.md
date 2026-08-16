@@ -1,3 +1,7 @@
+# Sustainable Catalyst Workspace v1.14.0 — Public Research Packages & Portable Knowledge Objects
+
+Current release: explicit private-to-public research projection with portable knowledge objects, provenance, licensing, SHA-256 integrity, and local export. Canonical Workspace records remain private by default and unchanged.
+
 # Sustainable Catalyst Workspace v1.13.0 — Connected Intelligence Workspace
 
 Workspace now provides an explicit contextual layer across Knowledge Library, Site Intelligence, Lab, Workbench, and Decision Studio while preserving specialist ownership, provenance, privacy, and local-first control.

@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '1.12.0';
-    const ROLLBACK_RELEASE = '1.12.0';
+    const PREVIOUS_RELEASE = '1.13.0';
+    const ROLLBACK_RELEASE = '1.13.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
 
@@ -26,8 +26,8 @@ final class SC_Workspace_Deployment_Hardening {
             'platform' => 'includes/class-sc-workspace-platform.php',
             'workspace' => 'includes/class-sc-workspace.php',
             'deployment' => 'includes/class-sc-workspace-deployment.php',
-            'current_script' => 'assets/js/workspace-v1.13.0.js',
-            'current_style' => 'assets/css/workspace-v1.13.0.css',
+            'current_script' => 'assets/js/workspace-v1.14.0.js',
+            'current_style' => 'assets/css/workspace-v1.14.0.css',
             'deployment_runtime' => 'assets/js/sc-workspace-wordpress-deployment-hardening-v1.js',
             'deployment_ui' => 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
             'production_certification' => 'includes/class-sc-workspace-production-certification.php',
@@ -68,6 +68,9 @@ final class SC_Workspace_Deployment_Hardening {
             'connected_intelligence' => 'includes/class-sc-workspace-connected-intelligence.php',
             'connected_intelligence_runtime' => 'assets/js/sc-workspace-connected-intelligence-v1.js',
             'connected_intelligence_ui' => 'assets/js/sc-workspace-connected-intelligence-ui-v1.js',
+            'public_research_packages' => 'includes/class-sc-workspace-public-research-packages.php',
+            'public_research_packages_runtime' => 'assets/js/sc-workspace-public-research-packages-v1.js',
+            'public_research_packages_ui' => 'assets/js/sc-workspace-public-research-packages-ui-v1.js',
             'workbench_decision_roundtrip_js' => 'assets/js/sc-workspace-workbench-decision-roundtrip-v1.js',
             'lab_integration_runtime' => 'assets/js/sc-workspace-lab-integration-v1.js',
         );
@@ -187,8 +190,8 @@ final class SC_Workspace_Deployment_Hardening {
             'registry_pending' => $registry_pending,
             'wordpress_supported' => !empty($preflight['wordpress_supported']),
             'php_supported' => !empty($preflight['php_supported']),
-            'expected_script' => 'workspace-v1.13.0.js',
-            'expected_style' => 'workspace-v1.13.0.css',
+            'expected_script' => 'workspace-v1.14.0.js',
+            'expected_style' => 'workspace-v1.14.0.css',
             'asset_cache_strategy' => 'versioned-filename-plus-version-query',
             'rollback_release' => self::ROLLBACK_RELEASE,
             'rollback_schema_compatible' => true,

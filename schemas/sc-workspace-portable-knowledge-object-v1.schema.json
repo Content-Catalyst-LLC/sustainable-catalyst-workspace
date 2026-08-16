@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Portable Knowledge Object",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "source",
+    "visibility",
+    "includedFields",
+    "excludedFields",
+    "provenance",
+    "fingerprint"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-portable-knowledge-object/1.0"
+    }
+  },
+  "additionalProperties": true
+}

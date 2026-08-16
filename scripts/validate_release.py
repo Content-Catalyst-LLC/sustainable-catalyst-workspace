@@ -1,1 +1,1 @@
-from validate_connected_intelligence_workspace import *
+from validate_public_research_packages import *

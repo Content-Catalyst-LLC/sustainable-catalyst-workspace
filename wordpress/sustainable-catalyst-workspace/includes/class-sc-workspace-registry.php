@@ -5,8 +5,9 @@ if (!defined('ABSPATH')) {
 
 final class SC_Workspace_Registry {
     const OPTION_KEY = 'scfs_canonical_product_registry';
-    const BACKUP_KEY = 'sc_workspace_registry_backup_v1130';
-    const PENDING_KEY = 'sc_workspace_registry_pending_v1130';
+    const BACKUP_KEY = 'sc_workspace_registry_backup_v1140';
+    const PENDING_KEY = 'sc_workspace_registry_pending_v1140';
+    const LEGACY_PENDING_KEY_V1130 = 'sc_workspace_registry_pending_v1130';
     const LEGACY_PENDING_KEY_V1120 = 'sc_workspace_registry_pending_v1120';
     const LEGACY_PENDING_KEY_V1110 = 'sc_workspace_registry_pending_v1110';
     const LEGACY_PENDING_KEY_V1100 = 'sc_workspace_registry_pending_v1100';
@@ -180,6 +181,7 @@ final class SC_Workspace_Registry {
         }
 
         delete_option(self::PENDING_KEY);
+        delete_option(self::LEGACY_PENDING_KEY_V1130);
         delete_option(self::LEGACY_PENDING_KEY_V1120);
         delete_option(self::LEGACY_PENDING_KEY_V1110);
         delete_option(self::LEGACY_PENDING_KEY_V1100);
@@ -340,12 +342,12 @@ final class SC_Workspace_Registry {
             'last_discovered_at' => '',
             'installed_version' => SC_WORKSPACE_VERSION,
             'public_version' => SC_WORKSPACE_VERSION,
-            'previous_version' => '1.12.0',
+            'previous_version' => '1.13.0',
             'release_date' => '2026-08-15',
-            'release_name' => 'Connected Intelligence Workspace',
-            'change_summary' => 'Connects Workspace context across Knowledge Library, Site Intelligence, Lab, Workbench, and Decision Studio through a common explicit provenance-preserving context envelope without automatic cross-product execution or schema changes.',
+            'release_name' => 'Public Research Packages & Portable Knowledge Objects',
+            'change_summary' => 'Adds explicit public research packages and portable knowledge objects with field-level disclosure, provenance, licensing, SHA-256 integrity, and local export while private Workspace records remain private by default.',
             'superseded_by' => '',
-            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Connected Intelligence is explicit, local-first, ID/provenance-driven, and does not create background federation or mutate specialist canonical records.',
+            'manual_notes' => 'Storage 35 / Project 20.0 / Export 20.0 remain frozen. Publication is explicit and local-first; no automatic upload or canonical mutation.',
             'verification_source' => 'wordpress_plugin',
             'source_verified_at' => $now,
             'record_updated_at' => $now,
