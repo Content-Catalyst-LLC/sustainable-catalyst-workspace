@@ -7,18 +7,18 @@
   const SCHEMA='sc-workspace-production-certification/1.0';
   const REPORT_SCHEMA='sc-workspace-production-certification-report/1.0';
   const CHECKLIST_SCHEMA='sc-workspace-production-certification-checklist/1.0';
-  const RELEASE_VERSION='2.0.1';
-  const PREVIOUS_RELEASE='2.0.0';
-  const ROLLBACK_RELEASE='2.0.0';
-  const EXPECTED_SCRIPT='workspace-v2.0.1.js';
-  const EXPECTED_STYLE='workspace-v2.0.1.css';
+  const RELEASE_VERSION='2.0.2';
+  const PREVIOUS_RELEASE='2.0.1';
+  const ROLLBACK_RELEASE='2.0.1';
+  const EXPECTED_SCRIPT='workspace-v2.0.2.js';
+  const EXPECTED_STYLE='workspace-v2.0.2.css';
   const manualItems=Object.freeze([
     ['public-page','Public Workspace smoke','Load the production Workspace as a normal visitor and confirm the complete application shell reaches the site footer without a PHP critical error.'],
-    ['rest-identity','Production REST identity','Verify /wp-json/sc-workspace/v1/health and /production-certification-contract both report v2.0.1.'],
+    ['rest-identity','Production REST identity','Verify /wp-json/sc-workspace/v1/health and /production-certification-contract both report v2.0.2.'],
     ['logged-out-in','Anonymous and authenticated smoke','Open Workspace logged out and logged in and confirm local-first use remains available in both states.'],
     ['project-preservation','Existing local project preservation','Open a representative pre-upgrade browser-local project and verify its content before any sync, import, or restore action.'],
     ['cache-coherence','WordPress/CDN/browser cache coherence','Verify the HTML, current cumulative JS, and current cumulative CSS all identify v2.0.1. If they do not, purge only page/asset caches—never Workspace project storage.'],
-    ['rollback','v2.0.0 rollback rehearsal','Replace v2.0.1 with the bundled v2.0.0 rollback plugin, verify the public shell and existing local project, then reinstall v2.0.1 and repeat the smoke.']
+    ['rollback','v2.0.1 rollback rehearsal','Replace v2.0.2 with the bundled v2.0.1 rollback plugin, verify the public shell and existing local project, then reinstall v2.0.2 and repeat the smoke.']
   ].map(([id,label,procedure])=>Object.freeze({id,label,procedure})));
   const stamp=()=>new Date().toISOString();
   const finding=(id,label,pass,detail)=>({id,label,state:pass?'pass':'blocked',detail:String(detail||'')});
@@ -51,7 +51,7 @@
     checks.push(finding('script','Current cumulative JavaScript',script.present&&script.stale.length===0&&script.cumulativeCount===1,script.present?`${EXPECTED_SCRIPT} is loaded; ${script.stale.length} stale cumulative script(s) detected.`:`${EXPECTED_SCRIPT} is missing.`));
     checks.push(finding('style','Current cumulative stylesheet',style.present&&style.stale.length===0&&style.cumulativeCount===1,style.present?`${EXPECTED_STYLE} is loaded; ${style.stale.length} stale cumulative stylesheet(s) detected.`:`${EXPECTED_STYLE} is missing.`));
     checks.push(finding('query','Current cache-busting version',versionQueryMatches(script.url)&&versionQueryMatches(style.url),'Current cumulative asset version queries match v2.0.1, or an offline fixture omits query strings.'));
-    checks.push(finding('stage','Release stage',['release-candidate','general-availability','ga-stabilization','workspace-home','universal-search','library-continuity','knowledge-graph-explorer','lab-scientific-integration','workbench-decision-roundtrip','cross-device-production','shared-review-rooms','institutional-audit-studio','research-operations','developer-api','connected-intelligence','public-research-packages','product-maturity','connected-knowledge-workspace','button-system-repair'].includes(releaseStage),`Workspace stage is ${releaseStage||'unset'}; expected release-candidate, general-availability, ga-stabilization, workspace-home, universal-search, or library-continuity, knowledge-graph-explorer, lab-scientific-integration, workbench-decision-roundtrip, or cross-device-production, or shared-review-rooms, institutional-audit-studio, or research-operations.`));
+    checks.push(finding('stage','Release stage',['release-candidate','general-availability','ga-stabilization','workspace-home','universal-search','library-continuity','knowledge-graph-explorer','lab-scientific-integration','workbench-decision-roundtrip','cross-device-production','shared-review-rooms','institutional-audit-studio','research-operations','developer-api','connected-intelligence','public-research-packages','product-maturity','connected-knowledge-workspace','button-system-repair','work-mode-cards-repair'].includes(releaseStage),`Workspace stage is ${releaseStage||'unset'}; expected release-candidate, general-availability, ga-stabilization, workspace-home, universal-search, or library-continuity, knowledge-graph-explorer, lab-scientific-integration, workbench-decision-roundtrip, or cross-device-production, or shared-review-rooms, institutional-audit-studio, or research-operations.`));
     checks.push(finding('deployment-runtime','Inherited deployment hardening',Boolean(env.SCWorkspaceWordPressDeploymentHardening),env.SCWorkspaceWordPressDeploymentHardening?'v0.81 deployment hardening remains available.':'Deployment hardening runtime is unavailable.'));
     checks.push(finding('rc-runtime','Inherited Release Candidate runtime',Boolean(env.SCWorkspaceReleaseCandidateI),env.SCWorkspaceReleaseCandidateI?'Release Candidate runtime remains available.':'Release Candidate runtime is unavailable.'));
     const blocked=checks.filter(x=>x.state==='blocked').length;

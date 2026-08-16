@@ -1,1 +1,1 @@
-from validate_button_system_control_alignment import *
+from validate_work_mode_cards_cockpit_hierarchy import *

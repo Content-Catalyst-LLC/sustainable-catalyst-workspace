@@ -12,7 +12,7 @@ APP=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/workspace-v0.66.0.
 NAV=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-navigation-v1.js').read_text()
 CSS=(ROOT/'wordpress/sustainable-catalyst-workspace/assets/css/workspace-v0.66.0.css').read_text()
 class SecurityPrivacyPortabilityContract(unittest.TestCase):
- def test_01_release_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 2.0.1',MAIN)
+ def test_01_release_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version'],MAN['release_name']),('0.66.0','0.65.0','Import, Export & Backward-Compatibility Hardening')); self.assertIn('Version: 2.0.2',MAIN)
  def test_02_schema_stable(self): self.assertEqual(MAN['storage_schema_version'],35); self.assertEqual(MAN['project_schema'],'sc-workspace-project/20.0'); self.assertFalse(MAN['security_privacy']['schema_migration'])
  def test_03_schemas_exist(self):
   for name in ['sc-workspace-security-privacy-audit-v1.schema.json','sc-workspace-threat-model-v1.schema.json','sc-workspace-data-portability-bundle-v1.schema.json','sc-workspace-deletion-receipt-v1.schema.json']:
@@ -25,6 +25,6 @@ class SecurityPrivacyPortabilityContract(unittest.TestCase):
  def test_09_review_surface(self): self.assertIn('data-scw-workspace-view="security"',PHP); self.assertIn('data-scw-security-privacy',PHP); self.assertIn('Export complete local bundle',PHP); self.assertIn('DELETE WORKSPACE DATA',PHP); self.assertIn("'security'",NAV)
  def test_10_runtime_navigation(self): self.assertIn('securityPrivacySection',APP); self.assertIn("workspaceView !== 'security'",APP); self.assertIn('sc-workspace-security-privacy-ui-v1.js',PHP)
  def test_11_rest_contract(self): self.assertIn('/wp-json/sc-workspace/v1/security-privacy-contract',MAN['rest_routes']); self.assertIn("'/security-privacy-contract'",PHP); self.assertIn('public function security_privacy_contract()',PHP)
- def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v201'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0580',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.58.0.json').exists())
+ def test_12_registry_history(self): self.assertEqual((REG['public_version'],REG['previous_version']),('0.66.0','0.65.0')); self.assertIn("BACKUP_KEY = 'sc_workspace_registry_backup_v202'",REGPHP); self.assertIn('LEGACY_PENDING_KEY_V0580',REGPHP); self.assertTrue((ROOT/'history/release-manifest-v0.58.0.json').exists())
  def test_13_editorial_and_ui_boundary(self): self.assertIn('.scw-security-privacy{border-top:4px solid #000',CSS); self.assertIn('account/cloud backups',PHP.lower()); self.assertIn('Nothing was imported',UI); self.assertIn('serverBackupsKnown:true',UI)
 if __name__=='__main__': unittest.main()

@@ -1,3 +1,11 @@
+# Sustainable Catalyst Workspace v2.0.2 — Work Mode Cards, Cockpit Hierarchy & Navigation-State Repair
+
+v2.0.2 repairs the Workspace Home cockpit by replacing the four Work Mode button/card hybrids with dedicated navigation cards. Evidence & objects, Analysis, Decision, and Compose now use equal-height card hierarchy, strong title/quiet copy/action structure, explicit active and disabled states, accessible focus treatment, and responsive stacking while preserving the existing project routes and mode semantics.
+
+Storage 35, `sc-workspace-project/20.0`, and `sc-workspace-project-export/20.0` remain unchanged. Exact predecessor/rollback: v2.0.1.
+
+See `RELEASE_NOTES_2.0.2.md` and `docs/WORK_MODE_CARDS_COCKPIT_HIERARCHY_NAVIGATION_STATE_REPAIR_V202.md`.
+
 # Sustainable Catalyst Workspace v2.0.1 — Button System, Control Alignment & Interaction-State Repair
 
 v2.0.1 is a surgical presentation and interaction-state repair on the Connected Knowledge Workspace v2.0.0 baseline. It normalizes the Workspace button primitive, preserves the red/black/white institutional hierarchy, aligns grouped controls, repairs connected-product wrapping, distinguishes informational/disabled states from clickable CTAs, and strengthens focus/touch/forced-colors behavior without changing action semantics or project data.

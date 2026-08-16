@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '2.0.0';
-    const ROLLBACK_RELEASE = '2.0.0';
+    const PREVIOUS_RELEASE = '2.0.1';
+    const ROLLBACK_RELEASE = '2.0.1';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
 
@@ -26,8 +26,8 @@ final class SC_Workspace_Deployment_Hardening {
             'platform' => 'includes/class-sc-workspace-platform.php',
             'workspace' => 'includes/class-sc-workspace.php',
             'deployment' => 'includes/class-sc-workspace-deployment.php',
-            'current_script' => 'assets/js/workspace-v2.0.1.js',
-            'current_style' => 'assets/css/workspace-v2.0.1.css',
+            'current_script' => 'assets/js/workspace-v2.0.2.js',
+            'current_style' => 'assets/css/workspace-v2.0.2.css',
             'deployment_runtime' => 'assets/js/sc-workspace-wordpress-deployment-hardening-v1.js',
             'deployment_ui' => 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
             'production_certification' => 'includes/class-sc-workspace-production-certification.php',
@@ -77,6 +77,7 @@ final class SC_Workspace_Deployment_Hardening {
             'connected_knowledge' => 'includes/class-sc-workspace-connected-knowledge.php',
             'connected_knowledge_runtime' => 'assets/js/sc-workspace-connected-knowledge-v2.js',
             'connected_knowledge_ui' => 'assets/js/sc-workspace-connected-knowledge-ui-v2.js',
+            'work_mode_cards' => 'includes/class-sc-workspace-work-mode-cards.php',
             'workbench_decision_roundtrip_js' => 'assets/js/sc-workspace-workbench-decision-roundtrip-v1.js',
             'lab_integration_runtime' => 'assets/js/sc-workspace-lab-integration-v1.js',
         );
@@ -196,8 +197,8 @@ final class SC_Workspace_Deployment_Hardening {
             'registry_pending' => $registry_pending,
             'wordpress_supported' => !empty($preflight['wordpress_supported']),
             'php_supported' => !empty($preflight['php_supported']),
-            'expected_script' => 'workspace-v2.0.1.js',
-            'expected_style' => 'workspace-v2.0.1.css',
+            'expected_script' => 'workspace-v2.0.2.js',
+            'expected_style' => 'workspace-v2.0.2.css',
             'asset_cache_strategy' => 'versioned-filename-plus-version-query',
             'rollback_release' => self::ROLLBACK_RELEASE,
             'rollback_schema_compatible' => true,

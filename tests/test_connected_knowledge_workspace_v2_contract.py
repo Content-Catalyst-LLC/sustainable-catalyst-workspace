@@ -19,9 +19,9 @@ class ConnectedKnowledgeWorkspaceV2HistoricalContract(unittest.TestCase):
         self.assertEqual((m['version'],m['previous_version'],m['release_name']),('2.0.0','1.15.0','Connected Knowledge Workspace'))
         self.assertEqual((reg['public_version'],reg['previous_version']),('2.0.0','1.15.0'))
         self.assertEqual((current['version'],current['previous_version']),('2.0.1','2.0.0'))
-        self.assertIn('Version: 2.0.1',main); self.assertIn("SC_WORKSPACE_VERSION', '2.0.1'",main)
-        self.assertIn("PREVIOUS_RELEASE = '2.0.0'",dep); self.assertIn("ROLLBACK_RELEASE = '2.0.0'",dep); self.assertIn("PREVIOUS_RELEASE = '2.0.0'",prod)
-        self.assertIn('workspace-v2.0.1.js',dep); self.assertIn('workspace-v2.0.1.css',dep)
+        self.assertIn('Version: 2.0.2',main); self.assertIn("SC_WORKSPACE_VERSION', '2.0.2'",main)
+        self.assertIn("PREVIOUS_RELEASE = '2.0.1'",dep); self.assertIn("ROLLBACK_RELEASE = '2.0.1'",dep); self.assertIn("PREVIOUS_RELEASE = '2.0.1'",prod)
+        self.assertIn('workspace-v2.0.2.js',dep); self.assertIn('workspace-v2.0.2.css',dep)
     def test_major_version_compatibility_boundary(self):
         g=m['connected_knowledge_workspace']
         self.assertTrue(g['stable_major_release']); self.assertTrue(g['v1_rest_namespace_preserved']); self.assertTrue(g['v2_rest_namespace_available']); self.assertTrue(g['v1_project_compatibility']); self.assertTrue(g['v1_export_compatibility'])
@@ -40,7 +40,7 @@ class ConnectedKnowledgeWorkspaceV2HistoricalContract(unittest.TestCase):
         self.assertIn('SC_Workspace_Connected_Knowledge::contract()',php)
         self.assertIn('data-scw-connected-knowledge',php); self.assertIn('Connected Knowledge Workspace',php)
         self.assertIn('sc-workspace-connected-knowledge-v2',php); self.assertIn('sc-workspace-connected-knowledge-ui-v2',php)
-        self.assertIn('sc-workspace-v201',php); self.assertIn('workspace-v2.0.1.js',php); self.assertIn('workspace-v2.0.1.css',php)
+        self.assertIn('sc-workspace-v202',php); self.assertIn('workspace-v2.0.2.js',php); self.assertIn('workspace-v2.0.2.css',php)
         self.assertTrue((P/'assets/js/workspace-v2.0.0.js').exists()); self.assertTrue((P/'assets/css/workspace-v2.0.0.css').exists())
 
 if __name__=='__main__': unittest.main()
