@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Connected Intelligence Receipt",
+  "type": "object",
+  "required": [
+    "schema",
+    "destination",
+    "projectId",
+    "recordIds",
+    "metadataOnly"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-intelligence-receipt/1.0"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "recordIds": {
+      "type": "array"
+    },
+    "metadataOnly": {
+      "const": true
+    }
+  }
+}

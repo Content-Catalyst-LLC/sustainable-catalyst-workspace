@@ -1145,7 +1145,7 @@
 
 .scw-developer-api{margin:0 0 2rem;padding:1.4rem;border:1px solid rgba(0,0,0,.14);background:#fff}.scw-dev-capabilities{columns:2;gap:1.25rem;margin:.75rem 0;padding-left:1.25rem}.scw-dev-capabilities li{break-inside:avoid;margin:.3rem 0}.scw-developer-api code{font-size:.82em}@media(max-width:720px){.scw-dev-capabilities{columns:1}}
 
-/* v1.12.0 — Large Workspace & Institutional Scale Hardening */
+/* v1.13.0 — Large Workspace & Institutional Scale Hardening */
 .scw-institutional-scale{border-top:4px solid #000;padding-top:24px;margin-top:28px}
 .scw-scale-hardening-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
 .scw-scale-hardening-grid pre{max-height:420px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}

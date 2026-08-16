@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Connected Intelligence Context",
+  "type": "object",
+  "required": [
+    "schema",
+    "projectId",
+    "destination",
+    "records",
+    "provenance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-intelligence-context/1.0"
+    },
+    "projectId": {
+      "type": "string"
+    },
+    "destination": {
+      "enum": [
+        "knowledge-library",
+        "site-intelligence",
+        "lab",
+        "workbench",
+        "decision-studio"
+      ]
+    },
+    "records": {
+      "type": "array"
+    },
+    "provenance": {
+      "type": "object"
+    }
+  }
+}

@@ -1,1 +1,1 @@
-from validate_institutional_scale_hardening import *
+from validate_connected_intelligence_workspace import *

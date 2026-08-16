@@ -3,7 +3,7 @@ import json,unittest,subprocess,sys
 R=Path(__file__).resolve().parents[1];P=R/'wordpress/sustainable-catalyst-workspace'
 MAN=json.loads((R/'history/release-manifest-v1.3.0.json').read_text());OLD=json.loads((R/'history/release-manifest-v1.2.0.json').read_text());MAIN=(P/'sustainable-catalyst-workspace.php').read_text();PHP=(P/'includes/class-sc-workspace.php').read_text();JS=(P/'assets/js/sc-workspace-library-continuity-v1.js').read_text()
 class LibraryContinuity(unittest.TestCase):
- def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version']),('1.3.0','1.2.0'));self.assertIn('Version: 1.12.0',MAIN)
+ def test_01_lineage(self): self.assertEqual((MAN['version'],MAN['previous_version']),('1.3.0','1.2.0'));self.assertIn('Version: 1.13.0',MAIN)
  def test_02_schema_freeze(self): self.assertEqual((MAN['storage_schema_version'],MAN['project_schema'],MAN['export_schema']),(35,'sc-workspace-project/20.0','sc-workspace-project-export/20.0'));self.assertEqual(MAN['object_types'],OLD['object_types'])
  def test_03_route(self): self.assertIn('/wp-json/sc-workspace/v1/library-continuity-contract',MAN['rest_routes']);self.assertIn("'/library-continuity-contract'",PHP)
  def test_04_families(self): self.assertEqual(set(MAN['library_continuity']['record_families']),{'saved-search','watchlist','research-queue-item','source-bundle','personal-recommendation'})

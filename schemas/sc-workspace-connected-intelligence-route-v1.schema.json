@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Connected Intelligence Route",
+  "type": "object",
+  "required": [
+    "schema",
+    "destination",
+    "url",
+    "stableIdsOnly"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-intelligence-route/1.0"
+    },
+    "destination": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "stableIdsOnly": {
+      "const": true
+    }
+  }
+}

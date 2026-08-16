@@ -1,3 +1,7 @@
+# Sustainable Catalyst Workspace v1.13.0 — Connected Intelligence Workspace
+
+Workspace now provides an explicit contextual layer across Knowledge Library, Site Intelligence, Lab, Workbench, and Decision Studio while preserving specialist ownership, provenance, privacy, and local-first control.
+
 # Sustainable Catalyst Workspace
 
 ## v1.12.0 — Large Workspace & Institutional Scale Hardening

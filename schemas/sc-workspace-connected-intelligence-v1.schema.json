@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Connected Intelligence Workspace Contract",
+  "type": "object",
+  "required": [
+    "schema",
+    "products",
+    "governance"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-connected-intelligence/1.0"
+    },
+    "products": {
+      "type": "array",
+      "minItems": 5
+    },
+    "governance": {
+      "type": "object"
+    }
+  }
+}

@@ -19,7 +19,7 @@ class ProductionSignoffContractTests(unittest.TestCase):
     def test_current_release_preserves_v083_evidence_runtime(self):
         main=(R/'wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php').read_text()
         run=(R/'wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-production-signoff-v1.js').read_text()
-        self.assertIn('Version: 1.12.0',main)
+        self.assertIn('Version: 1.13.0',main)
         self.assertIn("const RELEASE_VERSION='0.83.0'",run)
     def test_history_preserved(self):
         self.assertTrue((R/'history/release-manifest-v0.82.1.json').exists())
