@@ -357,3 +357,37 @@ class ControlledRuntimeHandoffRequest(BaseModel):
     reason: str = Field(default="user-authorized-reproduction", max_length=500)
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ObservedResourceUsage(BaseModel):
+    cpuCoreSeconds: float | None = Field(default=None, ge=0, le=11059200)
+    peakMemoryMb: int | None = Field(default=None, ge=0, le=1048576)
+    wallSeconds: float = Field(ge=0, le=86400)
+    outputBytes: int = Field(ge=0, le=10737418240)
+    pidsPeak: int | None = Field(default=None, ge=0, le=4096)
+    tempStorageMbPeak: int | None = Field(default=None, ge=0, le=102400)
+
+
+class RuntimeSandboxAttestation(BaseModel):
+    mode: Literal["metadata-gate", "adapter-attested", "container-required", "remote-sandbox-required"]
+    networkMode: Literal["none", "server-routed-only", "allowlisted"]
+    readOnlyRootFilesystem: bool
+    noNewPrivileges: bool
+    dropAllCapabilities: bool
+    hostFilesystemAccess: Literal[False] = False
+    dockerSocketAccess: Literal[False] = False
+    privilegedExecution: Literal[False] = False
+    pinnedContainer: bool = False
+    attestedBy: str = Field(min_length=1, max_length=160)
+    evidenceDigest: str = Field(default="", max_length=128)
+
+
+class RuntimeExecutionAttestationRequest(BaseModel):
+    schema_: Literal["sc-workspace-runtime-execution-attestation/1.0"] = Field(alias="schema")
+    attestationId: str | None = Field(default=None, max_length=96)
+    source: Literal["workspace-worker", "specialist-runtime", "operator-verified"] = "specialist-runtime"
+    observedUsage: ObservedResourceUsage
+    sandboxAttestation: RuntimeSandboxAttestation
+    notes: str = Field(default="", max_length=12000)
+
+    model_config = ConfigDict(populate_by_name=True)

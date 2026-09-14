@@ -629,3 +629,28 @@ class ExecutionPolicyDecision(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
+
+
+class RuntimeExecutionAttestation(Base):
+    __tablename__ = "workspace_runtime_execution_attestations"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    attestation_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    handoff_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_plan_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    reproduction_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    policy_decision_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    policy_decision_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    classification: Mapped[str] = mapped_column(String(32), nullable=False)
+    execution_succeeded: Mapped[bool] = mapped_column(nullable=False, default=False)
+    budget_compliant: Mapped[bool] = mapped_column(nullable=False, default=False)
+    sandbox_compliant: Mapped[bool] = mapped_column(nullable=False, default=False)
+    observed_usage_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    budget_accounting_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    sandbox_attestation_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    checks_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

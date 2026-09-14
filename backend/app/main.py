@@ -23,11 +23,11 @@ from .repository import (
 from .schemas import (
     ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
     RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest,
-    ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest, ExecutionPolicyStoreRequest,
+    ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest, ExecutionPolicyStoreRequest, RuntimeExecutionAttestationRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
 )
-from .security import ServiceIdentity, require_service_identity
+from .security import ServiceIdentity, require_service_identity, require_runtime_attestation_identity
 from .migration import apply_migration, list_receipts, migration_plan
 from .object_store import artifact_metadata, delete_artifact, get_artifact, list_artifacts, read_artifact_content, store_artifact, verify_artifact_storage
 from .recovery import create_snapshot, get_snapshot, list_snapshots, snapshot_metadata
@@ -46,6 +46,7 @@ from .runtime_adapters import adapter_metadata, check_environment_compatibility,
 from .reproduction import create_reproduction_plan, create_verification, get_reproduction_plan, get_verification, list_reproduction_plans, list_verifications, plan_metadata, verification_metadata
 from .execution_control import create_execution_plan, dispatch_execution_plan, execution_plan_metadata, get_execution_plan, get_handoff_receipt, handoff_receipt_metadata, list_execution_plans, list_handoff_receipts
 from .policy import get_policy, get_policy_revision, get_policy_decision, list_policies, list_policy_revisions, list_policy_decisions, policy_decision_metadata, policy_metadata, store_policy
+from .telemetry import attestation_metadata, create_runtime_attestation, get_runtime_attestation, list_runtime_attestations
 
 
 @asynccontextmanager
@@ -122,6 +123,10 @@ def health():
         "runtimeSandboxing": True,
         "policyRequiredForControlledHandoffs": True,
         "adapterTrustLevels": True,
+        "runtimeEnforcementTelemetry": True,
+        "budgetAccounting": True,
+        "executionAttestations": True,
+        "dedicatedRuntimeAttestationCredential": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -136,7 +141,9 @@ def ready():
         raise HTTPException(status_code=503, detail=f"Database unavailable: {exc.__class__.__name__}")
     if not settings.token_configured:
         raise HTTPException(status_code=503, detail="Service token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready"}
+    if not settings.runtime_attestation_token_configured:
+        raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -206,6 +213,12 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "sandboxEnforcementMode": "pre-dispatch-policy-gate",
         "policyRequiredForControlledHandoffs": True,
         "adapterTrustLevels": True,
+        "runtimeEnforcementTelemetry": True,
+        "budgetAccounting": True,
+        "executionAttestations": True,
+        "dedicatedRuntimeAttestationCredential": True,
+        "runtimeAttestationAuth": "dedicated-server-token",
+        "browserAttestationSubmissionAllowed": False,
         "hostFilesystemAccessAllowed": False,
         "dockerSocketAccessAllowed": False,
         "privilegedExecutionAllowed": False,
@@ -234,6 +247,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "runtimeHandoffReceiptsPerAccount": settings.max_runtime_handoff_receipts_per_account,
             "executionPoliciesPerAccount": settings.max_execution_policies_per_account,
             "executionPolicyDecisionsPerAccount": settings.max_execution_policy_decisions_per_account,
+            "runtimeExecutionAttestationsPerAccount": settings.max_runtime_execution_attestations_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -770,6 +784,28 @@ def runtime_handoff_receipt_get_route(receipt_id: str, identity: ServiceIdentity
         row=get_handoff_receipt(db,identity.user_key,receipt_id)
         if row is None: raise HTTPException(status_code=404,detail="Workspace runtime handoff receipt not found.")
         return {"schema":"sc-workspace-runtime-handoff-receipt-response/1.0","item":handoff_receipt_metadata(row)}
+
+
+@app.get("/v1/runtime-execution-attestations")
+def runtime_execution_attestations_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-runtime-execution-attestation-index/1.0", "items": list_runtime_attestations(db, identity.user_key), "browserSubmissionAllowed": False}
+
+
+@app.get("/v1/runtime-execution-attestations/{attestation_id}")
+def runtime_execution_attestation_get(attestation_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_runtime_attestation(db, identity.user_key, attestation_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace runtime-execution attestation not found.")
+        return {"schema": "sc-workspace-runtime-execution-attestation-response/1.0", "item": attestation_metadata(row)}
+
+
+@app.post("/v1/runtime-handoff-receipts/{receipt_id}/attest")
+def runtime_handoff_attest(receipt_id: str, payload: RuntimeExecutionAttestationRequest, identity: ServiceIdentity = Depends(require_runtime_attestation_identity)):
+    with session_scope() as db:
+        row, replayed = create_runtime_attestation(db, identity.user_key, receipt_id, payload)
+        return {"ok": True, "replayed": replayed, "item": attestation_metadata(row)}
 
 
 @app.get("/v1/runs")

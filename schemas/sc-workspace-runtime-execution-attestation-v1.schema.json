@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Runtime Execution Attestation Contract",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": "2.9.0"
+    },
+    "schema": {
+      "const": "sc-workspace-runtime-execution-attestation-contract/1.0"
+    },
+    "immutableAttestations": {
+      "const": true
+    },
+    "dedicatedRuntimeAttestationCredentialRequired": {
+      "const": true
+    },
+    "browserAttestationSubmissionAllowed": {
+      "const": false
+    },
+    "wordpressAttestationSubmissionAllowed": {
+      "const": false
+    },
+    "resourceBudgetAccounting": {
+      "const": true
+    },
+    "sandboxEvidenceComparison": {
+      "const": true
+    },
+    "policyDecisionFingerprintRequired": {
+      "const": true
+    },
+    "terminalJobRequired": {
+      "const": true
+    },
+    "arbitraryCodeExecution": {
+      "const": false
+    },
+    "policyRelaxationAllowedByAttestation": {
+      "const": false
+    }
+  },
+  "required": [
+    "version",
+    "schema",
+    "immutableAttestations",
+    "dedicatedRuntimeAttestationCredentialRequired",
+    "browserAttestationSubmissionAllowed",
+    "resourceBudgetAccounting",
+    "sandboxEvidenceComparison",
+    "arbitraryCodeExecution"
+  ]
+}

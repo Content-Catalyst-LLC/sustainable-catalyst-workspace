@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.8.0"
+    service_version: str = "2.9.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     max_runtime_handoff_receipts_per_account: int = 2000
     max_execution_policies_per_account: int = 250
     max_execution_policy_decisions_per_account: int = 5000
+    max_runtime_execution_attestations_per_account: int = 5000
+    runtime_attestation_token: str = ""
 
     max_jobs_per_account: int = 1000
     default_job_max_attempts: int = 3
@@ -60,6 +62,10 @@ class Settings(BaseSettings):
     @property
     def token_configured(self) -> bool:
         return bool(self.service_token.strip())
+
+    @property
+    def runtime_attestation_token_configured(self) -> bool:
+        return bool(self.runtime_attestation_token.strip())
 
 
 @lru_cache
