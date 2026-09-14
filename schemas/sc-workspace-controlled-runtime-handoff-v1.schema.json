@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace v2.7 Controlled Runtime Handoff Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "reproductionExecutionPlans",
+    "controlledRuntimeHandoffs",
+    "humanAuthorizedDispatch",
+    "automaticReproductionExecution",
+    "clientSuppliedRuntimeUrlsAllowed",
+    "arbitraryCodeExecution"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-controlled-runtime-handoff-contract/1.0"
+    },
+    "version": {
+      "const": "2.7.0"
+    },
+    "reproductionExecutionPlans": {
+      "const": true
+    },
+    "controlledRuntimeHandoffs": {
+      "const": true
+    },
+    "humanAuthorizedDispatch": {
+      "const": true
+    },
+    "frozenExecutionEnvelope": {
+      "const": true
+    },
+    "serverConfiguredRoutesOnly": {
+      "const": true
+    },
+    "clientSuppliedRuntimeUrlsAllowed": {
+      "const": false
+    },
+    "clientSuppliedRuntimeCredentialsAllowed": {
+      "const": false
+    },
+    "automaticReproductionExecution": {
+      "const": false
+    },
+    "arbitraryCodeExecution": {
+      "const": false
+    },
+    "handoffJobContract": {
+      "const": "sc-workspace-job-request/1.0"
+    },
+    "receiptSchema": {
+      "const": "sc-workspace-runtime-handoff-receipt/1.0"
+    }
+  }
+}

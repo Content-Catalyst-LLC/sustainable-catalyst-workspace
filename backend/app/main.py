@@ -23,6 +23,7 @@ from .repository import (
 from .schemas import (
     ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
     RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest,
+    ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
 )
@@ -43,6 +44,7 @@ from .utils import iso
 from .environments import environment_metadata, get_environment, get_environment_revision, list_environment_revisions, list_environments, store_environment
 from .runtime_adapters import adapter_metadata, check_environment_compatibility, get_adapter, get_adapter_revision, list_adapter_revisions, list_adapters, store_adapter
 from .reproduction import create_reproduction_plan, create_verification, get_reproduction_plan, get_verification, list_reproduction_plans, list_verifications, plan_metadata, verification_metadata
+from .execution_control import create_execution_plan, dispatch_execution_plan, execution_plan_metadata, get_execution_plan, get_handoff_receipt, handoff_receipt_metadata, list_execution_plans, list_handoff_receipts
 
 
 @asynccontextmanager
@@ -111,6 +113,11 @@ def health():
         "runtimeCompatibilityChecks": True,
         "reproductionPlans": True,
         "reproductionVerification": True,
+        "reproductionExecutionPlans": True,
+        "controlledRuntimeHandoffs": True,
+        "humanAuthorizedDispatch": True,
+        "automaticReproductionExecution": False,
+        "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
     }
 
@@ -181,6 +188,13 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "reproductionVerification": True,
         "deterministicRerunComparison": True,
         "comparisonMode": "metadata-and-content-digests",
+        "reproductionExecutionPlans": True,
+        "controlledRuntimeHandoffs": True,
+        "humanAuthorizedDispatch": True,
+        "frozenExecutionEnvelope": True,
+        "automaticReproductionExecution": False,
+        "clientSuppliedRuntimeUrlsAllowed": False,
+        "clientSuppliedRuntimeCredentialsAllowed": False,
         "arbitraryCodeExecution": False,
         "secretEnvironmentValuesCaptured": False,
         "limits": {
@@ -199,6 +213,8 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "executionRunsPerAccount": settings.max_execution_runs_per_account,
             "executionEnvironmentsPerAccount": settings.max_execution_environments_per_account,
             "runtimeAdaptersPerAccount": settings.max_runtime_adapters_per_account,
+            "reproductionExecutionPlansPerAccount": settings.max_reproduction_execution_plans_per_account,
+            "runtimeHandoffReceiptsPerAccount": settings.max_runtime_handoff_receipts_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -653,6 +669,47 @@ def reproduction_verification_get_route(verification_id: str, identity: ServiceI
         row=get_verification(db,identity.user_key,verification_id)
         if row is None: raise HTTPException(status_code=404,detail="Workspace reproduction verification not found.")
         return {"schema":"sc-workspace-reproduction-verification-response/1.0","item":verification_metadata(row)}
+
+
+@app.get("/v1/reproduction-execution-plans")
+def reproduction_execution_plans_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-reproduction-execution-plan-index/1.0","items":list_execution_plans(db,identity.user_key),"automaticDispatch":False}
+
+
+@app.post("/v1/reproduction-execution-plans")
+def reproduction_execution_plan_create_route(payload: ReproductionExecutionPlanCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"item":execution_plan_metadata(create_execution_plan(db,identity.user_key,payload))}
+
+
+@app.get("/v1/reproduction-execution-plans/{execution_plan_id}")
+def reproduction_execution_plan_get_route(execution_plan_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_execution_plan(db,identity.user_key,execution_plan_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace reproduction execution plan not found.")
+        return {"schema":"sc-workspace-reproduction-execution-plan-response/1.0","item":execution_plan_metadata(row)}
+
+
+@app.post("/v1/reproduction-execution-plans/{execution_plan_id}/handoff")
+def reproduction_execution_plan_handoff_route(execution_plan_id: str, payload: ControlledRuntimeHandoffRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        receipt,replayed,job=dispatch_execution_plan(db,identity.user_key,execution_plan_id,payload)
+        return {"ok":True,"replayed":replayed,"item":handoff_receipt_metadata(receipt),"job":job}
+
+
+@app.get("/v1/runtime-handoff-receipts")
+def runtime_handoff_receipts_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-runtime-handoff-receipt-index/1.0","items":list_handoff_receipts(db,identity.user_key)}
+
+
+@app.get("/v1/runtime-handoff-receipts/{receipt_id}")
+def runtime_handoff_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_handoff_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace runtime handoff receipt not found.")
+        return {"schema":"sc-workspace-runtime-handoff-receipt-response/1.0","item":handoff_receipt_metadata(row)}
 
 
 @app.get("/v1/runs")

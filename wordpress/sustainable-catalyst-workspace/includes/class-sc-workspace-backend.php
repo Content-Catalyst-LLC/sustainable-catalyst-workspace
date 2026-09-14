@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.6.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.7.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -82,6 +82,13 @@ final class SC_Workspace_Backend {
             'reproductionPlans' => true,
             'reproductionVerification' => true,
             'deterministicRerunComparison' => true,
+            'reproductionExecutionPlans' => true,
+            'controlledRuntimeHandoffs' => true,
+            'humanAuthorizedDispatch' => true,
+            'frozenExecutionEnvelope' => true,
+            'automaticReproductionExecution' => false,
+            'clientSuppliedRuntimeUrlsAllowed' => false,
+            'clientSuppliedRuntimeCredentialsAllowed' => false,
             'arbitraryCodeExecution' => false,
             'secretEnvironmentValuesCaptured' => false,
         );

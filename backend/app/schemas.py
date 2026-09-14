@@ -289,3 +289,26 @@ class ReproductionVerificationCreateRequest(BaseModel):
     reproductionRunId: str = Field(min_length=1, max_length=96)
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ReproductionExecutionPlanCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-reproduction-execution-plan/1.0"] = Field(alias="schema")
+    executionPlanId: str | None = Field(default=None, max_length=96)
+    reproductionPlanId: str = Field(min_length=1, max_length=96)
+    reproductionRunId: str = Field(min_length=1, max_length=96)
+    priority: int = Field(default=7, ge=0, le=9)
+    maxAttempts: int = Field(default=1, ge=1, le=5)
+    inputArtifactIds: list[str] = Field(default_factory=list, max_length=100)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    notes: str = Field(default="", max_length=12000)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ControlledRuntimeHandoffRequest(BaseModel):
+    schema_: Literal["sc-workspace-controlled-runtime-handoff/1.0"] = Field(alias="schema")
+    receiptId: str | None = Field(default=None, max_length=96)
+    humanAuthorized: Literal[True]
+    reason: str = Field(default="user-authorized-reproduction", max_length=500)
+
+    model_config = ConfigDict(populate_by_name=True)

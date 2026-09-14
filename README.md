@@ -1,4 +1,9 @@
-# Sustainable Catalyst Workspace v2.6.0
+# Sustainable Catalyst Workspace v2.7.0
+
+## v2.7.0 — Reproduction Execution Plans & Controlled Runtime Handoffs
+
+Workspace v2.7.0 adds a bounded execution-preparation layer on top of v2.6 reproducibility verification. Reproduction execution plans freeze a reproduction run, environment revision, runtime-adapter revision, target product, operation, job payload, and readiness checks before any work is queued. Dispatch requires a separate human-authorized handoff call and can only use server-configured routes. Client-supplied runtime URLs, credentials, and arbitrary shell commands remain prohibited.
+
 
 ## Runtime Adapter Registry & Reproduction Verification
 

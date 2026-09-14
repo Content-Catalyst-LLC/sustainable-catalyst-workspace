@@ -526,3 +526,45 @@ class ReproductionVerification(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ReproductionExecutionPlan(Base):
+    __tablename__ = "workspace_reproduction_execution_plans"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    execution_plan_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    reproduction_plan_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    original_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    reproduction_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    target_product: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    environment_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    runtime_adapter_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    environment_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    runtime_adapter_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    job_request_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    readiness_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    policy_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class RuntimeHandoffReceipt(Base):
+    __tablename__ = "workspace_runtime_handoff_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    execution_plan_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    reproduction_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    target_product: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    route_transport: Mapped[str] = mapped_column(String(64), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
