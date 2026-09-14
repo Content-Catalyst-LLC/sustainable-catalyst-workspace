@@ -1,30 +1,27 @@
-# Sustainable Catalyst Workspace Backend v2.2.0
+# Sustainable Catalyst Workspace Backend v2.3.0
 
-Workspace v2.2.0 hardens the dedicated FastAPI + PostgreSQL persistence plane introduced in v2.1.0.
+Workspace v2.3.0 adds durable asynchronous execution to the FastAPI + PostgreSQL backend introduced in v2.1.0 and hardened in v2.2.0.
 
-## Added in v2.2.0
+## Added in v2.3.0
 
-- non-destructive WordPress `user_meta` migration planning and apply endpoints
-- deterministic migration receipts and idempotent replay detection
-- source revision preservation for imported project and notebook heads
-- content-addressed artifact storage using SHA-256
-- persistent Docker volume for artifact blobs
-- artifact revision preconditions and metadata history
-- artifact storage integrity verification
-- bounded recovery snapshots of project, notebook, and artifact heads
+- PostgreSQL-backed durable job queue
+- immutable job-event history
+- a separate `sc-workspace-worker` process
+- worker heartbeat/status records
+- bounded priority, retry, cancel, and idempotency semantics
+- local background operations for storage integrity and recovery snapshots
+- server-configured cross-product route registry
+- `sc-workspace-compute-handoff/1.0` execution envelope
+- route adapters for Catalyst Core, Research Lab, Workbench, Decision Studio, Knowledge Library, and Site Intelligence
 
-## Preserved
+## Safety boundaries
 
-Workspace remains local-first. Browser-local projects remain canonical. Migration never deletes the legacy WordPress store, and the WordPress bridge can plan/apply migration while backend mode is still disabled. Explicit backup/sync semantics remain unchanged.
+Browsers cannot supply arbitrary route URLs. Product routes and optional service credentials are configured only through server environment variables. Unconfigured routes become `blocked`; Workspace does not guess endpoints. A completed handoff is not scientific validation or human approval.
 
 ## Runtime
 
-The service listens on container port `8089`. The example production mapping uses VPS loopback port `8094` because `8089` is already allocated to Decision Studio in the Sustainable Catalyst VPS layout.
+The API continues on container port `8089` and VPS loopback `127.0.0.1:8094`. A second container, `sc-workspace-worker`, runs `python -m app.worker` on the same private Docker network and PostgreSQL database. Both containers mount the existing `sc-workspace-data` volume.
 
-The service remains private: browser-direct access is not supported. WordPress sends the service token and user scope.
+## Preserved
 
-## Storage
-
-PostgreSQL stores project/notebook heads, revisions, migration receipts, artifact metadata, artifact revisions, and recovery manifests. Artifact bytes are written to `/data/objects` in a persistent Docker volume using paths derived from SHA-256 digests.
-
-Blob deletion is intentionally conservative in v2.2.0: deleting an artifact removes its Workspace metadata/revisions but leaves content-addressed bytes for later garbage-collection tooling, avoiding accidental removal of shared/referenced blobs.
+The v2.2.0 migration, artifact storage, recovery, project/notebook persistence, and revision contracts remain unchanged. Browser-local projects remain canonical.

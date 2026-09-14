@@ -65,3 +65,25 @@ class RecoverySnapshotRequest(BaseModel):
     reason: str = Field(default="manual", max_length=160)
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class JobCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-job-request/1.0"] = Field(alias="schema")
+    jobType: Literal["workspace-task", "compute-handoff"] = "workspace-task"
+    targetProduct: Literal["workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"] = "workspace"
+    operation: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    priority: int = Field(default=5, ge=0, le=9)
+    maxAttempts: int = Field(default=3, ge=1, le=5)
+    idempotencyKey: str | None = Field(default=None, max_length=160)
+    inputArtifactIds: list[str] = Field(default_factory=list, max_length=100)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class JobActionRequest(BaseModel):
+    schema_: Literal["sc-workspace-job-action/1.0"] = Field(alias="schema")
+    reason: str = Field(default="user-request", max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)

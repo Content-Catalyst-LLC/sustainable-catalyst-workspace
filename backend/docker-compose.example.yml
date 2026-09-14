@@ -3,18 +3,43 @@ services:
     build: .
     container_name: sc-workspace-backend
     restart: unless-stopped
-    environment:
+    environment: &workspace-env
       SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://sc_workspace:${SC_WORKSPACE_DB_PASSWORD}@sc-postgres:5432/sc_workspace
       SC_WORKSPACE_SERVICE_TOKEN: ${SC_WORKSPACE_SERVICE_TOKEN}
       SC_WORKSPACE_ENVIRONMENT: production
       SC_WORKSPACE_AUTO_CREATE_SCHEMA: "false"
       SC_WORKSPACE_OBJECT_STORAGE_ROOT: /data/objects
+      SC_WORKSPACE_ROUTE_CORE_URL: ${SC_WORKSPACE_ROUTE_CORE_URL:-}
+      SC_WORKSPACE_ROUTE_CORE_TOKEN: ${SC_WORKSPACE_ROUTE_CORE_TOKEN:-}
+      SC_WORKSPACE_ROUTE_LAB_URL: ${SC_WORKSPACE_ROUTE_LAB_URL:-}
+      SC_WORKSPACE_ROUTE_LAB_TOKEN: ${SC_WORKSPACE_ROUTE_LAB_TOKEN:-}
+      SC_WORKSPACE_ROUTE_WORKBENCH_URL: ${SC_WORKSPACE_ROUTE_WORKBENCH_URL:-}
+      SC_WORKSPACE_ROUTE_WORKBENCH_TOKEN: ${SC_WORKSPACE_ROUTE_WORKBENCH_TOKEN:-}
+      SC_WORKSPACE_ROUTE_DECISION_STUDIO_URL: ${SC_WORKSPACE_ROUTE_DECISION_STUDIO_URL:-}
+      SC_WORKSPACE_ROUTE_DECISION_STUDIO_TOKEN: ${SC_WORKSPACE_ROUTE_DECISION_STUDIO_TOKEN:-}
+      SC_WORKSPACE_ROUTE_LIBRARY_URL: ${SC_WORKSPACE_ROUTE_LIBRARY_URL:-}
+      SC_WORKSPACE_ROUTE_LIBRARY_TOKEN: ${SC_WORKSPACE_ROUTE_LIBRARY_TOKEN:-}
+      SC_WORKSPACE_ROUTE_SITE_INTELLIGENCE_URL: ${SC_WORKSPACE_ROUTE_SITE_INTELLIGENCE_URL:-}
+      SC_WORKSPACE_ROUTE_SITE_INTELLIGENCE_TOKEN: ${SC_WORKSPACE_ROUTE_SITE_INTELLIGENCE_TOKEN:-}
     networks:
       - sc-internal
     ports:
       - "127.0.0.1:8094:8089"
     volumes:
       - sc-workspace-data:/data
+
+  sc-workspace-worker:
+    build: .
+    container_name: sc-workspace-worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    environment: *workspace-env
+    networks:
+      - sc-internal
+    volumes:
+      - sc-workspace-data:/data
+    depends_on:
+      - sc-workspace-backend
 
 networks:
   sc-internal:

@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
@@ -20,11 +20,13 @@ from .repository import (
     store_notebook,
     store_project,
 )
-from .schemas import ArtifactStoreRequest, LegacyMigrationRequest, NotebookStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest
+from .schemas import ArtifactStoreRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, NotebookStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest
 from .security import ServiceIdentity, require_service_identity
 from .migration import apply_migration, list_receipts, migration_plan
 from .object_store import artifact_metadata, delete_artifact, get_artifact, list_artifacts, read_artifact_content, store_artifact, verify_artifact_storage
 from .recovery import create_snapshot, get_snapshot, list_snapshots, snapshot_metadata
+from .jobs import create_job, get_job, job_metadata, list_job_events, list_jobs, list_worker_heartbeats, request_cancel, retry_job
+from .routing import configured_route_count, route_registry
 from .utils import iso
 
 
@@ -77,6 +79,9 @@ def health():
         "objectStorage": "content-addressed-filesystem",
         "recoverySnapshots": True,
         "legacyMigration": True,
+        "backgroundJobs": True,
+        "computeOrchestration": True,
+        "workerMode": "separate-process",
     }
 
 
@@ -113,8 +118,15 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "migrationReceipts": True,
         "recoverySnapshots": True,
         "storageIntegrityChecks": True,
-        "backgroundJobs": False,
-        "computeOrchestration": False,
+        "backgroundJobs": True,
+        "durableJobQueue": True,
+        "workerProcess": True,
+        "jobEventHistory": True,
+        "jobRetryAndCancel": True,
+        "computeOrchestration": True,
+        "orchestrationContract": "sc-workspace-compute-handoff/1.0",
+        "serverConfiguredRoutesOnly": True,
+        "configuredRouteCount": configured_route_count(),
         "limits": {
             "projectsPerAccount": settings.max_projects_per_account,
             "projectBytes": settings.max_project_bytes,
@@ -125,6 +137,8 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "artifactBytes": settings.max_artifact_bytes,
             "artifactAccountBytes": settings.max_artifact_account_bytes,
             "recoverySnapshotsPerAccount": settings.max_recovery_snapshots_per_account,
+            "jobsPerAccount": settings.max_jobs_per_account,
+            "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
     }
 
@@ -274,3 +288,74 @@ def recovery_snapshot_get(snapshot_id: str, identity: ServiceIdentity = Depends(
     with session_scope() as db:
         row = get_snapshot(db, identity.user_key, snapshot_id)
         return {"schema": "sc-workspace-recovery-snapshot/1.0", "item": snapshot_metadata(row), "manifest": row.manifest}
+
+
+@app.get("/v1/orchestration/routes")
+def orchestration_routes(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema": "sc-workspace-orchestration-route-registry/1.0",
+        "items": list(route_registry().values()),
+        "serverConfiguredOnly": True,
+        "browserSuppliedUrlsAllowed": False,
+    }
+
+
+@app.get("/v1/worker/status")
+def worker_status(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-worker-status/1.0", "items": list_worker_heartbeats(db)}
+
+
+@app.get("/v1/jobs")
+def jobs_index(
+    status: str | None = Query(default=None, max_length=32),
+    targetProduct: str | None = Query(default=None, max_length=64),
+    limit: int = Query(default=100, ge=1, le=250),
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    with session_scope() as db:
+        return {
+            "schema": "sc-workspace-job-index/1.0",
+            "items": list_jobs(db, identity.user_key, status, targetProduct, limit),
+            "durable": True,
+            "pollingSupported": True,
+        }
+
+
+@app.post("/v1/jobs")
+def job_create_route(payload: JobCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = create_job(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": job_metadata(row)}
+
+
+@app.get("/v1/jobs/{job_id}")
+def job_get_route(job_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_job(db, identity.user_key, job_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace job not found.")
+        return {"schema": "sc-workspace-job/1.0", "item": job_metadata(row), "result": row.result}
+
+
+@app.get("/v1/jobs/{job_id}/events")
+def job_events_route(job_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_job(db, identity.user_key, job_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace job not found.")
+        return {"schema": "sc-workspace-job-event-index/1.0", "jobId": job_id, "items": list_job_events(db, identity.user_key, job_id)}
+
+
+@app.post("/v1/jobs/{job_id}/cancel")
+def job_cancel_route(job_id: str, payload: JobActionRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = request_cancel(db, identity.user_key, job_id, payload.reason)
+        return {"ok": True, "item": job_metadata(row)}
+
+
+@app.post("/v1/jobs/{job_id}/retry")
+def job_retry_route(job_id: str, payload: JobActionRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = retry_job(db, identity.user_key, job_id, payload.reason)
+        return {"ok": True, "item": job_metadata(row)}

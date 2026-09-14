@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.2.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.3.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -51,8 +51,14 @@ final class SC_Workspace_Backend {
             'objectStorageMode' => 'content-addressed-filesystem',
             'recoverySnapshots' => true,
             'storageIntegrityChecks' => true,
-            'backgroundJobs' => false,
-            'computeOrchestration' => false,
+            'backgroundJobs' => true,
+            'durableJobQueue' => true,
+            'workerProcess' => true,
+            'jobEventHistory' => true,
+            'jobRetryAndCancel' => true,
+            'computeOrchestration' => true,
+            'orchestrationContract' => 'sc-workspace-compute-handoff/1.0',
+            'serverConfiguredRoutesOnly' => true,
         );
     }
 

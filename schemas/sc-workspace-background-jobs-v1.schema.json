@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-background-jobs-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Background Jobs Contract",
+  "type": "object",
+  "required": ["schema", "version", "durableJobQueue", "workerProcess", "computeOrchestration"],
+  "properties": {
+    "schema": {"const": "sc-workspace-background-jobs/1.0"},
+    "version": {"const": "2.3.0"},
+    "durableJobQueue": {"const": true},
+    "workerProcess": {"const": true},
+    "jobEventHistory": {"const": true},
+    "jobRetryAndCancel": {"const": true},
+    "computeOrchestration": {"const": true},
+    "serverConfiguredRoutesOnly": {"const": true},
+    "browserSuppliedRouteUrlsAllowed": {"const": false},
+    "handoffSchema": {"const": "sc-workspace-compute-handoff/1.0"}
+  },
+  "additionalProperties": true
+}
