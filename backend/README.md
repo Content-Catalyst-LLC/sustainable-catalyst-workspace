@@ -1,8 +1,8 @@
-# Sustainable Catalyst Workspace Backend v2.3.0
+# Sustainable Catalyst Workspace Backend v2.4.0
 
-Workspace v2.3.0 adds durable asynchronous execution to the FastAPI + PostgreSQL backend introduced in v2.1.0 and hardened in v2.2.0.
+Workspace v2.4.0 adds durable asynchronous execution to the FastAPI + PostgreSQL backend introduced in v2.1.0 and hardened in v2.2.0.
 
-## Added in v2.3.0
+## Added in v2.4.0
 
 - PostgreSQL-backed durable job queue
 - immutable job-event history
@@ -25,3 +25,16 @@ The API continues on container port `8089` and VPS loopback `127.0.0.1:8094`. A 
 ## Preserved
 
 The v2.2.0 migration, artifact storage, recovery, project/notebook persistence, and revision contracts remain unchanged. Browser-local projects remain canonical.
+
+
+## v2.4.0 registry endpoints
+
+- `GET/POST /v1/datasets` and dataset revision routes
+- `GET/POST /v1/models` and model revision routes
+- `GET/POST /v1/parameter-sets` and parameter-set revision routes
+- `GET/POST /v1/runs`
+- `POST /v1/runs/{run_id}/state`
+- `GET /v1/runs/{run_id}/events`
+- `GET/POST /v1/runs/{run_id}/outputs`
+
+Execution runs freeze registry references to exact revisions/fingerprints. Jobs may include `executionRunId`; the worker mirrors durable job state into the linked run.

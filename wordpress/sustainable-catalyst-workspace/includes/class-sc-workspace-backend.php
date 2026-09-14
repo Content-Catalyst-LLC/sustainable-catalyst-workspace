@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.3.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.4.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -59,6 +59,16 @@ final class SC_Workspace_Backend {
             'computeOrchestration' => true,
             'orchestrationContract' => 'sc-workspace-compute-handoff/1.0',
             'serverConfiguredRoutesOnly' => true,
+            'datasetRegistry' => true,
+            'datasetRevisionHistory' => true,
+            'modelRegistry' => true,
+            'modelRevisionHistory' => true,
+            'parameterSetRegistry' => true,
+            'executionRunRegistry' => true,
+            'executionRunEvents' => true,
+            'executionRunOutputs' => true,
+            'jobExecutionRunLinkage' => true,
+            'reproducibilityFingerprints' => true,
         );
     }
 

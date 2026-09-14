@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .models import JobEvent, JobRecord, WorkerHeartbeat
+from .registry import link_job_to_run, sync_run_from_job
 from .schemas import JobCreateRequest
 from .utils import sha256_hex, iso
 
@@ -25,6 +26,7 @@ def job_metadata(row: JobRecord) -> dict:
         "targetProduct": row.target_product,
         "operation": row.operation,
         "projectId": row.project_id,
+        "executionRunId": row.execution_run_id,
         "status": row.status,
         "priority": row.priority,
         "attempt": row.attempt,
@@ -85,6 +87,7 @@ def create_job(db: Session, user_key: str, payload: JobCreateRequest) -> tuple[J
         target_product=payload.targetProduct,
         operation=payload.operation.strip(),
         project_id=(payload.projectId or "").strip(),
+        execution_run_id=(payload.executionRunId or "").strip(),
         status="queued",
         priority=payload.priority,
         attempt=0,
@@ -99,7 +102,9 @@ def create_job(db: Session, user_key: str, payload: JobCreateRequest) -> tuple[J
         updated_at=now,
     )
     db.add(row)
-    add_event(db, row, "queued", {"targetProduct": row.target_product, "operation": row.operation})
+    if row.execution_run_id:
+        link_job_to_run(db, user_key, row.execution_run_id, row.job_id, row.target_product, row.operation)
+    add_event(db, row, "queued", {"targetProduct": row.target_product, "operation": row.operation, "executionRunId": row.execution_run_id})
     db.commit()
     db.refresh(row)
     return row, False
@@ -144,6 +149,8 @@ def request_cancel(db: Session, user_key: str, job_id: str, reason: str) -> JobR
         row.progress = min(row.progress, 99)
     row.updated_at = _now()
     add_event(db, row, "cancel-requested", {"reason": reason})
+    if row.execution_run_id and row.status == "cancelled":
+        sync_run_from_job(db, row.user_key, row.execution_run_id, row.job_id, "cancelled", row.progress, error_code="cancelled", error_message=reason)
     db.commit()
     db.refresh(row)
     return row
@@ -166,6 +173,8 @@ def retry_job(db: Session, user_key: str, job_id: str, reason: str) -> JobRecord
     row.started_at = None
     row.finished_at = None
     row.updated_at = _now()
+    if row.execution_run_id:
+        sync_run_from_job(db, row.user_key, row.execution_run_id, row.job_id, "queued", 0)
     add_event(db, row, "retried", {"reason": reason})
     db.commit()
     db.refresh(row)
@@ -190,6 +199,8 @@ def claim_next_job(db: Session, worker_id: str) -> JobRecord | None:
     row.worker_id = worker_id
     row.started_at = _now()
     row.updated_at = _now()
+    if row.execution_run_id:
+        sync_run_from_job(db, row.user_key, row.execution_run_id, row.job_id, "running", row.progress)
     add_event(db, row, "started", {"workerId": worker_id, "attempt": row.attempt})
     db.commit()
     db.refresh(row)
@@ -212,6 +223,8 @@ def complete_job(db: Session, row: JobRecord, result: dict) -> JobRecord:
         event = "succeeded"
     current.finished_at = _now()
     current.updated_at = _now()
+    if current.execution_run_id:
+        sync_run_from_job(db, current.user_key, current.execution_run_id, current.job_id, current.status, current.progress, result=current.result)
     add_event(db, current, event, {"attempt": current.attempt})
     db.commit()
     db.refresh(current)
@@ -225,6 +238,8 @@ def block_job(db: Session, row: JobRecord, code: str, message: str) -> JobRecord
     current.error_message = message[:4000]
     current.finished_at = _now()
     current.updated_at = _now()
+    if current.execution_run_id:
+        sync_run_from_job(db, current.user_key, current.execution_run_id, current.job_id, "blocked", current.progress, error_code=current.error_code, error_message=current.error_message)
     add_event(db, current, "blocked", {"code": current.error_code})
     db.commit()
     db.refresh(current)
@@ -251,6 +266,8 @@ def fail_or_requeue_job(db: Session, row: JobRecord, code: str, message: str) ->
         current.status = "failed"
         current.finished_at = _now()
         event = "failed"
+    if current.execution_run_id:
+        sync_run_from_job(db, current.user_key, current.execution_run_id, current.job_id, current.status, current.progress, error_code=current.error_code, error_message=current.error_message)
     add_event(db, current, event, {"code": current.error_code, "attempt": current.attempt, "maxAttempts": current.max_attempts})
     db.commit()
     db.refresh(current)

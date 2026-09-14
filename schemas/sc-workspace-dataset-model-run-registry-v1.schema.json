@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-dataset-model-run-registry-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Dataset, Model & Execution Run Registry",
+  "type": "object",
+  "required": ["schema", "version", "datasetRegistry", "modelRegistry", "executionRunRegistry", "reproducibilityFingerprints"],
+  "properties": {
+    "schema": {"const": "sc-workspace-dataset-model-run-registry/1.0"},
+    "version": {"const": "2.4.0"},
+    "datasetRegistry": {"const": true},
+    "datasetRevisionHistory": {"const": true},
+    "modelRegistry": {"const": true},
+    "modelRevisionHistory": {"const": true},
+    "parameterSetRegistry": {"const": true},
+    "executionRunRegistry": {"const": true},
+    "executionRunEvents": {"const": true},
+    "executionRunOutputs": {"const": true},
+    "jobExecutionRunLinkage": {"const": true},
+    "reproducibilityFingerprints": {"const": true},
+    "inputReferencesFrozenAtRunCreation": {"const": true},
+    "automaticModelExecution": {"const": false},
+    "browserSuppliedRouteUrlsAllowed": {"const": false}
+  },
+  "additionalProperties": true
+}

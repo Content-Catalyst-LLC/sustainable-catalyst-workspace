@@ -77,6 +77,7 @@ class JobCreateRequest(BaseModel):
     maxAttempts: int = Field(default=3, ge=1, le=5)
     idempotencyKey: str | None = Field(default=None, max_length=160)
     inputArtifactIds: list[str] = Field(default_factory=list, max_length=100)
+    executionRunId: str | None = Field(default=None, max_length=96)
     payload: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(populate_by_name=True)
@@ -85,5 +86,122 @@ class JobCreateRequest(BaseModel):
 class JobActionRequest(BaseModel):
     schema_: Literal["sc-workspace-job-action/1.0"] = Field(alias="schema")
     reason: str = Field(default="user-request", max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class DatasetStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-dataset-record/1.0"] = Field(alias="schema")
+    datasetId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=1000)
+    description: str = Field(default="", max_length=12000)
+    datasetType: Literal["table", "timeseries", "geospatial", "document", "image", "graph", "simulation", "external", "other"] = "other"
+    sourceKind: Literal["artifact", "external", "library", "generated", "metadata"] = "metadata"
+    artifactId: str | None = Field(default=None, max_length=160)
+    externalUri: str | None = Field(default=None, max_length=4000)
+    schemaDefinition: dict[str, Any] = Field(default_factory=dict)
+    lineage: dict[str, Any] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ModelStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-model-record/1.0"] = Field(alias="schema")
+    modelId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=1000)
+    description: str = Field(default="", max_length=12000)
+    modelKind: Literal["statistical", "forecasting", "machine-learning", "simulation", "optimization", "causal", "symbolic", "custom"] = "custom"
+    framework: str = Field(default="", max_length=160)
+    algorithm: str = Field(default="", max_length=160)
+    versionLabel: str = Field(default="", max_length=96)
+    sourceArtifactId: str | None = Field(default=None, max_length=160)
+    executionTarget: Literal["", "workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"] = ""
+    executionOperation: str = Field(default="", max_length=160)
+    inputSchema: dict[str, Any] = Field(default_factory=dict)
+    outputSchema: dict[str, Any] = Field(default_factory=dict)
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    lineage: dict[str, Any] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list, max_length=50)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ParameterSetStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-parameter-set/1.0"] = Field(alias="schema")
+    parameterSetId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    modelId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=1000)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class RegistryRevisionRef(BaseModel):
+    revision: int | None = Field(default=None, ge=1)
+
+
+class DatasetRunRef(RegistryRevisionRef):
+    datasetId: str = Field(min_length=1, max_length=160)
+
+
+class ModelRunRef(RegistryRevisionRef):
+    modelId: str = Field(min_length=1, max_length=160)
+
+
+class ParameterSetRunRef(RegistryRevisionRef):
+    parameterSetId: str = Field(min_length=1, max_length=160)
+
+
+class ExecutionRunCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-execution-run/1.0"] = Field(alias="schema")
+    runId: str | None = Field(default=None, max_length=96)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(default="Execution run", max_length=1000)
+    datasetRefs: list[DatasetRunRef] = Field(default_factory=list, max_length=100)
+    modelRef: ModelRunRef | None = None
+    parameterSetRef: ParameterSetRunRef | None = None
+    targetProduct: Literal["", "workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"] = ""
+    operation: str = Field(default="", max_length=160)
+    environment: dict[str, Any] = Field(default_factory=dict)
+    idempotencyKey: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExecutionRunUpdateRequest(BaseModel):
+    schema_: Literal["sc-workspace-execution-run-update/1.0"] = Field(alias="schema")
+    status: Literal["planned", "queued", "running", "succeeded", "failed", "blocked", "cancelled"]
+    progress: int = Field(default=0, ge=0, le=100)
+    jobId: str | None = Field(default=None, max_length=96)
+    resultSummary: dict[str, Any] = Field(default_factory=dict)
+    errorCode: str = Field(default="", max_length=96)
+    errorMessage: str = Field(default="", max_length=4000)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExecutionRunOutputRequest(BaseModel):
+    schema_: Literal["sc-workspace-execution-run-output/1.0"] = Field(alias="schema")
+    outputId: str = Field(min_length=1, max_length=160)
+    artifactId: str | None = Field(default=None, max_length=160)
+    role: str = Field(default="result", max_length=64)
+    label: str = Field(default="", max_length=1000)
+    mediaType: str = Field(default="application/octet-stream", max_length=255)
+    sha256: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{64}$")
+    bytes: int = Field(default=0, ge=0)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(populate_by_name=True)

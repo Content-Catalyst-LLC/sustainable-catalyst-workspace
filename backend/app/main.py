@@ -20,13 +20,24 @@ from .repository import (
     store_notebook,
     store_project,
 )
-from .schemas import ArtifactStoreRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, NotebookStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest
+from .schemas import (
+    ArtifactStoreRequest, DatasetStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
+    ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
+    NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
+)
 from .security import ServiceIdentity, require_service_identity
 from .migration import apply_migration, list_receipts, migration_plan
 from .object_store import artifact_metadata, delete_artifact, get_artifact, list_artifacts, read_artifact_content, store_artifact, verify_artifact_storage
 from .recovery import create_snapshot, get_snapshot, list_snapshots, snapshot_metadata
 from .jobs import create_job, get_job, job_metadata, list_job_events, list_jobs, list_worker_heartbeats, request_cancel, retry_job
 from .routing import configured_route_count, route_registry
+from .registry import (
+    create_execution_run, dataset_metadata, get_dataset, get_dataset_revision, get_execution_run, get_model,
+    get_model_revision, get_parameter_set, get_parameter_set_revision, list_dataset_revisions, list_datasets,
+    list_execution_runs, list_model_revisions, list_models, list_parameter_set_revisions, list_parameter_sets,
+    list_run_events, list_run_outputs, model_metadata, output_metadata, parameter_set_metadata, run_metadata,
+    store_dataset, store_model, store_parameter_set, store_run_output, update_execution_run,
+)
 from .utils import iso
 
 
@@ -82,6 +93,10 @@ def health():
         "backgroundJobs": True,
         "computeOrchestration": True,
         "workerMode": "separate-process",
+        "datasetRegistry": True,
+        "modelRegistry": True,
+        "executionRunRegistry": True,
+        "reproducibilityLineage": True,
     }
 
 
@@ -127,6 +142,16 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "orchestrationContract": "sc-workspace-compute-handoff/1.0",
         "serverConfiguredRoutesOnly": True,
         "configuredRouteCount": configured_route_count(),
+        "datasetRegistry": True,
+        "datasetRevisionHistory": True,
+        "modelRegistry": True,
+        "modelRevisionHistory": True,
+        "parameterSetRegistry": True,
+        "executionRunRegistry": True,
+        "executionRunEvents": True,
+        "executionRunOutputs": True,
+        "jobExecutionRunLinkage": True,
+        "reproducibilityFingerprints": True,
         "limits": {
             "projectsPerAccount": settings.max_projects_per_account,
             "projectBytes": settings.max_project_bytes,
@@ -137,6 +162,10 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "artifactBytes": settings.max_artifact_bytes,
             "artifactAccountBytes": settings.max_artifact_account_bytes,
             "recoverySnapshotsPerAccount": settings.max_recovery_snapshots_per_account,
+            "datasetsPerAccount": settings.max_datasets_per_account,
+            "modelsPerAccount": settings.max_models_per_account,
+            "parameterSetsPerAccount": settings.max_parameter_sets_per_account,
+            "executionRunsPerAccount": settings.max_execution_runs_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -359,3 +388,170 @@ def job_retry_route(job_id: str, payload: JobActionRequest, identity: ServiceIde
     with session_scope() as db:
         row = retry_job(db, identity.user_key, job_id, payload.reason)
         return {"ok": True, "item": job_metadata(row)}
+
+
+@app.get("/v1/datasets")
+def datasets_index(projectId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-dataset-index/1.0", "items": list_datasets(db, identity.user_key, projectId), "revisioned": True}
+
+
+@app.post("/v1/datasets")
+def dataset_store_route(payload: DatasetStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_dataset(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": dataset_metadata(row)}
+
+
+@app.get("/v1/datasets/{dataset_id}")
+def dataset_get_route(dataset_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_dataset(db, identity.user_key, dataset_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace dataset not found.")
+        return {"schema": "sc-workspace-dataset-response/1.0", "item": dataset_metadata(row)}
+
+
+@app.get("/v1/datasets/{dataset_id}/revisions")
+def dataset_revisions_route(dataset_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-dataset-revision-index/1.0", "datasetId": dataset_id, "items": list_dataset_revisions(db, identity.user_key, dataset_id)}
+
+
+@app.get("/v1/datasets/{dataset_id}/revisions/{revision}")
+def dataset_revision_get_route(dataset_id: str, revision: int, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_dataset_revision(db, identity.user_key, dataset_id, revision)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace dataset revision not found.")
+        return {"schema": "sc-workspace-dataset-revision/1.0", "item": dataset_metadata(row)}
+
+
+@app.get("/v1/models")
+def models_index(projectId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-model-index/1.0", "items": list_models(db, identity.user_key, projectId), "revisioned": True}
+
+
+@app.post("/v1/models")
+def model_store_route(payload: ModelStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_model(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": model_metadata(row)}
+
+
+@app.get("/v1/models/{model_id}")
+def model_get_route(model_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_model(db, identity.user_key, model_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace model not found.")
+        return {"schema": "sc-workspace-model-response/1.0", "item": model_metadata(row)}
+
+
+@app.get("/v1/models/{model_id}/revisions")
+def model_revisions_route(model_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-model-revision-index/1.0", "modelId": model_id, "items": list_model_revisions(db, identity.user_key, model_id)}
+
+
+@app.get("/v1/models/{model_id}/revisions/{revision}")
+def model_revision_get_route(model_id: str, revision: int, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_model_revision(db, identity.user_key, model_id, revision)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace model revision not found.")
+        return {"schema": "sc-workspace-model-revision/1.0", "item": model_metadata(row)}
+
+
+@app.get("/v1/parameter-sets")
+def parameter_sets_index(modelId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-parameter-set-index/1.0", "items": list_parameter_sets(db, identity.user_key, modelId), "revisioned": True}
+
+
+@app.post("/v1/parameter-sets")
+def parameter_set_store_route(payload: ParameterSetStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_parameter_set(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": parameter_set_metadata(row)}
+
+
+@app.get("/v1/parameter-sets/{parameter_set_id}")
+def parameter_set_get_route(parameter_set_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_parameter_set(db, identity.user_key, parameter_set_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace parameter set not found.")
+        return {"schema": "sc-workspace-parameter-set-response/1.0", "item": parameter_set_metadata(row)}
+
+
+@app.get("/v1/parameter-sets/{parameter_set_id}/revisions")
+def parameter_set_revisions_route(parameter_set_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-parameter-set-revision-index/1.0", "parameterSetId": parameter_set_id, "items": list_parameter_set_revisions(db, identity.user_key, parameter_set_id)}
+
+
+@app.get("/v1/parameter-sets/{parameter_set_id}/revisions/{revision}")
+def parameter_set_revision_get_route(parameter_set_id: str, revision: int, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_parameter_set_revision(db, identity.user_key, parameter_set_id, revision)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace parameter-set revision not found.")
+        return {"schema": "sc-workspace-parameter-set-revision/1.0", "item": parameter_set_metadata(row)}
+
+
+@app.get("/v1/runs")
+def execution_runs_index(
+    status: str | None = Query(default=None, max_length=32),
+    projectId: str | None = Query(default=None, max_length=160),
+    limit: int = Query(default=100, ge=1, le=250),
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-run-index/1.0", "items": list_execution_runs(db, identity.user_key, status, projectId, limit)}
+
+
+@app.post("/v1/runs")
+def execution_run_create_route(payload: ExecutionRunCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = create_execution_run(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": run_metadata(row)}
+
+
+@app.get("/v1/runs/{run_id}")
+def execution_run_get_route(run_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_execution_run(db, identity.user_key, run_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace execution run not found.")
+        return {"schema": "sc-workspace-execution-run-response/1.0", "item": run_metadata(row)}
+
+
+@app.post("/v1/runs/{run_id}/state")
+def execution_run_update_route(run_id: str, payload: ExecutionRunUpdateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = update_execution_run(db, identity.user_key, run_id, payload)
+        return {"ok": True, "item": run_metadata(row)}
+
+
+@app.get("/v1/runs/{run_id}/events")
+def execution_run_events_route(run_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_execution_run(db, identity.user_key, run_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace execution run not found.")
+        return {"schema": "sc-workspace-execution-run-event-index/1.0", "runId": run_id, "items": list_run_events(db, identity.user_key, run_id)}
+
+
+@app.get("/v1/runs/{run_id}/outputs")
+def execution_run_outputs_route(run_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-run-output-index/1.0", "runId": run_id, "items": list_run_outputs(db, identity.user_key, run_id)}
+
+
+@app.post("/v1/runs/{run_id}/outputs")
+def execution_run_output_store_route(run_id: str, payload: ExecutionRunOutputRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_run_output(db, identity.user_key, run_id, payload)
+        return {"ok": True, "replayed": replayed, "item": output_metadata(row)}

@@ -161,6 +161,7 @@ class JobRecord(Base):
     target_product: Mapped[str] = mapped_column(String(64), nullable=False, default="workspace")
     operation: Mapped[str] = mapped_column(String(160), nullable=False)
     project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
     attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -202,3 +203,193 @@ class WorkerHeartbeat(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="idle")
     active_job_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class DatasetHead(Base):
+    __tablename__ = "workspace_dataset_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    dataset_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    dataset_type: Mapped[str] = mapped_column(String(64), nullable=False, default="other")
+    source_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
+    artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    external_uri: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    lineage_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    tags_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class DatasetRevision(Base):
+    __tablename__ = "workspace_dataset_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    dataset_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    dataset_type: Mapped[str] = mapped_column(String(64), nullable=False, default="other")
+    source_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
+    artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    external_uri: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    lineage_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    tags_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ModelHead(Base):
+    __tablename__ = "workspace_model_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    model_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="custom")
+    framework: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    algorithm: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    version_label: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    source_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    execution_target: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    execution_operation: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    input_schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    output_schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    lineage_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    tags_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class ModelRevision(Base):
+    __tablename__ = "workspace_model_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    model_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="custom")
+    framework: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    algorithm: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    version_label: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    source_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    execution_target: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    execution_operation: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    input_schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    output_schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    lineage_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    tags_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ParameterSetHead(Base):
+    __tablename__ = "workspace_parameter_set_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    parameter_set_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    model_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class ParameterSetRevision(Base):
+    __tablename__ = "workspace_parameter_set_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    parameter_set_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    model_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ExecutionRun(Base):
+    __tablename__ = "workspace_execution_runs"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False, default="Execution run")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    target_product: Mapped[str] = mapped_column(String(64), nullable=False, default="workspace")
+    operation: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    dataset_refs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    model_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    parameter_set_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    environment_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    reproducibility_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_summary: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    error_code: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    error_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    idempotency_key: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class ExecutionRunOutput(Base):
+    __tablename__ = "workspace_execution_run_outputs"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    output_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(64), nullable=False, default="result")
+    label: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    media_type: Mapped[str] = mapped_column(String(255), nullable=False, default="application/octet-stream")
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ExecutionRunEvent(Base):
+    __tablename__ = "workspace_execution_run_events"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    sequence: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
