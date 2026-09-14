@@ -391,3 +391,59 @@ class RuntimeExecutionAttestationRequest(BaseModel):
     notes: str = Field(default="", max_length=12000)
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+DownstreamComplianceScope = Literal["reproduction-reference", "artifact-export", "publication", "decision-support"]
+
+
+class RuntimeTrustPolicyRef(BaseModel):
+    trustPolicyId: str = Field(min_length=1, max_length=160)
+    revision: int | None = Field(default=None, ge=1)
+    fingerprint: str | None = Field(default=None, max_length=64)
+
+
+class RuntimeTrustPolicyStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-runtime-trust-policy/1.0"] = Field(alias="schema")
+    trustPolicyId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=500)
+    description: str = Field(default="", max_length=12000)
+    allowedSources: list[Literal["workspace-worker", "specialist-runtime", "operator-verified"]] = Field(default_factory=lambda:["specialist-runtime"], min_length=1, max_length=3)
+    allowedAttestors: list[str] = Field(default_factory=list, max_length=100)
+    acceptedClassifications: list[Literal["compliant", "budget-exceeded", "sandbox-deviation"]] = Field(default_factory=lambda:["compliant"], min_length=1, max_length=3)
+    requireBudgetCompliant: bool = True
+    requireSandboxCompliant: bool = True
+    requireEvidenceDigest: bool = True
+    allowedSandboxModes: list[Literal["metadata-gate", "adapter-attested", "container-required", "remote-sandbox-required"]] = Field(default_factory=lambda:["metadata-gate", "adapter-attested", "container-required", "remote-sandbox-required"], min_length=1, max_length=4)
+    downstreamScopes: list[DownstreamComplianceScope] = Field(default_factory=lambda:["reproduction-reference", "artifact-export", "publication", "decision-support"], min_length=1, max_length=4)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ComplianceWaiverCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-compliance-waiver/1.0"] = Field(alias="schema")
+    waiverId: str | None = Field(default=None, max_length=96)
+    attestationId: str = Field(min_length=1, max_length=96)
+    downstreamScopes: list[DownstreamComplianceScope] = Field(min_length=1, max_length=4)
+    waivedChecks: list[str] = Field(min_length=1, max_length=50)
+    humanAuthorized: Literal[True]
+    reason: str = Field(min_length=1, max_length=12000)
+    expiresAt: str | None = Field(default=None, max_length=64)
+    notes: str = Field(default="", max_length=12000)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AttestationVerificationCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-attestation-verification/1.0"] = Field(alias="schema")
+    verificationId: str | None = Field(default=None, max_length=96)
+    attestationId: str = Field(min_length=1, max_length=96)
+    trustPolicyRef: RuntimeTrustPolicyRef
+    downstreamScope: DownstreamComplianceScope
+    waiverId: str | None = Field(default=None, max_length=96)
+    notes: str = Field(default="", max_length=12000)
+
+    model_config = ConfigDict(populate_by_name=True)

@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.9.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.10.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -94,6 +94,13 @@ final class SC_Workspace_Backend {
             'sandboxEnforcementMode' => 'pre-dispatch-policy-gate',
             'policyRequiredForControlledHandoffs' => true,
             'adapterTrustLevels' => true,
+            'runtimeEnforcementTelemetry' => true,
+            'budgetAccounting' => true,
+            'executionAttestations' => true,
+            'runtimeTrustPolicyRegistry' => true,
+            'attestationVerification' => true,
+            'downstreamComplianceGates' => true,
+            'humanComplianceWaivers' => true,
             'hostFilesystemAccessAllowed' => false,
             'dockerSocketAccessAllowed' => false,
             'privilegedExecutionAllowed' => false,

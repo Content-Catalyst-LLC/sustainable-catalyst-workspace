@@ -654,3 +654,86 @@ class RuntimeExecutionAttestation(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class RuntimeTrustPolicyHead(Base):
+    __tablename__ = "workspace_runtime_trust_policy_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    trust_policy_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    allowed_sources_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    allowed_attestors_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    accepted_classifications_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    require_budget_compliant: Mapped[bool] = mapped_column(nullable=False, default=True)
+    require_sandbox_compliant: Mapped[bool] = mapped_column(nullable=False, default=True)
+    require_evidence_digest: Mapped[bool] = mapped_column(nullable=False, default=True)
+    allowed_sandbox_modes_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    downstream_scopes_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class RuntimeTrustPolicyRevision(Base):
+    __tablename__ = "workspace_runtime_trust_policy_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    trust_policy_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    allowed_sources_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    allowed_attestors_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    accepted_classifications_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    require_budget_compliant: Mapped[bool] = mapped_column(nullable=False, default=True)
+    require_sandbox_compliant: Mapped[bool] = mapped_column(nullable=False, default=True)
+    require_evidence_digest: Mapped[bool] = mapped_column(nullable=False, default=True)
+    allowed_sandbox_modes_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    downstream_scopes_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ComplianceWaiver(Base):
+    __tablename__ = "workspace_compliance_waivers"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    waiver_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    attestation_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    downstream_scopes_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    waived_checks_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    human_authorized: Mapped[bool] = mapped_column(nullable=False, default=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class AttestationVerificationReceipt(Base):
+    __tablename__ = "workspace_attestation_verification_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    verification_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    attestation_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    attestation_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    trust_policy_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    trust_policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    trust_policy_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    downstream_scope: Mapped[str] = mapped_column(String(64), nullable=False)
+    waiver_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    eligible: Mapped[bool] = mapped_column(nullable=False, default=False)
+    classification: Mapped[str] = mapped_column(String(32), nullable=False)
+    checks_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

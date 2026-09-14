@@ -24,6 +24,7 @@ from .schemas import (
     ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
     RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest,
     ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest, ExecutionPolicyStoreRequest, RuntimeExecutionAttestationRequest,
+    RuntimeTrustPolicyStoreRequest, ComplianceWaiverCreateRequest, AttestationVerificationCreateRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
 )
@@ -47,6 +48,9 @@ from .reproduction import create_reproduction_plan, create_verification, get_rep
 from .execution_control import create_execution_plan, dispatch_execution_plan, execution_plan_metadata, get_execution_plan, get_handoff_receipt, handoff_receipt_metadata, list_execution_plans, list_handoff_receipts
 from .policy import get_policy, get_policy_revision, get_policy_decision, list_policies, list_policy_revisions, list_policy_decisions, policy_decision_metadata, policy_metadata, store_policy
 from .telemetry import attestation_metadata, create_runtime_attestation, get_runtime_attestation, list_runtime_attestations
+from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
+    waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
+    create_verification as create_compliance_verification, get_verification as get_compliance_verification, list_verifications as list_compliance_verifications)
 
 
 @asynccontextmanager
@@ -127,6 +131,10 @@ def health():
         "budgetAccounting": True,
         "executionAttestations": True,
         "dedicatedRuntimeAttestationCredential": True,
+        "runtimeTrustPolicyRegistry": True,
+        "attestationVerification": True,
+        "downstreamComplianceGates": True,
+        "humanComplianceWaivers": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -217,6 +225,10 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "budgetAccounting": True,
         "executionAttestations": True,
         "dedicatedRuntimeAttestationCredential": True,
+        "runtimeTrustPolicyRegistry": True,
+        "attestationVerification": True,
+        "downstreamComplianceGates": True,
+        "humanComplianceWaivers": True,
         "runtimeAttestationAuth": "dedicated-server-token",
         "browserAttestationSubmissionAllowed": False,
         "hostFilesystemAccessAllowed": False,
@@ -248,6 +260,9 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "executionPoliciesPerAccount": settings.max_execution_policies_per_account,
             "executionPolicyDecisionsPerAccount": settings.max_execution_policy_decisions_per_account,
             "runtimeExecutionAttestationsPerAccount": settings.max_runtime_execution_attestations_per_account,
+            "runtimeTrustPoliciesPerAccount": settings.max_runtime_trust_policies_per_account,
+            "complianceWaiversPerAccount": settings.max_compliance_waivers_per_account,
+            "attestationVerificationsPerAccount": settings.max_attestation_verifications_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -806,6 +821,74 @@ def runtime_handoff_attest(receipt_id: str, payload: RuntimeExecutionAttestation
     with session_scope() as db:
         row, replayed = create_runtime_attestation(db, identity.user_key, receipt_id, payload)
         return {"ok": True, "replayed": replayed, "item": attestation_metadata(row)}
+
+
+@app.get("/v1/runtime-trust-policies")
+def runtime_trust_policies_index(projectId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-runtime-trust-policy-index/1.0","items":list_trust_policies(db,identity.user_key,projectId)}
+
+
+@app.post("/v1/runtime-trust-policies")
+def runtime_trust_policy_store_route(payload: RuntimeTrustPolicyStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row,replayed=store_trust_policy(db,identity.user_key,payload)
+        return {"ok":True,"replayed":replayed,"item":trust_policy_metadata(row)}
+
+
+@app.get("/v1/runtime-trust-policies/{policy_id}")
+def runtime_trust_policy_get_route(policy_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_trust_policy(db,identity.user_key,policy_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace runtime-trust policy not found.")
+        return {"schema":"sc-workspace-runtime-trust-policy-response/1.0","item":trust_policy_metadata(row)}
+
+
+@app.get("/v1/runtime-trust-policies/{policy_id}/revisions")
+def runtime_trust_policy_revisions_route(policy_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-runtime-trust-policy-revisions/1.0","items":list_trust_policy_revisions(db,identity.user_key,policy_id)}
+
+
+@app.get("/v1/compliance-waivers")
+def compliance_waivers_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-compliance-waiver-index/1.0","items":list_waivers(db,identity.user_key),"executionPolicyRelaxationAllowed":False}
+
+
+@app.post("/v1/compliance-waivers")
+def compliance_waiver_create_route(payload: ComplianceWaiverCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"item":waiver_metadata(create_waiver(db,identity.user_key,payload))}
+
+
+@app.get("/v1/compliance-waivers/{waiver_id}")
+def compliance_waiver_get_route(waiver_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_waiver(db,identity.user_key,waiver_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace compliance waiver not found.")
+        return {"schema":"sc-workspace-compliance-waiver-response/1.0","item":waiver_metadata(row)}
+
+
+@app.get("/v1/attestation-verifications")
+def attestation_verifications_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-attestation-verification-index/1.0","items":list_compliance_verifications(db,identity.user_key),"automaticExecutionAuthorization":False}
+
+
+@app.post("/v1/attestation-verifications")
+def attestation_verification_create_route(payload: AttestationVerificationCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=create_compliance_verification(db,identity.user_key,payload)
+        return {"ok":True,"item":compliance_verification_metadata(row)}
+
+
+@app.get("/v1/attestation-verifications/{verification_id}")
+def attestation_verification_get_route(verification_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_compliance_verification(db,identity.user_key,verification_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace attestation verification not found.")
+        return {"schema":"sc-workspace-attestation-verification-response/1.0","item":compliance_verification_metadata(row)}
 
 
 @app.get("/v1/runs")

@@ -1,8 +1,8 @@
-# Sustainable Catalyst Workspace v2.9.0 — Runtime Enforcement Telemetry, Budget Accounting & Execution Attestations
+# Sustainable Catalyst Workspace v2.10.0 — Attestation Verification, Compliance Gates & Runtime Trust
 
 ## Runtime Enforcement Telemetry & Execution Attestations
 
-Workspace v2.9.0 adds immutable post-execution evidence for policy-governed controlled handoffs. Specialist runtimes submit observed resource usage and sandbox evidence through a dedicated server-to-server credential; Workspace calculates budget utilization/headroom, compares the runtime posture with the frozen v2.8 policy decision, and records a SHA-256 execution attestation. WordPress/browser clients can read attestations but cannot submit them.
+Workspace v2.10.0 verifies and governs downstream use of the immutable post-execution evidence introduced in v2.9.0. Specialist runtimes submit observed resource usage and sandbox evidence through a dedicated server-to-server credential; Workspace calculates budget utilization/headroom, compares the runtime posture with the frozen v2.8 policy decision, and records a SHA-256 execution attestation. WordPress/browser clients can read attestations but cannot submit them.
 
 
 ## v2.8.0 — Execution Policy, Resource Budgets & Runtime Sandboxing

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace v2.10.0 Attestation Verification & Compliance Contract",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": "2.10.0"
+    },
+    "runtimeTrustPolicyRegistry": {
+      "const": true
+    },
+    "attestationVerification": {
+      "const": true
+    },
+    "downstreamComplianceGates": {
+      "const": true
+    },
+    "humanComplianceWaivers": {
+      "const": true
+    },
+    "waiverMayAuthorizeExecution": {
+      "const": false
+    },
+    "waiverMayRewriteAttestation": {
+      "const": false
+    },
+    "automaticComplianceApproval": {
+      "const": false
+    },
+    "browserRuntimeAttestationSubmissionAllowed": {
+      "const": false
+    }
+  },
+  "required": [
+    "version",
+    "runtimeTrustPolicyRegistry",
+    "attestationVerification",
+    "downstreamComplianceGates",
+    "humanComplianceWaivers",
+    "waiverMayAuthorizeExecution",
+    "waiverMayRewriteAttestation",
+    "automaticComplianceApproval",
+    "browserRuntimeAttestationSubmissionAllowed"
+  ]
+}
