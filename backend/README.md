@@ -1,33 +1,27 @@
-# Sustainable Catalyst Workspace Backend v2.10.0
+# Sustainable Catalyst Workspace Backend v2.11.0
 
-Workspace v2.9.0 adds policy-governed controlled runtime handoffs above the v2.7 reproduction execution plane.
+Workspace v2.11.0 adds the first bounded in-process scientific compute runtime to the existing durable Worker/API architecture.
 
-## Added through v2.10.0
-- revisioned execution-policy heads and immutable revisions
-- immutable policy-decision receipts for reproduction execution plans
-- runtime-adapter trust levels: `untrusted`, `bounded`, and `trusted`
-- bounded CPU, memory, wall-time, output, PID, and temporary-storage budgets
-- target-product and operation allowlists
-- sandbox requirement profiles: metadata gate, adapter-attested, container-required, and remote-sandbox-required
-- bounded network policies: none, server-routed-only, or allowlisted
-- frozen policy, resource-budget, and sandbox envelopes propagated through server-side handoffs
-- fail-closed denial of host-filesystem, Docker-socket, and privileged execution
+## Scientific compute engines
 
-## Enforcement boundary
+- NumPy — matrix algebra and polynomial roots
+- Pandas — descriptive statistics and declarative table transforms
+- SciPy — sampled-series integration and bounded quadratic optimization
+- SymPy — restricted symbolic simplification, differentiation, integration, and equation solving
 
-Workspace is the pre-dispatch policy gate. Creating an execution plan does not execute it, and controlled handoff still requires explicit human authorization. Workspace does not accept client-supplied runtime URLs, service credentials, shell commands, or unrestricted code. Strict CPU/memory/process/container enforcement remains the responsibility of the selected specialist runtime or sandbox adapter, which must satisfy the frozen policy requirements before dispatch.
+The compute runtime exposes a finite operation registry. It does **not** accept arbitrary Python source, shell commands, client-supplied modules, runtime URLs, host filesystem paths, Docker socket access, or privileged execution.
+
+## Execution path
+
+Scientific operations use the normal durable Workspace job queue and separate worker. During execution the worker records progress events and checks the durable cancellation flag. Successful results are serialized as canonical JSON, stored in content-addressed Workspace object storage, linked to an execution run when one is present, and recorded by an immutable compute execution receipt containing engine/version, request fingerprint, artifact SHA-256, byte count, and wall time.
+
+The worker container is globally bounded with a 2 CPU / 2 GiB / 256 PID envelope, read-only root filesystem, dropped Linux capabilities, and `no-new-privileges`; `/tmp` is an isolated bounded tmpfs and `/data` remains the explicit result-artifact volume.
 
 ## Compatibility
-- previous release: v2.7.0
-- rollback release: v2.7.0
-- PostgreSQL migration: `008_execution_policy_resource_budgets_sandboxing.sql`
+
+- previous release: v2.10.0
+- rollback release: v2.10.0
+- PostgreSQL migration: `011_python_scientific_compute_runtime.sql`
 - host API binding remains `127.0.0.1:8094`
-
-
-## v2.9.0 runtime enforcement telemetry
-
-Runtime handoffs can now receive immutable post-execution attestations through a dedicated server-to-server attestation credential. The attestation freezes observed resource usage, budget accounting, sandbox evidence, the policy-decision fingerprint, job/run identity, and a SHA-256 attestation fingerprint. Browser/WordPress clients may read attestations but cannot submit them. Workspace still does not provide unrestricted arbitrary-code execution.
-
-
-## v2.10.0 runtime trust and compliance
-Revisioned trust policies verify immutable v2.9 runtime attestations for bounded downstream scopes. Human waivers are explicit evidence-layer exceptions only; they never authorize execution or rewrite the original attestation.
+- browser-local storage schema remains 35
+- project schema remains `sc-workspace-project/20.0`

@@ -136,6 +136,25 @@ def list_job_events(db: Session, user_key: str, job_id: str) -> list[dict]:
     } for row in rows]
 
 
+def update_job_progress(db: Session, user_key: str, job_id: str, progress: int, details: dict | None = None) -> bool:
+    row = get_job(db, user_key, job_id)
+    if row is None:
+        return True
+    try:
+        db.refresh(row)
+    except Exception:
+        pass
+    bounded = max(1, min(99, int(progress)))
+    if row.status == "running" and bounded > row.progress:
+        row.progress = bounded
+        row.updated_at = _now()
+        if row.execution_run_id:
+            sync_run_from_job(db, row.user_key, row.execution_run_id, row.job_id, "running", row.progress)
+        add_event(db, row, "progress", details or {})
+        db.commit()
+    return bool(row.cancellation_requested)
+
+
 def request_cancel(db: Session, user_key: str, job_id: str, reason: str) -> JobRecord:
     row = get_job(db, user_key, job_id)
     if row is None:

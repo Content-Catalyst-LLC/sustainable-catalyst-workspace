@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-scientific-compute-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Scientific Compute Contract",
+  "type": "object",
+  "required": ["schema", "version", "boundedOperationsOnly", "arbitraryCodeExecution", "engines", "operations"],
+  "properties": {
+    "schema": {"const": "sc-workspace-scientific-compute-contract/1.0"},
+    "version": {"const": "2.11.0"},
+    "boundedOperationsOnly": {"const": true},
+    "arbitraryCodeExecution": {"const": false},
+    "resultArtifactStorage": {"const": "content-addressed-filesystem"},
+    "progressEvents": {"const": true},
+    "cancellationChecks": {"const": true},
+    "engines": {
+      "type": "array",
+      "const": ["numpy", "pandas", "scipy", "sympy"]
+    },
+    "operations": {
+      "type": "array",
+      "const": [
+        "workspace.compute.describe",
+        "workspace.compute.transform",
+        "workspace.compute.linear-algebra",
+        "workspace.compute.symbolic",
+        "workspace.compute.integrate-series",
+        "workspace.compute.optimize-quadratic",
+        "workspace.compute.roots-polynomial"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

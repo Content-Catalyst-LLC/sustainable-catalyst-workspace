@@ -205,6 +205,25 @@ class WorkerHeartbeat(Base):
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class ComputeExecutionReceipt(Base):
+    __tablename__ = "workspace_compute_execution_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    engine: Mapped[str] = mapped_column(String(64), nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    wall_seconds: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class DatasetHead(Base):
     __tablename__ = "workspace_dataset_heads"
 

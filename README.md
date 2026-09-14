@@ -1,9 +1,14 @@
-# Sustainable Catalyst Workspace v2.10.0 — Attestation Verification, Compliance Gates & Runtime Trust
+# Sustainable Catalyst Workspace v2.11.0 — Python Scientific Compute Runtime & Execution Engine
 
-## Runtime Enforcement Telemetry & Execution Attestations
+## Python Scientific Compute Runtime
 
-Workspace v2.10.0 verifies and governs downstream use of the immutable post-execution evidence introduced in v2.9.0. Specialist runtimes submit observed resource usage and sandbox evidence through a dedicated server-to-server credential; Workspace calculates budget utilization/headroom, compares the runtime posture with the frozen v2.8 policy decision, and records a SHA-256 execution attestation. WordPress/browser clients can read attestations but cannot submit them.
+Workspace v2.11.0 turns the backend execution plane into a bounded scientific compute runtime. NumPy, Pandas, SciPy, and SymPy operations execute through the durable Workspace worker, produce content-addressed result artifacts, emit progress/cancellation events, and retain SHA-256 compute execution receipts.
 
+The runtime is an operation registry, not a generic Python shell. Arbitrary Python source, shell commands, subprocess execution, client-supplied runtime URLs/credentials, host filesystem access, Docker socket access, and privileged execution remain disallowed.
+
+Registered operations include descriptive statistics, declarative dataframe transforms, matrix algebra, restricted symbolic calculus, sampled-series integration, bounded quadratic optimization, and polynomial roots.
+
+Storage schema remains 35. Project schema remains `sc-workspace-project/20.0`. Export schema remains `sc-workspace-project-export/20.0`.
 
 ## v2.8.0 — Execution Policy, Resource Budgets & Runtime Sandboxing
 

@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.10.0"
+    service_version: str = "2.11.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -39,6 +39,15 @@ class Settings(BaseSettings):
     max_compliance_waivers_per_account: int = 1000
     max_attestation_verifications_per_account: int = 5000
     runtime_attestation_token: str = ""
+
+    compute_max_rows: int = 50000
+    compute_max_columns: int = 256
+    compute_max_matrix_dimension: int = 512
+    compute_max_symbolic_chars: int = 4000
+    compute_max_symbolic_operations: int = 2000
+    compute_max_optimizer_iterations: int = 1000
+    compute_max_polynomial_degree: int = 256
+    compute_max_result_bytes: int = 10 * 1024 * 1024
 
     max_jobs_per_account: int = 1000
     default_job_max_attempts: int = 3

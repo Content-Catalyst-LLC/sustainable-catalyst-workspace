@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.10.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.11.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -101,6 +101,14 @@ final class SC_Workspace_Backend {
             'attestationVerification' => true,
             'downstreamComplianceGates' => true,
             'humanComplianceWaivers' => true,
+            'pythonScientificComputeRuntime' => true,
+            'scientificComputeOperationRegistry' => true,
+            'scientificComputeEngines' => array('numpy', 'pandas', 'scipy', 'sympy'),
+            'computeResultArtifacts' => true,
+            'computeExecutionReceipts' => true,
+            'computeProgressEvents' => true,
+            'computeCancellationChecks' => true,
+            'boundedScientificOperationsOnly' => true,
             'hostFilesystemAccessAllowed' => false,
             'dockerSocketAccessAllowed' => false,
             'privilegedExecutionAllowed' => false,
