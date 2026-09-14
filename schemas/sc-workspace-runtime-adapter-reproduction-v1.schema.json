@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace v2.6 Runtime Adapter & Reproduction Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "runtimeAdapterRegistry",
+    "reproductionVerification",
+    "comparisonMode",
+    "arbitraryCodeExecution"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-runtime-adapter-reproduction-contract/1.0"
+    },
+    "version": {
+      "const": "2.6.0"
+    },
+    "runtimeAdapterRegistry": {
+      "const": true
+    },
+    "runtimeAdapterRevisionHistory": {
+      "const": true
+    },
+    "runtimeCompatibilityChecks": {
+      "const": true
+    },
+    "supportedRuntimeFamilies": {
+      "const": [
+        "python",
+        "r",
+        "julia",
+        "custom"
+      ]
+    },
+    "reproductionPlans": {
+      "const": true
+    },
+    "reproductionVerification": {
+      "const": true
+    },
+    "comparisonMode": {
+      "const": "metadata-and-content-digests"
+    },
+    "automaticReexecution": {
+      "const": false
+    },
+    "arbitraryCodeExecution": {
+      "const": false
+    }
+  }
+}

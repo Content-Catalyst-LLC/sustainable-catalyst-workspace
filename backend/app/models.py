@@ -405,6 +405,8 @@ class ExecutionRun(Base):
     environment_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     environment_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     environment_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    runtime_adapter_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    runtime_adapter_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     reproducibility_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     result_summary: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
@@ -443,4 +445,84 @@ class ExecutionRunEvent(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     details: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class RuntimeAdapterHead(Base):
+    __tablename__ = "workspace_runtime_adapter_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    adapter_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    runtime_family: Mapped[str] = mapped_column(String(64), nullable=False, default="custom")
+    runtime_version: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    adapter_type: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    dependency_managers_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    container_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    platform_constraints_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    capabilities_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class RuntimeAdapterRevision(Base):
+    __tablename__ = "workspace_runtime_adapter_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    adapter_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    runtime_family: Mapped[str] = mapped_column(String(64), nullable=False, default="custom")
+    runtime_version: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    adapter_type: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    dependency_managers_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    container_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    platform_constraints_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    capabilities_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ReproductionPlan(Base):
+    __tablename__ = "workspace_reproduction_plans"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    plan_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    original_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    runtime_adapter_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    environment_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    expected_outputs_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    compatibility_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ReproductionVerification(Base):
+    __tablename__ = "workspace_reproduction_verifications"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    verification_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    original_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    reproduction_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    classification: Mapped[str] = mapped_column(String(32), nullable=False)
+    exact_inputs: Mapped[bool] = mapped_column(nullable=False, default=False)
+    exact_environment: Mapped[bool] = mapped_column(nullable=False, default=False)
+    exact_runtime_adapter: Mapped[bool] = mapped_column(nullable=False, default=False)
+    exact_outputs: Mapped[bool] = mapped_column(nullable=False, default=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

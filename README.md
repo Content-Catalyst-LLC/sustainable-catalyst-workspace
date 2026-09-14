@@ -1,16 +1,16 @@
-# Sustainable Catalyst Workspace v2.5.0
+# Sustainable Catalyst Workspace v2.6.0
 
-## Reproducible Execution Environments & Dependency Manifests
+## Runtime Adapter Registry & Reproduction Verification
 
-Workspace remains local-first in the browser while its optional Python backend now records revisioned execution environments for reproducible runs.
+Workspace remains local-first in the browser while its Python backend now records revisioned runtime adapters and immutable reproduction verification receipts.
 
-### v2.5.0
-- runtime/language versions
-- dependency manifests and frozen lock-artifact references
-- container/image identity
-- OS/architecture and bounded hardware metadata
-- deterministic random seeds
-- environment variable names only; no secret values
-- exact environment revision/fingerprint frozen into execution runs
+### v2.6.0
+- revisioned runtime adapter descriptors for Python, R, Julia, and bounded custom runtimes
+- runtime/environment compatibility and readiness checks
+- exact runtime-adapter revision/fingerprint frozen into execution runs
+- reproduction plans derived from frozen execution-run provenance
+- deterministic rerun comparison using input, environment, runtime-adapter, and output SHA-256 evidence
+- verification classifications: `exact`, `compatible`, `divergent`, or `incomplete`
+- no arbitrary shell/command execution and no automatic re-execution
 
 Storage schema remains 35. Project schema remains `sc-workspace-project/20.0`. Export schema remains `sc-workspace-project-export/20.0`.

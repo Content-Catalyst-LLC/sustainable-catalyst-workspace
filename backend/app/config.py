@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.5.0"
+    service_version: str = "2.6.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     max_parameter_sets_per_account: int = 1000
     max_execution_runs_per_account: int = 5000
     max_execution_environments_per_account: int = 500
+    max_runtime_adapters_per_account: int = 250
 
     max_jobs_per_account: int = 1000
     default_job_max_attempts: int = 3

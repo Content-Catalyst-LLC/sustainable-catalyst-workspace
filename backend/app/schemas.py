@@ -170,6 +170,10 @@ class ArtifactRevisionRef(BaseModel):
     revision: int | None = Field(default=None, ge=1)
 
 
+class RuntimeAdapterRunRef(RegistryRevisionRef):
+    adapterId: str = Field(min_length=1, max_length=160)
+
+
 class ExecutionEnvironmentStoreRequest(BaseModel):
     schema_: Literal["sc-workspace-execution-environment/1.0"] = Field(alias="schema")
     environmentId: str = Field(min_length=1, max_length=160)
@@ -205,6 +209,7 @@ class ExecutionRunCreateRequest(BaseModel):
     modelRef: ModelRunRef | None = None
     parameterSetRef: ParameterSetRunRef | None = None
     environmentRef: ExecutionEnvironmentRunRef | None = None
+    runtimeAdapterRef: RuntimeAdapterRunRef | None = None
     targetProduct: Literal["", "workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"] = ""
     operation: str = Field(default="", max_length=160)
     environment: dict[str, Any] = Field(default_factory=dict)
@@ -235,5 +240,52 @@ class ExecutionRunOutputRequest(BaseModel):
     sha256: str | None = Field(default=None, pattern=r"^[a-fA-F0-9]{64}$")
     bytes: int = Field(default=0, ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class RuntimeAdapterStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-runtime-adapter/1.0"] = Field(alias="schema")
+    adapterId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=1000)
+    description: str = Field(default="", max_length=12000)
+    runtimeFamily: Literal["python", "r", "julia", "custom"] = "custom"
+    runtimeVersion: str = Field(default="", max_length=96)
+    adapterType: Literal["metadata", "container", "remote-service"] = "metadata"
+    dependencyManagers: list[str] = Field(default_factory=list, max_length=20)
+    container: dict[str, Any] = Field(default_factory=dict)
+    platformConstraints: dict[str, Any] = Field(default_factory=dict)
+    capabilities: list[str] = Field(default_factory=list, max_length=100)
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class RuntimeCompatibilityCheckRequest(BaseModel):
+    schema_: Literal["sc-workspace-runtime-compatibility-check/1.0"] = Field(alias="schema")
+    environmentRef: ExecutionEnvironmentRunRef
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ReproductionPlanCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-reproduction-plan/1.0"] = Field(alias="schema")
+    planId: str | None = Field(default=None, max_length=96)
+    originalRunId: str = Field(min_length=1, max_length=96)
+    runtimeAdapterRef: RuntimeAdapterRunRef | None = None
+    notes: str = Field(default="", max_length=12000)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ReproductionVerificationCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-reproduction-verification/1.0"] = Field(alias="schema")
+    verificationId: str | None = Field(default=None, max_length=96)
+    originalRunId: str = Field(min_length=1, max_length=96)
+    reproductionRunId: str = Field(min_length=1, max_length=96)
 
     model_config = ConfigDict(populate_by_name=True)

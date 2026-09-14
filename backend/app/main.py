@@ -22,6 +22,7 @@ from .repository import (
 )
 from .schemas import (
     ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
+    RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
 )
@@ -40,6 +41,8 @@ from .registry import (
 )
 from .utils import iso
 from .environments import environment_metadata, get_environment, get_environment_revision, list_environment_revisions, list_environments, store_environment
+from .runtime_adapters import adapter_metadata, check_environment_compatibility, get_adapter, get_adapter_revision, list_adapter_revisions, list_adapters, store_adapter
+from .reproduction import create_reproduction_plan, create_verification, get_reproduction_plan, get_verification, list_reproduction_plans, list_verifications, plan_metadata, verification_metadata
 
 
 @asynccontextmanager
@@ -104,6 +107,11 @@ def health():
         "containerIdentityCapture": True,
         "runtimeVersionCapture": True,
         "randomSeedCapture": True,
+        "runtimeAdapterRegistry": True,
+        "runtimeCompatibilityChecks": True,
+        "reproductionPlans": True,
+        "reproductionVerification": True,
+        "arbitraryCodeExecution": False,
     }
 
 
@@ -166,6 +174,14 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "containerIdentityCapture": True,
         "runtimeVersionCapture": True,
         "randomSeedCapture": True,
+        "runtimeAdapterRegistry": True,
+        "runtimeAdapterRevisionHistory": True,
+        "runtimeCompatibilityChecks": True,
+        "reproductionPlans": True,
+        "reproductionVerification": True,
+        "deterministicRerunComparison": True,
+        "comparisonMode": "metadata-and-content-digests",
+        "arbitraryCodeExecution": False,
         "secretEnvironmentValuesCaptured": False,
         "limits": {
             "projectsPerAccount": settings.max_projects_per_account,
@@ -182,6 +198,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "parameterSetsPerAccount": settings.max_parameter_sets_per_account,
             "executionRunsPerAccount": settings.max_execution_runs_per_account,
             "executionEnvironmentsPerAccount": settings.max_execution_environments_per_account,
+            "runtimeAdaptersPerAccount": settings.max_runtime_adapters_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -552,6 +569,90 @@ def execution_environment_revision_get_route(environment_id: str, revision: int,
         if row is None:
             raise HTTPException(status_code=404, detail="Workspace execution-environment revision not found.")
         return {"schema": "sc-workspace-execution-environment-revision/1.0", "item": environment_metadata(row)}
+
+
+
+@app.get("/v1/runtime-adapters")
+def runtime_adapters_index(projectId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-runtime-adapter-index/1.0","items":list_adapters(db,identity.user_key,projectId),"revisioned":True}
+
+
+@app.post("/v1/runtime-adapters")
+def runtime_adapter_store_route(payload: RuntimeAdapterStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row,replayed=store_adapter(db,identity.user_key,payload)
+        return {"ok":True,"replayed":replayed,"item":adapter_metadata(row)}
+
+
+@app.get("/v1/runtime-adapters/{adapter_id}")
+def runtime_adapter_get_route(adapter_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_adapter(db,identity.user_key,adapter_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace runtime adapter not found.")
+        return {"schema":"sc-workspace-runtime-adapter-response/1.0","item":adapter_metadata(row)}
+
+
+@app.get("/v1/runtime-adapters/{adapter_id}/revisions")
+def runtime_adapter_revisions_route(adapter_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-runtime-adapter-revision-index/1.0","adapterId":adapter_id,"items":list_adapter_revisions(db,identity.user_key,adapter_id)}
+
+
+@app.get("/v1/runtime-adapters/{adapter_id}/revisions/{revision}")
+def runtime_adapter_revision_get_route(adapter_id: str, revision: int, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_adapter_revision(db,identity.user_key,adapter_id,revision)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace runtime-adapter revision not found.")
+        return {"schema":"sc-workspace-runtime-adapter-revision/1.0","item":adapter_metadata(row)}
+
+
+@app.post("/v1/runtime-adapters/{adapter_id}/compatibility")
+def runtime_adapter_compatibility_route(adapter_id: str, payload: RuntimeCompatibilityCheckRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_adapter(db,identity.user_key,adapter_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace runtime adapter not found.")
+        return check_environment_compatibility(db,identity.user_key,row,payload.environmentRef)
+
+
+@app.get("/v1/reproduction-plans")
+def reproduction_plans_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-reproduction-plan-index/1.0","items":list_reproduction_plans(db,identity.user_key)}
+
+
+@app.post("/v1/reproduction-plans")
+def reproduction_plan_create_route(payload: ReproductionPlanCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"item":plan_metadata(create_reproduction_plan(db,identity.user_key,payload))}
+
+
+@app.get("/v1/reproduction-plans/{plan_id}")
+def reproduction_plan_get_route(plan_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_reproduction_plan(db,identity.user_key,plan_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace reproduction plan not found.")
+        return {"schema":"sc-workspace-reproduction-plan-response/1.0","item":plan_metadata(row)}
+
+
+@app.get("/v1/reproduction-verifications")
+def reproduction_verifications_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-reproduction-verification-index/1.0","items":list_verifications(db,identity.user_key)}
+
+
+@app.post("/v1/reproduction-verifications")
+def reproduction_verification_create_route(payload: ReproductionVerificationCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"item":verification_metadata(create_verification(db,identity.user_key,payload))}
+
+
+@app.get("/v1/reproduction-verifications/{verification_id}")
+def reproduction_verification_get_route(verification_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_verification(db,identity.user_key,verification_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace reproduction verification not found.")
+        return {"schema":"sc-workspace-reproduction-verification-response/1.0","item":verification_metadata(row)}
 
 
 @app.get("/v1/runs")

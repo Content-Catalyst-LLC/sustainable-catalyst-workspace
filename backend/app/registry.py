@@ -31,6 +31,7 @@ from .schemas import (
 )
 from .utils import iso, sha256_hex
 from .environments import resolve_environment_ref
+from .runtime_adapters import resolve_runtime_adapter_ref
 
 TERMINAL_RUN_STATUSES = {"succeeded", "failed", "blocked", "cancelled"}
 RUN_TRANSITIONS = {
@@ -142,6 +143,8 @@ def run_metadata(row: ExecutionRun) -> dict:
         "environment": row.environment_json,
         "environmentRef": row.environment_ref,
         "environmentFingerprint": row.environment_fingerprint,
+        "runtimeAdapterRef": row.runtime_adapter_ref,
+        "runtimeAdapterFingerprint": row.runtime_adapter_fingerprint,
         "inputFingerprint": row.input_fingerprint,
         "reproducibilityFingerprint": row.reproducibility_fingerprint,
         "resultSummary": row.result_summary,
@@ -457,6 +460,7 @@ def create_execution_run(db: Session, user_key: str, payload: ExecutionRunCreate
     model_ref, model_row = _resolve_model_ref(db, user_key, payload.modelRef)
     parameter_ref, parameter_row = _resolve_parameter_ref(db, user_key, payload.parameterSetRef)
     environment_ref, environment_row = resolve_environment_ref(db, user_key, payload.environmentRef)
+    runtime_adapter_ref, runtime_adapter_row = resolve_runtime_adapter_ref(db, user_key, payload.runtimeAdapterRef)
     if parameter_row is not None and model_row is not None and parameter_row.model_id and parameter_row.model_id != model_row.model_id:
         raise HTTPException(status_code=409, detail="Execution run parameter set is registered to a different model.")
     target = payload.targetProduct or (model_row.execution_target if model_row is not None else "") or "workspace"
@@ -469,6 +473,8 @@ def create_execution_run(db: Session, user_key: str, payload: ExecutionRunCreate
         "parameterSet": parameter_ref,
         "environmentRef": environment_ref,
         "environmentFingerprint": environment_row.fingerprint if environment_row is not None else sha256_hex({"inlineEnvironment": payload.environment}),
+        "runtimeAdapterRef": runtime_adapter_ref,
+        "runtimeAdapterFingerprint": runtime_adapter_row.fingerprint if runtime_adapter_row is not None else "",
         "inlineEnvironment": payload.environment,
         "targetProduct": target,
         "operation": operation,
@@ -492,6 +498,7 @@ def create_execution_run(db: Session, user_key: str, payload: ExecutionRunCreate
         status="planned", progress=0, job_id="", target_product=target, operation=operation,
         dataset_refs=dataset_refs, model_ref=model_ref, parameter_set_ref=parameter_ref, environment_json=payload.environment,
         environment_ref=environment_ref, environment_fingerprint=(environment_row.fingerprint if environment_row is not None else sha256_hex({"inlineEnvironment": payload.environment})),
+        runtime_adapter_ref=runtime_adapter_ref, runtime_adapter_fingerprint=(runtime_adapter_row.fingerprint if runtime_adapter_row is not None else ""),
         input_fingerprint=input_fingerprint, reproducibility_fingerprint=sha256_hex({"inputFingerprint": input_fingerprint, "outputs": []}),
         result_summary={}, idempotency_key=idem, created_at=now, updated_at=now,
     )

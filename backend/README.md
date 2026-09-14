@@ -1,24 +1,14 @@
-# Sustainable Catalyst Workspace Backend v2.5.0
+# Sustainable Catalyst Workspace Backend v2.6.0
 
-Workspace v2.5.0 extends the durable job/run registry with revisioned reproducible execution environments.
+Workspace v2.6.0 extends the reproducible execution registry with versioned runtime adapters and reproduction verification.
 
-## Added in v2.5.0
+## Added in v2.6.0
+- runtime adapter heads and immutable revisions
+- Python/R/Julia/custom runtime descriptors
+- environment compatibility/readiness checks
+- runtime-adapter references frozen into execution runs
+- reproduction plans from original run provenance
+- verification receipts comparing frozen inputs and output SHA-256 digests
+- exact / compatible / divergent / incomplete classifications
 
-- revisioned execution-environment registry
-- runtime/language version descriptors
-- dependency manifests and exact lock-artifact references
-- container/image identity descriptors
-- OS/architecture and bounded hardware metadata
-- random-seed capture
-- environment-variable **names only**; secret values are never part of the contract
-- execution runs pin environment id, exact revision, and SHA-256 environment fingerprint
-- compatibility with the v2.4 inline `environment` field
-
-## Environment endpoints
-
-- `GET/POST /v1/execution-environments`
-- `GET /v1/execution-environments/{environment_id}`
-- `GET /v1/execution-environments/{environment_id}/revisions`
-- `GET /v1/execution-environments/{environment_id}/revisions/{revision}`
-
-Runs may use `environmentRef: {"environmentId":"...","revision":N}`. The backend resolves and freezes the exact environment fingerprint at run creation.
+Workspace does not accept arbitrary command strings, automatically execute reproduction plans, or treat a metadata compatibility check as proof that a runtime is installed.
