@@ -1,3 +1,9 @@
+# Sustainable Catalyst Workspace v2.1.0 — Backend Foundation & Persistence Bridge
+
+v2.1.0 adds the first dedicated Workspace FastAPI + PostgreSQL backend and a server-only WordPress persistence bridge. Browser-local projects remain canonical, existing cloud/sync routes remain compatible, and the dedicated backend is opt-in with fail-closed primary mode. Storage 35, `sc-workspace-project/20.0`, and `sc-workspace-project-export/20.0` remain unchanged. Exact rollback baseline: v2.0.4.
+
+See `RELEASE_NOTES_2.1.0.md`, `docs/BACKEND_FOUNDATION_PERSISTENCE_BRIDGE_V210.md`, `docs/DEPLOY_WORKSPACE_BACKEND_V210.md`, `VALIDATION_REPORT_2.1.0.md`, and `backend/README.md`.
+
 # Sustainable Catalyst Workspace v2.0.4 — Visual Regression, Theme Isolation & Cross-Viewport Hardening
 
 v2.0.4 hardens the live WordPress Workspace against theme-level CSS interference and viewport regressions. It adds a rendered visual-regression matrix at 1440, 1024, 768, and 390 pixels, protects the scoped button/card primitives from hostile theme rules, and requires zero horizontal overflow in the tested Workspace surfaces. No routing, data, storage, project, or export schema changes are introduced.

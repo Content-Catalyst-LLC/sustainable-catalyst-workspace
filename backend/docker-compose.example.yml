@@ -1,0 +1,18 @@
+services:
+  sc-workspace-backend:
+    build: .
+    container_name: sc-workspace-backend
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://sc_workspace:${SC_WORKSPACE_DB_PASSWORD}@sc-postgres:5432/sc_workspace
+      SC_WORKSPACE_SERVICE_TOKEN: ${SC_WORKSPACE_SERVICE_TOKEN}
+      SC_WORKSPACE_ENVIRONMENT: production
+      SC_WORKSPACE_AUTO_CREATE_SCHEMA: "false"
+    networks:
+      - sc-internal
+    ports:
+      - "127.0.0.1:8089:8089"
+
+networks:
+  sc-internal:
+    external: true

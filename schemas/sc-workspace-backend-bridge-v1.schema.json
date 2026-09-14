@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-backend-bridge-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Backend Bridge 1.0",
+  "type": "object",
+  "required": ["schema", "workspaceVersion", "backendMode", "configured", "enabled", "transport", "backendPersistence"],
+  "properties": {
+    "schema": {"const": "sc-workspace-backend-bridge/1.0"},
+    "workspaceVersion": {"type": "string"},
+    "backendMode": {"enum": ["disabled", "primary"]},
+    "configured": {"type": "boolean"},
+    "enabled": {"type": "boolean"},
+    "transport": {"const": "wordpress-server-proxy"},
+    "browserDirectBackendAccess": {"const": false},
+    "serviceCredentialServerSideOnly": {"const": true},
+    "failClosedWhenPrimary": {"const": true},
+    "automaticMigration": {"const": false},
+    "localProjectCanonicalOnDevice": {"const": true},
+    "explicitBackupAndSyncOnly": {"const": true},
+    "projectSchema": {"const": "sc-workspace-project/20.0"},
+    "notebookSchema": {"const": "sc-workspace-notebook/3.0"},
+    "backendPersistence": {"const": "postgresql"},
+    "backendRevisionHistory": {"const": true}
+  },
+  "additionalProperties": true
+}
