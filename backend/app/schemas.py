@@ -165,6 +165,37 @@ class ParameterSetRunRef(RegistryRevisionRef):
     parameterSetId: str = Field(min_length=1, max_length=160)
 
 
+class ArtifactRevisionRef(BaseModel):
+    artifactId: str = Field(min_length=1, max_length=160)
+    revision: int | None = Field(default=None, ge=1)
+
+
+class ExecutionEnvironmentStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-execution-environment/1.0"] = Field(alias="schema")
+    environmentId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=1000)
+    description: str = Field(default="", max_length=12000)
+    runtime: dict[str, Any] = Field(default_factory=dict)
+    dependencies: dict[str, Any] = Field(default_factory=dict)
+    lockArtifacts: list[ArtifactRevisionRef] = Field(default_factory=list, max_length=50)
+    container: dict[str, Any] = Field(default_factory=dict)
+    system: dict[str, Any] = Field(default_factory=dict)
+    hardware: dict[str, Any] = Field(default_factory=dict)
+    randomSeeds: dict[str, Any] = Field(default_factory=dict)
+    environmentVariableNames: list[str] = Field(default_factory=list, max_length=200)
+    configuration: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExecutionEnvironmentRunRef(RegistryRevisionRef):
+    environmentId: str = Field(min_length=1, max_length=160)
+
+
 class ExecutionRunCreateRequest(BaseModel):
     schema_: Literal["sc-workspace-execution-run/1.0"] = Field(alias="schema")
     runId: str | None = Field(default=None, max_length=96)
@@ -173,6 +204,7 @@ class ExecutionRunCreateRequest(BaseModel):
     datasetRefs: list[DatasetRunRef] = Field(default_factory=list, max_length=100)
     modelRef: ModelRunRef | None = None
     parameterSetRef: ParameterSetRunRef | None = None
+    environmentRef: ExecutionEnvironmentRunRef | None = None
     targetProduct: Literal["", "workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"] = ""
     operation: str = Field(default="", max_length=160)
     environment: dict[str, Any] = Field(default_factory=dict)

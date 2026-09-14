@@ -47,4 +47,5 @@ networks:
 
 volumes:
   sc-workspace-data:
+    external: true
     name: sc-workspace-data

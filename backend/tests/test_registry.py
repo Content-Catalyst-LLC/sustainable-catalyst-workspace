@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from app.registry import RUN_TRANSITIONS, dataset_metadata, model_metadata, parameter_set_metadata
 from app.schemas import (
     DatasetStoreRequest,
+    ExecutionEnvironmentStoreRequest,
     ExecutionRunCreateRequest,
     ExecutionRunOutputRequest,
     JobCreateRequest,
@@ -88,3 +89,28 @@ def test_run_output_requires_valid_sha_shape_when_provided():
 def test_terminal_success_is_immutable_but_failed_runs_can_requeue():
     assert RUN_TRANSITIONS["succeeded"] == {"succeeded"}
     assert "queued" in RUN_TRANSITIONS["failed"]
+
+
+def test_execution_environment_schema_captures_manifests_without_secret_values():
+    payload = ExecutionEnvironmentStoreRequest.model_validate({
+        "schema": "sc-workspace-execution-environment/1.0",
+        "environmentId": "env-py312",
+        "name": "Python 3.12 analysis",
+        "runtime": {"language": "python", "version": "3.12"},
+        "dependencies": {"manager": "pip", "requirementsSha256": "a" * 64},
+        "container": {"image": "python:3.12-slim", "digest": "sha256:example"},
+        "randomSeeds": {"python": 42},
+        "environmentVariableNames": ["OMP_NUM_THREADS", "API_TOKEN"],
+    })
+    assert payload.runtime["version"] == "3.12"
+    assert not hasattr(payload, "environmentVariableValues")
+
+
+def test_execution_run_accepts_revision_pinned_environment_ref():
+    payload = ExecutionRunCreateRequest.model_validate({
+        "schema": "sc-workspace-execution-run/1.0",
+        "operation": "workspace.echo",
+        "environmentRef": {"environmentId": "env-py312", "revision": 2},
+    })
+    assert payload.environmentRef.environmentId == "env-py312"
+    assert payload.environmentRef.revision == 2

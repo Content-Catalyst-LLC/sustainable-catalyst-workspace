@@ -338,6 +338,55 @@ class ParameterSetRevision(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class ExecutionEnvironmentHead(Base):
+    __tablename__ = "workspace_execution_environment_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    environment_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    runtime_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    dependencies_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    lock_artifacts_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    container_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    system_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    hardware_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    random_seeds_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    env_var_names_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class ExecutionEnvironmentRevision(Base):
+    __tablename__ = "workspace_execution_environment_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    environment_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    runtime_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    dependencies_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    lock_artifacts_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    container_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    system_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    hardware_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    random_seeds_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    env_var_names_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class ExecutionRun(Base):
     __tablename__ = "workspace_execution_runs"
 
@@ -354,6 +403,8 @@ class ExecutionRun(Base):
     model_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     parameter_set_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     environment_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    environment_ref: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    environment_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     reproducibility_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     result_summary: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

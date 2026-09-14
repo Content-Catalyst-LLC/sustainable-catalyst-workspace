@@ -21,7 +21,7 @@ from .repository import (
     store_project,
 )
 from .schemas import (
-    ArtifactStoreRequest, DatasetStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
+    ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
 )
@@ -39,6 +39,7 @@ from .registry import (
     store_dataset, store_model, store_parameter_set, store_run_output, update_execution_run,
 )
 from .utils import iso
+from .environments import environment_metadata, get_environment, get_environment_revision, list_environment_revisions, list_environments, store_environment
 
 
 @asynccontextmanager
@@ -97,6 +98,12 @@ def health():
         "modelRegistry": True,
         "executionRunRegistry": True,
         "reproducibilityLineage": True,
+        "executionEnvironmentRegistry": True,
+        "dependencyManifests": True,
+        "dependencyLockArtifacts": True,
+        "containerIdentityCapture": True,
+        "runtimeVersionCapture": True,
+        "randomSeedCapture": True,
     }
 
 
@@ -152,6 +159,14 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "executionRunOutputs": True,
         "jobExecutionRunLinkage": True,
         "reproducibilityFingerprints": True,
+        "executionEnvironmentRegistry": True,
+        "executionEnvironmentRevisionHistory": True,
+        "dependencyManifests": True,
+        "dependencyLockArtifacts": True,
+        "containerIdentityCapture": True,
+        "runtimeVersionCapture": True,
+        "randomSeedCapture": True,
+        "secretEnvironmentValuesCaptured": False,
         "limits": {
             "projectsPerAccount": settings.max_projects_per_account,
             "projectBytes": settings.max_project_bytes,
@@ -166,6 +181,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "modelsPerAccount": settings.max_models_per_account,
             "parameterSetsPerAccount": settings.max_parameter_sets_per_account,
             "executionRunsPerAccount": settings.max_execution_runs_per_account,
+            "executionEnvironmentsPerAccount": settings.max_execution_environments_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -499,6 +515,43 @@ def parameter_set_revision_get_route(parameter_set_id: str, revision: int, ident
         if row is None:
             raise HTTPException(status_code=404, detail="Workspace parameter-set revision not found.")
         return {"schema": "sc-workspace-parameter-set-revision/1.0", "item": parameter_set_metadata(row)}
+
+
+@app.get("/v1/execution-environments")
+def execution_environments_index(projectId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-environment-index/1.0", "items": list_environments(db, identity.user_key, projectId), "revisioned": True}
+
+
+@app.post("/v1/execution-environments")
+def execution_environment_store_route(payload: ExecutionEnvironmentStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_environment(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": environment_metadata(row)}
+
+
+@app.get("/v1/execution-environments/{environment_id}")
+def execution_environment_get_route(environment_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_environment(db, identity.user_key, environment_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace execution environment not found.")
+        return {"schema": "sc-workspace-execution-environment-response/1.0", "item": environment_metadata(row)}
+
+
+@app.get("/v1/execution-environments/{environment_id}/revisions")
+def execution_environment_revisions_route(environment_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-environment-revision-index/1.0", "environmentId": environment_id, "items": list_environment_revisions(db, identity.user_key, environment_id)}
+
+
+@app.get("/v1/execution-environments/{environment_id}/revisions/{revision}")
+def execution_environment_revision_get_route(environment_id: str, revision: int, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_environment_revision(db, identity.user_key, environment_id, revision)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace execution-environment revision not found.")
+        return {"schema": "sc-workspace-execution-environment-revision/1.0", "item": environment_metadata(row)}
 
 
 @app.get("/v1/runs")

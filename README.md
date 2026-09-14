@@ -1,5 +1,16 @@
-# Sustainable Catalyst Workspace v2.4.0 — Dataset, Model & Execution Run Registry
+# Sustainable Catalyst Workspace v2.5.0
 
-v2.4.0 adds durable dataset, model, parameter-set, and execution-run registries on top of the v2.3.0 background-job and compute-orchestration foundation. Registry references are resolved to exact revisions and SHA-256 fingerprints when a run is created, while linked jobs propagate lifecycle state into the run record. Workspace continues to orchestrate specialist Sustainable Catalyst products rather than duplicating their compute engines.
+## Reproducible Execution Environments & Dependency Manifests
 
-See `RELEASE_NOTES_2.4.0.md`, `docs/DATASET_MODEL_EXECUTION_RUN_REGISTRY_V240.md`, `docs/DEPLOY_WORKSPACE_BACKEND_V240.md`, `VALIDATION_REPORT_2.4.0.md`, and `backend/README.md`.
+Workspace remains local-first in the browser while its optional Python backend now records revisioned execution environments for reproducible runs.
+
+### v2.5.0
+- runtime/language versions
+- dependency manifests and frozen lock-artifact references
+- container/image identity
+- OS/architecture and bounded hardware metadata
+- deterministic random seeds
+- environment variable names only; no secret values
+- exact environment revision/fingerprint frozen into execution runs
+
+Storage schema remains 35. Project schema remains `sc-workspace-project/20.0`. Export schema remains `sc-workspace-project-export/20.0`.

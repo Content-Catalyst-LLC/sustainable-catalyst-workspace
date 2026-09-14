@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace v2.5.0 Reproducible Execution Environments Contract",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": "2.5.0"
+    },
+    "executionEnvironmentRegistry": {
+      "const": true
+    },
+    "revisionedEnvironments": {
+      "const": true
+    },
+    "dependencyManifests": {
+      "const": true
+    },
+    "lockArtifactReferencesFrozen": {
+      "const": true
+    },
+    "runEnvironmentReferenceFrozen": {
+      "const": true
+    },
+    "runtimeVersionCapture": {
+      "const": true
+    },
+    "containerIdentityCapture": {
+      "const": true
+    },
+    "randomSeedCapture": {
+      "const": true
+    },
+    "secretEnvironmentValuesCaptured": {
+      "const": false
+    },
+    "automaticEnvironmentReproduction": {
+      "const": false
+    }
+  },
+  "required": [
+    "version",
+    "executionEnvironmentRegistry",
+    "revisionedEnvironments",
+    "dependencyManifests",
+    "lockArtifactReferencesFrozen",
+    "runEnvironmentReferenceFrozen",
+    "secretEnvironmentValuesCaptured"
+  ]
+}
