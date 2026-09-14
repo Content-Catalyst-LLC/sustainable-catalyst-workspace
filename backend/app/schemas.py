@@ -78,6 +78,9 @@ class JobCreateRequest(BaseModel):
     idempotencyKey: str | None = Field(default=None, max_length=160)
     inputArtifactIds: list[str] = Field(default_factory=list, max_length=100)
     executionRunId: str | None = Field(default=None, max_length=96)
+    executionPolicy: dict[str, Any] = Field(default_factory=dict)
+    resourceBudget: dict[str, Any] = Field(default_factory=dict)
+    sandbox: dict[str, Any] = Field(default_factory=dict)
     payload: dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(populate_by_name=True)
@@ -253,6 +256,7 @@ class RuntimeAdapterStoreRequest(BaseModel):
     runtimeFamily: Literal["python", "r", "julia", "custom"] = "custom"
     runtimeVersion: str = Field(default="", max_length=96)
     adapterType: Literal["metadata", "container", "remote-service"] = "metadata"
+    trustLevel: Literal["untrusted", "bounded", "trusted"] = "bounded"
     dependencyManagers: list[str] = Field(default_factory=list, max_length=20)
     container: dict[str, Any] = Field(default_factory=dict)
     platformConstraints: dict[str, Any] = Field(default_factory=dict)
@@ -270,6 +274,45 @@ class RuntimeCompatibilityCheckRequest(BaseModel):
     environmentRef: ExecutionEnvironmentRunRef
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class ResourceBudget(BaseModel):
+    cpuCores: float = Field(default=1.0, ge=0.1, le=128.0)
+    memoryMb: int = Field(default=512, ge=64, le=1048576)
+    wallSeconds: int = Field(default=300, ge=1, le=86400)
+    outputBytes: int = Field(default=26214400, ge=0, le=10737418240)
+    pids: int = Field(default=64, ge=1, le=4096)
+    tempStorageMb: int = Field(default=512, ge=0, le=102400)
+
+
+class ExecutionPolicyStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-execution-policy/1.0"] = Field(alias="schema")
+    policyId: str = Field(min_length=1, max_length=160)
+    projectId: str | None = Field(default=None, max_length=160)
+    name: str = Field(min_length=1, max_length=1000)
+    description: str = Field(default="", max_length=12000)
+    allowedTargetProducts: list[Literal["workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"]] = Field(default_factory=list, max_length=20)
+    allowedOperations: list[str] = Field(default_factory=list, max_length=100)
+    minimumAdapterTrust: Literal["untrusted", "bounded", "trusted"] = "bounded"
+    resourceLimits: ResourceBudget = Field(default_factory=ResourceBudget)
+    sandboxMode: Literal["metadata-gate", "adapter-attested", "container-required", "remote-sandbox-required"] = "metadata-gate"
+    networkMode: Literal["none", "server-routed-only", "allowlisted"] = "server-routed-only"
+    readOnlyRootFilesystem: bool = True
+    noNewPrivileges: bool = True
+    dropAllCapabilities: bool = True
+    allowHostFilesystem: Literal[False] = False
+    allowDockerSocket: Literal[False] = False
+    allowPrivileged: Literal[False] = False
+    requirePinnedContainer: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ExecutionPolicyRunRef(RegistryRevisionRef):
+    policyId: str = Field(min_length=1, max_length=160)
 
 
 class ReproductionPlanCreateRequest(BaseModel):
@@ -296,6 +339,8 @@ class ReproductionExecutionPlanCreateRequest(BaseModel):
     executionPlanId: str | None = Field(default=None, max_length=96)
     reproductionPlanId: str = Field(min_length=1, max_length=96)
     reproductionRunId: str = Field(min_length=1, max_length=96)
+    executionPolicyRef: ExecutionPolicyRunRef
+    resourceBudget: ResourceBudget = Field(default_factory=ResourceBudget)
     priority: int = Field(default=7, ge=0, le=9)
     maxAttempts: int = Field(default=1, ge=1, le=5)
     inputArtifactIds: list[str] = Field(default_factory=list, max_length=100)

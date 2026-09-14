@@ -84,6 +84,9 @@ def execute_job(db, row) -> dict:
         "inputArtifactIds": payload.get("inputArtifactIds") or [],
         "payload": job_payload,
         "requestFingerprint": row.request_fingerprint,
+        "executionPolicy": payload.get("executionPolicy") or {},
+        "resourceBudget": payload.get("resourceBudget") or {},
+        "sandbox": payload.get("sandbox") or {},
         "humanOwnedRequest": True,
         "automaticApproval": False,
     }

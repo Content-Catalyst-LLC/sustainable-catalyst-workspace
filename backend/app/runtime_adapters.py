@@ -40,6 +40,7 @@ def adapter_metadata(row) -> dict:
         "runtimeFamily": row.runtime_family,
         "runtimeVersion": row.runtime_version,
         "adapterType": row.adapter_type,
+        "trustLevel": getattr(row, "trust_level", "bounded"),
         "revision": int(row.revision),
         "fingerprint": row.fingerprint,
         "dependencyManagers": row.dependency_managers_json,
@@ -59,6 +60,7 @@ def _document(payload: RuntimeAdapterStoreRequest) -> dict:
         "runtimeFamily": payload.runtimeFamily,
         "runtimeVersion": payload.runtimeVersion.strip(),
         "adapterType": payload.adapterType,
+        "trustLevel": payload.trustLevel,
         "dependencyManagers": _clean_list(payload.dependencyManagers, 20),
         "container": payload.container,
         "platformConstraints": payload.platformConstraints,
@@ -90,7 +92,7 @@ def store_adapter(db: Session, user_key: str, payload: RuntimeAdapterStoreReques
     revision = current + 1; now = _now()
     values = dict(
         project_id=(payload.projectId or "").strip(), name=payload.name.strip(), description=payload.description.strip(),
-        runtime_family=document["runtimeFamily"], runtime_version=document["runtimeVersion"], adapter_type=document["adapterType"],
+        runtime_family=document["runtimeFamily"], runtime_version=document["runtimeVersion"], adapter_type=document["adapterType"], trust_level=document["trustLevel"],
         revision=revision, fingerprint=fingerprint, dependency_managers_json=document["dependencyManagers"],
         container_json=document["container"], platform_constraints_json=document["platformConstraints"], capabilities_json=document["capabilities"],
         configuration_json=document["configuration"], metadata_json=payload.metadata,

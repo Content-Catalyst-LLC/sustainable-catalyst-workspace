@@ -23,7 +23,7 @@ from .repository import (
 from .schemas import (
     ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
     RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest,
-    ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest,
+    ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest, ExecutionPolicyStoreRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
 )
@@ -45,6 +45,7 @@ from .environments import environment_metadata, get_environment, get_environment
 from .runtime_adapters import adapter_metadata, check_environment_compatibility, get_adapter, get_adapter_revision, list_adapter_revisions, list_adapters, store_adapter
 from .reproduction import create_reproduction_plan, create_verification, get_reproduction_plan, get_verification, list_reproduction_plans, list_verifications, plan_metadata, verification_metadata
 from .execution_control import create_execution_plan, dispatch_execution_plan, execution_plan_metadata, get_execution_plan, get_handoff_receipt, handoff_receipt_metadata, list_execution_plans, list_handoff_receipts
+from .policy import get_policy, get_policy_revision, get_policy_decision, list_policies, list_policy_revisions, list_policy_decisions, policy_decision_metadata, policy_metadata, store_policy
 
 
 @asynccontextmanager
@@ -116,6 +117,11 @@ def health():
         "reproductionExecutionPlans": True,
         "controlledRuntimeHandoffs": True,
         "humanAuthorizedDispatch": True,
+        "executionPolicyRegistry": True,
+        "resourceBudgets": True,
+        "runtimeSandboxing": True,
+        "policyRequiredForControlledHandoffs": True,
+        "adapterTrustLevels": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -192,6 +198,17 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "controlledRuntimeHandoffs": True,
         "humanAuthorizedDispatch": True,
         "frozenExecutionEnvelope": True,
+        "executionPolicyRegistry": True,
+        "executionPolicyRevisionHistory": True,
+        "executionPolicyDecisions": True,
+        "resourceBudgets": True,
+        "runtimeSandboxing": True,
+        "sandboxEnforcementMode": "pre-dispatch-policy-gate",
+        "policyRequiredForControlledHandoffs": True,
+        "adapterTrustLevels": True,
+        "hostFilesystemAccessAllowed": False,
+        "dockerSocketAccessAllowed": False,
+        "privilegedExecutionAllowed": False,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "clientSuppliedRuntimeCredentialsAllowed": False,
@@ -215,6 +232,8 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "runtimeAdaptersPerAccount": settings.max_runtime_adapters_per_account,
             "reproductionExecutionPlansPerAccount": settings.max_reproduction_execution_plans_per_account,
             "runtimeHandoffReceiptsPerAccount": settings.max_runtime_handoff_receipts_per_account,
+            "executionPoliciesPerAccount": settings.max_execution_policies_per_account,
+            "executionPolicyDecisionsPerAccount": settings.max_execution_policy_decisions_per_account,
             "jobsPerAccount": settings.max_jobs_per_account,
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
@@ -629,6 +648,47 @@ def runtime_adapter_compatibility_route(adapter_id: str, payload: RuntimeCompati
         row=get_adapter(db,identity.user_key,adapter_id)
         if row is None: raise HTTPException(status_code=404,detail="Workspace runtime adapter not found.")
         return check_environment_compatibility(db,identity.user_key,row,payload.environmentRef)
+
+
+@app.get("/v1/execution-policies")
+def execution_policies_index(projectId: str | None = Query(default=None, max_length=160), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-policy-index/1.0", "items": list_policies(db, identity.user_key, projectId)}
+
+
+@app.post("/v1/execution-policies")
+def execution_policy_store_route(payload: ExecutionPolicyStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_policy(db, identity.user_key, payload)
+        return {"ok": True, "replayed": replayed, "item": policy_metadata(row)}
+
+
+@app.get("/v1/execution-policies/{policy_id}")
+def execution_policy_get_route(policy_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_policy(db, identity.user_key, policy_id)
+        if row is None: raise HTTPException(status_code=404, detail="Workspace execution policy not found.")
+        return {"schema": "sc-workspace-execution-policy-response/1.0", "item": policy_metadata(row)}
+
+
+@app.get("/v1/execution-policies/{policy_id}/revisions")
+def execution_policy_revisions_route(policy_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-policy-revisions/1.0", "items": list_policy_revisions(db, identity.user_key, policy_id)}
+
+
+@app.get("/v1/execution-policy-decisions")
+def execution_policy_decisions_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-execution-policy-decision-index/1.0", "items": list_policy_decisions(db, identity.user_key)}
+
+
+@app.get("/v1/execution-policy-decisions/{decision_id}")
+def execution_policy_decision_get_route(decision_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_policy_decision(db, identity.user_key, decision_id)
+        if row is None: raise HTTPException(status_code=404, detail="Workspace execution-policy decision not found.")
+        return {"schema": "sc-workspace-execution-policy-decision-response/1.0", "item": policy_decision_metadata(row)}
 
 
 @app.get("/v1/reproduction-plans")

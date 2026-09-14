@@ -1,9 +1,12 @@
-# Sustainable Catalyst Workspace v2.7.0
+# Sustainable Catalyst Workspace v2.8.0
 
-## v2.7.0 — Reproduction Execution Plans & Controlled Runtime Handoffs
+## v2.8.0 — Execution Policy, Resource Budgets & Runtime Sandboxing
 
-Workspace v2.7.0 adds a bounded execution-preparation layer on top of v2.6 reproducibility verification. Reproduction execution plans freeze a reproduction run, environment revision, runtime-adapter revision, target product, operation, job payload, and readiness checks before any work is queued. Dispatch requires a separate human-authorized handoff call and can only use server-configured routes. Client-supplied runtime URLs, credentials, and arbitrary shell commands remain prohibited.
+Workspace v2.8.0 adds a policy-enforcement layer to controlled runtime handoffs. Execution policies are revisioned backend objects that define eligible target products and operations, minimum runtime-adapter trust, CPU/memory/wall-time/output/process/temp-storage ceilings, and bounded sandbox requirements. Every reproduction execution plan freezes a policy revision and produces an immutable eligibility decision before human-authorized dispatch.
 
+Sandboxing in v2.8.0 is a **pre-dispatch policy gate and runtime requirement contract**, not an unrestricted local arbitrary-code executor. Workspace can require adapter attestation, a container adapter, a remote sandbox, pinned container identity, server-routed networking, read-only roots, no-new-privileges, dropped capabilities, and explicit denial of host filesystem, Docker socket, and privileged execution. Downstream specialist runtimes remain responsible for OS/container enforcement of strict sandbox profiles.
+
+Resource budgets and the frozen sandbox envelope travel with the server-side job handoff, preserving policy provenance without exposing service credentials or accepting client-supplied runtime URLs.
 
 ## Runtime Adapter Registry & Reproduction Verification
 

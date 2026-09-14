@@ -459,6 +459,7 @@ class RuntimeAdapterHead(Base):
     runtime_family: Mapped[str] = mapped_column(String(64), nullable=False, default="custom")
     runtime_version: Mapped[str] = mapped_column(String(96), nullable=False, default="")
     adapter_type: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
+    trust_level: Mapped[str] = mapped_column(String(32), nullable=False, default="bounded")
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
@@ -484,6 +485,7 @@ class RuntimeAdapterRevision(Base):
     runtime_family: Mapped[str] = mapped_column(String(64), nullable=False, default="custom")
     runtime_version: Mapped[str] = mapped_column(String(96), nullable=False, default="")
     adapter_type: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
+    trust_level: Mapped[str] = mapped_column(String(32), nullable=False, default="bounded")
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     dependency_managers_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
@@ -568,3 +570,62 @@ class RuntimeHandoffReceipt(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class ExecutionPolicyHead(Base):
+    __tablename__ = "workspace_execution_policy_heads"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    policy_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    allowed_targets_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    allowed_operations_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    minimum_adapter_trust: Mapped[str] = mapped_column(String(32), nullable=False, default="bounded")
+    resource_limits_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    sandbox_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class ExecutionPolicyRevision(Base):
+    __tablename__ = "workspace_execution_policy_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    policy_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    allowed_targets_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    allowed_operations_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    minimum_adapter_trust: Mapped[str] = mapped_column(String(32), nullable=False, default="bounded")
+    resource_limits_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    sandbox_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ExecutionPolicyDecision(Base):
+    __tablename__ = "workspace_execution_policy_decisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    decision_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    execution_plan_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    policy_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    policy_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    eligible: Mapped[bool] = mapped_column(nullable=False, default=False)
+    classification: Mapped[str] = mapped_column(String(32), nullable=False, default="blocked")
+    resource_budget_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    sandbox_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    checks_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+

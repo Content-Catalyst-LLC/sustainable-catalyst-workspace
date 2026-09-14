@@ -1,14 +1,24 @@
-# Sustainable Catalyst Workspace Backend v2.6.0
+# Sustainable Catalyst Workspace Backend v2.8.0
 
-Workspace v2.6.0 extends the reproducible execution registry with versioned runtime adapters and reproduction verification.
+Workspace v2.8.0 adds policy-governed controlled runtime handoffs above the v2.7 reproduction execution plane.
 
-## Added in v2.6.0
-- runtime adapter heads and immutable revisions
-- Python/R/Julia/custom runtime descriptors
-- environment compatibility/readiness checks
-- runtime-adapter references frozen into execution runs
-- reproduction plans from original run provenance
-- verification receipts comparing frozen inputs and output SHA-256 digests
-- exact / compatible / divergent / incomplete classifications
+## Added in v2.8.0
+- revisioned execution-policy heads and immutable revisions
+- immutable policy-decision receipts for reproduction execution plans
+- runtime-adapter trust levels: `untrusted`, `bounded`, and `trusted`
+- bounded CPU, memory, wall-time, output, PID, and temporary-storage budgets
+- target-product and operation allowlists
+- sandbox requirement profiles: metadata gate, adapter-attested, container-required, and remote-sandbox-required
+- bounded network policies: none, server-routed-only, or allowlisted
+- frozen policy, resource-budget, and sandbox envelopes propagated through server-side handoffs
+- fail-closed denial of host-filesystem, Docker-socket, and privileged execution
 
-Workspace does not accept arbitrary command strings, automatically execute reproduction plans, or treat a metadata compatibility check as proof that a runtime is installed.
+## Enforcement boundary
+
+Workspace is the pre-dispatch policy gate. Creating an execution plan does not execute it, and controlled handoff still requires explicit human authorization. Workspace does not accept client-supplied runtime URLs, service credentials, shell commands, or unrestricted code. Strict CPU/memory/process/container enforcement remains the responsibility of the selected specialist runtime or sandbox adapter, which must satisfy the frozen policy requirements before dispatch.
+
+## Compatibility
+- previous release: v2.7.0
+- rollback release: v2.7.0
+- PostgreSQL migration: `008_execution_policy_resource_budgets_sandboxing.sql`
+- host API binding remains `127.0.0.1:8094`

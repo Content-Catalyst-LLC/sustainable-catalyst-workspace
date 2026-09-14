@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .jobs import create_job, job_metadata
 from .models import ExecutionRun, ReproductionExecutionPlan, ReproductionPlan, RuntimeAdapterRevision, RuntimeHandoffReceipt
+from .policy import evaluate_policy, get_policy_decision, policy_decision_metadata, resolve_policy_ref
 from .routing import route_registry
 from .schemas import ControlledRuntimeHandoffRequest, JobCreateRequest, ReproductionExecutionPlanCreateRequest
 from .utils import iso, sha256_hex
@@ -117,6 +118,18 @@ def create_execution_plan(db: Session, user_key: str, payload: ReproductionExecu
     if db.get(ReproductionExecutionPlan, {"user_key": user_key, "execution_plan_id": execution_plan_id}) is not None:
         raise HTTPException(status_code=409, detail="Workspace reproduction execution-plan id already exists.")
 
+    policy_ref, policy_row = resolve_policy_ref(db, user_key, payload.executionPolicyRef)
+    adapter_ref = reproduced.runtime_adapter_ref or {}
+    adapter_row = db.get(RuntimeAdapterRevision, {"user_key": user_key, "adapter_id": str(adapter_ref.get("adapterId") or ""), "revision": int(adapter_ref.get("revision") or 0)})
+    if adapter_row is None:
+        raise HTTPException(status_code=409, detail="Reproduction run does not have an available frozen runtime adapter revision for policy evaluation.")
+    policy_decision = evaluate_policy(
+        db, user_key, execution_plan_id, policy_row, adapter_row, target, operation, payload.resourceBudget, route
+    )
+    checks.append({"check": "execution-policy", "status": "pass" if policy_decision.eligible else "fail", "classification": policy_decision.classification, "decisionId": policy_decision.decision_id})
+    ready = ready and bool(policy_decision.eligible)
+    status_value = "ready" if ready else "blocked"
+
     job_request = {
         "schema": "sc-workspace-job-request/1.0",
         "jobType": "workspace-task" if target == "workspace" else "compute-handoff",
@@ -128,6 +141,9 @@ def create_execution_plan(db: Session, user_key: str, payload: ReproductionExecu
         "idempotencyKey": f"reproduction-execution:{execution_plan_id}",
         "inputArtifactIds": [str(x)[:160] for x in payload.inputArtifactIds],
         "executionRunId": reproduced.run_id,
+        "executionPolicy": {"policyRef": policy_ref, "decisionId": policy_decision.decision_id, "decisionFingerprint": policy_decision.fingerprint},
+        "resourceBudget": payload.resourceBudget.model_dump(),
+        "sandbox": policy_decision.sandbox_json,
         "payload": payload.payload,
     }
     policy = {
@@ -138,8 +154,14 @@ def create_execution_plan(db: Session, user_key: str, payload: ReproductionExecu
         "arbitraryCodeExecution": False,
         "credentialsAcceptedFromClient": False,
         "frozenTargetAndOperation": True,
+        "executionPolicyRef": policy_ref,
+        "executionPolicyDecisionId": policy_decision.decision_id,
+        "executionPolicyDecisionFingerprint": policy_decision.fingerprint,
+        "executionEligible": bool(policy_decision.eligible),
+        "resourceBudget": payload.resourceBudget.model_dump(),
+        "sandbox": policy_decision.sandbox_json,
     }
-    readiness = {"ready": ready, "status": status_value, "checks": checks, "route": {k: v for k, v in route.items() if k != "serviceCredentialConfigured"}}
+    readiness = {"ready": ready, "status": status_value, "checks": checks, "route": {k: v for k, v in route.items() if k != "serviceCredentialConfigured"}, "policyDecision": policy_decision_metadata(policy_decision)}
     fingerprint_doc = {
         "reproductionPlanId": repro_plan.plan_id,
         "originalRunId": original.run_id,
@@ -211,6 +233,14 @@ def dispatch_execution_plan(db: Session, user_key: str, execution_plan_id: str, 
     if current_run.target_product != row.target_product or current_run.operation != row.operation:
         raise HTTPException(status_code=409, detail="Reproduction target or operation changed after execution-plan creation.")
 
+    frozen_policy = row.policy_json or {}
+    decision_id = str(frozen_policy.get("executionPolicyDecisionId") or "")
+    decision = get_policy_decision(db, user_key, decision_id) if decision_id else None
+    if decision is None or not decision.eligible:
+        raise HTTPException(status_code=409, detail="Workspace execution policy does not authorize this controlled handoff.")
+    if decision.fingerprint != str(frozen_policy.get("executionPolicyDecisionFingerprint") or ""):
+        raise HTTPException(status_code=409, detail="Workspace execution-policy decision fingerprint changed after execution-plan creation.")
+
     route = route_registry().get(row.target_product) or {}
     if not route.get("configured"):
         raise HTTPException(status_code=409, detail="The frozen Workspace runtime route is no longer configured.")
@@ -231,6 +261,11 @@ def dispatch_execution_plan(db: Session, user_key: str, execution_plan_id: str, 
         "credentialsAcceptedFromClient": False,
         "jobReplayed": replayed,
         "executionPlanFingerprint": row.fingerprint,
+        "executionPolicyDecisionId": decision.decision_id,
+        "executionPolicyDecisionFingerprint": decision.fingerprint,
+        "executionPolicyEligible": True,
+        "resourceBudget": decision.resource_budget_json,
+        "sandbox": decision.sandbox_json,
     }
     receipt_doc = {
         "executionPlanId": row.execution_plan_id,

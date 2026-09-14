@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-execution-policy-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Execution Policy v1",
+  "type": "object",
+  "required": ["schema", "version", "executionPolicyRegistry", "resourceBudgets", "runtimeSandboxing", "policyRequiredForControlledHandoffs", "arbitraryCodeExecution"],
+  "properties": {
+    "schema": {"const": "sc-workspace-execution-policy-contract/1.0"},
+    "version": {"const": "2.8.0"},
+    "executionPolicyRegistry": {"const": true},
+    "executionPolicyRevisionHistory": {"const": true},
+    "executionPolicyDecisions": {"const": true},
+    "resourceBudgets": {"const": true},
+    "runtimeSandboxing": {"const": true},
+    "sandboxEnforcementMode": {"const": "pre-dispatch-policy-gate"},
+    "policyRequiredForControlledHandoffs": {"const": true},
+    "adapterTrustLevels": {"const": true},
+    "humanAuthorizedDispatch": {"const": true},
+    "clientSuppliedRuntimeUrlsAllowed": {"const": false},
+    "clientSuppliedRuntimeCredentialsAllowed": {"const": false},
+    "hostFilesystemAccessAllowed": {"const": false},
+    "dockerSocketAccessAllowed": {"const": false},
+    "privilegedExecutionAllowed": {"const": false},
+    "arbitraryCodeExecution": {"const": false}
+  },
+  "additionalProperties": true
+}
