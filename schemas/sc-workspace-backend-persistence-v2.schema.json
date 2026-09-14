@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-backend-persistence-v2.schema.json",
+  "title": "Sustainable Catalyst Workspace Backend Persistence v2",
+  "type": "object",
+  "required": ["schema", "version", "legacyMigration", "objectStorage", "recovery"],
+  "properties": {
+    "schema": {"const": "sc-workspace-backend-persistence/2.0"},
+    "version": {"const": "2.2.0"},
+    "legacyMigration": {
+      "type": "object",
+      "required": ["planApply", "receipts", "sourceRetained"],
+      "properties": {
+        "planApply": {"const": true},
+        "receipts": {"const": true},
+        "sourceRetained": {"const": true}
+      }
+    },
+    "objectStorage": {
+      "type": "object",
+      "required": ["contentAddressed", "algorithm", "persistentVolume"],
+      "properties": {
+        "contentAddressed": {"const": true},
+        "algorithm": {"const": "SHA-256"},
+        "persistentVolume": {"const": true}
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "required": ["snapshots", "manifestFingerprint"],
+      "properties": {
+        "snapshots": {"const": true},
+        "manifestFingerprint": {"const": "SHA-256"}
+      }
+    }
+  }
+}

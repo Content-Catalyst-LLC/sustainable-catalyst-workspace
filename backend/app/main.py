@@ -20,8 +20,11 @@ from .repository import (
     store_notebook,
     store_project,
 )
-from .schemas import NotebookStoreRequest, ProjectStoreRequest
+from .schemas import ArtifactStoreRequest, LegacyMigrationRequest, NotebookStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest
 from .security import ServiceIdentity, require_service_identity
+from .migration import apply_migration, list_receipts, migration_plan
+from .object_store import artifact_metadata, delete_artifact, get_artifact, list_artifacts, read_artifact_content, store_artifact, verify_artifact_storage
+from .recovery import create_snapshot, get_snapshot, list_snapshots, snapshot_metadata
 from .utils import iso
 
 
@@ -71,6 +74,9 @@ def health():
         "projectSchema": "sc-workspace-project/20.0",
         "notebookSchema": "sc-workspace-notebook/3.0",
         "localFirst": True,
+        "objectStorage": "content-addressed-filesystem",
+        "recoverySnapshots": True,
+        "legacyMigration": True,
     }
 
 
@@ -101,7 +107,12 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "idempotentOperations": True,
         "integrityAlgorithm": "SHA-256",
         "database": "PostgreSQL",
-        "objectStorage": False,
+        "objectStorage": True,
+        "objectStorageMode": "content-addressed-filesystem",
+        "legacyUserMetaMigration": True,
+        "migrationReceipts": True,
+        "recoverySnapshots": True,
+        "storageIntegrityChecks": True,
         "backgroundJobs": False,
         "computeOrchestration": False,
         "limits": {
@@ -110,6 +121,10 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "accountBytes": settings.max_account_bytes,
             "notebooksPerAccount": settings.max_notebooks_per_account,
             "notebookBytes": settings.max_notebook_bytes,
+            "artifactsPerAccount": settings.max_artifacts_per_account,
+            "artifactBytes": settings.max_artifact_bytes,
+            "artifactAccountBytes": settings.max_artifact_account_bytes,
+            "recoverySnapshotsPerAccount": settings.max_recovery_snapshots_per_account,
         },
     }
 
@@ -183,3 +198,79 @@ def notebook_get_route(notebook_id: str, identity: ServiceIdentity = Depends(req
 def notebook_delete_route(notebook_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
         return {"ok": True, "deleted": delete_notebook(db, identity.user_key, notebook_id)}
+
+
+@app.post("/v1/migrations/legacy-user-meta/plan")
+def legacy_migration_plan(payload: LegacyMigrationRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return migration_plan(db, identity.user_key, payload)
+
+
+@app.post("/v1/migrations/legacy-user-meta/apply")
+def legacy_migration_apply(payload: LegacyMigrationRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    payload.dryRun = False
+    with session_scope() as db:
+        return apply_migration(db, identity.user_key, payload)
+
+
+@app.get("/v1/migrations/receipts")
+def migration_receipts(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-migration-receipt-index/1.0", "items": list_receipts(db, identity.user_key)}
+
+
+@app.get("/v1/artifacts")
+def artifacts_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-artifact-index/1.0", "items": list_artifacts(db, identity.user_key)}
+
+
+@app.post("/v1/artifacts")
+def artifact_store_route(payload: ArtifactStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = store_artifact(db, identity.user_key, payload)
+        return {"ok": True, "item": artifact_metadata(row)}
+
+
+@app.get("/v1/artifacts/{artifact_id}")
+def artifact_get_route(artifact_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    import base64
+    with session_scope() as db:
+        row = get_artifact(db, identity.user_key, artifact_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace artifact not found.")
+        content = read_artifact_content(row)
+        return {"schema": "sc-workspace-artifact-response/1.0", "item": artifact_metadata(row), "contentBase64": base64.b64encode(content).decode("ascii")}
+
+
+@app.delete("/v1/artifacts/{artifact_id}")
+def artifact_delete_route(artifact_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok": True, "deleted": delete_artifact(db, identity.user_key, artifact_id)}
+
+
+@app.get("/v1/storage/integrity")
+def storage_integrity(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        result = verify_artifact_storage(db, identity.user_key)
+        return {"schema": "sc-workspace-storage-integrity/1.0", **result}
+
+
+@app.post("/v1/recovery/snapshots")
+def recovery_snapshot_create(payload: RecoverySnapshotRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = create_snapshot(db, identity.user_key, payload.reason)
+        return {"ok": True, "item": snapshot_metadata(row)}
+
+
+@app.get("/v1/recovery/snapshots")
+def recovery_snapshot_index(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-recovery-snapshot-index/1.0", "items": list_snapshots(db, identity.user_key)}
+
+
+@app.get("/v1/recovery/snapshots/{snapshot_id}")
+def recovery_snapshot_get(snapshot_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_snapshot(db, identity.user_key, snapshot_id)
+        return {"schema": "sc-workspace-recovery-snapshot/1.0", "item": snapshot_metadata(row), "manifest": row.manifest}

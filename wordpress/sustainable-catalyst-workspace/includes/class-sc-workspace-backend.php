@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.1.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.2.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -38,13 +38,19 @@ final class SC_Workspace_Backend {
             'failClosedWhenPrimary' => true,
             'legacyWordPressUserMetaFallbackWhenDisabled' => true,
             'automaticMigration' => false,
+            'legacyMigrationPlanApply' => true,
+            'legacyStoreRetainedAfterMigration' => true,
+            'migrationReceipts' => true,
             'localProjectCanonicalOnDevice' => true,
             'explicitBackupAndSyncOnly' => true,
             'projectSchema' => 'sc-workspace-project/20.0',
             'notebookSchema' => 'sc-workspace-notebook/3.0',
             'backendPersistence' => 'postgresql',
             'backendRevisionHistory' => true,
-            'objectStorage' => false,
+            'objectStorage' => true,
+            'objectStorageMode' => 'content-addressed-filesystem',
+            'recoverySnapshots' => true,
+            'storageIntegrityChecks' => true,
             'backgroundJobs' => false,
             'computeOrchestration' => false,
         );
@@ -85,8 +91,19 @@ final class SC_Workspace_Backend {
     }
 
     public static function request($method, $path, $body = null) {
-        if (!self::enabled()) {
+        return self::request_internal($method, $path, $body, true);
+    }
+
+    public static function configured_request($method, $path, $body = null) {
+        return self::request_internal($method, $path, $body, false);
+    }
+
+    private static function request_internal($method, $path, $body, $require_primary) {
+        if ($require_primary && !self::enabled()) {
             return new WP_Error('scw_backend_disabled', 'Workspace dedicated backend is not enabled.', array('status' => 503));
+        }
+        if (!self::configured()) {
+            return new WP_Error('scw_backend_unconfigured', 'Workspace dedicated backend is not configured.', array('status' => 503));
         }
         $user_id = get_current_user_id();
         if ($user_id <= 0) {
