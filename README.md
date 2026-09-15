@@ -1,12 +1,10 @@
-# Sustainable Catalyst Workspace v2.11.0 — Python Scientific Compute Runtime & Execution Engine
+# Sustainable Catalyst Workspace v2.12.0 — Polyglot Scientific Runtime Fabric
 
-## Python Scientific Compute Runtime
+## Polyglot Scientific Runtime Fabric
 
-Workspace v2.11.0 turns the backend execution plane into a bounded scientific compute runtime. NumPy, Pandas, SciPy, and SymPy operations execute through the durable Workspace worker, produce content-addressed result artifacts, emit progress/cancellation events, and retain SHA-256 compute execution receipts.
+Workspace v2.12.0 generalizes the scientific execution plane across Python, SQL, R, Julia, and WebAssembly. Python and bounded SQL execute in-process. R, Julia, and WASM are represented by server-configured runtime adapters using one language-neutral execution envelope and Arrow-compatible table descriptors.
 
-The runtime is an operation registry, not a generic Python shell. Arbitrary Python source, shell commands, subprocess execution, client-supplied runtime URLs/credentials, host filesystem access, Docker socket access, and privileged execution remain disallowed.
-
-Registered operations include descriptive statistics, declarative dataframe transforms, matrix algebra, restricted symbolic calculus, sampled-series integration, bounded quadratic optimization, and polynomial roots.
+The fabric remains capability-bounded: browser requests cannot provide runtime URLs or credentials, raw SQL source is not accepted, and arbitrary Python/R/Julia/shell/WASM source execution is disabled. Every successful non-Python polyglot job persists a content-addressed result artifact and immutable execution receipt linked to job/run provenance.
 
 Storage schema remains 35. Project schema remains `sc-workspace-project/20.0`. Export schema remains `sc-workspace-project-export/20.0`.
 

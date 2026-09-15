@@ -1,0 +1,19 @@
+{
+  "product": "workspace",
+  "name": "Sustainable Catalyst Workspace",
+  "version": "2.12.0",
+  "previous_version": "2.11.0",
+  "release": "Polyglot Scientific Runtime Fabric",
+  "public": true,
+  "polyglot_runtime": {
+    "enabled": true,
+    "languages": ["python", "r", "julia", "sql", "wasm"],
+    "python_transport": "in-process",
+    "sql_transport": "in-process",
+    "r_transport": "server-configured-http",
+    "julia_transport": "server-configured-http",
+    "wasm_transport": "server-configured-http",
+    "arrow_compatible_interchange": true,
+    "arbitrary_code_execution": false
+  }
+}

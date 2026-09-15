@@ -49,6 +49,7 @@ from .execution_control import create_execution_plan, dispatch_execution_plan, e
 from .policy import get_policy, get_policy_revision, get_policy_decision, list_policies, list_policy_revisions, list_policy_decisions, policy_decision_metadata, policy_metadata, store_policy
 from .telemetry import attestation_metadata, create_runtime_attestation, get_runtime_attestation, list_runtime_attestations
 from .compute import compute_catalog, get_compute_receipt, list_compute_receipts, receipt_metadata as compute_receipt_metadata
+from .polyglot import runtime_catalog as polyglot_runtime_catalog, operation_catalog as polyglot_operation_catalog, list_receipts as list_polyglot_receipts, get_receipt as get_polyglot_receipt, receipt_metadata as polyglot_receipt_metadata
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
     waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
     create_verification as create_compliance_verification, get_verification as get_compliance_verification, list_verifications as list_compliance_verifications)
@@ -142,6 +143,10 @@ def health():
         "computeExecutionReceipts": True,
         "computeProgressEvents": True,
         "boundedScientificOperationsOnly": True,
+        "polyglotScientificRuntimeFabric": True,
+        "polyglotLanguages": ["python", "r", "julia", "sql", "wasm"],
+        "arrowCompatibleInterchange": True,
+        "polyglotExecutionReceipts": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -243,6 +248,11 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "computeExecutionReceipts": True,
         "computeProgressEvents": True,
         "computeCancellationChecks": True,
+        "polyglotScientificRuntimeFabric": True,
+        "polyglotLanguages": ["python", "r", "julia", "sql", "wasm"],
+        "arrowCompatibleInterchange": True,
+        "polyglotExecutionReceipts": True,
+        "polyglotRuntimeCatalog": True,
         "boundedScientificOperationsOnly": True,
         "runtimeAttestationAuth": "dedicated-server-token",
         "browserAttestationSubmissionAllowed": False,
@@ -260,6 +270,9 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "computeMatrixDimension": settings.compute_max_matrix_dimension,
             "computeSymbolicExpressionChars": settings.compute_max_symbolic_chars,
             "computeResultBytes": settings.compute_max_result_bytes,
+            "polyglotExchangeRows": settings.polyglot_max_exchange_rows,
+            "polyglotExchangeColumns": settings.polyglot_max_exchange_columns,
+            "polyglotPayloadBytes": settings.polyglot_max_payload_bytes,
             "projectsPerAccount": settings.max_projects_per_account,
             "projectBytes": settings.max_project_bytes,
             "accountBytes": settings.max_account_bytes,
@@ -505,6 +518,31 @@ def job_retry_route(job_id: str, payload: JobActionRequest, identity: ServiceIde
     with session_scope() as db:
         row = retry_job(db, identity.user_key, job_id, payload.reason)
         return {"ok": True, "item": job_metadata(row)}
+
+
+@app.get("/v1/polyglot/runtimes")
+def polyglot_runtimes_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema": "sc-workspace-polyglot-runtime-index/1.0", "version": settings.service_version, "items": polyglot_runtime_catalog()}
+
+
+@app.get("/v1/polyglot/operations")
+def polyglot_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema": "sc-workspace-polyglot-operation-index/1.0", "version": settings.service_version, "items": polyglot_operation_catalog()}
+
+
+@app.get("/v1/polyglot/receipts")
+def polyglot_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-polyglot-execution-receipt-index/1.0", "items": list_polyglot_receipts(db, identity.user_key, limit)}
+
+
+@app.get("/v1/polyglot/receipts/{receipt_id}")
+def polyglot_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_polyglot_receipt(db, identity.user_key, receipt_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace polyglot execution receipt not found.")
+        return {"schema": "sc-workspace-polyglot-execution-receipt/1.0", "item": polyglot_receipt_metadata(row)}
 
 
 @app.get("/v1/compute/operations")

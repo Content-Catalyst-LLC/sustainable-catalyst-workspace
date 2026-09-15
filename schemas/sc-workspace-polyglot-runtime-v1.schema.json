@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-polyglot-runtime-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Polyglot Runtime Fabric",
+  "type": "object",
+  "required": ["version", "languages", "serverConfiguredOnly", "arbitraryCodeExecution", "interchangeSchema"],
+  "properties": {
+    "version": {"const": "2.12.0"},
+    "languages": {"const": ["python", "r", "julia", "sql", "wasm"]},
+    "serverConfiguredOnly": {"const": true},
+    "clientSuppliedRuntimeUrlsAllowed": {"const": false},
+    "clientSuppliedCredentialsAllowed": {"const": false},
+    "arbitraryCodeExecution": {"const": false},
+    "interchangeSchema": {"const": "sc-workspace-arrow-compatible-table/1.0"}
+  }
+}

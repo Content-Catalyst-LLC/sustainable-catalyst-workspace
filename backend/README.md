@@ -1,6 +1,6 @@
-# Sustainable Catalyst Workspace Backend v2.11.0
+# Sustainable Catalyst Workspace Backend v2.12.0
 
-Workspace v2.11.0 adds the first bounded in-process scientific compute runtime to the existing durable Worker/API architecture.
+Workspace v2.12.0 adds the first bounded in-process scientific compute runtime to the existing durable Worker/API architecture.
 
 ## Scientific compute engines
 
@@ -25,3 +25,7 @@ The worker container is globally bounded with a 2 CPU / 2 GiB / 256 PID envelope
 - host API binding remains `127.0.0.1:8094`
 - browser-local storage schema remains 35
 - project schema remains `sc-workspace-project/20.0`
+
+
+## v2.12 polyglot runtime fabric
+Python and bounded SQL are in-process. R, Julia, and WASM use optional server-configured HTTP runtime adapters. Client-supplied runtime URLs, credentials, and arbitrary source execution remain disabled.
