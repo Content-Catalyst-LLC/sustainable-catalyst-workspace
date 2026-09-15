@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-predictive-analytics-runtime-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Predictive Analytics Runtime",
+  "type": "object",
+  "required": [
+    "schema",
+    "language",
+    "operation",
+    "payload",
+    "arbitraryCodeExecution"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-polyglot-execution-envelope/1.0"
+    },
+    "language": {
+      "const": "ml"
+    },
+    "operation": {
+      "enum": [
+        "workspace.ml.linear-regression",
+        "workspace.ml.logistic-classification",
+        "workspace.ml.random-forest-regression",
+        "workspace.ml.random-forest-classification",
+        "workspace.ml.gradient-boosting-regression",
+        "workspace.ml.gradient-boosting-classification",
+        "workspace.ml.cross-validate",
+        "workspace.ml.predict"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "arbitraryCodeExecution": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

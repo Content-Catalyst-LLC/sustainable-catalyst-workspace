@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt
+from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt, PredictiveModelReceipt, ModelEvaluationReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
@@ -52,6 +52,12 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.polyglot.julia.eigen-analysis", "workspace.polyglot.julia.integrate-series",
         "workspace.polyglot.julia.polynomial-roots", "workspace.polyglot.julia.parameter-sweep",
     ), "Hardened Julia runtime for bounded simulation, numerical modeling, optimization, and sensitivity workflows."),
+    RuntimeSpec("ml", "python-sklearn-predictive", "server-configured-http", (
+        "workspace.ml.linear-regression", "workspace.ml.logistic-classification",
+        "workspace.ml.random-forest-regression", "workspace.ml.random-forest-classification",
+        "workspace.ml.gradient-boosting-regression", "workspace.ml.gradient-boosting-classification",
+        "workspace.ml.cross-validate", "workspace.ml.predict",
+    ), "Hardened Python/scikit-learn runtime for bounded predictive modeling, evaluation, cross-validation, and scoring."),
     RuntimeSpec("wasm", "wasm-sandbox-adapter", "server-configured-http", (
         "workspace.polyglot.wasm.invoke",),
         "Server-configured WebAssembly adapter for portable, capability-bounded compute modules."),
@@ -66,6 +72,7 @@ def _runtime_route(language: str) -> tuple[str, str]:
     return {
         "r": (s.runtime_r_url, s.runtime_r_token),
         "julia": (s.runtime_julia_url, s.runtime_julia_token),
+        "ml": (s.runtime_ml_url, s.runtime_ml_token),
         "wasm": (s.runtime_wasm_url, s.runtime_wasm_token),
     }.get(language, ("", ""))
 
@@ -108,7 +115,7 @@ def operation_catalog() -> list[dict[str, Any]]:
 
 
 def runtime_health(language: str) -> dict[str, Any]:
-    if language not in {"r", "julia", "wasm"}:
+    if language not in {"r", "julia", "ml", "wasm"}:
         raise HTTPException(status_code=400, detail="Runtime health is only available for external runtimes")
     url, _token = _runtime_route(language)
     if not url.strip():
@@ -262,6 +269,24 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     if language == "sql": result=_sql_execute(row.operation,payload)
     else: result=execute_external(language,row,payload)
     if progress_callback: progress_callback(75,{"stage":"runtime-complete","language":language})
+    model_artifact_id = ""
+    model_artifact_sha256 = ""
+    if language == "ml" and isinstance(result, dict):
+        remote_body = result.get("remote") if isinstance(result.get("remote"), dict) else {}
+        ml_result = remote_body.get("result") if isinstance(remote_body.get("result"), dict) else {}
+        model_blob = ml_result.get("modelArtifact") if isinstance(ml_result.get("modelArtifact"), dict) else None
+        if model_blob and model_blob.get("contentBase64"):
+            model_artifact_id = f"predictive-model-{row.job_id}"
+            existing_model = get_artifact(db,row.user_key,model_artifact_id)
+            model_payload = ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0", "artifactId":model_artifact_id, "projectId":row.project_id or None,
+                "filename":f"predictive-model-{row.job_id}.joblib", "mediaType":"application/vnd.sc.workspace.ml-model+joblib",
+                "contentBase64":model_blob.get("contentBase64"), "expectedRevision":existing_model.revision if existing_model is not None else 0,
+                "metadata":{"kind":"predictive-model","language":"ml","operation":row.operation,"jobId":row.job_id,"runtime":RUNTIME_BY_LANGUAGE[language].runtime},
+            })
+            model_artifact=store_artifact(db,row.user_key,model_payload)
+            model_artifact_sha256=model_artifact.sha256
+            ml_result["modelArtifact"]={"artifactId":model_artifact.artifact_id,"format":"joblib","mediaType":model_artifact.media_type,"sha256":model_artifact.sha256,"bytes":model_artifact.bytes}
     result_doc={"schema":"sc-workspace-polyglot-result/1.0","language":language,"operation":row.operation,"result":result}
     raw=json.dumps(result_doc,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
     if len(raw)>get_settings().compute_max_result_bytes:
@@ -348,10 +373,44 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             request_fingerprint=row.request_fingerprint, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256,
         )
         db.add(numerical); db.flush(); numerical_receipt_id = numerical.receipt_id
+    predictive_model_receipt_id = ""
+    model_evaluation_receipt_id = ""
+    if language == "ml" and row.operation in ML_EVALUATION_OPERATIONS:
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        ml_result = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(ml_result, dict): ml_result = {}
+        metrics = ml_result.get("metrics") if isinstance(ml_result.get("metrics"), dict) else {}
+        if row.operation in ML_TRAIN_OPERATIONS:
+            count = int(db.scalar(select(func.count()).select_from(PredictiveModelReceipt).where(PredictiveModelReceipt.user_key == row.user_key)) or 0)
+            if count >= get_settings().max_predictive_model_receipts_per_account:
+                raise HTTPException(status_code=409, detail="Predictive model receipt limit reached")
+            pm = PredictiveModelReceipt(
+                receipt_id=f"pmr_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,
+                runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, model_kind=str(ml_result.get("modelKind") or "")[:96],
+                task=str(ml_result.get("task") or "")[:32], target=str(ml_result.get("target") or payload.get("target") or "")[:160],
+                features_json=[str(x)[:160] for x in (ml_result.get("features") or [])[:128]],
+                preprocessing_json=ml_result.get("preprocessing") if isinstance(ml_result.get("preprocessing"),dict) else {},
+                hyperparameters_json=ml_result.get("hyperparameters") if isinstance(ml_result.get("hyperparameters"),dict) else {},
+                dataset_fingerprint=str(ml_result.get("datasetFingerprint") or "")[:64], random_seed=int(ml_result.get("seed") or 0),
+                train_rows=int(ml_result.get("trainRows") or 0), test_rows=int(ml_result.get("testRows") or 0), metrics_json=metrics,
+                model_artifact_id=model_artifact_id, model_sha256=model_artifact_sha256, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256,
+            )
+            db.add(pm); db.flush(); predictive_model_receipt_id=pm.receipt_id
+        count_eval = int(db.scalar(select(func.count()).select_from(ModelEvaluationReceipt).where(ModelEvaluationReceipt.user_key == row.user_key)) or 0)
+        if count_eval >= get_settings().max_model_evaluation_receipts_per_account:
+            raise HTTPException(status_code=409, detail="Model evaluation receipt limit reached")
+        ev = ModelEvaluationReceipt(
+            receipt_id=f"mer_{uuid4().hex}", predictive_model_receipt_id=predictive_model_receipt_id, polyglot_receipt_id=receipt.receipt_id,
+            user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, operation=row.operation,
+            evaluation_kind="cross-validation" if row.operation == "workspace.ml.cross-validate" else "holdout",
+            fold_count=int(ml_result.get("folds") or 0), dataset_fingerprint=str(ml_result.get("datasetFingerprint") or "")[:64],
+            metrics_json=metrics, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256,
+        )
+        db.add(ev); db.flush(); model_evaluation_receipt_id=ev.receipt_id
     db.commit()
     db.refresh(receipt)
     if progress_callback: progress_callback(95,{"stage":"result-persisted","artifactId":artifact.artifact_id})
-    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"numericalSimulationReceiptId":numerical_receipt_id,"resultSha256":artifact.sha256}
+    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"numericalSimulationReceiptId":numerical_receipt_id,"predictiveModelReceiptId":predictive_model_receipt_id,"modelEvaluationReceiptId":model_evaluation_receipt_id,"modelArtifactId":model_artifact_id,"modelArtifactSha256":model_artifact_sha256,"resultSha256":artifact.sha256}
 
 
 R_MODEL_OPERATIONS = {
@@ -413,6 +472,34 @@ def list_numerical_receipts(db: Session, user_key: str, limit: int = 100) -> lis
 def get_numerical_receipt(db: Session, user_key: str, receipt_id: str):
     return db.execute(select(NumericalSimulationReceipt).where(NumericalSimulationReceipt.user_key == user_key, NumericalSimulationReceipt.receipt_id == receipt_id)).scalar_one_or_none()
 
+
+
+ML_TRAIN_OPERATIONS = {
+    "workspace.ml.linear-regression", "workspace.ml.logistic-classification",
+    "workspace.ml.random-forest-regression", "workspace.ml.random-forest-classification",
+    "workspace.ml.gradient-boosting-regression", "workspace.ml.gradient-boosting-classification",
+}
+ML_EVALUATION_OPERATIONS = ML_TRAIN_OPERATIONS | {"workspace.ml.cross-validate"}
+
+def predictive_model_receipt_metadata(r: PredictiveModelReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"modelKind":r.model_kind,"task":r.task,"target":r.target,"features":r.features_json or [],"preprocessing":r.preprocessing_json or {},"hyperparameters":r.hyperparameters_json or {},"datasetFingerprint":r.dataset_fingerprint,"randomSeed":r.random_seed,"trainRows":r.train_rows,"testRows":r.test_rows,"metrics":r.metrics_json or {},"modelArtifactId":r.model_artifact_id,"modelSha256":r.model_sha256,"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_predictive_model_receipts(db: Session,user_key:str,limit:int=100) -> list[dict[str,Any]]:
+    rows=db.scalars(select(PredictiveModelReceipt).where(PredictiveModelReceipt.user_key==user_key).order_by(PredictiveModelReceipt.created_at.desc()).limit(limit)).all()
+    return [predictive_model_receipt_metadata(r) for r in rows]
+
+def get_predictive_model_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(PredictiveModelReceipt).where(PredictiveModelReceipt.user_key==user_key,PredictiveModelReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+def model_evaluation_receipt_metadata(r: ModelEvaluationReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"predictiveModelReceiptId":r.predictive_model_receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"operation":r.operation,"evaluationKind":r.evaluation_kind,"foldCount":r.fold_count,"datasetFingerprint":r.dataset_fingerprint,"metrics":r.metrics_json or {},"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_model_evaluation_receipts(db: Session,user_key:str,limit:int=100) -> list[dict[str,Any]]:
+    rows=db.scalars(select(ModelEvaluationReceipt).where(ModelEvaluationReceipt.user_key==user_key).order_by(ModelEvaluationReceipt.created_at.desc()).limit(limit)).all()
+    return [model_evaluation_receipt_metadata(r) for r in rows]
+
+def get_model_evaluation_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(ModelEvaluationReceipt).where(ModelEvaluationReceipt.user_key==user_key,ModelEvaluationReceipt.receipt_id==receipt_id)).scalar_one_or_none()
 
 def receipt_metadata(r: PolyglotExecutionReceipt) -> dict[str, Any]:
     return {"receiptId":r.receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"language":r.language,"runtime":r.runtime,"operation":r.operation,"requestFingerprint":r.request_fingerprint,"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"resultBytes":r.result_bytes,"transport":r.transport,"status":r.status,"startedAt":r.started_at.isoformat(),"finishedAt":r.finished_at.isoformat(),"details":r.details_json or {}}

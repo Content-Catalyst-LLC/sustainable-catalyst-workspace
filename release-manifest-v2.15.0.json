@@ -1,0 +1,29 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.15.0",
+  "previous_version": "2.14.0",
+  "release_name": "Predictive Analytics & Machine Learning Runtime",
+  "storage_schema": 37,
+  "project_schema": "sc-workspace-project/20.0",
+  "notebook_schema": "sc-workspace-notebook/3.0",
+  "ml_runtime": {
+    "runtime": "python-sklearn-predictive",
+    "engine": "Python/scikit-learn",
+    "transport": "server-configured-http",
+    "operation_count": 8,
+    "interchange_schema": "sc-workspace-arrow-compatible-table/1.0",
+    "dedicated_container": true,
+    "internal_only_network": true,
+    "read_only_root": true,
+    "no_new_privileges": true,
+    "predictive_model_receipts": true,
+    "model_evaluation_receipts": true,
+    "trusted_model_artifacts": true,
+    "client_supplied_code_allowed": false,
+    "client_supplied_packages_allowed": false,
+    "client_supplied_serialized_models_allowed": false,
+    "client_supplied_runtime_urls_allowed": false,
+    "client_supplied_credentials_allowed": false,
+    "arbitrary_code_execution": false
+  }
+}

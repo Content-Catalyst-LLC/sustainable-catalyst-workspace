@@ -1,19 +1,29 @@
-# Sustainable Catalyst Workspace v2.14.0 — Julia Simulation & Numerical Modeling Runtime
+# Sustainable Catalyst Workspace v2.15.0 — Predictive Analytics & Machine Learning Runtime
 
-Workspace is the governed research execution environment for Sustainable Catalyst. v2.14.0 extends the polyglot scientific fabric with a real Julia runtime alongside Python, bounded SQL, and R.
+Workspace is the governed research execution environment for Sustainable Catalyst. v2.15.0 extends the polyglot scientific fabric with a bounded Python/scikit-learn predictive analytics runtime while preserving the Python, SQL, R, repaired Julia, and registered WASM runtime contracts.
 
 ## Active scientific runtimes
 
-- **Python** — NumPy, Pandas, SciPy and SymPy bounded operations
+- **Python scientific compute** — NumPy, Pandas, SciPy and SymPy bounded operations
 - **SQL** — bounded aggregate and grouped analytical operations
 - **R** — statistical, inferential, time-series and econometric operations
 - **Julia** — numerical simulation, optimization, eigen-analysis, Monte Carlo, numerical integration and parameter sweeps
+- **ML** — bounded regression, classification, ensembles, cross-validation and prediction
 - **WASM** — registered server-configured adapter, not yet deployed
 
-## Julia operations
+## Predictive analytics operations
 
-`workspace.polyglot.julia.ode-linear-rk4`, `workspace.polyglot.julia.lotka-volterra`, `workspace.polyglot.julia.monte-carlo-normal`, `workspace.polyglot.julia.quadratic-optimize`, `workspace.polyglot.julia.eigen-analysis`, `workspace.polyglot.julia.integrate-series`, `workspace.polyglot.julia.polynomial-roots`, and `workspace.polyglot.julia.parameter-sweep`.
+- `workspace.ml.linear-regression`
+- `workspace.ml.logistic-classification`
+- `workspace.ml.random-forest-regression`
+- `workspace.ml.random-forest-classification`
+- `workspace.ml.gradient-boosting-regression`
+- `workspace.ml.gradient-boosting-classification`
+- `workspace.ml.cross-validate`
+- `workspace.ml.predict`
 
-Every Julia result is persisted as a content-addressed artifact with a polyglot execution receipt. Julia model/simulation operations also create a numerical-simulation receipt carrying solver, steps/seed metadata, metrics, request fingerprint and result SHA-256.
+Every training execution records a dataset fingerprint, ordered features, target, preprocessing configuration, bounded hyperparameters, random seed, evaluation metrics, result-artifact lineage and a trusted model-artifact SHA-256. Training creates predictive-model and evaluation receipts; cross-validation creates an evaluation receipt.
 
-Arbitrary code execution remains disabled. Runtime URLs and credentials remain server-side only.
+The ML sidecar is internal-only and sandboxed. Arbitrary Python, client package installation, shell execution, runtime URLs, credentials and client-supplied serialized models remain disabled.
+
+See `RELEASE_NOTES_2.15.0.md`, `docs/PREDICTIVE_ANALYTICS_MACHINE_LEARNING_RUNTIME_V2150.md`, and `docs/DEPLOY_WORKSPACE_BACKEND_V2150.md`.

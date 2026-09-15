@@ -14,6 +14,10 @@ SERVICE = "Sustainable Catalyst Workspace Julia Numerical Runtime"
 SERVICE_VERSION = "2.14.0"
 RUNTIME = "julia-simulation-numerical"
 RUNNER = Path("/app/runner.jl")
+IMMUTABLE_DEPOT = Path("/opt/julia-depot")
+WRITABLE_DEPOT = Path("/tmp/sc-julia-depot")
+JULIA_PROJECT = Path("/opt/julia-depot/environments/v1.11")
+JULIA_BIN = os.getenv("SC_WORKSPACE_JULIA_BIN", "/usr/local/julia/bin/julia").strip() or "/usr/local/julia/bin/julia"
 TOKEN = os.getenv("SC_WORKSPACE_JULIA_RUNTIME_TOKEN", "").strip()
 TIMEOUT = max(1.0, min(float(os.getenv("SC_WORKSPACE_JULIA_TIMEOUT_SECONDS", "60")), 180.0))
 MAX_PAYLOAD = max(1024, min(int(os.getenv("SC_WORKSPACE_JULIA_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))), 25 * 1024 * 1024))
@@ -44,6 +48,9 @@ def health() -> dict[str, Any]:
         "ok": True, "service": SERVICE, "version": SERVICE_VERSION, "runtime": RUNTIME, "engine": "Julia",
         "operations": sorted(OPERATIONS), "boundedOperationsOnly": True, "arbitraryCodeExecution": False,
         "clientSuppliedPackagesAllowed": False, "clientSuppliedRuntimeUrlsAllowed": False,
+        "juliaExecutable": JULIA_BIN, "juliaExecutableAvailable": Path(JULIA_BIN).is_file(),
+        "immutableDepot": str(IMMUTABLE_DEPOT), "writableCacheDepot": str(WRITABLE_DEPOT),
+        "runtimeProject": str(JULIA_PROJECT), "packageImagesEnabled": False,
     }
 
 @app.post("/v1/execute")
@@ -64,15 +71,35 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     raw = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"), default=str).encode("utf-8")
     if len(raw) > MAX_PAYLOAD:
         raise HTTPException(status_code=413, detail="Julia runtime payload limit exceeded")
+    if not Path(JULIA_BIN).is_file():
+        raise HTTPException(status_code=503, detail=f"Julia executable is unavailable: {JULIA_BIN}")
     in_path = out_path = None
     try:
         with tempfile.NamedTemporaryFile(prefix="sc-julia-in-", suffix=".json", dir="/tmp", delete=False) as src:
             src.write(raw); in_path = src.name
         with tempfile.NamedTemporaryFile(prefix="sc-julia-out-", suffix=".json", dir="/tmp", delete=False) as dst:
             out_path = dst.name
-        env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8", "JULIA_NUM_THREADS": "2", "JULIA_DEPOT_PATH": "/opt/julia-depot"}
+        WRITABLE_DEPOT.mkdir(parents=True, exist_ok=True)
+        env = {
+            "PATH": "/usr/local/julia/bin:/usr/local/bin:/usr/bin:/bin",
+            "HOME": "/tmp",
+            "LANG": "C.UTF-8",
+            "LC_ALL": "C.UTF-8",
+            "JULIA_NUM_THREADS": "2",
+            "JULIA_DEPOT_PATH": f"{WRITABLE_DEPOT}:{IMMUTABLE_DEPOT}",
+            "JULIA_PKG_PRECOMPILE_AUTO": "0",
+        }
         completed = subprocess.run(
-            ["/usr/local/bin/julia", "--startup-file=no", "--history-file=no", str(RUNNER), in_path, out_path],
+            [
+                JULIA_BIN,
+                "--startup-file=no",
+                "--history-file=no",
+                f"--project={JULIA_PROJECT}",
+                "--pkgimages=no",
+                str(RUNNER),
+                in_path,
+                out_path,
+            ],
             cwd="/app", env=env, capture_output=True, text=True, timeout=TIMEOUT, check=False, shell=False,
         )
         if completed.returncode != 0:

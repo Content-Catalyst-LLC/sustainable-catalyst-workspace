@@ -1,0 +1,30 @@
+{
+  "product": "workspace",
+  "name": "Sustainable Catalyst Workspace",
+  "version": "2.15.0",
+  "previous_version": "2.14.0",
+  "release": "Predictive Analytics & Machine Learning Runtime",
+  "public": true,
+  "ml_runtime": {
+    "enabled": true,
+    "runtime": "python-sklearn-predictive",
+    "transport": "server-configured-http",
+    "operations": 8,
+    "internal_only_network": true,
+    "predictive_model_receipts": true,
+    "model_evaluation_receipts": true,
+    "trusted_model_artifacts": true,
+    "client_supplied_code": false,
+    "client_supplied_serialized_models": false,
+    "client_supplied_runtime_urls": false,
+    "arbitrary_code_execution": false
+  },
+  "polyglot_languages": [
+    "python",
+    "r",
+    "julia",
+    "ml",
+    "sql",
+    "wasm"
+  ]
+}

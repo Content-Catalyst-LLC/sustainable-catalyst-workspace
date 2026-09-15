@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.14.0"
+    service_version: str = "2.15.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     runtime_r_token: str = ""
     runtime_julia_url: str = ""
     runtime_julia_token: str = ""
+    runtime_ml_url: str = ""
+    runtime_ml_token: str = ""
     runtime_wasm_url: str = ""
     runtime_wasm_token: str = ""
     polyglot_timeout_seconds: float = 45.0
@@ -61,6 +63,8 @@ class Settings(BaseSettings):
     polyglot_max_payload_bytes: int = 10 * 1024 * 1024
     max_statistical_model_receipts_per_account: int = 5000
     max_numerical_simulation_receipts_per_account: int = 5000
+    max_predictive_model_receipts_per_account: int = 5000
+    max_model_evaluation_receipts_per_account: int = 10000
 
     max_jobs_per_account: int = 1000
     default_job_max_attempts: int = 3

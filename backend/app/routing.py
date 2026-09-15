@@ -54,7 +54,7 @@ def execute_job(db, row) -> dict:
     job_payload = payload.get("payload") or {}
 
     if row.target_product == "workspace":
-        if row.operation.startswith("workspace.polyglot."):
+        if row.operation.startswith("workspace.polyglot.") or row.operation.startswith("workspace.ml."):
             return execute_polyglot_operation(db, row, progress_callback=lambda progress, details: update_job_progress(db, row.user_key, row.job_id, progress, details))
         if row.operation.startswith("workspace.compute."):
             try:
