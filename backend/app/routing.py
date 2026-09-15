@@ -5,6 +5,7 @@ from .object_store import verify_artifact_storage
 from .recovery import create_snapshot, snapshot_metadata
 from .compute import ComputeCancelled, execute_scientific_operation
 from .polyglot import execute_polyglot_operation
+from .interchange import execute_interchange_operation
 from .jobs import update_job_progress
 
 
@@ -54,6 +55,8 @@ def execute_job(db, row) -> dict:
     job_payload = payload.get("payload") or {}
 
     if row.target_product == "workspace":
+        if row.operation.startswith("workspace.interchange."):
+            return execute_interchange_operation(db, row, progress_callback=lambda progress, details: update_job_progress(db, row.user_key, row.job_id, progress, details))
         if row.operation.startswith("workspace.polyglot.") or row.operation.startswith("workspace.ml."):
             return execute_polyglot_operation(db, row, progress_callback=lambda progress, details: update_job_progress(db, row.user_key, row.job_id, progress, details))
         if row.operation.startswith("workspace.compute."):

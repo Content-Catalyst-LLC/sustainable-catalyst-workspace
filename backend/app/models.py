@@ -336,6 +336,28 @@ class ModelEvaluationReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class InterchangeReceipt(Base):
+    __tablename__ = "workspace_interchange_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    source_format: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    result_format: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    source_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    source_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    schema_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    column_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    verified: Mapped[bool] = mapped_column(nullable=False, default=False)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class DatasetHead(Base):
     __tablename__ = "workspace_dataset_heads"
 

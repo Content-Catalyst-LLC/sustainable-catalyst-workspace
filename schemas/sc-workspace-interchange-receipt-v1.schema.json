@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-interchange-receipt/1.0",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "operation",
+    "schemaFingerprint",
+    "verified"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "sourceFormat": {
+      "type": "string"
+    },
+    "resultFormat": {
+      "type": "string"
+    },
+    "schemaFingerprint": {
+      "type": "string"
+    },
+    "verified": {
+      "type": "boolean"
+    }
+  }
+}

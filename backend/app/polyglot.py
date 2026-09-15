@@ -94,7 +94,7 @@ def runtime_catalog() -> list[dict[str, Any]]:
             "arbitraryCodeExecution": False,
             "operations": list(spec.operations),
             "description": spec.description,
-            "interchange": {"schema": "sc-workspace-arrow-compatible-table/1.0", "formats": ["records-json", "arrow-schema-json"]},
+            "interchange": {"schema": "sc-workspace-native-arrow-table/1.0", "formats": ["records-json", "arrow-ipc-stream", "parquet"]},
         })
     return items
 
@@ -325,7 +325,7 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         request_fingerprint=row.request_fingerprint, result_artifact_id=artifact.artifact_id,
         result_sha256=artifact.sha256, result_bytes=artifact.bytes,
         transport=RUNTIME_BY_LANGUAGE[language].transport, status="succeeded",
-        started_at=started, finished_at=finished, details_json={"exchangeSchema":"sc-workspace-arrow-compatible-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
+        started_at=started, finished_at=finished, details_json={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
     )
     db.add(receipt); db.flush()
     # Commit the language-neutral execution receipt before specialist receipt enrichment.

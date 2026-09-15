@@ -1,0 +1,21 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.16.0",
+  "release": "Native Arrow / Parquet Cross-Language Exchange & Reproduction Verification",
+  "backend": {
+    "migration": 16,
+    "interchange_runtime": "arrow-parquet-interchange",
+    "bounded_operations": 8,
+    "formats": [
+      "arrow-ipc-stream",
+      "parquet"
+    ],
+    "arbitrary_code_execution": false,
+    "client_supplied_runtime_urls_allowed": false,
+    "client_filesystem_paths_allowed": false,
+    "content_addressed_artifacts": true,
+    "sha256_verification": true,
+    "schema_fingerprints": true
+  },
+  "previous": "2.15.0"
+}

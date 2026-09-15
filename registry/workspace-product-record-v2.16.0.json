@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.16.0",
+  "release": "Native Arrow / Parquet Cross-Language Exchange & Reproduction Verification",
+  "capabilities": [
+    "native-arrow-ipc",
+    "parquet",
+    "schema-fingerprints",
+    "interchange-receipts",
+    "reproduction-verification"
+  ]
+}

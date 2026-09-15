@@ -55,6 +55,7 @@ from .polyglot import (runtime_catalog as polyglot_runtime_catalog, operation_ca
     list_numerical_receipts, get_numerical_receipt, numerical_receipt_metadata,
     list_predictive_model_receipts, get_predictive_model_receipt, predictive_model_receipt_metadata,
     list_model_evaluation_receipts, get_model_evaluation_receipt, model_evaluation_receipt_metadata)
+from .interchange import operation_catalog as interchange_operation_catalog, runtime_health as interchange_runtime_health, list_receipts as list_interchange_receipts, get_receipt as get_interchange_receipt, receipt_metadata as interchange_receipt_metadata
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
     waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
     create_verification as create_compliance_verification, get_verification as get_compliance_verification, list_verifications as list_compliance_verifications)
@@ -165,6 +166,11 @@ def health():
         "mlRuntimeBoundedOperations": 8,
         "predictiveModelReceipts": True,
         "modelEvaluationReceipts": True,
+        "nativeArrowParquetInterchange": True,
+        "interchangeRuntimeConfigured": bool(settings.runtime_interchange_url.strip()),
+        "interchangeRuntimeBoundedOperations": 8,
+        "interchangeReceipts": True,
+        "interchangeFormats": ["arrow-ipc-stream", "parquet"],
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -284,6 +290,11 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "mlRuntimeBoundedOperations": 8,
         "predictiveModelReceipts": True,
         "modelEvaluationReceipts": True,
+        "nativeArrowParquetInterchange": True,
+        "interchangeRuntimeConfigured": bool(settings.runtime_interchange_url.strip()),
+        "interchangeRuntimeBoundedOperations": 8,
+        "interchangeReceipts": True,
+        "interchangeFormats": ["arrow-ipc-stream", "parquet"],
         "boundedScientificOperationsOnly": True,
         "runtimeAttestationAuth": "dedicated-server-token",
         "browserAttestationSubmissionAllowed": False,
@@ -308,6 +319,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "numericalSimulationReceipts": settings.max_numerical_simulation_receipts_per_account,
             "predictiveModelReceipts": settings.max_predictive_model_receipts_per_account,
             "modelEvaluationReceipts": settings.max_model_evaluation_receipts_per_account,
+            "interchangeReceipts": settings.max_interchange_receipts_per_account,
             "projectsPerAccount": settings.max_projects_per_account,
             "projectBytes": settings.max_project_bytes,
             "accountBytes": settings.max_account_bytes,
@@ -651,6 +663,27 @@ def model_evaluation_receipt_get_route(receipt_id: str, identity: ServiceIdentit
         row=get_model_evaluation_receipt(db,identity.user_key,receipt_id)
         if row is None: raise HTTPException(status_code=404,detail="Workspace model evaluation receipt not found.")
         return {"schema":"sc-workspace-model-evaluation-receipt/1.0","item":model_evaluation_receipt_metadata(row)}
+
+
+@app.get("/v1/interchange/runtime/status")
+def interchange_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":interchange_runtime_health()}
+
+@app.get("/v1/interchange/operations")
+def interchange_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-interchange-operation-index/1.0","version":settings.service_version,"items":interchange_operation_catalog(),"formats":["arrow-ipc-stream","parquet"],"boundedOperationsOnly":True,"arbitraryCodeExecution":False}
+
+@app.get("/v1/interchange/receipts")
+def interchange_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-interchange-receipt-index/1.0","items":list_interchange_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/interchange/receipts/{receipt_id}")
+def interchange_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_interchange_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace interchange receipt not found.")
+        return {"schema":"sc-workspace-interchange-receipt/1.0","item":interchange_receipt_metadata(row)}
 
 
 @app.get("/v1/compute/operations")

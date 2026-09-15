@@ -42,6 +42,10 @@ services:
       SC_WORKSPACE_RUNTIME_JULIA_TOKEN: ${SC_WORKSPACE_RUNTIME_JULIA_TOKEN:-}
       SC_WORKSPACE_RUNTIME_ML_URL: ${SC_WORKSPACE_RUNTIME_ML_URL:-http://sc-workspace-ml-runtime:8092/v1/execute}
       SC_WORKSPACE_RUNTIME_ML_TOKEN: ${SC_WORKSPACE_RUNTIME_ML_TOKEN:-}
+      SC_WORKSPACE_RUNTIME_INTERCHANGE_URL: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_URL:-http://sc-workspace-interchange-runtime:8093/v1/execute}
+      SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN:-}
+      SC_WORKSPACE_INTERCHANGE_TIMEOUT_SECONDS: ${SC_WORKSPACE_INTERCHANGE_TIMEOUT_SECONDS:-60}
+      SC_WORKSPACE_MAX_INTERCHANGE_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_INTERCHANGE_RECEIPTS_PER_ACCOUNT:-10000}
       SC_WORKSPACE_RUNTIME_WASM_URL: ${SC_WORKSPACE_RUNTIME_WASM_URL:-}
       SC_WORKSPACE_RUNTIME_WASM_TOKEN: ${SC_WORKSPACE_RUNTIME_WASM_TOKEN:-}
       SC_WORKSPACE_POLYGLOT_TIMEOUT_SECONDS: ${SC_WORKSPACE_POLYGLOT_TIMEOUT_SECONDS:-45}
@@ -76,6 +80,7 @@ services:
       - sc-workspace-r-runtime
       - sc-workspace-julia-runtime
       - sc-workspace-ml-runtime
+      - sc-workspace-interchange-runtime
     cpus: 2.0
     mem_limit: 2g
     pids_limit: 256
@@ -144,6 +149,28 @@ services:
       - sc-workspace-runtime
     cpus: 2.0
     mem_limit: 2g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+
+  sc-workspace-interchange-runtime:
+    build: ./interchange-runtime
+    container_name: sc-workspace-interchange-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_INTERCHANGE_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN}
+      SC_WORKSPACE_INTERCHANGE_MAX_PAYLOAD_BYTES: ${SC_WORKSPACE_MAX_ARTIFACT_BYTES:-26214400}
+      SC_WORKSPACE_INTERCHANGE_MAX_ROWS: ${SC_WORKSPACE_COMPUTE_MAX_ROWS:-50000}
+      SC_WORKSPACE_INTERCHANGE_MAX_COLUMNS: ${SC_WORKSPACE_COMPUTE_MAX_COLUMNS:-256}
+    networks:
+      - sc-workspace-runtime
+    cpus: 1.5
+    mem_limit: 1536m
     pids_limit: 128
     read_only: true
     cap_drop:
