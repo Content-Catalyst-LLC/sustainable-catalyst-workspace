@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import PolyglotExecutionReceipt, StatisticalModelReceipt
+from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
@@ -46,9 +46,12 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.polyglot.r.linear-model", "workspace.polyglot.r.logistic-model", "workspace.polyglot.r.anova",
         "workspace.polyglot.r.arima", "workspace.polyglot.r.econometric-ols",
     ), "Hardened R runtime for bounded statistical, inferential, time-series, and econometric workflows."),
-    RuntimeSpec("julia", "julia-scientific-adapter", "server-configured-http", (
-        "workspace.polyglot.julia.numerical", "workspace.polyglot.julia.simulation", "workspace.polyglot.julia.optimization",
-    ), "Server-configured Julia runtime adapter for numerical modeling and simulation."),
+    RuntimeSpec("julia", "julia-simulation-numerical", "server-configured-http", (
+        "workspace.polyglot.julia.ode-linear-rk4", "workspace.polyglot.julia.lotka-volterra",
+        "workspace.polyglot.julia.monte-carlo-normal", "workspace.polyglot.julia.quadratic-optimize",
+        "workspace.polyglot.julia.eigen-analysis", "workspace.polyglot.julia.integrate-series",
+        "workspace.polyglot.julia.polynomial-roots", "workspace.polyglot.julia.parameter-sweep",
+    ), "Hardened Julia runtime for bounded simulation, numerical modeling, optimization, and sensitivity workflows."),
     RuntimeSpec("wasm", "wasm-sandbox-adapter", "server-configured-http", (
         "workspace.polyglot.wasm.invoke",),
         "Server-configured WebAssembly adapter for portable, capability-bounded compute modules."),
@@ -300,6 +303,8 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         started_at=started, finished_at=finished, details_json={"exchangeSchema":"sc-workspace-arrow-compatible-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
     )
     db.add(receipt); db.flush()
+    # Commit the language-neutral execution receipt before specialist receipt enrichment.
+    db.commit(); db.refresh(receipt)
     statistical_receipt_id = ""
     if language == "r" and row.operation in R_MODEL_OPERATIONS:
         count = int(db.scalar(select(func.count()).select_from(StatisticalModelReceipt).where(StatisticalModelReceipt.user_key == row.user_key)) or 0)
@@ -324,10 +329,29 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         db.add(stat); db.flush(); statistical_receipt_id = stat.receipt_id
     # Artifact storage commits independently; explicitly commit runtime receipts so they survive
     # the worker's execute session and are visible to later API sessions.
+    numerical_receipt_id = ""
+    if language == "julia" and row.operation in JULIA_MODEL_OPERATIONS:
+        count = int(db.scalar(select(func.count()).select_from(NumericalSimulationReceipt).where(NumericalSimulationReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_numerical_simulation_receipts_per_account:
+            raise HTTPException(status_code=409, detail="Numerical simulation receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        j_result = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(j_result, dict):
+            j_result = {}
+        numerical = NumericalSimulationReceipt(
+            receipt_id=f"nsr_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key,
+            job_id=row.job_id, execution_run_id=run_id, language="julia", runtime=RUNTIME_BY_LANGUAGE[language].runtime,
+            operation=row.operation, model_kind=str(j_result.get("kind") or "")[:96],
+            solver=str(j_result.get("solver") or "")[:96], steps=int(j_result.get("steps") or payload.get("steps") or 0),
+            random_seed=int(j_result.get("seed") or payload.get("seed") or 0),
+            metrics_json=j_result.get("metrics") if isinstance(j_result.get("metrics"), dict) else {},
+            request_fingerprint=row.request_fingerprint, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256,
+        )
+        db.add(numerical); db.flush(); numerical_receipt_id = numerical.receipt_id
     db.commit()
     db.refresh(receipt)
     if progress_callback: progress_callback(95,{"stage":"result-persisted","artifactId":artifact.artifact_id})
-    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"resultSha256":artifact.sha256}
+    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"numericalSimulationReceiptId":numerical_receipt_id,"resultSha256":artifact.sha256}
 
 
 R_MODEL_OPERATIONS = {
@@ -357,6 +381,37 @@ def list_statistical_receipts(db: Session, user_key: str, limit: int = 100) -> l
 
 def get_statistical_receipt(db: Session, user_key: str, receipt_id: str):
     return db.execute(select(StatisticalModelReceipt).where(StatisticalModelReceipt.user_key == user_key, StatisticalModelReceipt.receipt_id == receipt_id)).scalar_one_or_none()
+
+
+JULIA_MODEL_OPERATIONS = {
+    "workspace.polyglot.julia.ode-linear-rk4",
+    "workspace.polyglot.julia.lotka-volterra",
+    "workspace.polyglot.julia.monte-carlo-normal",
+    "workspace.polyglot.julia.quadratic-optimize",
+    "workspace.polyglot.julia.eigen-analysis",
+    "workspace.polyglot.julia.integrate-series",
+    "workspace.polyglot.julia.polynomial-roots",
+    "workspace.polyglot.julia.parameter-sweep",
+}
+
+
+def numerical_receipt_metadata(r: NumericalSimulationReceipt) -> dict[str, Any]:
+    return {
+        "receiptId": r.receipt_id, "polyglotReceiptId": r.polyglot_receipt_id, "jobId": r.job_id,
+        "executionRunId": r.execution_run_id, "language": r.language, "runtime": r.runtime,
+        "operation": r.operation, "modelKind": r.model_kind, "solver": r.solver, "steps": r.steps,
+        "seed": r.random_seed, "metrics": r.metrics_json or {}, "requestFingerprint": r.request_fingerprint,
+        "resultArtifactId": r.result_artifact_id, "resultSha256": r.result_sha256, "createdAt": r.created_at.isoformat(),
+    }
+
+
+def list_numerical_receipts(db: Session, user_key: str, limit: int = 100) -> list[dict[str, Any]]:
+    rows = db.execute(select(NumericalSimulationReceipt).where(NumericalSimulationReceipt.user_key == user_key).order_by(NumericalSimulationReceipt.created_at.desc()).limit(limit)).scalars().all()
+    return [numerical_receipt_metadata(r) for r in rows]
+
+
+def get_numerical_receipt(db: Session, user_key: str, receipt_id: str):
+    return db.execute(select(NumericalSimulationReceipt).where(NumericalSimulationReceipt.user_key == user_key, NumericalSimulationReceipt.receipt_id == receipt_id)).scalar_one_or_none()
 
 
 def receipt_metadata(r: PolyglotExecutionReceipt) -> dict[str, Any]:

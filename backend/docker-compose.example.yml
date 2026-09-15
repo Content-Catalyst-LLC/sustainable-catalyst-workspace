@@ -38,7 +38,7 @@ services:
       SC_WORKSPACE_COMPUTE_MAX_RESULT_BYTES: ${SC_WORKSPACE_COMPUTE_MAX_RESULT_BYTES:-10485760}
       SC_WORKSPACE_RUNTIME_R_URL: ${SC_WORKSPACE_RUNTIME_R_URL:-http://sc-workspace-r-runtime:8090/v1/execute}
       SC_WORKSPACE_RUNTIME_R_TOKEN: ${SC_WORKSPACE_RUNTIME_R_TOKEN:-}
-      SC_WORKSPACE_RUNTIME_JULIA_URL: ${SC_WORKSPACE_RUNTIME_JULIA_URL:-}
+      SC_WORKSPACE_RUNTIME_JULIA_URL: ${SC_WORKSPACE_RUNTIME_JULIA_URL:-http://sc-workspace-julia-runtime:8091/v1/execute}
       SC_WORKSPACE_RUNTIME_JULIA_TOKEN: ${SC_WORKSPACE_RUNTIME_JULIA_TOKEN:-}
       SC_WORKSPACE_RUNTIME_WASM_URL: ${SC_WORKSPACE_RUNTIME_WASM_URL:-}
       SC_WORKSPACE_RUNTIME_WASM_TOKEN: ${SC_WORKSPACE_RUNTIME_WASM_TOKEN:-}
@@ -47,6 +47,7 @@ services:
       SC_WORKSPACE_POLYGLOT_MAX_EXCHANGE_COLUMNS: ${SC_WORKSPACE_POLYGLOT_MAX_EXCHANGE_COLUMNS:-256}
       SC_WORKSPACE_POLYGLOT_MAX_PAYLOAD_BYTES: ${SC_WORKSPACE_POLYGLOT_MAX_PAYLOAD_BYTES:-10485760}
       SC_WORKSPACE_MAX_STATISTICAL_MODEL_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_STATISTICAL_MODEL_RECEIPTS_PER_ACCOUNT:-5000}
+      SC_WORKSPACE_MAX_NUMERICAL_SIMULATION_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_NUMERICAL_SIMULATION_RECEIPTS_PER_ACCOUNT:-5000}
     networks:
       - sc-internal
       - sc-workspace-runtime
@@ -69,6 +70,7 @@ services:
     depends_on:
       - sc-workspace-backend
       - sc-workspace-r-runtime
+      - sc-workspace-julia-runtime
     cpus: 2.0
     mem_limit: 2g
     pids_limit: 256
@@ -100,6 +102,27 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m
+
+  sc-workspace-julia-runtime:
+    build: ./julia-runtime
+    container_name: sc-workspace-julia-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_JULIA_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_JULIA_TOKEN}
+      SC_WORKSPACE_JULIA_TIMEOUT_SECONDS: ${SC_WORKSPACE_JULIA_TIMEOUT_SECONDS:-60}
+      SC_WORKSPACE_JULIA_MAX_PAYLOAD_BYTES: ${SC_WORKSPACE_POLYGLOT_MAX_PAYLOAD_BYTES:-10485760}
+    networks:
+      - sc-workspace-runtime
+    cpus: 2.0
+    mem_limit: 2g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
 
 networks:
   sc-internal:

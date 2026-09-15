@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.13.0"
+    service_version: str = "2.14.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     polyglot_max_exchange_columns: int = 256
     polyglot_max_payload_bytes: int = 10 * 1024 * 1024
     max_statistical_model_receipts_per_account: int = 5000
+    max_numerical_simulation_receipts_per_account: int = 5000
 
     max_jobs_per_account: int = 1000
     default_job_max_attempts: int = 3

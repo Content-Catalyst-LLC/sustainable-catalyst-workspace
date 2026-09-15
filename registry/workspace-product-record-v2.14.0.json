@@ -1,0 +1,26 @@
+{
+  "product": "workspace",
+  "name": "Sustainable Catalyst Workspace",
+  "version": "2.14.0",
+  "previous_version": "2.13.0",
+  "release": "Julia Simulation & Numerical Modeling Runtime",
+  "public": true,
+  "julia_runtime": {
+    "enabled": true,
+    "runtime": "julia-simulation-numerical",
+    "transport": "server-configured-http",
+    "operations": 8,
+    "internal_only_network": true,
+    "numerical_simulation_receipts": true,
+    "client_supplied_code": false,
+    "client_supplied_runtime_urls": false,
+    "arbitrary_code_execution": false
+  },
+  "polyglot_languages": [
+    "python",
+    "r",
+    "julia",
+    "sql",
+    "wasm"
+  ]
+}

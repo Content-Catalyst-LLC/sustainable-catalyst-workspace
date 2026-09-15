@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-julia-simulation-runtime-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Julia Simulation Runtime",
+  "type": "object",
+  "required": [
+    "schema",
+    "language",
+    "operation",
+    "payload"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-polyglot-execution-envelope/1.0"
+    },
+    "language": {
+      "const": "julia"
+    },
+    "operation": {
+      "enum": [
+        "workspace.polyglot.julia.ode-linear-rk4",
+        "workspace.polyglot.julia.lotka-volterra",
+        "workspace.polyglot.julia.monte-carlo-normal",
+        "workspace.polyglot.julia.quadratic-optimize",
+        "workspace.polyglot.julia.eigen-analysis",
+        "workspace.polyglot.julia.integrate-series",
+        "workspace.polyglot.julia.polynomial-roots",
+        "workspace.polyglot.julia.parameter-sweep"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "arbitraryCodeExecution": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

@@ -574,6 +574,15 @@ final class SC_Workspace {
         register_rest_route('sc-workspace/v2', '/backend-r-runtime-status', array(
             'methods' => 'GET', 'callback' => array($this, 'backend_r_runtime_status'), 'permission_callback' => array($this, 'cloud_permission'),
         ));
+        register_rest_route('sc-workspace/v2', '/backend-julia-runtime-status', array(
+            'methods' => 'GET', 'callback' => array($this, 'backend_julia_runtime_status'), 'permission_callback' => array($this, 'cloud_permission'),
+        ));
+        register_rest_route('sc-workspace/v2', '/backend-numerical-simulation-receipts', array(
+            'methods' => 'GET', 'callback' => array($this, 'backend_numerical_simulation_receipts'), 'permission_callback' => array($this, 'cloud_permission'),
+        ));
+        register_rest_route('sc-workspace/v2', '/backend-numerical-simulation-receipts/(?P<receipt_id>[A-Za-z0-9._-]{1,160})', array(
+            'methods' => 'GET', 'callback' => array($this, 'backend_numerical_simulation_receipt_get'), 'permission_callback' => array($this, 'cloud_permission'),
+        ));
         register_rest_route('sc-workspace/v2', '/backend-statistical-model-receipts', array(
             'methods' => 'GET', 'callback' => array($this, 'backend_statistical_model_receipts'), 'permission_callback' => array($this, 'cloud_permission'),
         ));
@@ -2256,6 +2265,21 @@ public function research_templates_contract() {
         return SC_Workspace_Backend::configured_request('GET', '/v1/polyglot/runtimes/r/status');
     }
 
+    public function backend_julia_runtime_status() {
+        return SC_Workspace_Backend::configured_request('GET', '/v1/polyglot/runtimes/julia/status');
+    }
+
+    public function backend_numerical_simulation_receipts($request) {
+        $params = $request->get_query_params();
+        $limit = !empty($params['limit']) ? max(1, min(250, (int) $params['limit'])) : 100;
+        return SC_Workspace_Backend::configured_request('GET', '/v1/numerical-simulation-receipts?limit=' . rawurlencode((string) $limit));
+    }
+
+    public function backend_numerical_simulation_receipt_get($request) {
+        $id = sanitize_key((string) $request['receipt_id']);
+        return SC_Workspace_Backend::configured_request('GET', '/v1/numerical-simulation-receipts/' . rawurlencode($id));
+    }
+
     public function backend_statistical_model_receipts($request) {
         $params = $request->get_query_params();
         $limit = !empty($params['limit']) ? max(1, min(250, (int) $params['limit'])) : 100;
@@ -3800,7 +3824,7 @@ public function research_templates_contract() {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v204',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v2.13.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v2.14.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -4428,7 +4452,7 @@ public function research_templates_contract() {
 
         wp_enqueue_script(
             'sc-workspace-v204',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v2.13.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v2.14.0.js',
             array('sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1', 'sc-workspace-institutional-audit-studio-v1', 'sc-workspace-institutional-audit-studio-ui-v1', 'sc-workspace-research-operations-v1', 'sc-workspace-research-operations-ui-v1', 'sc-workspace-developer-sdk-v1', 'sc-workspace-developer-api-ui-v1', 'sc-workspace-institutional-scale-hardening-v1', 'sc-workspace-institutional-scale-hardening-ui-v1', 'sc-workspace-connected-intelligence-v1', 'sc-workspace-connected-intelligence-ui-v1', 'sc-workspace-public-research-packages-v1', 'sc-workspace-public-research-packages-ui-v1', 'sc-workspace-product-maturity-v1', 'sc-workspace-product-maturity-ui-v1', 'sc-workspace-connected-knowledge-v2', 'sc-workspace-connected-knowledge-ui-v2'),
             SC_WORKSPACE_VERSION,
             true
@@ -4629,7 +4653,7 @@ public function research_templates_contract() {
         ob_start();
         ?>
         <?php $deployment_state = SC_Workspace_Deployment_Hardening::diagnostics(); ?>
-        <section class="scw-shell scw-root" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="r-statistical-econometric-runtime" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v2.13.0.js" data-scw-deployment-expected-style="workspace-v2.13.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
+        <section class="scw-shell scw-root" data-sc-workspace data-scw-focused-shell="1" data-scw-field-use="1" data-version="<?php echo esc_attr(SC_WORKSPACE_VERSION); ?>" data-storage-version="35" data-project-schema="sc-workspace-project/20.0" data-release-stage="julia-simulation-numerical-runtime" data-scw-deployment-server-state="<?php echo esc_attr($deployment_state['state']); ?>" data-scw-deployment-files-complete="<?php echo !empty($deployment_state['required_files_complete']) ? '1' : '0'; ?>" data-scw-deployment-expected-script="workspace-v2.14.0.js" data-scw-deployment-expected-style="workspace-v2.14.0.css" data-return-url="<?php echo esc_url($return_url); ?>">
             <a class="scw-skip-link" href="#scw-workspace-main">Skip to Workspace application</a>
             <div class="scw-hero">
                 <div class="scw-kicker">SUSTAINABLE CATALYST / WORKSPACE</div>

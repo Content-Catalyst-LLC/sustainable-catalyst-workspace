@@ -267,6 +267,28 @@ class StatisticalModelReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class NumericalSimulationReceipt(Base):
+    __tablename__ = "workspace_numerical_simulation_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    language: Mapped[str] = mapped_column(String(32), nullable=False, default="julia")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    model_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    solver: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    steps: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    random_seed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    metrics_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class DatasetHead(Base):
     __tablename__ = "workspace_dataset_heads"
 

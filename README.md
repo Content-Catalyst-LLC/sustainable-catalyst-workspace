@@ -1,19 +1,19 @@
-# Sustainable Catalyst Workspace v2.13.0 — R Statistical & Econometric Runtime
+# Sustainable Catalyst Workspace v2.14.0 — Julia Simulation & Numerical Modeling Runtime
 
-Workspace is the governed research execution environment for Sustainable Catalyst. v2.13.0 extends the v2.12 polyglot scientific fabric by deploying a real R specialist runtime alongside the existing Python and bounded SQL execution paths.
+Workspace is the governed research execution environment for Sustainable Catalyst. v2.14.0 extends the polyglot scientific fabric with a real Julia runtime alongside Python, bounded SQL, and R.
 
 ## Active scientific runtimes
 
 - **Python** — NumPy, Pandas, SciPy and SymPy bounded operations
 - **SQL** — bounded aggregate and grouped analytical operations
-- **R** — bounded statistical, inferential, time-series and econometric operations
-- **Julia** — registered server-configured adapter, not yet deployed
+- **R** — statistical, inferential, time-series and econometric operations
+- **Julia** — numerical simulation, optimization, eigen-analysis, Monte Carlo, numerical integration and parameter sweeps
 - **WASM** — registered server-configured adapter, not yet deployed
 
-## R operations
+## Julia operations
 
-`workspace.polyglot.r.describe`, `workspace.polyglot.r.t-test`, `workspace.polyglot.r.correlation`, `workspace.polyglot.r.linear-model`, `workspace.polyglot.r.logistic-model`, `workspace.polyglot.r.anova`, `workspace.polyglot.r.arima`, and `workspace.polyglot.r.econometric-ols`.
+`workspace.polyglot.julia.ode-linear-rk4`, `workspace.polyglot.julia.lotka-volterra`, `workspace.polyglot.julia.monte-carlo-normal`, `workspace.polyglot.julia.quadratic-optimize`, `workspace.polyglot.julia.eigen-analysis`, `workspace.polyglot.julia.integrate-series`, `workspace.polyglot.julia.polynomial-roots`, and `workspace.polyglot.julia.parameter-sweep`.
 
-Every R result is persisted as a content-addressed artifact with a polyglot execution receipt. Model-producing operations additionally create a statistical model receipt carrying the model kind, outcome/predictor metadata, metrics, request fingerprint and result SHA-256.
+Every Julia result is persisted as a content-addressed artifact with a polyglot execution receipt. Julia model/simulation operations also create a numerical-simulation receipt carrying solver, steps/seed metadata, metrics, request fingerprint and result SHA-256.
 
 Arbitrary code execution remains disabled. Runtime URLs and credentials remain server-side only.
