@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.12.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.13.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -114,6 +114,9 @@ final class SC_Workspace_Backend {
             'arrowCompatibleInterchange' => true,
             'polyglotExecutionReceipts' => true,
             'polyglotRuntimeCatalog' => true,
+            'rStatisticalEconometricRuntime' => true,
+            'rRuntimeBoundedOperations' => 8,
+            'statisticalModelReceipts' => true,
             'hostFilesystemAccessAllowed' => false,
             'dockerSocketAccessAllowed' => false,
             'privilegedExecutionAllowed' => false,

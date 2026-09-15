@@ -1,0 +1,25 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.13.0",
+  "previous_version": "2.12.0",
+  "release_name": "R Statistical & Econometric Runtime",
+  "storage_schema": 35,
+  "project_schema": "sc-workspace-project/20.0",
+  "notebook_schema": "sc-workspace-notebook/3.0",
+  "r_runtime": {
+    "runtime": "r-statistical-econometric",
+    "transport": "server-configured-http",
+    "operation_count": 8,
+    "interchange_schema": "sc-workspace-arrow-compatible-table/1.0",
+    "dedicated_container": true,
+    "internal_only_network": true,
+    "read_only_root": true,
+    "no_new_privileges": true,
+    "statistical_model_receipts": true,
+    "client_supplied_code_allowed": false,
+    "client_supplied_packages_allowed": false,
+    "client_supplied_runtime_urls_allowed": false,
+    "client_supplied_credentials_allowed": false,
+    "arbitrary_code_execution": false
+  }
+}

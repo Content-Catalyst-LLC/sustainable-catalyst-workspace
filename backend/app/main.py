@@ -49,7 +49,9 @@ from .execution_control import create_execution_plan, dispatch_execution_plan, e
 from .policy import get_policy, get_policy_revision, get_policy_decision, list_policies, list_policy_revisions, list_policy_decisions, policy_decision_metadata, policy_metadata, store_policy
 from .telemetry import attestation_metadata, create_runtime_attestation, get_runtime_attestation, list_runtime_attestations
 from .compute import compute_catalog, get_compute_receipt, list_compute_receipts, receipt_metadata as compute_receipt_metadata
-from .polyglot import runtime_catalog as polyglot_runtime_catalog, operation_catalog as polyglot_operation_catalog, list_receipts as list_polyglot_receipts, get_receipt as get_polyglot_receipt, receipt_metadata as polyglot_receipt_metadata
+from .polyglot import (runtime_catalog as polyglot_runtime_catalog, operation_catalog as polyglot_operation_catalog,
+    list_receipts as list_polyglot_receipts, get_receipt as get_polyglot_receipt, receipt_metadata as polyglot_receipt_metadata,
+    runtime_health as polyglot_runtime_health, list_statistical_receipts, get_statistical_receipt, statistical_receipt_metadata)
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
     waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
     create_verification as create_compliance_verification, get_verification as get_compliance_verification, list_verifications as list_compliance_verifications)
@@ -147,6 +149,10 @@ def health():
         "polyglotLanguages": ["python", "r", "julia", "sql", "wasm"],
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
+        "rStatisticalEconometricRuntime": True,
+        "rRuntimeConfigured": bool(settings.runtime_r_url.strip()),
+        "rRuntimeBoundedOperations": 8,
+        "statisticalModelReceipts": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -253,6 +259,10 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "polyglotRuntimeCatalog": True,
+        "rStatisticalEconometricRuntime": True,
+        "rRuntimeConfigured": bool(settings.runtime_r_url.strip()),
+        "rRuntimeBoundedOperations": 8,
+        "statisticalModelReceipts": True,
         "boundedScientificOperationsOnly": True,
         "runtimeAttestationAuth": "dedicated-server-token",
         "browserAttestationSubmissionAllowed": False,
@@ -273,6 +283,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "polyglotExchangeRows": settings.polyglot_max_exchange_rows,
             "polyglotExchangeColumns": settings.polyglot_max_exchange_columns,
             "polyglotPayloadBytes": settings.polyglot_max_payload_bytes,
+            "statisticalModelReceipts": settings.max_statistical_model_receipts_per_account,
             "projectsPerAccount": settings.max_projects_per_account,
             "projectBytes": settings.max_project_bytes,
             "accountBytes": settings.max_account_bytes,
@@ -543,6 +554,26 @@ def polyglot_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depe
         if row is None:
             raise HTTPException(status_code=404, detail="Workspace polyglot execution receipt not found.")
         return {"schema": "sc-workspace-polyglot-execution-receipt/1.0", "item": polyglot_receipt_metadata(row)}
+
+@app.get("/v1/polyglot/runtimes/r/status")
+def r_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema": "sc-workspace-runtime-status/1.0", "item": polyglot_runtime_health("r")}
+
+
+@app.get("/v1/statistical-model-receipts")
+def statistical_model_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-statistical-model-receipt-index/1.0", "items": list_statistical_receipts(db, identity.user_key, limit)}
+
+
+@app.get("/v1/statistical-model-receipts/{receipt_id}")
+def statistical_model_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_statistical_receipt(db, identity.user_key, receipt_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace statistical model receipt not found.")
+        return {"schema": "sc-workspace-statistical-model-receipt/1.0", "item": statistical_receipt_metadata(row)}
+
 
 
 @app.get("/v1/compute/operations")

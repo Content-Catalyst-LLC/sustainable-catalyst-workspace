@@ -1,32 +1,19 @@
-# Sustainable Catalyst Workspace v2.12.0 — Polyglot Scientific Runtime Fabric
+# Sustainable Catalyst Workspace v2.13.0 — R Statistical & Econometric Runtime
 
-## Polyglot Scientific Runtime Fabric
+Workspace is the governed research execution environment for Sustainable Catalyst. v2.13.0 extends the v2.12 polyglot scientific fabric by deploying a real R specialist runtime alongside the existing Python and bounded SQL execution paths.
 
-Workspace v2.12.0 generalizes the scientific execution plane across Python, SQL, R, Julia, and WebAssembly. Python and bounded SQL execute in-process. R, Julia, and WASM are represented by server-configured runtime adapters using one language-neutral execution envelope and Arrow-compatible table descriptors.
+## Active scientific runtimes
 
-The fabric remains capability-bounded: browser requests cannot provide runtime URLs or credentials, raw SQL source is not accepted, and arbitrary Python/R/Julia/shell/WASM source execution is disabled. Every successful non-Python polyglot job persists a content-addressed result artifact and immutable execution receipt linked to job/run provenance.
+- **Python** — NumPy, Pandas, SciPy and SymPy bounded operations
+- **SQL** — bounded aggregate and grouped analytical operations
+- **R** — bounded statistical, inferential, time-series and econometric operations
+- **Julia** — registered server-configured adapter, not yet deployed
+- **WASM** — registered server-configured adapter, not yet deployed
 
-Storage schema remains 35. Project schema remains `sc-workspace-project/20.0`. Export schema remains `sc-workspace-project-export/20.0`.
+## R operations
 
-## v2.8.0 — Execution Policy, Resource Budgets & Runtime Sandboxing
+`workspace.polyglot.r.describe`, `workspace.polyglot.r.t-test`, `workspace.polyglot.r.correlation`, `workspace.polyglot.r.linear-model`, `workspace.polyglot.r.logistic-model`, `workspace.polyglot.r.anova`, `workspace.polyglot.r.arima`, and `workspace.polyglot.r.econometric-ols`.
 
-Workspace v2.8.0 adds a policy-enforcement layer to controlled runtime handoffs. Execution policies are revisioned backend objects that define eligible target products and operations, minimum runtime-adapter trust, CPU/memory/wall-time/output/process/temp-storage ceilings, and bounded sandbox requirements. Every reproduction execution plan freezes a policy revision and produces an immutable eligibility decision before human-authorized dispatch.
+Every R result is persisted as a content-addressed artifact with a polyglot execution receipt. Model-producing operations additionally create a statistical model receipt carrying the model kind, outcome/predictor metadata, metrics, request fingerprint and result SHA-256.
 
-Sandboxing in v2.8.0 is a **pre-dispatch policy gate and runtime requirement contract**, not an unrestricted local arbitrary-code executor. Workspace can require adapter attestation, a container adapter, a remote sandbox, pinned container identity, server-routed networking, read-only roots, no-new-privileges, dropped capabilities, and explicit denial of host filesystem, Docker socket, and privileged execution. Downstream specialist runtimes remain responsible for OS/container enforcement of strict sandbox profiles.
-
-Resource budgets and the frozen sandbox envelope travel with the server-side job handoff, preserving policy provenance without exposing service credentials or accepting client-supplied runtime URLs.
-
-## Runtime Adapter Registry & Reproduction Verification
-
-Workspace remains local-first in the browser while its Python backend now records revisioned runtime adapters and immutable reproduction verification receipts.
-
-### v2.6.0
-- revisioned runtime adapter descriptors for Python, R, Julia, and bounded custom runtimes
-- runtime/environment compatibility and readiness checks
-- exact runtime-adapter revision/fingerprint frozen into execution runs
-- reproduction plans derived from frozen execution-run provenance
-- deterministic rerun comparison using input, environment, runtime-adapter, and output SHA-256 evidence
-- verification classifications: `exact`, `compatible`, `divergent`, or `incomplete`
-- no arbitrary shell/command execution and no automatic re-execution
-
-Storage schema remains 35. Project schema remains `sc-workspace-project/20.0`. Export schema remains `sc-workspace-project-export/20.0`.
+Arbitrary code execution remains disabled. Runtime URLs and credentials remain server-side only.

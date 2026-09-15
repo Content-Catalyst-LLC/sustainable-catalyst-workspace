@@ -246,6 +246,27 @@ class PolyglotExecutionReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class StatisticalModelReceipt(Base):
+    __tablename__ = "workspace_statistical_model_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    language: Mapped[str] = mapped_column(String(32), nullable=False, default="r")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    model_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    outcome: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    predictors_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    metrics_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class DatasetHead(Base):
     __tablename__ = "workspace_dataset_heads"
 

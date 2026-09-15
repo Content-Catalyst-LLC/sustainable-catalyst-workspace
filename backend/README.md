@@ -1,31 +1,18 @@
-# Sustainable Catalyst Workspace Backend v2.12.0
+# Sustainable Catalyst Workspace Backend v2.13.0
 
-Workspace v2.12.0 adds the first bounded in-process scientific compute runtime to the existing durable Worker/API architecture.
+Workspace v2.13.0 deploys the first dedicated specialist runtime behind the polyglot scientific fabric: a bounded R statistical and econometric service.
 
-## Scientific compute engines
+The main API/worker remain Python/FastAPI/PostgreSQL. Python and SQL continue to execute through their existing bounded paths. R now executes through `sc-workspace-r-runtime`, an internal-only sidecar running a fixed R runner. Julia and WASM remain registered but unconfigured.
 
-- NumPy — matrix algebra and polynomial roots
-- Pandas — descriptive statistics and declarative table transforms
-- SciPy — sampled-series integration and bounded quadratic optimization
-- SymPy — restricted symbolic simplification, differentiation, integration, and equation solving
+## R runtime operations
 
-The compute runtime exposes a finite operation registry. It does **not** accept arbitrary Python source, shell commands, client-supplied modules, runtime URLs, host filesystem paths, Docker socket access, or privileged execution.
+- `workspace.polyglot.r.describe`
+- `workspace.polyglot.r.t-test`
+- `workspace.polyglot.r.correlation`
+- `workspace.polyglot.r.linear-model`
+- `workspace.polyglot.r.logistic-model`
+- `workspace.polyglot.r.anova`
+- `workspace.polyglot.r.arima`
+- `workspace.polyglot.r.econometric-ols`
 
-## Execution path
-
-Scientific operations use the normal durable Workspace job queue and separate worker. During execution the worker records progress events and checks the durable cancellation flag. Successful results are serialized as canonical JSON, stored in content-addressed Workspace object storage, linked to an execution run when one is present, and recorded by an immutable compute execution receipt containing engine/version, request fingerprint, artifact SHA-256, byte count, and wall time.
-
-The worker container is globally bounded with a 2 CPU / 2 GiB / 256 PID envelope, read-only root filesystem, dropped Linux capabilities, and `no-new-privileges`; `/tmp` is an isolated bounded tmpfs and `/data` remains the explicit result-artifact volume.
-
-## Compatibility
-
-- previous release: v2.10.0
-- rollback release: v2.10.0
-- PostgreSQL migration: `011_python_scientific_compute_runtime.sql`
-- host API binding remains `127.0.0.1:8094`
-- browser-local storage schema remains 35
-- project schema remains `sc-workspace-project/20.0`
-
-
-## v2.12 polyglot runtime fabric
-Python and bounded SQL are in-process. R, Julia, and WASM use optional server-configured HTTP runtime adapters. Client-supplied runtime URLs, credentials, and arbitrary source execution remain disabled.
+Every result is content-addressed and receives a durable polyglot execution receipt. Model-producing R jobs also receive a statistical model receipt. Arbitrary R source, formulas, packages, runtime URLs and credentials are not accepted from clients.

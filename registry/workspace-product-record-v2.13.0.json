@@ -1,0 +1,20 @@
+{
+  "product": "workspace",
+  "name": "Sustainable Catalyst Workspace",
+  "version": "2.13.0",
+  "previous_version": "2.12.0",
+  "release": "R Statistical & Econometric Runtime",
+  "public": true,
+  "r_runtime": {
+    "enabled": true,
+    "runtime": "r-statistical-econometric",
+    "transport": "server-configured-http",
+    "operations": 8,
+    "internal_only_network": true,
+    "statistical_model_receipts": true,
+    "client_supplied_code": false,
+    "client_supplied_runtime_urls": false,
+    "arbitrary_code_execution": false
+  },
+  "polyglot_languages": ["python", "r", "julia", "sql", "wasm"]
+}

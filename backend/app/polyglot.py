@@ -10,12 +10,12 @@ from uuid import uuid4
 
 import httpx
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import PolyglotExecutionReceipt
-from .object_store import store_artifact
+from .models import PolyglotExecutionReceipt, StatisticalModelReceipt
+from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
 from .utils import sha256_hex
@@ -41,9 +41,11 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
     RuntimeSpec("sql", "sqlite-analytical", "in-process", (
         "workspace.polyglot.sql.aggregate", "workspace.polyglot.sql.group-summary",
     ), "Bounded relational analytics over ephemeral tabular inputs; arbitrary SQL text is not accepted."),
-    RuntimeSpec("r", "r-scientific-adapter", "server-configured-http", (
-        "workspace.polyglot.r.statistics", "workspace.polyglot.r.model", "workspace.polyglot.r.visualize",
-    ), "Server-configured R runtime adapter for statistical research workflows."),
+    RuntimeSpec("r", "r-statistical-econometric", "server-configured-http", (
+        "workspace.polyglot.r.describe", "workspace.polyglot.r.t-test", "workspace.polyglot.r.correlation",
+        "workspace.polyglot.r.linear-model", "workspace.polyglot.r.logistic-model", "workspace.polyglot.r.anova",
+        "workspace.polyglot.r.arima", "workspace.polyglot.r.econometric-ols",
+    ), "Hardened R runtime for bounded statistical, inferential, time-series, and econometric workflows."),
     RuntimeSpec("julia", "julia-scientific-adapter", "server-configured-http", (
         "workspace.polyglot.julia.numerical", "workspace.polyglot.julia.simulation", "workspace.polyglot.julia.optimization",
     ), "Server-configured Julia runtime adapter for numerical modeling and simulation."),
@@ -100,6 +102,41 @@ def operation_catalog() -> list[dict[str, Any]]:
                 "serverConfiguredOnly": True,
             })
     return result
+
+
+def runtime_health(language: str) -> dict[str, Any]:
+    if language not in {"r", "julia", "wasm"}:
+        raise HTTPException(status_code=400, detail="Runtime health is only available for external runtimes")
+    url, _token = _runtime_route(language)
+    if not url.strip():
+        return {"language": language, "configured": False, "available": False}
+    health_url = url.strip()
+    if health_url.endswith("/v1/execute"):
+        health_url = health_url[:-len("/v1/execute")] + "/health"
+    else:
+        health_url = health_url.rstrip("/") + "/health"
+    try:
+        response = httpx.get(health_url, timeout=min(get_settings().polyglot_timeout_seconds, 5.0))
+    except httpx.HTTPError as exc:
+        return {"language": language, "configured": True, "available": False, "error": exc.__class__.__name__}
+    body: dict[str, Any]
+    try:
+        parsed = response.json()
+        body = parsed if isinstance(parsed, dict) else {}
+    except ValueError:
+        body = {}
+    return {
+        "language": language,
+        "configured": True,
+        "available": 200 <= response.status_code < 300 and body.get("ok") is True,
+        "httpStatus": response.status_code,
+        "service": body.get("service", ""),
+        "version": body.get("version", ""),
+        "runtime": body.get("runtime", ""),
+        "operations": body.get("operations", []),
+        "boundedOperationsOnly": body.get("boundedOperationsOnly", True),
+        "arbitraryCodeExecution": body.get("arbitraryCodeExecution", False),
+    }
 
 
 def _bounded_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -226,14 +263,33 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     raw=json.dumps(result_doc,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
     if len(raw)>get_settings().compute_max_result_bytes:
         raise HTTPException(status_code=413, detail="Polyglot result byte limit exceeded")
-    artifact=store_artifact(db,row.user_key,ArtifactStoreRequest(
-        projectId=row.project_id or "",filename=f"polyglot-{language}-{row.job_id}.json",mediaType="application/json",contentBase64=__import__('base64').b64encode(raw).decode(),metadata={"language":language,"operation":row.operation,"jobId":row.job_id}
-    ))
+    artifact_id=f"polyglot-result-{row.job_id}"
+    existing=get_artifact(db,row.user_key,artifact_id)
+    artifact_payload=ArtifactStoreRequest.model_validate({
+        "schema":"sc-workspace-artifact-store/1.0",
+        "artifactId":artifact_id,
+        "projectId":row.project_id or None,
+        "filename":f"polyglot-{language}-{row.job_id}.json",
+        "mediaType":"application/vnd.sc.workspace.polyglot-result+json",
+        "contentBase64":__import__('base64').b64encode(raw).decode("ascii"),
+        "expectedRevision":existing.revision if existing is not None else 0,
+        "metadata":{"kind":"polyglot-result","language":language,"operation":row.operation,"jobId":row.job_id},
+    })
+    artifact=store_artifact(db,row.user_key,artifact_payload)
     run_id=str(((row.payload or {}).get("executionRunId") or "")).strip()
     if run_id:
-        try:
-            store_run_output(db,row.user_key,run_id,ExecutionRunOutputRequest(role="polyglot-result",artifactId=artifact.artifact_id,mediaType="application/json",sha256=artifact.sha256,bytes=artifact.bytes,metadata={"language":language,"operation":row.operation}))
-        except Exception: pass
+        output_payload=ExecutionRunOutputRequest.model_validate({
+            "schema":"sc-workspace-execution-run-output/1.0",
+            "outputId":"polyglot-result",
+            "artifactId":artifact.artifact_id,
+            "role":"result",
+            "label":"Polyglot runtime result",
+            "mediaType":"application/vnd.sc.workspace.polyglot-result+json",
+            "sha256":artifact.sha256,
+            "bytes":artifact.bytes,
+            "metadata":{"language":language,"operation":row.operation},
+        })
+        store_run_output(db,row.user_key,run_id,output_payload)
     finished=datetime.now(timezone.utc)
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,
@@ -244,8 +300,63 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         started_at=started, finished_at=finished, details_json={"exchangeSchema":"sc-workspace-arrow-compatible-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
     )
     db.add(receipt); db.flush()
+    statistical_receipt_id = ""
+    if language == "r" and row.operation in R_MODEL_OPERATIONS:
+        count = int(db.scalar(select(func.count()).select_from(StatisticalModelReceipt).where(StatisticalModelReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_statistical_model_receipts_per_account:
+            raise HTTPException(status_code=409, detail="Statistical model receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        r_result = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(r_result, dict):
+            r_result = {}
+        payload_predictors = payload.get("predictors") or []
+        if not isinstance(payload_predictors, list):
+            payload_predictors = []
+        stat = StatisticalModelReceipt(
+            receipt_id=f"smr_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key,
+            job_id=row.job_id, execution_run_id=run_id, language="r", runtime=RUNTIME_BY_LANGUAGE[language].runtime,
+            operation=row.operation, model_kind=str(r_result.get("kind") or "")[:96],
+            outcome=str(payload.get("outcome") or payload.get("column") or "")[:160],
+            predictors_json=[str(x)[:160] for x in payload_predictors[:64]],
+            metrics_json=r_result.get("metrics") if isinstance(r_result.get("metrics"), dict) else {},
+            request_fingerprint=row.request_fingerprint, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256,
+        )
+        db.add(stat); db.flush(); statistical_receipt_id = stat.receipt_id
+    # Artifact storage commits independently; explicitly commit runtime receipts so they survive
+    # the worker's execute session and are visible to later API sessions.
+    db.commit()
+    db.refresh(receipt)
     if progress_callback: progress_callback(95,{"stage":"result-persisted","artifactId":artifact.artifact_id})
-    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"resultSha256":artifact.sha256}
+    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"resultSha256":artifact.sha256}
+
+
+R_MODEL_OPERATIONS = {
+    "workspace.polyglot.r.linear-model",
+    "workspace.polyglot.r.logistic-model",
+    "workspace.polyglot.r.anova",
+    "workspace.polyglot.r.arima",
+    "workspace.polyglot.r.econometric-ols",
+}
+
+
+def statistical_receipt_metadata(r: StatisticalModelReceipt) -> dict[str, Any]:
+    return {
+        "receiptId": r.receipt_id, "polyglotReceiptId": r.polyglot_receipt_id, "jobId": r.job_id,
+        "executionRunId": r.execution_run_id, "language": r.language, "runtime": r.runtime,
+        "operation": r.operation, "modelKind": r.model_kind, "outcome": r.outcome,
+        "predictors": r.predictors_json or [], "metrics": r.metrics_json or {},
+        "requestFingerprint": r.request_fingerprint, "resultArtifactId": r.result_artifact_id,
+        "resultSha256": r.result_sha256, "createdAt": r.created_at.isoformat(),
+    }
+
+
+def list_statistical_receipts(db: Session, user_key: str, limit: int = 100) -> list[dict[str, Any]]:
+    rows = db.execute(select(StatisticalModelReceipt).where(StatisticalModelReceipt.user_key == user_key).order_by(StatisticalModelReceipt.created_at.desc()).limit(limit)).scalars().all()
+    return [statistical_receipt_metadata(r) for r in rows]
+
+
+def get_statistical_receipt(db: Session, user_key: str, receipt_id: str):
+    return db.execute(select(StatisticalModelReceipt).where(StatisticalModelReceipt.user_key == user_key, StatisticalModelReceipt.receipt_id == receipt_id)).scalar_one_or_none()
 
 
 def receipt_metadata(r: PolyglotExecutionReceipt) -> dict[str, Any]:

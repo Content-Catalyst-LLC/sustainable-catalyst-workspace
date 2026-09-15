@@ -9,7 +9,7 @@ def test_health_is_database_independent():
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["version"] == "2.12.0"
+    assert body["version"] == "2.13.0"
     assert body["persistence"] == "postgresql"
 
 

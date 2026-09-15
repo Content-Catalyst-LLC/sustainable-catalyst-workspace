@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-r-statistical-runtime-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace R Statistical & Econometric Runtime",
+  "type": "object",
+  "required": ["schema", "language", "operation", "payload"],
+  "properties": {
+    "schema": {"const": "sc-workspace-polyglot-execution-envelope/1.0"},
+    "language": {"const": "r"},
+    "operation": {
+      "enum": [
+        "workspace.polyglot.r.describe",
+        "workspace.polyglot.r.t-test",
+        "workspace.polyglot.r.correlation",
+        "workspace.polyglot.r.linear-model",
+        "workspace.polyglot.r.logistic-model",
+        "workspace.polyglot.r.anova",
+        "workspace.polyglot.r.arima",
+        "workspace.polyglot.r.econometric-ols"
+      ]
+    },
+    "payload": {"type": "object"},
+    "arbitraryCodeExecution": {"const": false},
+    "clientSuppliedRuntimeUrlAllowed": {"const": false}
+  },
+  "additionalProperties": true
+}
