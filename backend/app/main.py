@@ -22,7 +22,7 @@ from .repository import (
 )
 from .schemas import (
     ArtifactStoreRequest, DatasetStoreRequest, ExecutionEnvironmentStoreRequest, ExecutionRunCreateRequest, ExecutionRunOutputRequest,
-    RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest,
+    RuntimeAdapterStoreRequest, RuntimeCompatibilityCheckRequest, ReproductionPlanCreateRequest, ReproductionVerificationCreateRequest, CrossRuntimeVerificationCreateRequest,
     ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest, ExecutionPolicyStoreRequest, RuntimeExecutionAttestationRequest,
     RuntimeTrustPolicyStoreRequest, ComplianceWaiverCreateRequest, AttestationVerificationCreateRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
@@ -56,6 +56,7 @@ from .polyglot import (runtime_catalog as polyglot_runtime_catalog, operation_ca
     list_predictive_model_receipts, get_predictive_model_receipt, predictive_model_receipt_metadata,
     list_model_evaluation_receipts, get_model_evaluation_receipt, model_evaluation_receipt_metadata)
 from .interchange import operation_catalog as interchange_operation_catalog, runtime_health as interchange_runtime_health, list_receipts as list_interchange_receipts, get_receipt as get_interchange_receipt, receipt_metadata as interchange_receipt_metadata
+from .cross_runtime_verification import create_cross_runtime_verification, get_receipt as get_cross_runtime_verification_receipt, list_receipts as list_cross_runtime_verification_receipts, receipt_metadata as cross_runtime_verification_receipt_metadata, profile_catalog as cross_runtime_verification_profiles
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
     waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
     create_verification as create_compliance_verification, get_verification as get_compliance_verification, list_verifications as list_compliance_verifications)
@@ -171,6 +172,9 @@ def health():
         "interchangeRuntimeBoundedOperations": 8,
         "interchangeReceipts": True,
         "interchangeFormats": ["arrow-ipc-stream", "parquet"],
+        "crossRuntimeReproductionVerification": True,
+        "toleranceAwareNumericComparison": True,
+        "crossRuntimeVerificationReceipts": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -295,6 +299,9 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "interchangeRuntimeBoundedOperations": 8,
         "interchangeReceipts": True,
         "interchangeFormats": ["arrow-ipc-stream", "parquet"],
+        "crossRuntimeReproductionVerification": True,
+        "toleranceAwareNumericComparison": True,
+        "crossRuntimeVerificationReceipts": True,
         "boundedScientificOperationsOnly": True,
         "runtimeAttestationAuth": "dedicated-server-token",
         "browserAttestationSubmissionAllowed": False,
@@ -684,6 +691,28 @@ def interchange_receipt_get_route(receipt_id: str, identity: ServiceIdentity = D
         row=get_interchange_receipt(db,identity.user_key,receipt_id)
         if row is None: raise HTTPException(status_code=404,detail="Workspace interchange receipt not found.")
         return {"schema":"sc-workspace-interchange-receipt/1.0","item":interchange_receipt_metadata(row)}
+
+@app.get("/v1/reproduction/cross-runtime/profiles")
+def cross_runtime_verification_profiles_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-cross-runtime-verification-profile-index/1.0","version":settings.service_version,"items":cross_runtime_verification_profiles(),"automaticExecution":False,"arbitraryCodeExecution":False}
+
+@app.get("/v1/reproduction/cross-runtime/verifications")
+def cross_runtime_verifications_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-cross-runtime-verification-receipt-index/1.0","items":list_cross_runtime_verification_receipts(db,identity.user_key,limit)}
+
+@app.post("/v1/reproduction/cross-runtime/verifications")
+def cross_runtime_verification_create_route(payload: CrossRuntimeVerificationCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=create_cross_runtime_verification(db,identity.user_key,payload)
+        return {"ok":True,"item":cross_runtime_verification_receipt_metadata(row)}
+
+@app.get("/v1/reproduction/cross-runtime/verifications/{receipt_id}")
+def cross_runtime_verification_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_cross_runtime_verification_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace cross-runtime verification receipt not found.")
+        return {"schema":"sc-workspace-cross-runtime-verification-receipt/1.0","item":cross_runtime_verification_receipt_metadata(row)}
 
 
 @app.get("/v1/compute/operations")

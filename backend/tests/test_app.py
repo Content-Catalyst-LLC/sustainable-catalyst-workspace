@@ -9,7 +9,7 @@ def test_health_is_database_independent():
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["version"] == "2.16.0"
+    assert body["version"] == "2.17.0"
     assert body["persistence"] == "postgresql"
     assert body["juliaSimulationNumericalRuntime"] is True
     assert body["juliaRuntimeBoundedOperations"] == 8
@@ -18,6 +18,9 @@ def test_health_is_database_independent():
     assert body["mlRuntimeBoundedOperations"] == 8
     assert body["predictiveModelReceipts"] is True
     assert body["modelEvaluationReceipts"] is True
+    assert body["crossRuntimeReproductionVerification"] is True
+    assert body["toleranceAwareNumericComparison"] is True
+    assert body["crossRuntimeVerificationReceipts"] is True
 
 
 def test_capabilities_require_service_configuration():

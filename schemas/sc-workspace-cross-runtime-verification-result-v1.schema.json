@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-cross-runtime-verification-result-v1.schema.json",
+  "title": "Workspace Cross-Runtime Verification Result v1",
+  "type": "object",
+  "required": ["schema","originalRunId","reproductionRunId","classification","comparisons","automaticExecution","arbitraryCodeExecution"],
+  "properties": {
+    "schema": {"const":"sc-workspace-cross-runtime-verification-result/1.0"},
+    "classification": {"enum":["exact","equivalent","divergent","incomplete"]},
+    "comparisons": {"type":"array","maxItems":1000},
+    "automaticExecution": {"const":false},
+    "arbitraryCodeExecution": {"const":false}
+  },
+  "additionalProperties": true
+}

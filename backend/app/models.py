@@ -358,6 +358,32 @@ class InterchangeReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class CrossRuntimeVerificationReceipt(Base):
+    __tablename__ = "workspace_cross_runtime_verification_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    original_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    reproduction_run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    source_runtime: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    target_runtime: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    comparison_mode: Mapped[str] = mapped_column(String(64), nullable=False, default="auto")
+    classification: Mapped[str] = mapped_column(String(32), nullable=False)
+    exact_inputs: Mapped[bool] = mapped_column(nullable=False, default=False)
+    exact_environment: Mapped[bool] = mapped_column(nullable=False, default=False)
+    exact_runtime: Mapped[bool] = mapped_column(nullable=False, default=False)
+    exact_outputs: Mapped[bool] = mapped_column(nullable=False, default=False)
+    equivalent_outputs: Mapped[bool] = mapped_column(nullable=False, default=False)
+    absolute_tolerance: Mapped[float] = mapped_column(nullable=False, default=1e-9)
+    relative_tolerance: Mapped[float] = mapped_column(nullable=False, default=1e-7)
+    compared_output_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class DatasetHead(Base):
     __tablename__ = "workspace_dataset_heads"
 

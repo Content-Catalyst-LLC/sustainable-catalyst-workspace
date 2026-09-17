@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-cross-runtime-verification-receipt-v1.schema.json",
+  "title": "Workspace Cross-Runtime Verification Receipt v1",
+  "type": "object",
+  "required": ["receiptId","originalRunId","reproductionRunId","sourceRuntime","targetRuntime","comparisonMode","classification","exactInputs","exactOutputs","equivalentOutputs","resultArtifactId","resultSha256","fingerprint"],
+  "properties": {
+    "receiptId": {"type":"string","minLength":1,"maxLength":96},
+    "originalRunId": {"type":"string","minLength":1,"maxLength":96},
+    "reproductionRunId": {"type":"string","minLength":1,"maxLength":96},
+    "sourceRuntime": {"type":"string","maxLength":96},
+    "targetRuntime": {"type":"string","maxLength":96},
+    "comparisonMode": {"enum":["auto","exact-digest","tolerance-aware-json"]},
+    "classification": {"enum":["exact","equivalent","divergent","incomplete"]},
+    "exactInputs": {"type":"boolean"},
+    "exactEnvironment": {"type":"boolean"},
+    "exactRuntime": {"type":"boolean"},
+    "exactOutputs": {"type":"boolean"},
+    "equivalentOutputs": {"type":"boolean"},
+    "absoluteTolerance": {"type":"number","minimum":0},
+    "relativeTolerance": {"type":"number","minimum":0},
+    "comparedOutputCount": {"type":"integer","minimum":0},
+    "resultArtifactId": {"type":"string","maxLength":160},
+    "resultSha256": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "fingerprint": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "details": {"type":"object"}
+  },
+  "additionalProperties": true
+}

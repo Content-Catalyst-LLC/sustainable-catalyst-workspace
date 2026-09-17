@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.16.0"
+    service_version: str = "2.17.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     max_predictive_model_receipts_per_account: int = 5000
     max_model_evaluation_receipts_per_account: int = 10000
     max_interchange_receipts_per_account: int = 10000
+    max_cross_runtime_verification_receipts_per_account: int = 10000
     interchange_timeout_seconds: float = 60.0
     interchange_max_result_bytes: int = 25 * 1024 * 1024
 

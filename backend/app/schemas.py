@@ -334,6 +334,20 @@ class ReproductionVerificationCreateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class CrossRuntimeVerificationCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-cross-runtime-verification/1.0"] = Field(alias="schema")
+    receiptId: str | None = Field(default=None, max_length=96)
+    originalRunId: str = Field(min_length=1, max_length=96)
+    reproductionRunId: str = Field(min_length=1, max_length=96)
+    comparisonMode: Literal["auto", "exact-digest", "tolerance-aware-json"] = "auto"
+    absoluteTolerance: float = Field(default=1e-9, ge=0.0, le=1e6)
+    relativeTolerance: float = Field(default=1e-7, ge=0.0, le=1e3)
+    requireSameInputs: bool = True
+    notes: str = Field(default="", max_length=12000)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class ReproductionExecutionPlanCreateRequest(BaseModel):
     schema_: Literal["sc-workspace-reproduction-execution-plan/1.0"] = Field(alias="schema")
     executionPlanId: str | None = Field(default=None, max_length=96)
