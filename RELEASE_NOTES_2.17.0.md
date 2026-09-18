@@ -16,3 +16,8 @@ Workspace v2.17.0 adds a server-side reproduction verification layer over the ex
 - No client-supplied runtime URLs or credentials.
 - Verification never dispatches a new computation automatically.
 - Non-JSON binary outputs require exact content digests in v2.17.
+
+## Frontend presentation refinement
+The v2.17.0 frontend now includes an editorial presentation pass based on the live Workspace page review: compact application navigation, a shorter Home composition, a two-column public pathway matrix, stronger project-cockpit hierarchy, tighter section rhythm, and root-scoped protection for hidden Workspace surfaces. No storage, project-schema, or backend contract changes are introduced.
+
+- Frontend repair: removed a stray literal `\n\n` text node that could appear above the Connected workflows drawer.

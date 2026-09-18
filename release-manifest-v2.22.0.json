@@ -1,0 +1,8 @@
+{
+  "release": "2.22.0",
+  "title": "Workspace v2.22.0 \u2014 Robust Decision Optimization & Pareto Analysis",
+  "migration": "022_robust_decision_optimization_pareto.sql",
+  "runtime": "python-robust-decision-pareto",
+  "operations": 8,
+  "receipts": "workspace_decision_optimization_receipts"
+}

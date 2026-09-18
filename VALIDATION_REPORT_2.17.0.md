@@ -32,3 +32,11 @@ Release: **Reproduction & Cross-Runtime Verification**
 The v2.17 VPS deployer performs a database-backed smoke using two succeeded execution runs with different runtime identities and slightly different numeric JSON results. The gate requires classification `equivalent`, exact input lineage, non-exact output digests, tolerance-aware output equivalence, persisted result artifact + receipt, and the bounded verification profile API.
 
 The release is packaged and locally validated. VPS deployment, WordPress installation, and GitHub commit/tag remain operational closure steps.
+
+## Frontend presentation refinement
+- PASS: v2.17.0 presentation refinement marker present.
+- PASS: inactive Workspace surfaces remain forcibly hidden at the root scope.
+- PASS: responsive pathway matrix and compact Home composition are present.
+- PASS: presentation changes do not alter storage/project/backend contracts.
+
+- Literal escaped-newline scan across WordPress PHP templates: PASS (0 remaining `\n` text escapes)

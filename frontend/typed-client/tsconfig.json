@@ -1,0 +1,4 @@
+{
+  "compilerOptions": {"target":"ES2019","lib":["ES2019","DOM"],"module":"none","strict":true,"noImplicitAny":true,"noUncheckedIndexedAccess":true,"outFile":"../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v2300.js","removeComments":false,"sourceMap":false},
+  "files":["src/00-generated-contracts.ts","src/10-client.ts","src/20-thin-client-state.ts"]
+}

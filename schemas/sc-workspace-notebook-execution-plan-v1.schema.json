@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Notebook Execution Plan",
+  "type": "object",
+  "required": [
+    "planId",
+    "notebookId",
+    "status",
+    "steps"
+  ],
+  "properties": {
+    "planId": {
+      "type": "string"
+    },
+    "notebookId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array"
+    }
+  }
+}

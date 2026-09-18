@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.27.0",
+  "capabilities": [
+    "reproducible-scientific-study-packages",
+    "deterministic-study-manifests",
+    "embedded-artifact-snapshots",
+    "scientific-receipt-closure",
+    "study-package-integrity-verification"
+  ]
+}

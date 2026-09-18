@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .models import NotebookHead, NotebookRevision, ProjectHead, ProjectRevision
+from .domain_authority import DomainValidationError, build_mutation_receipt, validate_notebook_document, validate_project_document
 from .schemas import NotebookStoreRequest, ProjectStoreRequest
 from .utils import canonical_bytes, iso, ordered_sha256_hex, sha256_hex, workspace_project_fingerprint
 
@@ -63,8 +64,10 @@ def store_project(db: Session, user_key: str, payload: ProjectStoreRequest) -> t
     settings = get_settings()
     package = payload.model_dump(mode="json", exclude_none=True)
     project = payload.project
-    if project.get("schema") not in {f"sc-workspace-project/{n}.0" for n in range(12, 21)}:
-        raise HTTPException(status_code=400, detail="A compatible Workspace project schema (12.0 through 20.0) is required.")
+    try:
+        validation = validate_project_document(project)
+    except DomainValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.as_detail()) from exc
     raw = canonical_bytes(package)
     byte_count = len(raw)
     if byte_count > settings.max_project_bytes:
@@ -133,6 +136,29 @@ def store_project(db: Session, user_key: str, payload: ProjectStoreRequest) -> t
         operation_id=operation_id,
         package=package,
     ))
+    db.add(build_mutation_receipt(
+        user_key=user_key,
+        object_kind="project",
+        object_id=project_id,
+        command="project.sync" if is_sync else "project.backup",
+        status="applied",
+        from_revision=current_revision,
+        to_revision=revision,
+        request_payload=package,
+        canonical_fingerprint=project_fp,
+        validation=validation,
+        policy={
+            "serverAuthoritative": True,
+            "revisionPreconditionRequired": is_sync,
+            "expectedRevision": payload.expectedRevision,
+            "storageMode": storage_mode,
+        },
+        provenance={
+            "transportSchema": payload.schema_,
+            "operationId": operation_id,
+            "clientUpdatedAt": payload.clientUpdatedAt or "",
+        },
+    ))
     try:
         db.commit()
     except IntegrityError:
@@ -146,6 +172,20 @@ def delete_project(db: Session, user_key: str, project_id: str) -> bool:
     head = get_project(db, user_key, project_id)
     if head is None:
         return False
+    db.add(build_mutation_receipt(
+        user_key=user_key,
+        object_kind="project",
+        object_id=project_id,
+        command="project.delete",
+        status="deleted",
+        from_revision=head.revision,
+        to_revision=head.revision,
+        request_payload={"objectKind": "project", "objectId": project_id, "revision": head.revision},
+        canonical_fingerprint=head.project_fingerprint,
+        validation={"accepted": True, "authorityDecision": "accept", "objectKind": "project"},
+        policy={"serverAuthoritative": True, "destructiveMutation": True},
+        provenance={"storageMode": head.storage_mode},
+    ))
     revisions = db.scalars(select(ProjectRevision).where(ProjectRevision.user_key == user_key, ProjectRevision.project_id == project_id)).all()
     for row in revisions:
         db.delete(row)
@@ -176,8 +216,10 @@ def store_notebook(db: Session, user_key: str, payload: NotebookStoreRequest) ->
     settings = get_settings()
     package = payload.model_dump(mode="json", exclude_none=True)
     notebook = payload.notebook
-    if notebook.get("schema") != "sc-workspace-notebook/3.0":
-        raise HTTPException(status_code=400, detail="A sc-workspace-notebook/3.0 notebook is required.")
+    try:
+        validation = validate_notebook_document(notebook)
+    except DomainValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.as_detail()) from exc
     raw = canonical_bytes(package)
     byte_count = len(raw)
     if byte_count > settings.max_notebook_bytes:
@@ -238,6 +280,30 @@ def store_notebook(db: Session, user_key: str, payload: NotebookStoreRequest) ->
         operation_id=operation_id,
         package=package,
     ))
+    db.add(build_mutation_receipt(
+        user_key=user_key,
+        object_kind="notebook",
+        object_id=notebook_id,
+        command="notebook.sync" if is_sync else "notebook.backup",
+        status="applied",
+        from_revision=current_revision,
+        to_revision=revision,
+        request_payload=package,
+        canonical_fingerprint=validation["canonicalFingerprint"],
+        validation=validation,
+        policy={
+            "serverAuthoritative": True,
+            "revisionPreconditionRequired": is_sync,
+            "expectedRevision": payload.expectedRevision,
+            "storageMode": storage_mode,
+        },
+        provenance={
+            "transportSchema": payload.schema_,
+            "operationId": operation_id,
+            "clientUpdatedAt": payload.clientUpdatedAt or "",
+            "projectId": existing.project_id,
+        },
+    ))
     try:
         db.commit()
     except IntegrityError:
@@ -251,6 +317,20 @@ def delete_notebook(db: Session, user_key: str, notebook_id: str) -> bool:
     head = get_notebook(db, user_key, notebook_id)
     if head is None:
         return False
+    db.add(build_mutation_receipt(
+        user_key=user_key,
+        object_kind="notebook",
+        object_id=notebook_id,
+        command="notebook.delete",
+        status="deleted",
+        from_revision=head.revision,
+        to_revision=head.revision,
+        request_payload={"objectKind": "notebook", "objectId": notebook_id, "revision": head.revision},
+        canonical_fingerprint=head.notebook_fingerprint[:64],
+        validation={"accepted": True, "authorityDecision": "accept", "objectKind": "notebook"},
+        policy={"serverAuthoritative": True, "destructiveMutation": True},
+        provenance={"storageMode": head.storage_mode, "projectId": head.project_id},
+    ))
     revisions = db.scalars(select(NotebookRevision).where(NotebookRevision.user_key == user_key, NotebookRevision.notebook_id == notebook_id)).all()
     for row in revisions:
         db.delete(row)

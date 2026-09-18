@@ -1,0 +1,8 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.22.0",
+  "capability": "Robust Decision Optimization & Pareto Analysis",
+  "backendRuntime": "python-robust-decision-pareto",
+  "boundedOperations": 8,
+  "arbitraryCodeExecution": false
+}

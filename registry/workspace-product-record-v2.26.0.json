@@ -1,0 +1,11 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.26.0",
+  "capabilities": [
+    "server-side-notebook-orchestration",
+    "artifact-dependency-pinning",
+    "dependency-aware-dispatch",
+    "durable-orchestration-receipts"
+  ]
+}

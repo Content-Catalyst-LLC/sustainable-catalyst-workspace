@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-optimization-receipt-v1",
+  "title": "Workspace Optimization Receipt",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "jobId",
+    "runtime",
+    "operation",
+    "optimizationKind",
+    "bestValue",
+    "bestParameters",
+    "resultArtifactId",
+    "resultSha256"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "runtime": {
+      "const": "python-optimization-parameter-search"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "optimizationKind": {
+      "type": "string"
+    },
+    "objectiveKind": {
+      "type": "string"
+    },
+    "direction": {
+      "enum": [
+        "minimize",
+        "maximize"
+      ]
+    },
+    "bestValue": {
+      "type": "number"
+    },
+    "bestParameters": {
+      "type": "object"
+    },
+    "evaluationCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "iterations": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "converged": {
+      "type": "boolean"
+    },
+    "resultArtifactId": {
+      "type": "string"
+    },
+    "resultSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.28.0",
+  "capabilities": [
+    "declarative-visualization-specification-api",
+    "renderer-neutral-analytical-scenes",
+    "linked-views",
+    "visualization-source-provenance-pinning",
+    "visualization-spec-revision-history",
+    "visualization-spec-receipts"
+  ]
+}

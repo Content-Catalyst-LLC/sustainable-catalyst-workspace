@@ -9,12 +9,19 @@
     "exact-digest-comparison",
     "tolerance-aware-json-comparison",
     "verification-result-artifacts",
-    "cross-runtime-verification-receipts"
+    "cross-runtime-verification-receipts",
+    "frontend-presentation-refinement"
   ],
   "security": {
     "automaticExecution": false,
     "arbitraryCodeExecution": false,
     "clientSuppliedRuntimeUrls": false,
     "clientSuppliedRuntimeCredentials": false
+  },
+  "presentation": {
+    "editorialPathwayMatrix": true,
+    "compactApplicationHome": true,
+    "rootScopedHiddenSurfaceIsolation": true,
+    "mobileResponsive": true
   }
 }

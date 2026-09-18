@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-uncertainty-analysis-receipt-v1",
+  "title": "Workspace Uncertainty Analysis Receipt",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "jobId",
+    "runtime",
+    "operation",
+    "analysisKind",
+    "resultArtifactId",
+    "resultSha256"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "jobId": {
+      "type": "string"
+    },
+    "runtime": {
+      "const": "python-monte-carlo-uq"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "analysisKind": {
+      "type": "string"
+    },
+    "sampleCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "interval": {
+      "type": "object"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "sensitivity": {
+      "type": "object"
+    },
+    "resultArtifactId": {
+      "type": "string"
+    },
+    "resultSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

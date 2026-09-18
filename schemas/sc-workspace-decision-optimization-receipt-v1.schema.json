@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Decision Optimization Receipt",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "operation",
+    "analysisKind",
+    "candidateCount",
+    "scenarioCount",
+    "resultArtifactId",
+    "resultSha256"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "analysisKind": {
+      "type": "string"
+    },
+    "selectedAlternative": {
+      "type": "string"
+    },
+    "candidateCount": {
+      "type": "integer"
+    },
+    "scenarioCount": {
+      "type": "integer"
+    },
+    "criterion": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "object"
+    },
+    "resultArtifactId": {
+      "type": "string"
+    },
+    "resultSha256": {
+      "type": "string"
+    }
+  }
+}

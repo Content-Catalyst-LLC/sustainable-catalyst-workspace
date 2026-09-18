@@ -1,0 +1,9 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "2.21.0",
+  "title": "Optimization & Parameter Search Runtime",
+  "runtime": "python-optimization-parameter-search",
+  "operations": 8,
+  "migration": "021_optimization_parameter_search_runtime.sql",
+  "arbitraryCodeExecution": false
+}

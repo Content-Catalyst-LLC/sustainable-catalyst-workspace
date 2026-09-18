@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.28.1",
+  "capabilities": [
+    "interaction-runtime-repair",
+    "delegated-primary-action-fallback",
+    "null-safe-core-bindings",
+    "client-boot-diagnostics",
+    "visible-control-wiring-audit",
+    "v2.28-visualization-api-preserved"
+  ]
+}

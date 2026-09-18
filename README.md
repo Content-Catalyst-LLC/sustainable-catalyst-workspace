@@ -1,29 +1,38 @@
-# Sustainable Catalyst Workspace v2.15.0 — Predictive Analytics & Machine Learning Runtime
+# Current release: v2.30.0 — Thin Client State Architecture
 
-Workspace is the governed research execution environment for Sustainable Catalyst. v2.15.0 extends the polyglot scientific fabric with a bounded Python/scikit-learn predictive analytics runtime while preserving the Python, SQL, R, repaired Julia, and registered WASM runtime contracts.
+Workspace now separates transient browser UI state from canonical backend state. Canonical read models hydrate a memory-only client cache; only an explicit transient allowlist may persist in the browser. Canonical mutations remain backend commands, while the v2.28.1 interaction repair and v2.29 typed-client proxy are preserved.
 
-## Active scientific runtimes
+# Sustainable Catalyst Workspace v2.24.0
 
-- **Python scientific compute** — NumPy, Pandas, SciPy and SymPy bounded operations
-- **SQL** — bounded aggregate and grouped analytical operations
-- **R** — statistical, inferential, time-series and econometric operations
-- **Julia** — numerical simulation, optimization, eigen-analysis, Monte Carlo, numerical integration and parameter sweeps
-- **ML** — bounded regression, classification, ensembles, cross-validation and prediction
-- **WASM** — registered server-configured adapter, not yet deployed
+Workspace is the local-first research and analysis environment for Sustainable Catalyst. It connects projects, evidence, datasets, analysis, decisions, portable artifacts, and governed scientific execution without turning the browser client into an arbitrary-code runtime.
 
-## Predictive analytics operations
+## Current scientific runtime fabric
 
-- `workspace.ml.linear-regression`
-- `workspace.ml.logistic-classification`
-- `workspace.ml.random-forest-regression`
-- `workspace.ml.random-forest-classification`
-- `workspace.ml.gradient-boosting-regression`
-- `workspace.ml.gradient-boosting-classification`
-- `workspace.ml.cross-validate`
-- `workspace.ml.predict`
+- Python scientific compute
+- SQL bounded analytics
+- R statistical/econometric runtime
+- Julia numerical simulation runtime
+- scikit-learn predictive analytics runtime
+- Arrow / Parquet interchange runtime
+- cross-runtime reproduction verification
+- forecasting and time-series runtime
 
-Every training execution records a dataset fingerprint, ordered features, target, preprocessing configuration, bounded hyperparameters, random seed, evaluation metrics, result-artifact lineage and a trusted model-artifact SHA-256. Training creates predictive-model and evaluation receipts; cross-validation creates an evaluation receipt.
+## v2.18.0 — Forecasting & Time-Series Runtime
 
-The ML sidecar is internal-only and sandboxed. Arbitrary Python, client package installation, shell execution, runtime URLs, credentials and client-supplied serialized models remain disabled.
+The v2.18 line adds an internal Python/Statsmodels service with eight bounded operations: naive, seasonal-naive, linear trend, exponential smoothing, Holt-Winters, ARIMA, rolling-origin backtesting, and forecast evaluation. Forecast runs preserve dataset fingerprints, horizon, model parameters, intervals, evaluation metrics, result artifacts, and durable receipts.
 
-See `RELEASE_NOTES_2.15.0.md`, `docs/PREDICTIVE_ANALYTICS_MACHINE_LEARNING_RUNTIME_V2150.md`, and `docs/DEPLOY_WORKSPACE_BACKEND_V2150.md`.
+The forecasting service is server-configured, internal-only, read-only, resource-bounded, and does not accept arbitrary Python, package installation, client-supplied runtime URLs, filesystem paths, or executable model code.
+
+See `RELEASE_NOTES_2.18.0.md`, `docs/FORECASTING_TIME_SERIES_RUNTIME_V2180.md`, and `docs/DEPLOY_WORKSPACE_BACKEND_V2180.md`.
+
+
+## v2.22.0 Robust Decision Optimization & Pareto Analysis
+Workspace now supports bounded, provenance-aware decision analysis over optimization, uncertainty, and scenarios, including Pareto fronts, minimax regret, robust constraints, dominance, stress ranking, and value of information.
+
+
+## v2.23.0 Reliability, Survival & Failure-Time Analysis
+Workspace now supports bounded, provenance-aware survival and reliability analysis for failure-time data, component/system reliability, repairable availability, and accelerated-life relationships.
+
+
+## v2.24.0 Backend Authority & Domain Service Consolidation
+Workspace now explicitly treats the Python/PostgreSQL backend as canonical for project/notebook validation, revision policy, fingerprints, provenance, persistence, and mutation receipts. The browser remains responsible for presentation, interaction, local drafts, and rendering rather than canonical domain truth.

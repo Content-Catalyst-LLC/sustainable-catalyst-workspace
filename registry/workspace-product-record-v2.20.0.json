@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.20.0",
+  "title": "Monte Carlo & Uncertainty Quantification",
+  "backend": true,
+  "runtime": "python-monte-carlo-uq",
+  "operations": 8,
+  "receipts": [
+    "polyglot",
+    "uncertainty-analysis"
+  ]
+}

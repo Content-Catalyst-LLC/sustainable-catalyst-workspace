@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-domain-mutation-receipt-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Domain Mutation Receipt v1",
+  "type": "object",
+  "required": ["receiptId", "objectKind", "objectId", "command", "status", "fromRevision", "toRevision", "requestFingerprint", "canonicalFingerprint", "createdAt"],
+  "properties": {
+    "receiptId": {"type": "string"},
+    "objectKind": {"enum": ["project", "notebook"]},
+    "objectId": {"type": "string"},
+    "command": {"type": "string"},
+    "status": {"type": "string"},
+    "fromRevision": {"type": "integer", "minimum": 0},
+    "toRevision": {"type": "integer", "minimum": 0},
+    "requestFingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "canonicalFingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "validation": {"type": "object"},
+    "policy": {"type": "object"},
+    "provenance": {"type": "object"},
+    "createdAt": {"type": "string"}
+  },
+  "additionalProperties": true
+}

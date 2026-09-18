@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-optimization-result-v1",
+  "title": "Workspace Optimization Result",
+  "type": "object",
+  "required": [
+    "schema",
+    "runtime",
+    "operation",
+    "inputFingerprint",
+    "result"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-optimization-result/1.0"
+    },
+    "runtime": {
+      "const": "python-optimization-parameter-search"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "inputFingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "result": {
+      "type": "object"
+    }
+  }
+}

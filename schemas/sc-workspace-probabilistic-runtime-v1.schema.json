@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Probabilistic Runtime Result",
+  "type": "object",
+  "required": [
+    "schema",
+    "runtime",
+    "operation",
+    "result"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-probabilistic-result/1.0"
+    },
+    "runtime": {
+      "const": "python-probabilistic-bayesian"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "result": {
+      "type": "object"
+    }
+  }
+}

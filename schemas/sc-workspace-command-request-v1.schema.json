@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Command Request",
+  "type": "object",
+  "required": [
+    "schema",
+    "command",
+    "payload"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-command-request/1.0"
+    },
+    "command": {
+      "type": "string"
+    },
+    "commandId": {
+      "type": "string"
+    },
+    "idempotencyKey": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

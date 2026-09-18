@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.25.0",
+  "release": "Workspace Command & Query API",
+  "backendRequired": true,
+  "migration": "025_workspace_command_query_api.sql",
+  "commandCount": 9,
+  "queryCount": 9,
+  "browserAuthoritativeState": false,
+  "arbitraryCodeExecution": false
+}

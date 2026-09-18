@@ -15,6 +15,16 @@ TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
 REQUEUEABLE_STATUSES = {"failed", "blocked", "cancelled"}
 
 
+def _advance_notebook_orchestration(db: Session, row: JobRecord) -> None:
+    try:
+        from .notebook_orchestration import advance_for_job
+        advance_for_job(db, row)
+    except Exception as exc:
+        # Job completion is authoritative; orchestration advancement may be retried/inspected separately.
+        add_event(db, row, "orchestration-advance-error", {"error": f"{exc.__class__.__name__}: {exc}"[:1000]})
+        db.commit()
+
+
 def _now():
     return datetime.now(timezone.utc)
 
@@ -172,6 +182,8 @@ def request_cancel(db: Session, user_key: str, job_id: str, reason: str) -> JobR
         sync_run_from_job(db, row.user_key, row.execution_run_id, row.job_id, "cancelled", row.progress, error_code="cancelled", error_message=reason)
     db.commit()
     db.refresh(row)
+    if row.status == "cancelled":
+        _advance_notebook_orchestration(db, row)
     return row
 
 
@@ -247,6 +259,7 @@ def complete_job(db: Session, row: JobRecord, result: dict) -> JobRecord:
     add_event(db, current, event, {"attempt": current.attempt})
     db.commit()
     db.refresh(current)
+    _advance_notebook_orchestration(db, current)
     return current
 
 
@@ -262,6 +275,7 @@ def block_job(db: Session, row: JobRecord, code: str, message: str) -> JobRecord
     add_event(db, current, "blocked", {"code": current.error_code})
     db.commit()
     db.refresh(current)
+    _advance_notebook_orchestration(db, current)
     return current
 
 
@@ -290,6 +304,8 @@ def fail_or_requeue_job(db: Session, row: JobRecord, code: str, message: str) ->
     add_event(db, current, event, {"code": current.error_code, "attempt": current.attempt, "maxAttempts": current.max_attempts})
     db.commit()
     db.refresh(current)
+    if current.status in TERMINAL_STATUSES or current.status == "blocked":
+        _advance_notebook_orchestration(db, current)
     return current
 
 

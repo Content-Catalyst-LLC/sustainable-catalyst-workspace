@@ -1,0 +1,11 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "2.18.0",
+  "title": "Forecasting & Time-Series Runtime",
+  "migration": "018_forecasting_time_series_runtime.sql",
+  "runtime": "sc-workspace-forecast-runtime",
+  "operations": 8,
+  "frontend": "2.18.0",
+  "backend": "2.18.0",
+  "githubTag": "v2.18.0"
+}

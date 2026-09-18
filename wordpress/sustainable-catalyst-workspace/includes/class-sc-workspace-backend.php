@@ -28,7 +28,7 @@ final class SC_Workspace_Backend {
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
-            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.17.0',
+            'workspaceVersion' => defined('SC_WORKSPACE_VERSION') ? SC_WORKSPACE_VERSION : '2.20.0',
             'backendMode' => self::mode(),
             'configured' => self::configured(),
             'enabled' => self::enabled(),
@@ -116,6 +116,10 @@ final class SC_Workspace_Backend {
             'interchangeFormats' => array('arrow-ipc-stream', 'parquet'),
             'interchangeRuntimeBoundedOperations' => 8,
             'interchangeReceipts' => true,
+            'forecastingTimeSeriesRuntime' => true,
+            'forecastRuntimeBoundedOperations' => 8,
+            'forecastReceipts' => true,
+            'forecastEvaluationReceipts' => true,
             'crossRuntimeReproductionVerification' => true,
             'toleranceAwareNumericComparison' => true,
             'crossRuntimeVerificationReceipts' => true,

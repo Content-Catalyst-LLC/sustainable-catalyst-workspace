@@ -1,0 +1,18 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.30.0",
+  "release": "Thin Client State Architecture",
+  "backendFirst": true,
+  "migration": "none-new-through-028",
+  "features": [
+    "backend-authoritative thin-client state profile",
+    "server-generated canonical bootstrap projection",
+    "memory-only rehydratable canonical client cache",
+    "transient-only browser persistence allowlist",
+    "canonical mutations restricted to command API",
+    "v2.28.1 interaction runtime preserved",
+    "v2.29 typed proxy contract preserved"
+  ],
+  "arbitraryCodeExecution": false
+}

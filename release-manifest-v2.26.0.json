@@ -1,0 +1,10 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.26.0",
+  "release": "Server-Side Notebook & Artifact Orchestration",
+  "migration": "026_server_side_notebook_artifact_orchestration.sql",
+  "backendAuthoritative": true,
+  "browserSchedulesDependencies": false,
+  "arbitraryCodeExecution": false
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "slug": "workspace",
+  "version": "2.30.0",
+  "status": "stable",
+  "release": "Thin Client State Architecture",
+  "backendAuthoritative": true,
+  "thinClientState": true,
+  "persistentBrowserState": "transient-only",
+  "canonicalCachePersistent": false,
+  "browserDirectBackendAccess": false
+}

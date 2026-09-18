@@ -1478,3 +1478,160 @@
 /* v2.16.0 Native Arrow / Parquet Cross-Language Exchange */
 
 /* v2.17.0 Reproduction & Cross-Runtime Verification */
+
+/* ============================================================
+   v2.17.0 — Frontend Presentation Refinement
+   Editorial hierarchy, shorter default landing view, and
+   progressive visual emphasis without changing storage/runtime
+   contracts or hiding canonical capabilities.
+   ============================================================ */
+.scw-platform-page{
+  --scw-v217-content:1180px;
+  --scw-v217-app:1240px;
+  --scw-v217-warm:#f3f1eb;
+  --scw-v217-panel:#fbfaf7;
+  --scw-v217-line:#d8d4cb;
+}
+.scw-platform-hero-grid,
+.scw-editorial-section,
+.scw-platform-app-intro,
+.scw-editorial-closing{
+  padding-left:max(24px,calc((100% - var(--scw-v217-content))/2));
+  padding-right:max(24px,calc((100% - var(--scw-v217-content))/2));
+}
+.scw-platform-hero-grid{padding-top:clamp(34px,4.25vw,58px);padding-bottom:clamp(34px,4.25vw,58px)}
+.scw-platform-hero-copy h1{font-size:clamp(46px,5.5vw,74px);line-height:.92}
+.scw-platform-lede{max-width:720px!important;font-size:clamp(15px,1.45vw,19px)!important;line-height:1.58!important}
+.scw-editorial-section{padding-top:clamp(30px,3.7vw,48px);padding-bottom:clamp(30px,3.7vw,48px)}
+.scw-editorial-section h2,.scw-platform-app-intro h2{font-size:clamp(28px,3.35vw,42px);line-height:1}
+.scw-editorial-deck{max-width:78ch}
+
+/* Turn eight long pathway rows into a compact editorial matrix. */
+.scw-pathway-list{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  border-right:0;
+  border-bottom:0;
+  background:transparent;
+  gap:0;
+}
+.scw-pathway-list article{
+  grid-template-columns:38px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  align-items:start;
+  gap:6px 14px;
+  min-height:148px;
+  padding:18px 18px 16px;
+  border-right:1px solid var(--scw-line);
+  border-bottom:1px solid var(--scw-line);
+  background:#fff;
+}
+.scw-pathway-list article>b{grid-column:1;grid-row:1/3;margin-top:1px}
+.scw-pathway-list article>div{grid-column:2;grid-row:1}
+.scw-pathway-list article>span{
+  grid-column:2;
+  grid-row:2;
+  align-self:end;
+  border-left:0;
+  border-top:2px solid var(--scw-accent);
+  padding:7px 0 0;
+  margin-top:5px;
+}
+.scw-pathway-list p{font-size:10.5px;line-height:1.5}
+.scw-pathway-list strong{font-size:14px}
+
+/* Make the application feel like an application, not another long article. */
+.scw-platform-application-editorial{padding:24px max(12px,calc((100% - var(--scw-v217-app))/2)) 30px;background:var(--scw-v217-warm)}
+.scw-platform-application-editorial>.scw-shell{max-width:var(--scw-v217-app);box-shadow:0 18px 42px rgba(0,0,0,.055)}
+.scw-platform-application-editorial .scw-settings-drawer>summary{padding:12px 18px}
+.scw-platform-application-editorial .scw-workspace-primary-nav{box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.scw-platform-application-editorial .scw-workspace-primary-nav button{padding:12px 15px}
+.scw-platform-application-editorial .scw-navigation-context{padding:11px 18px 12px;grid-template-columns:minmax(210px,.62fr) minmax(0,1.38fr);gap:18px;background:#fff}
+.scw-platform-application-editorial .scw-navigation-context-copy p{max-width:58ch}
+.scw-platform-application-editorial .scw-experience-controls{padding:8px 18px 10px;background:#faf9f6}
+.scw-platform-application-editorial .scw-experience-action{min-height:34px;padding:7px 9px}
+
+/* Shorter, more useful default Home composition. */
+.scw-platform-application-editorial .scw-workspace-home{
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  column-gap:16px;
+  row-gap:16px;
+  padding:26px 22px 30px;
+  background:#fff;
+}
+.scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-head,
+.scw-platform-application-editorial .scw-workspace-home>.scw-project-cockpit,
+.scw-platform-application-editorial .scw-workspace-home>.scw-first-run,
+.scw-platform-application-editorial .scw-workspace-home>.scw-beta-boundary{grid-column:1/-1}
+.scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-metrics{grid-column:1/9;margin:0}
+.scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-actions{
+  grid-column:9/-1;
+  margin:0;
+  align-self:stretch;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-actions .scw-button{width:100%;min-height:42px}
+.scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-grid{grid-column:1/9;margin:0}
+.scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent{
+  grid-column:9/-1;
+  margin:0;
+  padding:18px;
+  border:1px solid var(--scw-v217-line);
+  border-top:3px solid #111;
+  background:var(--scw-v217-panel);
+  align-self:stretch;
+}
+.scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent .scw-editorial-kicker{margin-bottom:4px}
+.scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent h3{font-size:19px;margin:4px 0 8px}
+.scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent-list{grid-template-columns:1fr;margin-top:10px;border-left:0}
+.scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent-list>*{border-left:1px solid var(--scw-line)}
+.scw-platform-application-editorial .scw-public-beta-head{gap:22px}
+.scw-platform-application-editorial .scw-public-beta-head h2{font-size:clamp(28px,3.2vw,42px);margin-top:7px}
+.scw-platform-application-editorial .scw-public-beta-head p{font-size:12px;line-height:1.55;max-width:72ch}
+.scw-platform-application-editorial .scw-public-beta-badge{min-width:125px;padding:10px 0;border-top-color:var(--scw-accent)}
+.scw-platform-application-editorial .scw-public-beta-metrics div{padding:13px 14px}
+.scw-platform-application-editorial .scw-public-beta-metrics strong{font-size:21px}
+.scw-platform-application-editorial .scw-beta-pathways,.scw-platform-application-editorial .scw-beta-runtime{padding:18px}
+.scw-platform-application-editorial .scw-beta-pathway-list button{min-height:92px;padding:14px}
+.scw-platform-application-editorial .scw-beta-boundary{margin-top:0;border-top:0;border-left:3px solid var(--scw-accent);padding:13px 15px;background:#f7f6f2;color:#555;grid-template-columns:170px 1fr}
+.scw-platform-application-editorial .scw-beta-boundary strong{color:#111}
+
+/* Give the active-project cockpit more visual authority than diagnostics. */
+.scw-platform-application-editorial .scw-project-cockpit{margin:0;padding:18px 0 20px;border-top:3px solid #111}
+.scw-platform-application-editorial .scw-project-cockpit-head{gap:14px}
+.scw-platform-application-editorial .scw-project-cockpit-metrics>div{padding:11px 12px;background:#faf9f6}
+.scw-platform-application-editorial .scw-project-cockpit-grid{gap:10px}
+.scw-platform-application-editorial .scw-project-cockpit-grid>section{padding:14px;background:#fff}
+
+/* General section rhythm inside focused views. */
+.scw-platform-application-editorial [data-scw-workspace-section]:not(.scw-workspace-home){padding-left:22px;padding-right:22px}
+.scw-platform-application-editorial :is(.scw-integrated-head,.scw-api-embed-head,.scw-review-rooms-head,.scw-collaboration-head,.scw-interoperability-head){padding-top:6px}
+.scw-platform-application-editorial :is(.scw-institutional-validation,.scw-institutional-research-packages,.scw-institutional-promotion,.scw-institutional-scale,.scw-research-operations,.scw-research-automation){margin-top:18px}
+
+/* Theme/global-CSS isolation for inactive Workspace surfaces. */
+.scw-shell.scw-root [data-scw-workspace-section][hidden],
+.scw-shell.scw-root [data-scw-research-surface-panel][hidden],
+.scw-shell.scw-root [hidden]{display:none!important}
+
+@media(max-width:980px){
+  .scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-metrics,
+  .scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-actions,
+  .scw-platform-application-editorial .scw-workspace-home>.scw-public-beta-grid,
+  .scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent{grid-column:1/-1}
+  .scw-platform-application-editorial .scw-workspace-home>.scw-beta-recent{margin-top:0}
+  .scw-platform-application-editorial .scw-beta-recent-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:760px){
+  .scw-pathway-list{grid-template-columns:1fr}
+  .scw-pathway-list article{min-height:0;border-right:1px solid var(--scw-line)}
+  .scw-platform-application-editorial{padding:12px 0 20px}
+  .scw-platform-application-editorial .scw-workspace-home{display:block;padding:22px 16px 26px}
+  .scw-platform-application-editorial .scw-workspace-home>*{margin-bottom:16px!important}
+  .scw-platform-application-editorial .scw-public-beta-actions{display:grid!important;grid-template-columns:1fr!important}
+  .scw-platform-application-editorial .scw-beta-recent-list{grid-template-columns:1fr!important}
+  .scw-platform-application-editorial .scw-navigation-context,
+  .scw-platform-application-editorial .scw-experience-controls{padding-left:14px;padding-right:14px}
+}

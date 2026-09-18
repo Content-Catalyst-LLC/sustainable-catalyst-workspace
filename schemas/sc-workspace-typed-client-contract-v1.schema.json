@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-typed-client-contract-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Typed Client Contract",
+  "type": "object",
+  "required": [
+    "schema",
+    "workspaceVersion",
+    "mode",
+    "backendAuthoritative",
+    "typedEndpoints",
+    "openApiProjectionSha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-typed-client-contract/1.0"
+    },
+    "workspaceVersion": {
+      "const": "2.30.0"
+    },
+    "mode": {
+      "const": "generated-typescript-thin-client"
+    },
+    "backendAuthoritative": {
+      "const": true
+    },
+    "browserAuthoritativeState": {
+      "const": false
+    },
+    "transport": {
+      "const": "wordpress-server-proxy"
+    },
+    "typedEndpoints": {
+      "type": "object"
+    },
+    "openApiProjectionSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "arbitraryCodeExecution": {
+      "const": false
+    }
+  },
+  "additionalProperties": true
+}

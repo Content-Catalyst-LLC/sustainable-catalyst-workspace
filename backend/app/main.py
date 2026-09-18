@@ -26,8 +26,23 @@ from .schemas import (
     ReproductionExecutionPlanCreateRequest, ControlledRuntimeHandoffRequest, ExecutionPolicyStoreRequest, RuntimeExecutionAttestationRequest,
     RuntimeTrustPolicyStoreRequest, ComplianceWaiverCreateRequest, AttestationVerificationCreateRequest,
     ExecutionRunUpdateRequest, JobActionRequest, JobCreateRequest, LegacyMigrationRequest, ModelStoreRequest,
-    NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest,
+    NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest, DomainValidationRequest, CommandExecuteRequest, QueryExecuteRequest,
+    NotebookExecutionPlanRequest, NotebookExecutionDispatchRequest, NotebookExecutionCancelRequest,
+    ScientificStudyPackageCreateRequest, ScientificStudyPackageVerifyRequest, VisualizationSpecStoreRequest,
 )
+from .domain_authority import DomainValidationError, authority_profile, get_mutation_receipt, list_mutation_receipts, mutation_receipt_metadata, validate_domain_document
+from .command_query import profile as command_query_profile, execute_command, execute_query, list_command_receipts, workspace_overview, project_read_model, notebook_read_model
+from .notebook_orchestration import (profile as notebook_orchestration_profile, create_plan as create_notebook_execution_plan,
+    get_plan as get_notebook_execution_plan, list_plans as list_notebook_execution_plans, plan_metadata as notebook_execution_plan_metadata,
+    dispatch_plan as dispatch_notebook_execution_plan, cancel_plan as cancel_notebook_execution_plan, list_receipts as list_notebook_orchestration_receipts)
+from .study_packages import (profile as study_package_profile, create_package as create_scientific_study_package, get_package as get_scientific_study_package,
+    list_packages as list_scientific_study_packages, package_metadata as scientific_study_package_metadata, verify_package as verify_scientific_study_package,
+    list_receipts as list_scientific_study_package_receipts, delete_package as delete_scientific_study_package)
+from .client_contracts import profile as typed_client_contract_profile
+from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
+from .visualization_specs import (profile as visualization_spec_profile, store_spec as store_visualization_spec, get_spec as get_visualization_spec,
+    list_specs as list_visualization_specs, list_revisions as list_visualization_spec_revisions, list_receipts as list_visualization_spec_receipts,
+    delete_spec as delete_visualization_spec, metadata as visualization_spec_metadata)
 from .security import ServiceIdentity, require_service_identity, require_runtime_attestation_identity
 from .migration import apply_migration, list_receipts, migration_plan
 from .object_store import artifact_metadata, delete_artifact, get_artifact, list_artifacts, read_artifact_content, store_artifact, verify_artifact_storage
@@ -54,7 +69,13 @@ from .polyglot import (runtime_catalog as polyglot_runtime_catalog, operation_ca
     runtime_health as polyglot_runtime_health, list_statistical_receipts, get_statistical_receipt, statistical_receipt_metadata,
     list_numerical_receipts, get_numerical_receipt, numerical_receipt_metadata,
     list_predictive_model_receipts, get_predictive_model_receipt, predictive_model_receipt_metadata,
-    list_model_evaluation_receipts, get_model_evaluation_receipt, model_evaluation_receipt_metadata)
+    list_model_evaluation_receipts, get_model_evaluation_receipt, model_evaluation_receipt_metadata,
+    list_forecast_receipts, get_forecast_receipt, forecast_receipt_metadata,
+    list_forecast_evaluation_receipts, get_forecast_evaluation_receipt, forecast_evaluation_receipt_metadata, list_probabilistic_inference_receipts, get_probabilistic_inference_receipt, probabilistic_inference_receipt_metadata,
+    list_uncertainty_analysis_receipts, get_uncertainty_analysis_receipt, uncertainty_analysis_receipt_metadata,
+    list_optimization_receipts, get_optimization_receipt, optimization_receipt_metadata,
+    list_decision_optimization_receipts, get_decision_optimization_receipt, decision_optimization_receipt_metadata,
+    list_reliability_analysis_receipts, get_reliability_analysis_receipt, reliability_analysis_receipt_metadata)
 from .interchange import operation_catalog as interchange_operation_catalog, runtime_health as interchange_runtime_health, list_receipts as list_interchange_receipts, get_receipt as get_interchange_receipt, receipt_metadata as interchange_receipt_metadata
 from .cross_runtime_verification import create_cross_runtime_verification, get_receipt as get_cross_runtime_verification_receipt, list_receipts as list_cross_runtime_verification_receipts, receipt_metadata as cross_runtime_verification_receipt_metadata, profile_catalog as cross_runtime_verification_profiles
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
@@ -151,7 +172,7 @@ def health():
         "computeProgressEvents": True,
         "boundedScientificOperationsOnly": True,
         "polyglotScientificRuntimeFabric": True,
-        "polyglotLanguages": ["python", "r", "julia", "ml", "sql", "wasm"],
+        "polyglotLanguages": ["python", "r", "julia", "ml", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -175,6 +196,93 @@ def health():
         "crossRuntimeReproductionVerification": True,
         "toleranceAwareNumericComparison": True,
         "crossRuntimeVerificationReceipts": True,
+        "forecastingTimeSeriesRuntime": True,
+        "forecastRuntimeConfigured": bool(settings.runtime_forecast_url.strip()),
+        "forecastRuntimeBoundedOperations": 8,
+        "forecastReceipts": True,
+        "forecastEvaluationReceipts": True,
+        "forecastPredictionIntervals": True,
+        "probabilisticBayesianRuntime": True,
+        "probabilityRuntimeConfigured": bool(settings.runtime_probability_url.strip()),
+        "probabilityRuntimeBoundedOperations": 6,
+        "probabilisticInferenceReceipts": True,
+        "credibleIntervals": True,
+        "posteriorPredictiveChecks": True,
+        "uncertaintyPropagation": True,
+        "monteCarloUncertaintyQuantificationRuntime": True,
+        "uncertaintyRuntimeConfigured": bool(settings.runtime_uncertainty_url.strip()),
+        "uncertaintyRuntimeBoundedOperations": 8,
+        "uncertaintyAnalysisReceipts": True,
+        "seededMonteCarloSimulation": True,
+        "bootstrapIntervals": True,
+        "latinHypercubeSampling": True,
+        "rankCorrelationSensitivity": True,
+        "optimizationParameterSearchRuntime": True,
+        "optimizationRuntimeConfigured": bool(settings.runtime_optimization_url.strip()),
+        "optimizationRuntimeBoundedOperations": 8,
+        "optimizationReceipts": True,
+        "boxConstrainedOptimization": True,
+        "gridAndRandomSearch": True,
+        "multiObjectiveWeightedSearch": True,
+        "robustScenarioRanking": True,
+        "robustDecisionOptimizationRuntime": True,
+        "decisionRuntimeConfigured": bool(settings.runtime_decision_url.strip()),
+        "decisionRuntimeBoundedOperations": 8,
+        "decisionOptimizationReceipts": True,
+        "paretoFrontAnalysis": True,
+        "minimaxRegretAnalysis": True,
+        "constraintRobustnessAnalysis": True,
+        "valueOfInformationAnalysis": True,
+        "reliabilitySurvivalFailureTimeRuntime": True,
+        "reliabilityRuntimeConfigured": bool(settings.runtime_reliability_url.strip()),
+        "reliabilityRuntimeBoundedOperations": 8,
+        "reliabilityAnalysisReceipts": True,
+        "kaplanMeierSurvival": True,
+        "weibullLifeModeling": True,
+        "systemReliabilityAnalysis": True,
+        "repairableAvailabilityAnalysis": True,
+        "backendDomainAuthority": True,
+        "backendAuthoritativeState": True,
+        "browserAuthoritativeState": False,
+        "serverSideDomainValidation": True,
+        "serverSideRevisionAuthority": True,
+        "domainMutationReceipts": True,
+        "canonicalDomainStore": "postgresql",
+        "domainAuthoritySchema": "sc-workspace-domain-authority/1.0",
+        "workspaceCommandQueryApi": True,
+        "serverSideCommandDispatch": True,
+        "serverGeneratedReadModels": True,
+        "commandReceipts": True,
+        "queriesAreReadOnly": True,
+        "commandQuerySchema": "sc-workspace-command-query/1.0",
+        "rollingOriginBacktesting": True,
+        "serverSideNotebookArtifactOrchestration": True,
+        "notebookExecutionPlans": True,
+        "artifactDependencyPinning": True,
+        "dependencyAwareNotebookDispatch": True,
+        "reproducibleScientificStudyPackages": True,
+        "deterministicStudyManifests": True,
+        "studyPackageArtifactSnapshots": True,
+        "studyPackageIntegrityVerification": True,
+        "scientificStudyPackageSchema": "sc-workspace-scientific-study-package/1.0",
+        "declarativeVisualizationSpecificationApi": True,
+        "rendererNeutralVisualizationSpecs": True,
+        "visualizationSpecRevisionHistory": True,
+        "visualizationSpecReceipts": True,
+        "linkedVisualizationViews": True,
+        "visualizationSourceProvenancePinning": True,
+        "visualizationSpecSchema": "sc-workspace-visualization-spec/1.0",
+        "browserDefinesAnalyticalMeaning": False,
+        "typedClientContracts": True,
+        "generatedTypeScriptClient": True,
+        "typedClientTransport": "wordpress-server-proxy",
+        "browserDirectBackendAccess": False,
+        "typedClientContractSchema": "sc-workspace-typed-client-contract/1.0",
+        "thinClientStateArchitecture": True,
+        "thinClientStateSchema": "sc-workspace-thin-client-state/1.0",
+        "canonicalClientCachePersistent": False,
+        "persistentBrowserState": "transient-only",
+        "canonicalMutationsViaCommandsOnly": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -204,6 +312,46 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "wordpressProxyRequired": True,
         "projectPersistence": True,
         "notebookPersistence": True,
+        "backendDomainAuthority": True,
+        "backendAuthoritativeState": True,
+        "browserAuthoritativeState": False,
+        "clientRole": "presentation-interaction-local-drafts",
+        "canonicalDomainStore": "postgresql",
+        "serverSideDomainValidation": True,
+        "serverSideRevisionAuthority": True,
+        "serverSideMutationPolicy": True,
+        "domainMutationReceipts": True,
+        "domainAuthoritySchema": "sc-workspace-domain-authority/1.0",
+        "workspaceCommandQueryApi": True,
+        "serverSideCommandDispatch": True,
+        "serverGeneratedReadModels": True,
+        "commandReceipts": True,
+        "queriesAreReadOnly": True,
+        "commandQuerySchema": "sc-workspace-command-query/1.0",
+        "reproducibleScientificStudyPackages": True,
+        "deterministicStudyManifests": True,
+        "studyPackageArtifactSnapshots": True,
+        "studyPackageIntegrityVerification": True,
+        "studyPackageFormat": "zip+canonical-json",
+        "declarativeVisualizationSpecificationApi": True,
+        "rendererNeutralVisualizationSpecs": True,
+        "visualizationSpecRevisionHistory": True,
+        "visualizationSpecReceipts": True,
+        "linkedVisualizationViews": True,
+        "visualizationSourceProvenancePinning": True,
+        "visualizationSpecSchema": "sc-workspace-visualization-spec/1.0",
+        "rendererContract": "sc-workspace-renderer-contract/1.0",
+        "browserDefinesAnalyticalMeaning": False,
+        "typedClientContracts": True,
+        "generatedTypeScriptClient": True,
+        "typedClientTransport": "wordpress-server-proxy",
+        "browserDirectBackendAccess": False,
+        "typedClientContractSchema": "sc-workspace-typed-client-contract/1.0",
+        "thinClientStateArchitecture": True,
+        "thinClientStateSchema": "sc-workspace-thin-client-state/1.0",
+        "canonicalClientCachePersistent": False,
+        "persistentBrowserState": "transient-only",
+        "canonicalMutationsViaCommandsOnly": True,
         "projectRevisionHistory": True,
         "notebookRevisionHistory": True,
         "revisionPreconditions": True,
@@ -277,10 +425,26 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "computeProgressEvents": True,
         "computeCancellationChecks": True,
         "polyglotScientificRuntimeFabric": True,
-        "polyglotLanguages": ["python", "r", "julia", "ml", "sql", "wasm"],
+        "polyglotLanguages": ["python", "r", "julia", "ml", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "polyglotRuntimeCatalog": True,
+        "monteCarloUncertaintyQuantificationRuntime": True,
+        "uncertaintyRuntimeConfigured": bool(settings.runtime_uncertainty_url.strip()),
+        "uncertaintyRuntimeBoundedOperations": 8,
+        "uncertaintyAnalysisReceipts": True,
+        "seededMonteCarloSimulation": True,
+        "bootstrapIntervals": True,
+        "latinHypercubeSampling": True,
+        "rankCorrelationSensitivity": True,
+        "optimizationParameterSearchRuntime": True,
+        "optimizationRuntimeConfigured": bool(settings.runtime_optimization_url.strip()),
+        "optimizationRuntimeBoundedOperations": 8,
+        "optimizationReceipts": True,
+        "boxConstrainedOptimization": True,
+        "gridAndRandomSearch": True,
+        "multiObjectiveWeightedSearch": True,
+        "robustScenarioRanking": True,
         "rStatisticalEconometricRuntime": True,
         "rRuntimeConfigured": bool(settings.runtime_r_url.strip()),
         "rRuntimeBoundedOperations": 8,
@@ -354,6 +518,236 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
             "defaultJobMaxAttempts": settings.default_job_max_attempts,
         },
     }
+
+
+@app.get("/v1/client-contracts")
+def typed_client_contracts(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-typed-client-contract-response/1.0", "item": typed_client_contract_profile(app.openapi())}
+
+
+@app.get("/v1/thin-client-state")
+def thin_client_state_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-thin-client-state-response/1.0", "item": thin_client_state_profile()}
+
+
+@app.get("/v1/thin-client-state/bootstrap")
+def thin_client_state_bootstrap_route(projectId: str | None = None, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return thin_client_state_bootstrap(db, identity.user_key, projectId)
+
+
+@app.get("/v1/domain-authority")
+def domain_authority_profile(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "item": authority_profile()}
+
+
+@app.post("/v1/domain-authority/validate")
+def domain_authority_validate(payload: DomainValidationRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        item = validate_domain_document(payload.objectKind, payload.document)
+    except DomainValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.as_detail()) from exc
+    return {"ok": True, "item": item}
+
+
+@app.get("/v1/domain-mutation-receipts")
+def domain_mutation_receipts_index(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-domain-mutation-receipt-index/1.0", "items": list_mutation_receipts(db, identity.user_key, limit)}
+
+
+@app.get("/v1/domain-mutation-receipts/{receipt_id}")
+def domain_mutation_receipt_get(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_mutation_receipt(db, identity.user_key, receipt_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace domain mutation receipt not found.")
+        return {"schema": "sc-workspace-domain-mutation-receipt-response/1.0", "item": mutation_receipt_metadata(row)}
+
+
+@app.get("/v1/command-query")
+def command_query_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-command-query-profile/1.0","item":command_query_profile()}
+
+
+@app.get("/v1/commands")
+def command_registry(identity: ServiceIdentity = Depends(require_service_identity)):
+    p=command_query_profile(); return {"schema":"sc-workspace-command-registry/1.0","items":p["commands"],"serverAuthoritative":True}
+
+
+@app.post("/v1/commands/execute")
+def command_execute_route(payload: CommandExecuteRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return execute_command(db, identity.user_key, payload)
+
+
+@app.get("/v1/command-receipts")
+def command_receipts_index(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-command-receipt-index/1.0","items":list_command_receipts(db,identity.user_key,limit)}
+
+
+@app.get("/v1/queries")
+def query_registry(identity: ServiceIdentity = Depends(require_service_identity)):
+    p=command_query_profile(); return {"schema":"sc-workspace-query-registry/1.0","items":p["queries"],"readOnly":True}
+
+
+@app.post("/v1/queries/execute")
+def query_execute_route(payload: QueryExecuteRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return execute_query(db, identity.user_key, payload)
+
+
+@app.get("/v1/notebook-orchestration")
+def notebook_orchestration_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-notebook-orchestration-profile/1.0","item":notebook_orchestration_profile()}
+
+
+@app.post("/v1/notebook-execution-plans")
+def notebook_execution_plan_create(payload: NotebookExecutionPlanRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-notebook-execution-plan-response/1.0","item":notebook_execution_plan_metadata(create_notebook_execution_plan(db,identity.user_key,payload))}
+
+
+@app.get("/v1/notebook-execution-plans")
+def notebook_execution_plan_index(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-notebook-execution-plan-index/1.0","items":list_notebook_execution_plans(db,identity.user_key,limit)}
+
+
+@app.get("/v1/notebook-execution-plans/{plan_id}")
+def notebook_execution_plan_get(plan_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_notebook_execution_plan(db,identity.user_key,plan_id)
+        if row is None: raise HTTPException(status_code=404, detail="Notebook execution plan not found.")
+        return {"schema":"sc-workspace-notebook-execution-plan-response/1.0","item":notebook_execution_plan_metadata(row)}
+
+
+@app.post("/v1/notebook-execution-plans/{plan_id}/dispatch")
+def notebook_execution_plan_dispatch(plan_id: str, payload: NotebookExecutionDispatchRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=dispatch_notebook_execution_plan(db,identity.user_key,plan_id,payload.idempotencyKey or "",payload.reason)
+        return {"schema":"sc-workspace-notebook-execution-plan-response/1.0","item":notebook_execution_plan_metadata(row)}
+
+
+@app.post("/v1/notebook-execution-plans/{plan_id}/cancel")
+def notebook_execution_plan_cancel(plan_id: str, payload: NotebookExecutionCancelRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=cancel_notebook_execution_plan(db,identity.user_key,plan_id,payload.reason)
+        return {"schema":"sc-workspace-notebook-execution-plan-response/1.0","item":notebook_execution_plan_metadata(row)}
+
+
+@app.get("/v1/notebook-orchestration-receipts")
+def notebook_orchestration_receipt_index(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-notebook-orchestration-receipt-index/1.0","items":list_notebook_orchestration_receipts(db,identity.user_key,limit)}
+
+
+@app.get("/v1/scientific-study-packages/profile")
+def scientific_study_package_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-scientific-study-package-profile-response/1.0","item":study_package_profile()}
+
+
+@app.post("/v1/scientific-study-packages")
+def scientific_study_package_create_route(payload: ScientificStudyPackageCreateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=create_scientific_study_package(db,identity.user_key,payload)
+        return {"schema":"sc-workspace-scientific-study-package-response/1.0","item":scientific_study_package_metadata(row)}
+
+
+@app.get("/v1/scientific-study-packages")
+def scientific_study_package_index(projectId: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-scientific-study-package-index/1.0","items":list_scientific_study_packages(db,identity.user_key,projectId,limit)}
+
+
+@app.get("/v1/scientific-study-packages/{package_id}")
+def scientific_study_package_get_route(package_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_scientific_study_package(db,identity.user_key,package_id)
+        if row is None: raise HTTPException(status_code=404, detail="Scientific study package not found.")
+        return {"schema":"sc-workspace-scientific-study-package-response/1.0","item":scientific_study_package_metadata(row),"manifest":row.manifest_json}
+
+
+@app.post("/v1/scientific-study-packages/{package_id}/verify")
+def scientific_study_package_verify_route(package_id: str, payload: ScientificStudyPackageVerifyRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return verify_scientific_study_package(db,identity.user_key,package_id,payload.deep)
+
+
+@app.delete("/v1/scientific-study-packages/{package_id}")
+def scientific_study_package_delete_route(package_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"deleted":delete_scientific_study_package(db,identity.user_key,package_id)}
+
+
+@app.get("/v1/scientific-study-package-receipts")
+def scientific_study_package_receipt_index(packageId: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-scientific-study-package-receipt-index/1.0","items":list_scientific_study_package_receipts(db,identity.user_key,packageId,limit)}
+
+
+@app.get("/v1/visualization-specs/profile")
+def visualization_spec_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-visualization-spec-profile-response/1.0","item":visualization_spec_profile()}
+
+
+@app.post("/v1/visualization-specs")
+def visualization_spec_store_route(payload: VisualizationSpecStoreRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row, replayed = store_visualization_spec(db, identity.user_key, payload)
+        return {"ok":True,"replayed":replayed,"schema":"sc-workspace-visualization-spec-response/1.0","item":visualization_spec_metadata(row),"spec":row.spec_json}
+
+
+@app.get("/v1/visualization-specs")
+def visualization_spec_index(projectId: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-visualization-spec-index/1.0","items":list_visualization_specs(db, identity.user_key, projectId, limit)}
+
+
+@app.get("/v1/visualization-specs/{visualization_id}")
+def visualization_spec_get_route(visualization_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_visualization_spec(db, identity.user_key, visualization_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Visualization specification not found.")
+        return {"schema":"sc-workspace-visualization-spec-response/1.0","item":visualization_spec_metadata(row),"spec":row.spec_json}
+
+
+@app.get("/v1/visualization-specs/{visualization_id}/revisions")
+def visualization_spec_revision_index(visualization_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-visualization-spec-revision-index/1.0","items":list_visualization_spec_revisions(db, identity.user_key, visualization_id, limit)}
+
+
+@app.delete("/v1/visualization-specs/{visualization_id}")
+def visualization_spec_delete_route(visualization_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"deleted":delete_visualization_spec(db, identity.user_key, visualization_id)}
+
+
+@app.get("/v1/visualization-spec-receipts")
+def visualization_spec_receipt_index(visualizationId: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-visualization-spec-receipt-index/1.0","items":list_visualization_spec_receipts(db, identity.user_key, visualizationId, limit)}
+
+
+@app.get("/v1/read-models/workspace-overview")
+def workspace_overview_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return workspace_overview(db, identity.user_key)
+
+
+@app.get("/v1/read-models/projects/{project_id}")
+def project_read_model_route(project_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return project_read_model(db, identity.user_key, project_id)
+
+
+@app.get("/v1/read-models/notebooks/{notebook_id}")
+def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return notebook_read_model(db, identity.user_key, notebook_id)
 
 
 @app.get("/v1/projects")
@@ -671,6 +1065,32 @@ def model_evaluation_receipt_get_route(receipt_id: str, identity: ServiceIdentit
         if row is None: raise HTTPException(status_code=404,detail="Workspace model evaluation receipt not found.")
         return {"schema":"sc-workspace-model-evaluation-receipt/1.0","item":model_evaluation_receipt_metadata(row)}
 
+
+@app.get("/v1/polyglot/runtimes/forecast/status")
+def forecast_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":polyglot_runtime_health("forecast")}
+
+@app.get("/v1/forecast-receipts")
+def forecast_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-forecast-receipt-index/1.0","items":list_forecast_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/forecast-receipts/{receipt_id}")
+def forecast_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_forecast_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace forecast receipt not found.")
+        return {"schema":"sc-workspace-forecast-receipt/1.0","item":forecast_receipt_metadata(row)}
+
+@app.get("/v1/forecast-evaluation-receipts")
+def forecast_evaluation_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-forecast-evaluation-receipt-index/1.0","items":list_forecast_evaluation_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/forecast-evaluation-receipts/{receipt_id}")
+def forecast_evaluation_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_forecast_evaluation_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace forecast evaluation receipt not found.")
+        return {"schema":"sc-workspace-forecast-evaluation-receipt/1.0","item":forecast_evaluation_receipt_metadata(row)}
 
 @app.get("/v1/interchange/runtime/status")
 def interchange_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
@@ -1199,3 +1619,80 @@ def execution_run_output_store_route(run_id: str, payload: ExecutionRunOutputReq
     with session_scope() as db:
         row, replayed = store_run_output(db, identity.user_key, run_id, payload)
         return {"ok": True, "replayed": replayed, "item": output_metadata(row)}
+
+@app.get("/v1/polyglot/runtimes/probability/status")
+def probability_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":polyglot_runtime_health("probability")}
+
+@app.get("/v1/probabilistic-inference-receipts")
+def probabilistic_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-probabilistic-inference-receipt-index/1.0","items":list_probabilistic_inference_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/probabilistic-inference-receipts/{receipt_id}")
+def probabilistic_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_probabilistic_inference_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace probabilistic inference receipt not found.")
+        return {"schema":"sc-workspace-probabilistic-inference-receipt/1.0","item":probabilistic_inference_receipt_metadata(row)}
+
+@app.get("/v1/polyglot/runtimes/uncertainty/status")
+def uncertainty_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":polyglot_runtime_health("uncertainty")}
+
+@app.get("/v1/uncertainty-analysis-receipts")
+def uncertainty_analysis_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-uncertainty-analysis-receipt-index/1.0","items":list_uncertainty_analysis_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/uncertainty-analysis-receipts/{receipt_id}")
+def uncertainty_analysis_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_uncertainty_analysis_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace uncertainty analysis receipt not found.")
+        return {"schema":"sc-workspace-uncertainty-analysis-receipt/1.0","item":uncertainty_analysis_receipt_metadata(row)}
+
+@app.get("/v1/polyglot/runtimes/optimization/status")
+def optimization_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":polyglot_runtime_health("optimization")}
+
+@app.get("/v1/optimization-receipts")
+def optimization_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-optimization-receipt-index/1.0","items":list_optimization_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/optimization-receipts/{receipt_id}")
+def optimization_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_optimization_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace optimization receipt not found.")
+        return {"schema":"sc-workspace-optimization-receipt/1.0","item":optimization_receipt_metadata(row)}
+
+
+@app.get("/v1/polyglot/runtimes/decision/status")
+def decision_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":polyglot_runtime_health("decision")}
+
+@app.get("/v1/decision-optimization-receipts")
+def decision_optimization_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-decision-optimization-receipt-index/1.0","items":list_decision_optimization_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/decision-optimization-receipts/{receipt_id}")
+def decision_optimization_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_decision_optimization_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace decision optimization receipt not found.")
+        return {"schema":"sc-workspace-decision-optimization-receipt/1.0","item":decision_optimization_receipt_metadata(row)}
+
+
+@app.get("/v1/polyglot/runtimes/reliability/status")
+def reliability_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-runtime-status/1.0","item":polyglot_runtime_health("reliability")}
+
+@app.get("/v1/reliability-analysis-receipts")
+def reliability_analysis_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-reliability-analysis-receipt-index/1.0","items":list_reliability_analysis_receipts(db,identity.user_key,limit)}
+
+@app.get("/v1/reliability-analysis-receipts/{receipt_id}")
+def reliability_analysis_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row=get_reliability_analysis_receipt(db,identity.user_key,receipt_id)
+        if row is None: raise HTTPException(status_code=404,detail="Workspace reliability analysis receipt not found.")
+        return {"schema":"sc-workspace-reliability-analysis-receipt/1.0","item":reliability_analysis_receipt_metadata(row)}

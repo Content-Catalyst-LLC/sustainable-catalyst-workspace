@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Reliability Analysis Result",
+  "type": "object",
+  "required": [
+    "schema",
+    "runtime",
+    "operation",
+    "inputFingerprint",
+    "result"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-reliability-analysis-result/1.0"
+    },
+    "runtime": {
+      "const": "python-reliability-survival"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "inputFingerprint": {
+      "type": "string"
+    },
+    "result": {
+      "type": "object"
+    }
+  }
+}

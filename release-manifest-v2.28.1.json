@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.28.1",
+  "release": "Interaction Wiring & Functional UI Runtime Repair",
+  "migration": null,
+  "backendAuthoritative": true,
+  "frontendRuntimeRepair": true,
+  "delegatedFallback": true,
+  "nullSafeBindings": true,
+  "runtimeDiagnostics": true,
+  "arbitraryCodeExecution": false
+}

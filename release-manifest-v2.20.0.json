@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "2.20.0",
+  "title": "Monte Carlo & Uncertainty Quantification",
+  "migration": "020_monte_carlo_uncertainty_quantification.sql",
+  "runtime": "sc-workspace-uncertainty-runtime",
+  "operations": 8,
+  "frontend": "2.20.0",
+  "backend": "2.20.0",
+  "githubTag": "v2.20.0",
+  "baseline": "v2.19.0-job-result-validation-repair"
+}

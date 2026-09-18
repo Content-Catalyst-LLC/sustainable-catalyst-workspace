@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.19.0",
+  "title": "Probabilistic & Bayesian Runtime",
+  "backend": true,
+  "runtime": "python-probabilistic-bayesian",
+  "operations": 6,
+  "receipts": [
+    "polyglot",
+    "probabilistic-inference"
+  ]
+}

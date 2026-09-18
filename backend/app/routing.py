@@ -57,7 +57,7 @@ def execute_job(db, row) -> dict:
     if row.target_product == "workspace":
         if row.operation.startswith("workspace.interchange."):
             return execute_interchange_operation(db, row, progress_callback=lambda progress, details: update_job_progress(db, row.user_key, row.job_id, progress, details))
-        if row.operation.startswith("workspace.polyglot.") or row.operation.startswith("workspace.ml."):
+        if row.operation.startswith("workspace.polyglot.") or row.operation.startswith("workspace.ml.") or row.operation.startswith("workspace.forecast.") or row.operation.startswith("workspace.probability.") or row.operation.startswith("workspace.uncertainty.") or row.operation.startswith("workspace.optimize.") or row.operation.startswith("workspace.decision.") or row.operation.startswith("workspace.reliability."):
             return execute_polyglot_operation(db, row, progress_callback=lambda progress, details: update_job_progress(db, row.user_key, row.job_id, progress, details))
         if row.operation.startswith("workspace.compute."):
             try:

@@ -1,0 +1,16 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.29.0",
+  "release": "Typed Client Contracts & TypeScript Migration",
+  "backendFirst": true,
+  "migration": "none-new-through-028",
+  "features": [
+    "generated TypeScript contracts from backend OpenAPI",
+    "strict typed browser API client",
+    "WordPress server-side proxy transport",
+    "deterministic OpenAPI projection fingerprint",
+    "v2.28.1 interaction runtime preserved"
+  ],
+  "arbitraryCodeExecution": false
+}

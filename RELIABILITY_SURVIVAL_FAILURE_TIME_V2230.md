@@ -1,0 +1,3 @@
+# Workspace v2.23.0 — Reliability, Survival & Failure-Time Analysis
+
+Adds a bounded reliability and survival runtime above Workspace's forecasting, Bayesian, uncertainty, optimization, and robust-decision stack. Operations cover Kaplan–Meier survival, exponential and Weibull failure-time models, reliability-at-horizon evaluation, series/parallel system reliability, repairable availability, binomial reliability intervals, and inverse-power accelerated-life fitting. Durable reliability-analysis receipts preserve model kind, sample/event counts, horizon, metrics, request fingerprint, result artifact, and SHA-256 lineage. Arbitrary code execution remains disabled.

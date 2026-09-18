@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-scientific-study-package-v1.schema.json",
+  "title": "Workspace Scientific Study Package",
+  "type": "object",
+  "required": [
+    "schema",
+    "project",
+    "manifestFingerprint"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-scientific-study-package/1.0"
+    },
+    "project": {
+      "type": "object"
+    },
+    "manifestFingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "artifacts": {
+      "type": "array"
+    },
+    "scientificReceipts": {
+      "type": "object"
+    },
+    "closure": {
+      "type": "object"
+    }
+  }
+}

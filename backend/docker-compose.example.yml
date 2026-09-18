@@ -44,6 +44,25 @@ services:
       SC_WORKSPACE_RUNTIME_ML_TOKEN: ${SC_WORKSPACE_RUNTIME_ML_TOKEN:-}
       SC_WORKSPACE_RUNTIME_INTERCHANGE_URL: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_URL:-http://sc-workspace-interchange-runtime:8093/v1/execute}
       SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN:-}
+      SC_WORKSPACE_RUNTIME_FORECAST_URL: ${SC_WORKSPACE_RUNTIME_FORECAST_URL:-http://sc-workspace-forecast-runtime:8095/v1/execute}
+      SC_WORKSPACE_RUNTIME_FORECAST_TOKEN: ${SC_WORKSPACE_RUNTIME_FORECAST_TOKEN:-}
+      SC_WORKSPACE_RUNTIME_PROBABILITY_URL: ${SC_WORKSPACE_RUNTIME_PROBABILITY_URL:-http://sc-workspace-probability-runtime:8096/v1/execute}
+      SC_WORKSPACE_RUNTIME_PROBABILITY_TOKEN: ${SC_WORKSPACE_RUNTIME_PROBABILITY_TOKEN:-}
+      SC_WORKSPACE_MAX_PROBABILISTIC_INFERENCE_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_PROBABILISTIC_INFERENCE_RECEIPTS_PER_ACCOUNT:-10000}
+      SC_WORKSPACE_RUNTIME_UNCERTAINTY_URL: ${SC_WORKSPACE_RUNTIME_UNCERTAINTY_URL:-http://sc-workspace-uncertainty-runtime:8097/v1/execute}
+      SC_WORKSPACE_RUNTIME_UNCERTAINTY_TOKEN: ${SC_WORKSPACE_RUNTIME_UNCERTAINTY_TOKEN:-}
+      SC_WORKSPACE_MAX_UNCERTAINTY_ANALYSIS_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_UNCERTAINTY_ANALYSIS_RECEIPTS_PER_ACCOUNT:-10000}
+      SC_WORKSPACE_RUNTIME_OPTIMIZATION_URL: ${SC_WORKSPACE_RUNTIME_OPTIMIZATION_URL:-http://sc-workspace-optimization-runtime:8098/v1/execute}
+      SC_WORKSPACE_RUNTIME_OPTIMIZATION_TOKEN: ${SC_WORKSPACE_RUNTIME_OPTIMIZATION_TOKEN:-}
+      SC_WORKSPACE_RUNTIME_DECISION_URL: ${SC_WORKSPACE_RUNTIME_DECISION_URL:-http://sc-workspace-decision-runtime:8099/v1/execute}
+      SC_WORKSPACE_RUNTIME_DECISION_TOKEN: ${SC_WORKSPACE_RUNTIME_DECISION_TOKEN:-}
+      SC_WORKSPACE_RUNTIME_RELIABILITY_URL: ${SC_WORKSPACE_RUNTIME_RELIABILITY_URL:-http://sc-workspace-reliability-runtime:8100/v1/execute}
+      SC_WORKSPACE_RUNTIME_RELIABILITY_TOKEN: ${SC_WORKSPACE_RUNTIME_RELIABILITY_TOKEN:-}
+      SC_WORKSPACE_MAX_RELIABILITY_ANALYSIS_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_RELIABILITY_ANALYSIS_RECEIPTS_PER_ACCOUNT:-10000}
+      SC_WORKSPACE_MAX_DECISION_OPTIMIZATION_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_DECISION_OPTIMIZATION_RECEIPTS_PER_ACCOUNT:-10000}
+      SC_WORKSPACE_MAX_OPTIMIZATION_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_OPTIMIZATION_RECEIPTS_PER_ACCOUNT:-10000}
+      SC_WORKSPACE_MAX_FORECAST_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_FORECAST_RECEIPTS_PER_ACCOUNT:-10000}
+      SC_WORKSPACE_MAX_FORECAST_EVALUATION_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_FORECAST_EVALUATION_RECEIPTS_PER_ACCOUNT:-10000}
       SC_WORKSPACE_INTERCHANGE_TIMEOUT_SECONDS: ${SC_WORKSPACE_INTERCHANGE_TIMEOUT_SECONDS:-60}
       SC_WORKSPACE_MAX_INTERCHANGE_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_INTERCHANGE_RECEIPTS_PER_ACCOUNT:-10000}
       SC_WORKSPACE_MAX_CROSS_RUNTIME_VERIFICATION_RECEIPTS_PER_ACCOUNT: ${SC_WORKSPACE_MAX_CROSS_RUNTIME_VERIFICATION_RECEIPTS_PER_ACCOUNT:-10000}
@@ -82,6 +101,12 @@ services:
       - sc-workspace-julia-runtime
       - sc-workspace-ml-runtime
       - sc-workspace-interchange-runtime
+      - sc-workspace-forecast-runtime
+      - sc-workspace-probability-runtime
+      - sc-workspace-uncertainty-runtime
+      - sc-workspace-optimization-runtime
+      - sc-workspace-decision-runtime
+      - sc-workspace-reliability-runtime
     cpus: 2.0
     mem_limit: 2g
     pids_limit: 256
@@ -158,6 +183,138 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=256m
+
+  sc-workspace-forecast-runtime:
+    build: ./forecast-runtime
+    container_name: sc-workspace-forecast-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_FORECAST_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_FORECAST_TOKEN}
+      SC_WORKSPACE_FORECAST_MAX_PAYLOAD_BYTES: ${SC_WORKSPACE_POLYGLOT_MAX_PAYLOAD_BYTES:-10485760}
+      SC_WORKSPACE_FORECAST_MAX_POINTS: ${SC_WORKSPACE_COMPUTE_MAX_ROWS:-50000}
+      SC_WORKSPACE_FORECAST_MAX_HORIZON: ${SC_WORKSPACE_FORECAST_MAX_HORIZON:-3650}
+      SC_WORKSPACE_FORECAST_MAX_SEASONAL_PERIOD: ${SC_WORKSPACE_FORECAST_MAX_SEASONAL_PERIOD:-365}
+    networks:
+      - sc-workspace-runtime
+    cpus: 2.0
+    mem_limit: 2g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+
+
+  sc-workspace-probability-runtime:
+    build: ./probability-runtime
+    container_name: sc-workspace-probability-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_PROBABILITY_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_PROBABILITY_TOKEN}
+      SC_WORKSPACE_PROBABILITY_MAX_DRAWS: ${SC_WORKSPACE_PROBABILITY_MAX_DRAWS:-20000}
+    networks:
+      - sc-workspace-runtime
+    cpus: 1.5
+    mem_limit: 1g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+
+  sc-workspace-uncertainty-runtime:
+    build: ./uncertainty-runtime
+    container_name: sc-workspace-uncertainty-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_UNCERTAINTY_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_UNCERTAINTY_TOKEN}
+      SC_WORKSPACE_UNCERTAINTY_MAX_DRAWS: ${SC_WORKSPACE_UNCERTAINTY_MAX_DRAWS:-20000}
+      SC_WORKSPACE_UNCERTAINTY_MAX_ROWS: ${SC_WORKSPACE_UNCERTAINTY_MAX_ROWS:-10000}
+      SC_WORKSPACE_UNCERTAINTY_MAX_VARIABLES: ${SC_WORKSPACE_UNCERTAINTY_MAX_VARIABLES:-64}
+    networks:
+      - sc-workspace-runtime
+    cpus: 1.5
+    mem_limit: 1g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+
+  sc-workspace-optimization-runtime:
+    build: ./optimization-runtime
+    container_name: sc-workspace-optimization-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_OPTIMIZATION_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_OPTIMIZATION_TOKEN}
+      SC_WORKSPACE_OPTIMIZATION_MAX_DIMENSIONS: ${SC_WORKSPACE_OPTIMIZATION_MAX_DIMENSIONS:-32}
+      SC_WORKSPACE_OPTIMIZATION_MAX_EVALUATIONS: ${SC_WORKSPACE_OPTIMIZATION_MAX_EVALUATIONS:-50000}
+      SC_WORKSPACE_OPTIMIZATION_MAX_ITERATIONS: ${SC_WORKSPACE_OPTIMIZATION_MAX_ITERATIONS:-5000}
+    networks:
+      - sc-workspace-runtime
+    cpus: 1.5
+    mem_limit: 1g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+
+  sc-workspace-decision-runtime:
+    build: ./decision-runtime
+    container_name: sc-workspace-decision-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_DECISION_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_DECISION_TOKEN}
+      SC_WORKSPACE_DECISION_MAX_CANDIDATES: ${SC_WORKSPACE_DECISION_MAX_CANDIDATES:-5000}
+      SC_WORKSPACE_DECISION_MAX_SCENARIOS: ${SC_WORKSPACE_DECISION_MAX_SCENARIOS:-500}
+      SC_WORKSPACE_DECISION_MAX_METRICS: ${SC_WORKSPACE_DECISION_MAX_METRICS:-64}
+    networks:
+      - sc-workspace-runtime
+    cpus: 1.5
+    mem_limit: 1g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
+
+  sc-workspace-reliability-runtime:
+    build: ./reliability-runtime
+    container_name: sc-workspace-reliability-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_RELIABILITY_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_RELIABILITY_TOKEN}
+      SC_WORKSPACE_RELIABILITY_MAX_SAMPLES: ${SC_WORKSPACE_RELIABILITY_MAX_SAMPLES:-20000}
+      SC_WORKSPACE_RELIABILITY_MAX_COMPONENTS: ${SC_WORKSPACE_RELIABILITY_MAX_COMPONENTS:-1000}
+      SC_WORKSPACE_RELIABILITY_MAX_GROUPS: ${SC_WORKSPACE_RELIABILITY_MAX_GROUPS:-256}
+    networks:
+      - sc-workspace-runtime
+    cpus: 1.5
+    mem_limit: 1g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m
 
   sc-workspace-interchange-runtime:
     build: ./interchange-runtime

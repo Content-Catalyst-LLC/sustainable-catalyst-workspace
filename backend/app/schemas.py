@@ -26,6 +26,81 @@ class NotebookStoreRequest(BaseModel):
     operationId: str | None = Field(default=None, max_length=160)
     notebook: dict[str, Any]
 
+class DomainValidationRequest(BaseModel):
+    schema_: Literal["sc-workspace-domain-validation-request/1.0"] = Field(alias="schema")
+    objectKind: Literal["project", "notebook"]
+    document: dict[str, Any]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class CommandExecuteRequest(BaseModel):
+    schema_: Literal["sc-workspace-command-request/1.0"] = Field(alias="schema")
+    command: str = Field(min_length=1, max_length=96)
+    commandId: str | None = Field(default=None, max_length=96)
+    idempotencyKey: str | None = Field(default=None, max_length=160)
+    payload: dict[str, Any] = Field(default_factory=dict)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class QueryExecuteRequest(BaseModel):
+    schema_: Literal["sc-workspace-query-request/1.0"] = Field(alias="schema")
+    query: str = Field(min_length=1, max_length=96)
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+
+
+class NotebookExecutionPlanRequest(BaseModel):
+    schema_: Literal["sc-workspace-notebook-execution-plan-request/1.0"] = Field(alias="schema")
+    notebookId: str = Field(min_length=1, max_length=160)
+    expectedNotebookRevision: int | None = Field(default=None, ge=1)
+    selectedCellIds: list[str] = Field(default_factory=list, max_length=100)
+    strictDependencies: bool = True
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class NotebookExecutionDispatchRequest(BaseModel):
+    schema_: Literal["sc-workspace-notebook-execution-dispatch-request/1.0"] = Field(alias="schema")
+    idempotencyKey: str | None = Field(default=None, max_length=160)
+    reason: str = Field(default="user-authorized", max_length=160)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class NotebookExecutionCancelRequest(BaseModel):
+    schema_: Literal["sc-workspace-notebook-execution-cancel-request/1.0"] = Field(alias="schema")
+    reason: str = Field(default="user-request", max_length=160)
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ScientificStudyPackageCreateRequest(BaseModel):
+    schema_: Literal["sc-workspace-scientific-study-package-request/1.0"] = Field(alias="schema")
+    projectId: str = Field(min_length=1, max_length=160)
+    title: str | None = Field(default=None, max_length=1000)
+    description: str = Field(default="", max_length=4000)
+    selectedNotebookIds: list[str] = Field(default_factory=list, max_length=250)
+    includeArtifactBlobs: bool = True
+    includeScientificReceipts: bool = True
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class ScientificStudyPackageVerifyRequest(BaseModel):
+    schema_: Literal["sc-workspace-scientific-study-package-verify-request/1.0"] = Field(alias="schema")
+    deep: bool = True
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class VisualizationSpecStoreRequest(BaseModel):
+    schema_: Literal["sc-workspace-visualization-spec-request/1.0"] = Field(alias="schema")
+    visualizationId: str | None = Field(default=None, max_length=96)
+    projectId: str = Field(min_length=1, max_length=160)
+    title: str | None = Field(default=None, max_length=1000)
+    expectedRevision: int | None = Field(default=None, ge=0)
+    operationId: str | None = Field(default=None, max_length=160)
+    spec: dict[str, Any]
+    model_config = ConfigDict(populate_by_name=True)
+
 
 class LegacyMigrationRecord(BaseModel):
     model_config = ConfigDict(extra="allow")

@@ -1,0 +1,11 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.21.0",
+  "capabilities": [
+    "optimization",
+    "parameter-search",
+    "robust-scenario-ranking",
+    "durable-optimization-receipts"
+  ]
+}

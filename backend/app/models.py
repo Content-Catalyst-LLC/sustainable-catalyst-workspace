@@ -88,6 +88,158 @@ class NotebookRevision(Base):
     package: Mapped[dict] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
+
+class DomainMutationReceipt(Base):
+    __tablename__ = "workspace_domain_mutation_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    object_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    object_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    command: Mapped[str] = mapped_column(String(96), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="applied")
+    from_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    to_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    validation_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    policy_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    provenance_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class CommandReceipt(Base):
+    __tablename__ = "workspace_command_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    command_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    command: Mapped[str] = mapped_column(String(96), nullable=False)
+    target_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    target_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="applied")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    linked_mutation_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    result_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+
+class NotebookExecutionPlan(Base):
+    __tablename__ = "workspace_notebook_execution_plans"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    plan_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    notebook_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    notebook_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    notebook_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="ready")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    dependency_graph_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    artifact_bindings_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    steps_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    job_ids_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class NotebookOrchestrationReceipt(Base):
+    __tablename__ = "workspace_notebook_orchestration_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    plan_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ScientificStudyPackage(Base):
+    __tablename__ = "workspace_scientific_study_packages"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    package_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    project_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    manifest_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    bundle_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    bundle_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    bundle_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    component_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    embedded_artifact_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    closure_verified: Mapped[bool] = mapped_column(nullable=False, default=False)
+    manifest_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ScientificStudyPackageReceipt(Base):
+    __tablename__ = "workspace_scientific_study_package_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    package_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    manifest_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    bundle_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class VisualizationSpecHead(Base):
+    __tablename__ = "workspace_visualization_specs"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    visualization_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    title: Mapped[str] = mapped_column(Text, nullable=False, default="Visualization")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    spec_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    scene_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="single")
+    view_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    spec_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class VisualizationSpecRevision(Base):
+    __tablename__ = "workspace_visualization_spec_revisions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    visualization_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    title: Mapped[str] = mapped_column(Text, nullable=False, default="Visualization")
+    spec_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    scene_kind: Mapped[str] = mapped_column(String(32), nullable=False, default="single")
+    view_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    spec_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class VisualizationSpecReceipt(Base):
+    __tablename__ = "workspace_visualization_spec_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    visualization_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="applied")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    spec_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class MigrationReceipt(Base):
     __tablename__ = "workspace_migration_receipts"
 
@@ -330,6 +482,150 @@ class ModelEvaluationReceipt(Base):
     evaluation_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     fold_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     dataset_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    metrics_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ForecastReceipt(Base):
+    __tablename__ = "workspace_forecast_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    model_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    value_column: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    time_column: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    frequency: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    horizon: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    seasonal_period: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    dataset_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    metrics_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    intervals_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class ForecastEvaluationReceipt(Base):
+    __tablename__ = "workspace_forecast_evaluation_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    forecast_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    evaluation_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    train_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    test_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    dataset_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    metrics_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ProbabilisticInferenceReceipt(Base):
+    __tablename__ = "workspace_probabilistic_inference_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    inference_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    posterior_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    interval_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class UncertaintyAnalysisReceipt(Base):
+    __tablename__ = "workspace_uncertainty_analysis_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    analysis_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    random_seed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    interval_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    summary_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    sensitivity_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class OptimizationReceipt(Base):
+    __tablename__ = "workspace_optimization_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    optimization_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    objective_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    direction: Mapped[str] = mapped_column(String(16), nullable=False, default="minimize")
+    best_value: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    best_parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    evaluation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    iteration_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    random_seed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    converged: Mapped[bool] = mapped_column(nullable=False, default=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class DecisionOptimizationReceipt(Base):
+    __tablename__ = "workspace_decision_optimization_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    analysis_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    selected_alternative: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    candidate_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    scenario_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    criterion: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    summary_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class ReliabilityAnalysisReceipt(Base):
+    __tablename__ = "workspace_reliability_analysis_receipts"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    polyglot_receipt_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    job_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    execution_run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    runtime: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation: Mapped[str] = mapped_column(String(160), nullable=False)
+    analysis_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    model_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    sample_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    event_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    horizon: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     metrics_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     result_artifact_id: Mapped[str] = mapped_column(String(160), nullable=False)
     result_sha256: Mapped[str] = mapped_column(String(64), nullable=False)

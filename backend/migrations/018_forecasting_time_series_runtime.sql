@@ -1,0 +1,11 @@
+BEGIN;
+CREATE TABLE IF NOT EXISTS workspace_forecast_receipts (
+ user_key varchar(128) NOT NULL, receipt_id varchar(96) NOT NULL, polyglot_receipt_id varchar(96) NOT NULL, job_id varchar(96) NOT NULL, execution_run_id varchar(96) NOT NULL DEFAULT '', runtime varchar(96) NOT NULL, operation varchar(160) NOT NULL, model_kind varchar(96) NOT NULL DEFAULT '', value_column varchar(160) NOT NULL DEFAULT '', time_column varchar(160) NOT NULL DEFAULT '', frequency varchar(64) NOT NULL DEFAULT '', horizon integer NOT NULL DEFAULT 0, seasonal_period integer NOT NULL DEFAULT 0, dataset_fingerprint varchar(64) NOT NULL DEFAULT '', parameters_json jsonb NOT NULL DEFAULT '{}'::jsonb, metrics_json jsonb NOT NULL DEFAULT '{}'::jsonb, intervals_json jsonb NOT NULL DEFAULT '[]'::jsonb, result_artifact_id varchar(160) NOT NULL, result_sha256 varchar(64) NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (user_key, receipt_id));
+CREATE INDEX IF NOT EXISTS workspace_forecast_receipts_job_idx ON workspace_forecast_receipts(user_key,job_id);
+CREATE INDEX IF NOT EXISTS workspace_forecast_receipts_model_idx ON workspace_forecast_receipts(user_key,model_kind,created_at DESC);
+CREATE TABLE IF NOT EXISTS workspace_forecast_evaluation_receipts (
+ user_key varchar(128) NOT NULL, receipt_id varchar(96) NOT NULL, forecast_receipt_id varchar(96) NOT NULL DEFAULT '', polyglot_receipt_id varchar(96) NOT NULL, job_id varchar(96) NOT NULL, execution_run_id varchar(96) NOT NULL DEFAULT '', operation varchar(160) NOT NULL, evaluation_kind varchar(64) NOT NULL DEFAULT '', train_points integer NOT NULL DEFAULT 0, test_points integer NOT NULL DEFAULT 0, dataset_fingerprint varchar(64) NOT NULL DEFAULT '', metrics_json jsonb NOT NULL DEFAULT '{}'::jsonb, result_artifact_id varchar(160) NOT NULL, result_sha256 varchar(64) NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (user_key, receipt_id));
+CREATE INDEX IF NOT EXISTS workspace_forecast_evaluation_receipts_job_idx ON workspace_forecast_evaluation_receipts(user_key,job_id);
+GRANT SELECT,INSERT,UPDATE,DELETE ON workspace_forecast_receipts TO sc_workspace;
+GRANT SELECT,INSERT,UPDATE,DELETE ON workspace_forecast_evaluation_receipts TO sc_workspace;
+COMMIT;

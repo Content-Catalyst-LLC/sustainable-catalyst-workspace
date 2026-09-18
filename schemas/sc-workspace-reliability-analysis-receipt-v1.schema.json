@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Reliability Analysis Receipt",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "operation",
+    "analysisKind",
+    "modelKind",
+    "sampleCount",
+    "eventCount",
+    "resultArtifactId",
+    "resultSha256"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "analysisKind": {
+      "type": "string"
+    },
+    "modelKind": {
+      "type": "string"
+    },
+    "sampleCount": {
+      "type": "integer"
+    },
+    "eventCount": {
+      "type": "integer"
+    },
+    "horizon": {
+      "type": "number"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "resultArtifactId": {
+      "type": "string"
+    },
+    "resultSha256": {
+      "type": "string"
+    }
+  }
+}

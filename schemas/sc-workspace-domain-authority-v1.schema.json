@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-domain-authority-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Domain Authority v1",
+  "type": "object",
+  "required": ["schema", "mode", "canonicalStore", "clientRole", "browserAuthoritativeState", "backendAuthoritativeState", "authoritativeConcerns"],
+  "properties": {
+    "schema": {"const": "sc-workspace-domain-authority/1.0"},
+    "mode": {"const": "server-authoritative"},
+    "canonicalStore": {"const": "postgresql"},
+    "canonicalFingerprint": {"const": "SHA-256"},
+    "clientRole": {"const": "presentation-interaction-local-drafts"},
+    "browserAuthoritativeState": {"const": false},
+    "backendAuthoritativeState": {"const": true},
+    "authoritativeConcerns": {"type": "array", "items": {"type": "string"}},
+    "clientConcerns": {"type": "array", "items": {"type": "string"}},
+    "supportedObjectKinds": {"type": "array", "items": {"enum": ["project", "notebook"]}}
+  },
+  "additionalProperties": true
+}

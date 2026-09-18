@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-visualization-spec-receipt-v1.schema.json",
+  "title": "Workspace Visualization Specification Receipt",
+  "type": "object",
+  "required": ["receiptId", "visualizationId", "action", "status", "revision", "specFingerprint"],
+  "properties": {
+    "receiptId": {"type": "string"},
+    "visualizationId": {"type": "string"},
+    "action": {"enum": ["create", "update", "delete"]},
+    "status": {"type": "string"},
+    "revision": {"type": "integer", "minimum": 0},
+    "specFingerprint": {"type": "string", "pattern": "^$|^[0-9a-f]{64}$"},
+    "details": {"type": "object"},
+    "createdAt": {"type": "string"}
+  },
+  "additionalProperties": true
+}

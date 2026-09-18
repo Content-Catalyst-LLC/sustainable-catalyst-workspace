@@ -1,0 +1,11 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.25.0",
+  "capabilities": [
+    "backend-authority",
+    "command-query-api",
+    "server-generated-read-models",
+    "command-receipts"
+  ]
+}

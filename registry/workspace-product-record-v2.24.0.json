@@ -1,0 +1,12 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.24.0",
+  "capability": "Backend Authority & Domain Service Consolidation",
+  "canonicalStore": "PostgreSQL",
+  "domainService": "Python",
+  "authoritySchema": "sc-workspace-domain-authority/1.0",
+  "mutationReceipts": true,
+  "browserAuthoritativeState": false,
+  "backendAuthoritativeState": true,
+  "arbitraryCodeExecution": false
+}

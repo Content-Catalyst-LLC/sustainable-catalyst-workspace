@@ -1,0 +1,11 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.27.0",
+  "release": "Reproducible Scientific Study Packages",
+  "migration": "027_reproducible_scientific_study_packages.sql",
+  "backendAuthoritative": true,
+  "deterministicManifest": true,
+  "contentAddressedBundle": true,
+  "arbitraryCodeExecution": false
+}

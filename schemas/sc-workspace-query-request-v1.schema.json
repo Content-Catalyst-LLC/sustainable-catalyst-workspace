@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Query Request",
+  "type": "object",
+  "required": [
+    "schema",
+    "query"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-query-request/1.0"
+    },
+    "query": {
+      "type": "string"
+    },
+    "parameters": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

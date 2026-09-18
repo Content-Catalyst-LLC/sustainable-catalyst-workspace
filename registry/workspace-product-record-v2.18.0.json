@@ -1,0 +1,14 @@
+{
+  "schema": "sc-product-record/1.0",
+  "product": "workspace",
+  "version": "2.18.0",
+  "release": "Forecasting & Time-Series Runtime",
+  "capabilities": [
+    "bounded-forecasting-runtime",
+    "prediction-intervals",
+    "rolling-origin-backtesting",
+    "forecast-receipts",
+    "forecast-evaluation-receipts"
+  ],
+  "arbitraryCodeExecution": false
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Scientific Study Package Receipt",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "packageId",
+    "action",
+    "status",
+    "manifestFingerprint",
+    "bundleSha256"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "packageId": {
+      "type": "string"
+    },
+    "action": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "manifestFingerprint": {
+      "type": "string"
+    },
+    "bundleSha256": {
+      "type": "string"
+    }
+  }
+}

@@ -14,7 +14,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt, PredictiveModelReceipt, ModelEvaluationReceipt
+from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt, PredictiveModelReceipt, ModelEvaluationReceipt, ForecastReceipt, ForecastEvaluationReceipt, ProbabilisticInferenceReceipt, UncertaintyAnalysisReceipt, OptimizationReceipt, DecisionOptimizationReceipt, ReliabilityAnalysisReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
@@ -58,6 +58,36 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.ml.gradient-boosting-regression", "workspace.ml.gradient-boosting-classification",
         "workspace.ml.cross-validate", "workspace.ml.predict",
     ), "Hardened Python/scikit-learn runtime for bounded predictive modeling, evaluation, cross-validation, and scoring."),
+    RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
+        "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
+        "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
+    ), "Hardened forecasting runtime for bounded time-series models, intervals, rolling-origin backtesting, and evaluation."),
+    RuntimeSpec("probability", "python-probabilistic-bayesian", "server-configured-http", (
+        "workspace.probability.normal-summary", "workspace.probability.beta-binomial-update", "workspace.probability.normal-normal-update",
+        "workspace.probability.gamma-poisson-update", "workspace.probability.posterior-predictive-binomial", "workspace.probability.uncertainty-propagate",
+    ), "Hardened probabilistic and Bayesian runtime for bounded conjugate inference, credible intervals, posterior prediction, and uncertainty propagation."),
+    RuntimeSpec("uncertainty", "python-monte-carlo-uq", "server-configured-http", (
+        "workspace.uncertainty.monte-carlo-weighted-sum", "workspace.uncertainty.bootstrap-interval",
+        "workspace.uncertainty.latin-hypercube", "workspace.uncertainty.correlated-normal",
+        "workspace.uncertainty.empirical-summary", "workspace.uncertainty.rank-correlation-sensitivity",
+        "workspace.uncertainty.variance-contribution-linear", "workspace.uncertainty.scenario-envelope",
+    ), "Hardened uncertainty-quantification runtime for seeded Monte Carlo simulation, resampling, experimental design, correlation, sensitivity, and scenario envelopes."),
+    RuntimeSpec("optimization", "python-optimization-parameter-search", "server-configured-http", (
+        "workspace.optimize.quadratic-box", "workspace.optimize.linear-box", "workspace.optimize.grid-search", "workspace.optimize.random-search",
+        "workspace.optimize.coordinate-descent", "workspace.optimize.pareto-weighted-sum", "workspace.optimize.robust-scenario-rank", "workspace.optimize.parameter-sweep-rank",
+    ), "Hardened optimization runtime for bounded numerical optimization, parameter search, multi-objective weighting, and robust scenario ranking."),
+    RuntimeSpec("decision", "python-robust-decision-pareto", "server-configured-http", (
+        "workspace.decision.pareto-front", "workspace.decision.expected-utility-rank",
+        "workspace.decision.minimax-regret", "workspace.decision.constraint-robustness",
+        "workspace.decision.stochastic-dominance", "workspace.decision.robustness-envelope",
+        "workspace.decision.scenario-stress-rank", "workspace.decision.value-of-perfect-information",
+    ), "Hardened decision runtime for Pareto analysis, utility ranking, regret, scenario robustness, dominance, stress testing, and value-of-information analysis."),
+    RuntimeSpec("reliability", "python-reliability-survival", "server-configured-http", (
+        "workspace.reliability.kaplan-meier", "workspace.reliability.exponential-fit",
+        "workspace.reliability.weibull-fit", "workspace.reliability.reliability-at-time",
+        "workspace.reliability.series-parallel-system", "workspace.reliability.repairable-availability",
+        "workspace.reliability.binomial-reliability", "workspace.reliability.inverse-power-life",
+    ), "Hardened reliability runtime for survival estimation, failure-time models, system reliability, availability, reliability intervals, and accelerated-life analysis."),
     RuntimeSpec("wasm", "wasm-sandbox-adapter", "server-configured-http", (
         "workspace.polyglot.wasm.invoke",),
         "Server-configured WebAssembly adapter for portable, capability-bounded compute modules."),
@@ -73,6 +103,12 @@ def _runtime_route(language: str) -> tuple[str, str]:
         "r": (s.runtime_r_url, s.runtime_r_token),
         "julia": (s.runtime_julia_url, s.runtime_julia_token),
         "ml": (s.runtime_ml_url, s.runtime_ml_token),
+        "forecast": (s.runtime_forecast_url, s.runtime_forecast_token),
+        "probability": (s.runtime_probability_url, s.runtime_probability_token),
+        "uncertainty": (s.runtime_uncertainty_url, s.runtime_uncertainty_token),
+        "optimization": (s.runtime_optimization_url, s.runtime_optimization_token),
+        "decision": (s.runtime_decision_url, s.runtime_decision_token),
+        "reliability": (s.runtime_reliability_url, s.runtime_reliability_token),
         "wasm": (s.runtime_wasm_url, s.runtime_wasm_token),
     }.get(language, ("", ""))
 
@@ -115,7 +151,7 @@ def operation_catalog() -> list[dict[str, Any]]:
 
 
 def runtime_health(language: str) -> dict[str, Any]:
-    if language not in {"r", "julia", "ml", "wasm"}:
+    if language not in {"r", "julia", "ml", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "wasm"}:
         raise HTTPException(status_code=400, detail="Runtime health is only available for external runtimes")
     url, _token = _runtime_route(language)
     if not url.strip():
@@ -407,10 +443,79 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             metrics_json=metrics, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256,
         )
         db.add(ev); db.flush(); model_evaluation_receipt_id=ev.receipt_id
+    forecast_receipt_id = ""
+    forecast_evaluation_receipt_id = ""
+    if language == "forecast":
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        fr = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(fr, dict): fr = {}
+        if row.operation != "workspace.forecast.evaluate":
+            count = int(db.scalar(select(func.count()).select_from(ForecastReceipt).where(ForecastReceipt.user_key == row.user_key)) or 0)
+            if count >= get_settings().max_forecast_receipts_per_account: raise HTTPException(status_code=409, detail="Forecast receipt limit reached")
+            rec = ForecastReceipt(receipt_id=f"fcr_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, model_kind=str(fr.get("modelKind") or "")[:96], value_column=str(fr.get("valueColumn") or payload.get("valueColumn") or "value")[:160], time_column=str(fr.get("timeColumn") or payload.get("timeColumn") or "")[:160], frequency=str(fr.get("frequency") or payload.get("frequency") or "unspecified")[:64], horizon=int(fr.get("horizon") or 0), seasonal_period=int((fr.get("parameters") or {}).get("seasonalPeriod") or payload.get("seasonalPeriod") or 0), dataset_fingerprint=str(fr.get("datasetFingerprint") or "")[:64], parameters_json=fr.get("parameters") if isinstance(fr.get("parameters"),dict) else {}, metrics_json=fr.get("fitMetrics") if isinstance(fr.get("fitMetrics"),dict) else (fr.get("metrics") if isinstance(fr.get("metrics"),dict) else {}), intervals_json=fr.get("intervals") if isinstance(fr.get("intervals"),list) else [], result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+            db.add(rec); db.flush(); forecast_receipt_id=rec.receipt_id
+        if row.operation in {"workspace.forecast.backtest","workspace.forecast.evaluate"}:
+            count = int(db.scalar(select(func.count()).select_from(ForecastEvaluationReceipt).where(ForecastEvaluationReceipt.user_key == row.user_key)) or 0)
+            if count >= get_settings().max_forecast_evaluation_receipts_per_account: raise HTTPException(status_code=409, detail="Forecast evaluation receipt limit reached")
+            ev = ForecastEvaluationReceipt(receipt_id=f"fer_{uuid4().hex}", forecast_receipt_id=forecast_receipt_id, polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, operation=row.operation, evaluation_kind=str(fr.get("evaluationKind") or "direct")[:64], train_points=int(fr.get("trainPoints") or 0), test_points=int(fr.get("testPoints") or 0), dataset_fingerprint=str(fr.get("datasetFingerprint") or "")[:64], metrics_json=fr.get("metrics") if isinstance(fr.get("metrics"),dict) else {}, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+            db.add(ev); db.flush(); forecast_evaluation_receipt_id=ev.receipt_id
+    probabilistic_inference_receipt_id = ""
+    if language == "probability":
+        count = int(db.scalar(select(func.count()).select_from(ProbabilisticInferenceReceipt).where(ProbabilisticInferenceReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_probabilistic_inference_receipts_per_account: raise HTTPException(status_code=409, detail="Probabilistic inference receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        pr = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(pr, dict): pr = {}
+        posterior = pr.get("posterior") if isinstance(pr.get("posterior"), dict) else {}
+        interval = posterior.get("credibleInterval") if isinstance(posterior.get("credibleInterval"), dict) else (pr.get("credibleInterval") if isinstance(pr.get("credibleInterval"),dict) else (pr.get("predictiveInterval") if isinstance(pr.get("predictiveInterval"),dict) else {}))
+        prec = ProbabilisticInferenceReceipt(receipt_id=f"pir_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, inference_kind=str(pr.get("kind") or "")[:96], request_fingerprint=row.request_fingerprint, posterior_json=posterior, interval_json=interval, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+        db.add(prec); db.flush(); probabilistic_inference_receipt_id=prec.receipt_id
+    uncertainty_analysis_receipt_id = ""
+    if language == "uncertainty":
+        count = int(db.scalar(select(func.count()).select_from(UncertaintyAnalysisReceipt).where(UncertaintyAnalysisReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_uncertainty_analysis_receipts_per_account: raise HTTPException(status_code=409, detail="Uncertainty analysis receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        ur = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(ur, dict): ur = {}
+        sample_count = int(ur.get("draws") or ur.get("samples") or ur.get("sampleCount") or ur.get("scenarioCount") or ur.get("n") or 0)
+        random_seed = int(ur.get("seed") or 0)
+        interval_json = ur.get("interval") if isinstance(ur.get("interval"),dict) else {}
+        summary_json = ur.get("summary") if isinstance(ur.get("summary"),dict) else {}
+        sensitivity_json = ur.get("sensitivity") if isinstance(ur.get("sensitivity"),dict) else {}
+        urec = UncertaintyAnalysisReceipt(receipt_id=f"uar_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, analysis_kind=str(ur.get("kind") or "")[:96], request_fingerprint=row.request_fingerprint, sample_count=sample_count, random_seed=random_seed, interval_json=interval_json, summary_json=summary_json, sensitivity_json=sensitivity_json, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+        db.add(urec); db.flush(); uncertainty_analysis_receipt_id=urec.receipt_id
+    optimization_receipt_id = ""
+    if language == "optimization":
+        count = int(db.scalar(select(func.count()).select_from(OptimizationReceipt).where(OptimizationReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_optimization_receipts_per_account: raise HTTPException(status_code=409, detail="Optimization receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        rr = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(rr, dict): rr = {}
+        objective_spec = payload.get("objective") if isinstance(payload.get("objective"),dict) else {}
+        orec = OptimizationReceipt(receipt_id=f"opr_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, optimization_kind=str(rr.get("kind") or "")[:96], objective_kind=str(objective_spec.get("kind") or "")[:64], direction=str(rr.get("direction") or payload.get("direction") or "minimize")[:16], best_value=float(rr.get("bestValue") or 0.0), best_parameters_json=rr.get("bestParameters") if isinstance(rr.get("bestParameters"),dict) else {}, evaluation_count=int(rr.get("evaluationCount") or 0), iteration_count=int(rr.get("iterations") or 0), random_seed=int(rr.get("seed") or 0), converged=bool(rr.get("converged",True)), request_fingerprint=row.request_fingerprint, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+        db.add(orec); db.flush(); optimization_receipt_id=orec.receipt_id
+    decision_optimization_receipt_id = ""
+    if language == "decision":
+        count = int(db.scalar(select(func.count()).select_from(DecisionOptimizationReceipt).where(DecisionOptimizationReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_decision_optimization_receipts_per_account: raise HTTPException(status_code=409, detail="Decision optimization receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        dr = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(dr, dict): dr = {}
+        drec = DecisionOptimizationReceipt(receipt_id=f"dor_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, analysis_kind=str(dr.get("kind") or "")[:96], selected_alternative=str(dr.get("selectedAlternative") or "")[:160], candidate_count=int(dr.get("candidateCount") or 0), scenario_count=int(dr.get("scenarioCount") or 0), criterion=str(dr.get("criterion") or "")[:96], request_fingerprint=row.request_fingerprint, summary_json=dr.get("summary") if isinstance(dr.get("summary"),dict) else {}, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+        db.add(drec); db.flush(); decision_optimization_receipt_id=drec.receipt_id
+    reliability_analysis_receipt_id = ""
+    if language == "reliability":
+        count = int(db.scalar(select(func.count()).select_from(ReliabilityAnalysisReceipt).where(ReliabilityAnalysisReceipt.user_key == row.user_key)) or 0)
+        if count >= get_settings().max_reliability_analysis_receipts_per_account: raise HTTPException(status_code=409, detail="Reliability analysis receipt limit reached")
+        remote_body = result.get("remote") if isinstance(result, dict) else {}
+        rr = (remote_body or {}).get("result") if isinstance(remote_body, dict) else {}
+        if not isinstance(rr, dict): rr = {}
+        rrec = ReliabilityAnalysisReceipt(receipt_id=f"rar_{uuid4().hex}", polyglot_receipt_id=receipt.receipt_id, user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation, analysis_kind=str(rr.get("kind") or "")[:96], model_kind=str(rr.get("modelKind") or "")[:96], sample_count=int(rr.get("sampleCount") or 0), event_count=int(rr.get("eventCount") or 0), horizon=float(rr.get("horizon") or 0.0), request_fingerprint=row.request_fingerprint, metrics_json=rr.get("metrics") if isinstance(rr.get("metrics"),dict) else {}, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256)
+        db.add(rrec); db.flush(); reliability_analysis_receipt_id=rrec.receipt_id
     db.commit()
     db.refresh(receipt)
     if progress_callback: progress_callback(95,{"stage":"result-persisted","artifactId":artifact.artifact_id})
-    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"numericalSimulationReceiptId":numerical_receipt_id,"predictiveModelReceiptId":predictive_model_receipt_id,"modelEvaluationReceiptId":model_evaluation_receipt_id,"modelArtifactId":model_artifact_id,"modelArtifactSha256":model_artifact_sha256,"resultSha256":artifact.sha256}
+    return {"schema":"sc-workspace-job-result/1.0","polyglot":result_doc,"resultArtifactId":artifact.artifact_id,"receiptId":receipt.receipt_id,"statisticalModelReceiptId":statistical_receipt_id,"numericalSimulationReceiptId":numerical_receipt_id,"predictiveModelReceiptId":predictive_model_receipt_id,"modelEvaluationReceiptId":model_evaluation_receipt_id,"forecastReceiptId":forecast_receipt_id,"forecastEvaluationReceiptId":forecast_evaluation_receipt_id,"probabilisticInferenceReceiptId":probabilistic_inference_receipt_id,"uncertaintyAnalysisReceiptId":uncertainty_analysis_receipt_id,"optimizationReceiptId":optimization_receipt_id,"decisionOptimizationReceiptId":decision_optimization_receipt_id,"reliabilityAnalysisReceiptId":reliability_analysis_receipt_id,"modelArtifactId":model_artifact_id,"modelArtifactSha256":model_artifact_sha256,"resultSha256":artifact.sha256}
 
 
 R_MODEL_OPERATIONS = {
@@ -501,6 +606,24 @@ def list_model_evaluation_receipts(db: Session,user_key:str,limit:int=100) -> li
 def get_model_evaluation_receipt(db: Session,user_key:str,receipt_id:str):
     return db.execute(select(ModelEvaluationReceipt).where(ModelEvaluationReceipt.user_key==user_key,ModelEvaluationReceipt.receipt_id==receipt_id)).scalar_one_or_none()
 
+def forecast_receipt_metadata(r: ForecastReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"modelKind":r.model_kind,"valueColumn":r.value_column,"timeColumn":r.time_column,"frequency":r.frequency,"horizon":r.horizon,"seasonalPeriod":r.seasonal_period,"datasetFingerprint":r.dataset_fingerprint,"parameters":r.parameters_json or {},"metrics":r.metrics_json or {},"intervals":r.intervals_json or [],"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_forecast_receipts(db: Session,user_key:str,limit:int=100):
+    return [forecast_receipt_metadata(r) for r in db.scalars(select(ForecastReceipt).where(ForecastReceipt.user_key==user_key).order_by(ForecastReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_forecast_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(ForecastReceipt).where(ForecastReceipt.user_key==user_key,ForecastReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+def forecast_evaluation_receipt_metadata(r: ForecastEvaluationReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"forecastReceiptId":r.forecast_receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"operation":r.operation,"evaluationKind":r.evaluation_kind,"trainPoints":r.train_points,"testPoints":r.test_points,"datasetFingerprint":r.dataset_fingerprint,"metrics":r.metrics_json or {},"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_forecast_evaluation_receipts(db: Session,user_key:str,limit:int=100):
+    return [forecast_evaluation_receipt_metadata(r) for r in db.scalars(select(ForecastEvaluationReceipt).where(ForecastEvaluationReceipt.user_key==user_key).order_by(ForecastEvaluationReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_forecast_evaluation_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(ForecastEvaluationReceipt).where(ForecastEvaluationReceipt.user_key==user_key,ForecastEvaluationReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
 def receipt_metadata(r: PolyglotExecutionReceipt) -> dict[str, Any]:
     return {"receiptId":r.receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"language":r.language,"runtime":r.runtime,"operation":r.operation,"requestFingerprint":r.request_fingerprint,"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"resultBytes":r.result_bytes,"transport":r.transport,"status":r.status,"startedAt":r.started_at.isoformat(),"finishedAt":r.finished_at.isoformat(),"details":r.details_json or {}}
 
@@ -512,3 +635,52 @@ def list_receipts(db: Session,user_key:str,limit:int=100) -> list[dict[str,Any]]
 
 def get_receipt(db: Session,user_key:str,receipt_id:str):
     return db.execute(select(PolyglotExecutionReceipt).where(PolyglotExecutionReceipt.user_key==user_key,PolyglotExecutionReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+
+def probabilistic_inference_receipt_metadata(r: ProbabilisticInferenceReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"inferenceKind":r.inference_kind,"requestFingerprint":r.request_fingerprint,"posterior":r.posterior_json or {},"interval":r.interval_json or {},"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_probabilistic_inference_receipts(db: Session,user_key:str,limit:int=100):
+    return [probabilistic_inference_receipt_metadata(r) for r in db.scalars(select(ProbabilisticInferenceReceipt).where(ProbabilisticInferenceReceipt.user_key==user_key).order_by(ProbabilisticInferenceReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_probabilistic_inference_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(ProbabilisticInferenceReceipt).where(ProbabilisticInferenceReceipt.user_key==user_key,ProbabilisticInferenceReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+
+def uncertainty_analysis_receipt_metadata(r: UncertaintyAnalysisReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"analysisKind":r.analysis_kind,"requestFingerprint":r.request_fingerprint,"sampleCount":r.sample_count,"seed":r.random_seed,"interval":r.interval_json or {},"summary":r.summary_json or {},"sensitivity":r.sensitivity_json or {},"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_uncertainty_analysis_receipts(db: Session,user_key:str,limit:int=100):
+    return [uncertainty_analysis_receipt_metadata(r) for r in db.scalars(select(UncertaintyAnalysisReceipt).where(UncertaintyAnalysisReceipt.user_key==user_key).order_by(UncertaintyAnalysisReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_uncertainty_analysis_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(UncertaintyAnalysisReceipt).where(UncertaintyAnalysisReceipt.user_key==user_key,UncertaintyAnalysisReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+def optimization_receipt_metadata(r: OptimizationReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"optimizationKind":r.optimization_kind,"objectiveKind":r.objective_kind,"direction":r.direction,"bestValue":r.best_value,"bestParameters":r.best_parameters_json or {},"evaluationCount":r.evaluation_count,"iterations":r.iteration_count,"seed":r.random_seed,"converged":r.converged,"requestFingerprint":r.request_fingerprint,"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_optimization_receipts(db: Session,user_key:str,limit:int=100):
+    return [optimization_receipt_metadata(r) for r in db.scalars(select(OptimizationReceipt).where(OptimizationReceipt.user_key==user_key).order_by(OptimizationReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_optimization_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(OptimizationReceipt).where(OptimizationReceipt.user_key==user_key,OptimizationReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+
+def decision_optimization_receipt_metadata(r: DecisionOptimizationReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"analysisKind":r.analysis_kind,"selectedAlternative":r.selected_alternative,"candidateCount":r.candidate_count,"scenarioCount":r.scenario_count,"criterion":r.criterion,"requestFingerprint":r.request_fingerprint,"summary":r.summary_json or {},"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_decision_optimization_receipts(db: Session,user_key:str,limit:int=100):
+    return [decision_optimization_receipt_metadata(r) for r in db.scalars(select(DecisionOptimizationReceipt).where(DecisionOptimizationReceipt.user_key==user_key).order_by(DecisionOptimizationReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_decision_optimization_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(DecisionOptimizationReceipt).where(DecisionOptimizationReceipt.user_key==user_key,DecisionOptimizationReceipt.receipt_id==receipt_id)).scalar_one_or_none()
+
+
+def reliability_analysis_receipt_metadata(r: ReliabilityAnalysisReceipt) -> dict[str, Any]:
+    return {"receiptId":r.receipt_id,"polyglotReceiptId":r.polyglot_receipt_id,"jobId":r.job_id,"executionRunId":r.execution_run_id,"runtime":r.runtime,"operation":r.operation,"analysisKind":r.analysis_kind,"modelKind":r.model_kind,"sampleCount":r.sample_count,"eventCount":r.event_count,"horizon":r.horizon,"requestFingerprint":r.request_fingerprint,"metrics":r.metrics_json or {},"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"createdAt":r.created_at.isoformat()}
+
+def list_reliability_analysis_receipts(db: Session,user_key:str,limit:int=100):
+    return [reliability_analysis_receipt_metadata(r) for r in db.scalars(select(ReliabilityAnalysisReceipt).where(ReliabilityAnalysisReceipt.user_key==user_key).order_by(ReliabilityAnalysisReceipt.created_at.desc()).limit(limit)).all()]
+
+def get_reliability_analysis_receipt(db: Session,user_key:str,receipt_id:str):
+    return db.execute(select(ReliabilityAnalysisReceipt).where(ReliabilityAnalysisReceipt.user_key==user_key,ReliabilityAnalysisReceipt.receipt_id==receipt_id)).scalar_one_or_none()

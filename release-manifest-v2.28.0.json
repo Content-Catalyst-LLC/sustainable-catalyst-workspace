@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.28.0",
+  "release": "Declarative Visualization Specification API",
+  "migration": "028_declarative_visualization_specification_api.sql",
+  "backendAuthoritative": true,
+  "rendererNeutral": true,
+  "linkedViews": true,
+  "sourceProvenancePinning": true,
+  "arbitraryCodeExecution": false
+}

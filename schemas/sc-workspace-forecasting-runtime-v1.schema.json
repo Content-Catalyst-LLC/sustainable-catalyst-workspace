@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sustainable Catalyst Workspace Forecasting Runtime",
+  "type": "object",
+  "required": [
+    "operation",
+    "payload"
+  ],
+  "properties": {
+    "operation": {
+      "enum": [
+        "workspace.forecast.naive",
+        "workspace.forecast.seasonal-naive",
+        "workspace.forecast.linear-trend",
+        "workspace.forecast.exponential-smoothing",
+        "workspace.forecast.holt-winters",
+        "workspace.forecast.arima",
+        "workspace.forecast.backtest",
+        "workspace.forecast.evaluate"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

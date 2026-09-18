@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "2.17.0"
+    service_version: str = "2.30.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -57,6 +57,18 @@ class Settings(BaseSettings):
     runtime_ml_token: str = ""
     runtime_interchange_url: str = ""
     runtime_interchange_token: str = ""
+    runtime_forecast_url: str = ""
+    runtime_forecast_token: str = ""
+    runtime_probability_url: str = ""
+    runtime_probability_token: str = ""
+    runtime_uncertainty_url: str = ""
+    runtime_uncertainty_token: str = ""
+    runtime_optimization_url: str = ""
+    runtime_optimization_token: str = ""
+    runtime_decision_url: str = ""
+    runtime_decision_token: str = ""
+    runtime_reliability_url: str = ""
+    runtime_reliability_token: str = ""
     runtime_wasm_url: str = ""
     runtime_wasm_token: str = ""
     polyglot_timeout_seconds: float = 45.0
@@ -69,6 +81,16 @@ class Settings(BaseSettings):
     max_model_evaluation_receipts_per_account: int = 10000
     max_interchange_receipts_per_account: int = 10000
     max_cross_runtime_verification_receipts_per_account: int = 10000
+    max_forecast_receipts_per_account: int = 10000
+    max_forecast_evaluation_receipts_per_account: int = 10000
+    max_probabilistic_inference_receipts_per_account: int = 10000
+    max_uncertainty_analysis_receipts_per_account: int = 10000
+    max_optimization_receipts_per_account: int = 10000
+    max_decision_optimization_receipts_per_account: int = 10000
+    max_reliability_analysis_receipts_per_account: int = 10000
+    max_scientific_study_packages_per_account: int = 250
+    max_scientific_study_package_bytes: int = 25 * 1024 * 1024
+    max_visualization_specs_per_account: int = 1000
     interchange_timeout_seconds: float = 60.0
     interchange_max_result_bytes: int = 25 * 1024 * 1024
 

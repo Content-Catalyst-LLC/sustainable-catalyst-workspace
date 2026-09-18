@@ -1,0 +1,8 @@
+{
+  "release": "2.23.0",
+  "title": "Workspace v2.23.0 \u2014 Reliability, Survival & Failure-Time Analysis",
+  "migration": "023_reliability_survival_failure_time.sql",
+  "runtime": "python-reliability-survival",
+  "operations": 8,
+  "receipts": "workspace_reliability_analysis_receipts"
+}

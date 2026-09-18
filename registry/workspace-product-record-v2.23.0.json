@@ -1,0 +1,8 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.23.0",
+  "capability": "Reliability, Survival & Failure-Time Analysis",
+  "backendRuntime": "python-reliability-survival",
+  "boundedOperations": 8,
+  "arbitraryCodeExecution": false
+}

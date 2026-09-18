@@ -1,0 +1,17 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "2.24.1",
+  "title": "Workspace Interface Shell & Version Alignment Repair",
+  "releaseType": "patch",
+  "baseline": "2.24.0",
+  "backendAuthorityBaseline": "2.24.0",
+  "interfaceAssetLineageRestoredFrom": "2.21.0",
+  "changes": [
+    "restore full Workspace JS/CSS lineage",
+    "align WordPress/backend/plugin version identity",
+    "single active application surface",
+    "six primary routes",
+    "secondary release/admin surfaces"
+  ],
+  "arbitraryCodeExecution": false
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workspace Decision Optimization Result",
+  "type": "object",
+  "required": [
+    "schema",
+    "runtime",
+    "operation",
+    "inputFingerprint",
+    "result"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-decision-optimization-result/1.0"
+    },
+    "runtime": {
+      "const": "python-robust-decision-pareto"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "inputFingerprint": {
+      "type": "string"
+    },
+    "result": {
+      "type": "object"
+    }
+  }
+}

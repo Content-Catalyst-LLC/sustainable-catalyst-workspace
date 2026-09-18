@@ -1,0 +1,13 @@
+{
+  "release": "2.24.0",
+  "title": "Workspace v2.24.0 — Backend Authority & Domain Service Consolidation",
+  "migration": "024_backend_authority_domain_service.sql",
+  "authoritySchema": "sc-workspace-domain-authority/1.0",
+  "canonicalStore": "postgresql",
+  "clientRole": "presentation-interaction-local-drafts",
+  "supportedObjectKinds": ["project", "notebook"],
+  "mutationReceiptTable": "workspace_domain_mutation_receipts",
+  "browserAuthoritativeState": false,
+  "backendAuthoritativeState": true,
+  "arbitraryCodeExecution": false
+}

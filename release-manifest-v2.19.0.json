@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "2.19.0",
+  "title": "Probabilistic & Bayesian Runtime",
+  "migration": "019_probabilistic_bayesian_runtime.sql",
+  "runtime": "sc-workspace-probability-runtime",
+  "operations": 6,
+  "frontend": "2.19.0",
+  "backend": "2.19.0",
+  "githubTag": "v2.19.0",
+  "baseline": "v2.18.0-job-result-repair"
+}
