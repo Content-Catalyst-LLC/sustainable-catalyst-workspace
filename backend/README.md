@@ -1,4 +1,4 @@
-# Current Workspace backend: v2.30.0 — Thin Client State Architecture
+# Current Workspace backend: v2.31.0 — Local-First Synchronization Protocol
 
 The Python/PostgreSQL backend remains authoritative. v2.30 adds a server-generated bootstrap projection and explicit thin-client state profile so browsers can rehydrate canonical read models into a memory-only cache while persisting only transient UI state.
 

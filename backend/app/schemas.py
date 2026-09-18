@@ -102,6 +102,29 @@ class VisualizationSpecStoreRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class LocalFirstSyncEnvelope(BaseModel):
+    schema_: Literal["sc-workspace-sync-envelope/1.0"] = Field(alias="schema")
+    envelopeId: str = Field(min_length=1, max_length=96)
+    operationId: str = Field(min_length=1, max_length=160)
+    deviceId: str = Field(min_length=1, max_length=160)
+    objectKind: Literal["project", "notebook"]
+    objectId: str = Field(min_length=1, max_length=160)
+    baseRevision: int = Field(ge=0)
+    baseFingerprint: str | None = Field(default=None, max_length=128)
+    clientSequence: int = Field(default=0, ge=0)
+    clientUpdatedAt: str | None = Field(default=None, max_length=96)
+    mutation: dict[str, Any]
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class LocalFirstSyncReconcileRequest(BaseModel):
+    schema_: Literal["sc-workspace-sync-reconcile-request/1.0"] = Field(alias="schema")
+    deviceId: str = Field(min_length=1, max_length=160)
+    clientRevisionVector: dict[str, int] = Field(default_factory=dict)
+    projectIds: list[str] = Field(default_factory=list, max_length=500)
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class LegacyMigrationRecord(BaseModel):
     model_config = ConfigDict(extra="allow")
     id: str = Field(min_length=1, max_length=160)

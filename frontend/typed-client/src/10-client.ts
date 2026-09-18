@@ -1,4 +1,4 @@
-/* Workspace v2.30.0 typed browser client. Service credentials remain server-side in WordPress. */
+/* Workspace v2.31.0 typed browser client. Service credentials remain server-side in WordPress. */
 interface WorkspaceTypedClientConfig { baseUrl:string; nonce?:string; authenticated?:boolean; }
 interface WorkspaceClientRequestOptions { method?:'GET'|'POST'|'DELETE'; body?:unknown; }
 class WorkspaceTypedApiError extends Error { readonly status:number; readonly payload:unknown; constructor(status:number,message:string,payload:unknown){super(message);this.name='WorkspaceTypedApiError';this.status=status;this.payload=payload;} }
@@ -13,6 +13,11 @@ class WorkspaceTypedApiClient {
   clientContracts():Promise<WorkspaceApiEnvelope>{return this.request('/client-contracts');}
   thinClientStateProfile():Promise<WorkspaceApiEnvelope>{return this.request('/thin-client-state');}
   thinClientBootstrap(projectId?:string):Promise<WorkspaceApiEnvelope>{const q=projectId?'?projectId='+encodeURIComponent(projectId):'';return this.request('/thin-client-state/bootstrap'+q);}
+  syncProfile():Promise<WorkspaceApiEnvelope>{return this.request('/sync');}
+  syncBootstrap():Promise<WorkspaceApiEnvelope>{return this.request('/sync/bootstrap');}
+  syncEnvelope(request:WorkspaceSyncEnvelope):Promise<WorkspaceApiEnvelope>{return this.request('/sync/envelopes',{method:'POST',body:request});}
+  syncReconcile(request:WorkspaceSyncReconcileRequest):Promise<WorkspaceApiEnvelope>{return this.request('/sync/reconcile',{method:'POST',body:request});}
+  syncReceipts():Promise<WorkspaceApiEnvelope>{return this.request('/sync/receipts');}
   domainAuthority():Promise<WorkspaceApiEnvelope>{return this.request('/domain-authority');}
   commandQueryProfile():Promise<WorkspaceApiEnvelope>{return this.request('/command-query');}
   executeCommand<C extends WorkspaceCommand>(request:WorkspaceCommandRequest&{command:C}):Promise<WorkspaceApiEnvelope>{return this.request('/commands/execute',{method:'POST',body:request});}

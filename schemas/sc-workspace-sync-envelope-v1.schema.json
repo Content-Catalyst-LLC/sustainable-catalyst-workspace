@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-sync-envelope/1.0",
+  "title": "Workspace Local-First Sync Envelope",
+  "type": "object",
+  "required": [
+    "schema",
+    "envelopeId",
+    "operationId",
+    "deviceId",
+    "objectKind",
+    "objectId",
+    "baseRevision",
+    "mutation"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-sync-envelope/1.0"
+    },
+    "envelopeId": {
+      "type": "string"
+    },
+    "operationId": {
+      "type": "string"
+    },
+    "deviceId": {
+      "type": "string"
+    },
+    "objectKind": {
+      "enum": [
+        "project",
+        "notebook"
+      ]
+    },
+    "objectId": {
+      "type": "string"
+    },
+    "baseRevision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "baseFingerprint": {
+      "type": "string"
+    },
+    "clientSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "clientUpdatedAt": {
+      "type": "string"
+    },
+    "mutation": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": false
+}

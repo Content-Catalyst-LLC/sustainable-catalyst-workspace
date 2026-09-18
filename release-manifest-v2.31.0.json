@@ -1,0 +1,19 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.31.0",
+  "release": "Local-First Synchronization Protocol",
+  "backendFirst": true,
+  "migration": "029_local_first_synchronization_protocol.sql",
+  "features": [
+    "durable local-first sync receipts",
+    "retry-safe sync envelope and operation IDs",
+    "base revision and fingerprint conflict detection",
+    "offline draft mutation outbox",
+    "revision-vector reconciliation",
+    "deterministic server rehydration after apply/conflict",
+    "automatic semantic merge disabled",
+    "v2.30 thin-client state boundary preserved"
+  ],
+  "arbitraryCodeExecution": false
+}

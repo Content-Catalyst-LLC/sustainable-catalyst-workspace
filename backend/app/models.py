@@ -108,6 +108,26 @@ class DomainMutationReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class LocalFirstSyncReceipt(Base):
+    __tablename__ = "workspace_local_first_sync_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    envelope_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    device_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    object_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    object_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    base_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    server_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    envelope_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class CommandReceipt(Base):
     __tablename__ = "workspace_command_receipts"
 

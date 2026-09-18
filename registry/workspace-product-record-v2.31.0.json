@@ -1,0 +1,9 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.31.0",
+  "release": "Local-First Synchronization Protocol",
+  "status": "release",
+  "backendFirst": true,
+  "migration": "029"
+}

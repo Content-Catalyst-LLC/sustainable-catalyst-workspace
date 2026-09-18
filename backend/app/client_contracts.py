@@ -9,6 +9,11 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "clientContracts": {"method": "GET", "path": "/v1/client-contracts"},
     "thinClientState": {"method": "GET", "path": "/v1/thin-client-state"},
     "thinClientBootstrap": {"method": "GET", "path": "/v1/thin-client-state/bootstrap"},
+    "syncProfile": {"method": "GET", "path": "/v1/sync"},
+    "syncBootstrap": {"method": "GET", "path": "/v1/sync/bootstrap"},
+    "syncEnvelope": {"method": "POST", "path": "/v1/sync/envelopes"},
+    "syncReconcile": {"method": "POST", "path": "/v1/sync/reconcile"},
+    "syncReceipts": {"method": "GET", "path": "/v1/sync/receipts"},
     "domainAuthority": {"method": "GET", "path": "/v1/domain-authority"},
     "commandQuery": {"method": "GET", "path": "/v1/command-query"},
     "executeCommand": {"method": "POST", "path": "/v1/commands/execute"},
@@ -28,6 +33,8 @@ REQUEST_SCHEMAS = {
     "notebookPlans": "sc-workspace-notebook-execution-plan-request/1.0",
     "studyPackages": "sc-workspace-scientific-study-package-request/1.0",
     "visualizationSpecs": "sc-workspace-visualization-spec-request/1.0",
+    "syncEnvelope": "sc-workspace-sync-envelope/1.0",
+    "syncReconcile": "sc-workspace-sync-reconcile-request/1.0",
 }
 
 def _typed_openapi_projection(openapi: dict[str, Any]) -> dict[str, Any]:
@@ -50,8 +57,8 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "2.30.0",
-        "mode": "generated-typescript-thin-client",
+        "workspaceVersion": "2.31.0",
+        "mode": "generated-typescript-local-first-thin-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "transport": "wordpress-server-proxy",

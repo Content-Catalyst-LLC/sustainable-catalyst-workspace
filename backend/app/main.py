@@ -29,6 +29,7 @@ from .schemas import (
     NotebookStoreRequest, ParameterSetStoreRequest, ProjectStoreRequest, RecoverySnapshotRequest, DomainValidationRequest, CommandExecuteRequest, QueryExecuteRequest,
     NotebookExecutionPlanRequest, NotebookExecutionDispatchRequest, NotebookExecutionCancelRequest,
     ScientificStudyPackageCreateRequest, ScientificStudyPackageVerifyRequest, VisualizationSpecStoreRequest,
+    LocalFirstSyncEnvelope, LocalFirstSyncReconcileRequest,
 )
 from .domain_authority import DomainValidationError, authority_profile, get_mutation_receipt, list_mutation_receipts, mutation_receipt_metadata, validate_domain_document
 from .command_query import profile as command_query_profile, execute_command, execute_query, list_command_receipts, workspace_overview, project_read_model, notebook_read_model
@@ -40,6 +41,7 @@ from .study_packages import (profile as study_package_profile, create_package as
     list_receipts as list_scientific_study_package_receipts, delete_package as delete_scientific_study_package)
 from .client_contracts import profile as typed_client_contract_profile
 from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
+from .local_first_sync import profile as local_first_sync_profile, bootstrap as local_first_sync_bootstrap, apply_envelope as apply_local_first_sync_envelope, reconcile as reconcile_local_first_sync, list_receipts as list_local_first_sync_receipts
 from .visualization_specs import (profile as visualization_spec_profile, store_spec as store_visualization_spec, get_spec as get_visualization_spec,
     list_specs as list_visualization_specs, list_revisions as list_visualization_spec_revisions, list_receipts as list_visualization_spec_receipts,
     delete_spec as delete_visualization_spec, metadata as visualization_spec_metadata)
@@ -283,6 +285,14 @@ def health():
         "canonicalClientCachePersistent": False,
         "persistentBrowserState": "transient-only",
         "canonicalMutationsViaCommandsOnly": True,
+        "localFirstSynchronizationProtocol": True,
+        "localFirstSyncSchema": "sc-workspace-local-first-sync/1.0",
+        "offlineOutboxAuthoritative": False,
+        "syncBaseRevisionRequired": True,
+        "syncConflictDetection": True,
+        "syncAutomaticSemanticMerge": False,
+        "syncRevisionVectorReconciliation": True,
+        "durableSyncReceipts": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -352,6 +362,14 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "canonicalClientCachePersistent": False,
         "persistentBrowserState": "transient-only",
         "canonicalMutationsViaCommandsOnly": True,
+        "localFirstSynchronizationProtocol": True,
+        "localFirstSyncSchema": "sc-workspace-local-first-sync/1.0",
+        "offlineOutboxAuthoritative": False,
+        "syncBaseRevisionRequired": True,
+        "syncConflictDetection": True,
+        "syncAutomaticSemanticMerge": False,
+        "syncRevisionVectorReconciliation": True,
+        "durableSyncReceipts": True,
         "projectRevisionHistory": True,
         "notebookRevisionHistory": True,
         "revisionPreconditions": True,
@@ -534,6 +552,38 @@ def thin_client_state_contract(identity: ServiceIdentity = Depends(require_servi
 def thin_client_state_bootstrap_route(projectId: str | None = None, identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
         return thin_client_state_bootstrap(db, identity.user_key, projectId)
+
+
+@app.get("/v1/sync")
+def local_first_sync_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema":"sc-workspace-local-first-sync-response/1.0", "item": local_first_sync_profile()}
+
+
+@app.get("/v1/sync/bootstrap")
+def local_first_sync_bootstrap_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return local_first_sync_bootstrap(db, identity.user_key)
+
+
+@app.post("/v1/sync/envelopes")
+def local_first_sync_apply_route(payload: LocalFirstSyncEnvelope, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        status_code, result = apply_local_first_sync_envelope(db, identity.user_key, payload)
+        if status_code != 200:
+            return JSONResponse(status_code=status_code, content=result)
+        return result
+
+
+@app.post("/v1/sync/reconcile")
+def local_first_sync_reconcile_route(payload: LocalFirstSyncReconcileRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return reconcile_local_first_sync(db, identity.user_key, payload)
+
+
+@app.get("/v1/sync/receipts")
+def local_first_sync_receipts_route(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema":"sc-workspace-local-first-sync-receipt-index/1.0","items":list_local_first_sync_receipts(db,identity.user_key,limit)}
 
 
 @app.get("/v1/domain-authority")

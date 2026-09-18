@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-sync-reconciliation/1.0",
+  "title": "Workspace Sync Reconciliation",
+  "type": "object",
+  "required": [
+    "schema",
+    "backendAuthoritative",
+    "items",
+    "serverRevisionVector"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-workspace-sync-reconciliation/1.0"
+    },
+    "backendAuthoritative": {
+      "const": true
+    },
+    "items": {
+      "type": "array"
+    },
+    "serverRevisionVector": {
+      "type": "object"
+    },
+    "reconciliationFingerprint": {
+      "type": "string"
+    }
+  }
+}

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Version: 2.30.0
+ * Version: 2.31.0
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '2.30.0');
+define('SC_WORKSPACE_VERSION', '2.31.0');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
@@ -31,7 +31,7 @@ function sc_workspace_bootstrap_failure($missing_files) {
             return;
         }
         $count = count(isset($GLOBALS['sc_workspace_bootstrap_failure_files']) ? $GLOBALS['sc_workspace_bootstrap_failure_files'] : array());
-        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v2.30.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
+        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v2.31.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
     });
 }
 

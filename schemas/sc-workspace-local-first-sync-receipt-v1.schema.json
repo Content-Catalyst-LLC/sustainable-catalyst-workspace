@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sc-workspace-local-first-sync-receipt/1.0",
+  "title": "Workspace Local-First Sync Receipt",
+  "type": "object",
+  "required": [
+    "receiptId",
+    "envelopeId",
+    "operationId",
+    "status",
+    "serverRevision"
+  ],
+  "properties": {
+    "receiptId": {
+      "type": "string"
+    },
+    "envelopeId": {
+      "type": "string"
+    },
+    "operationId": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "applied",
+        "conflict"
+      ]
+    },
+    "serverRevision": {
+      "type": "integer"
+    },
+    "canonicalFingerprint": {
+      "type": "string"
+    }
+  }
+}
