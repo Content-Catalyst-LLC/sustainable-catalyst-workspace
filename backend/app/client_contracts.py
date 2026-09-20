@@ -6,6 +6,10 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "authorizationProfile": {"method": "GET", "path": "/v1/authorization"},
+    "authorizationIdentity": {"method": "GET", "path": "/v1/authorization/identity"},
+    "authorizationEvaluate": {"method": "POST", "path": "/v1/authorization/evaluate"},
+    "authorizationDecisions": {"method": "GET", "path": "/v1/authorization/decisions"},
     "clientContracts": {"method": "GET", "path": "/v1/client-contracts"},
     "thinClientState": {"method": "GET", "path": "/v1/thin-client-state"},
     "thinClientBootstrap": {"method": "GET", "path": "/v1/thin-client-state/bootstrap"},
@@ -19,6 +23,11 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "scientificObjectGet": {"method": "GET", "path": "/v1/scientific-objects/{kind}/{object_id}"},
     "scientificObjectHistory": {"method": "GET", "path": "/v1/scientific-objects/{kind}/{object_id}/revisions"},
     "scientificObjectRelations": {"method": "GET", "path": "/v1/scientific-objects/{kind}/{object_id}/relations"},
+    "handoffProfile": {"method": "GET", "path": "/v1/handoffs/profile"},
+    "handoffCreate": {"method": "POST", "path": "/v1/handoffs"},
+    "handoffGet": {"method": "GET", "path": "/v1/handoffs/{handoff_id}"},
+    "handoffAccept": {"method": "POST", "path": "/v1/handoffs/{handoff_id}/accept"},
+    "handoffReceipts": {"method": "GET", "path": "/v1/handoff-receipts"},
     "domainAuthority": {"method": "GET", "path": "/v1/domain-authority"},
     "commandQuery": {"method": "GET", "path": "/v1/command-query"},
     "executeCommand": {"method": "POST", "path": "/v1/commands/execute"},
@@ -40,6 +49,9 @@ REQUEST_SCHEMAS = {
     "visualizationSpecs": "sc-workspace-visualization-spec-request/1.0",
     "syncEnvelope": "sc-workspace-sync-envelope/1.0",
     "syncReconcile": "sc-workspace-sync-reconcile-request/1.0",
+    "handoffCreate": "sc-workspace-research-handoff-request/1.0",
+    "handoffAccept": "sc-workspace-research-handoff-accept-request/1.0",
+    "authorizationEvaluate": "sc-workspace-authorization-evaluate-request/1.0",
 }
 
 def _typed_openapi_projection(openapi: dict[str, Any]) -> dict[str, Any]:
@@ -62,8 +74,8 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "2.32.0",
-        "mode": "generated-typescript-local-first-unified-scientific-object-client",
+        "workspaceVersion": "2.34.0",
+        "mode": "generated-typescript-backend-policy-identity-authorization-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "transport": "wordpress-server-proxy",

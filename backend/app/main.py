@@ -43,6 +43,8 @@ from .client_contracts import profile as typed_client_contract_profile
 from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
 from .local_first_sync import profile as local_first_sync_profile, bootstrap as local_first_sync_bootstrap, apply_envelope as apply_local_first_sync_envelope, reconcile as reconcile_local_first_sync, list_receipts as list_local_first_sync_receipts
 from .scientific_objects import (profile as scientific_object_profile, list_objects as list_scientific_objects, get_object as get_scientific_object, history as scientific_object_history, relations as scientific_object_relations, OBJECT_KINDS as SCIENTIFIC_OBJECT_KINDS)
+from .cross_product_handoffs import (profile as handoff_profile, create_handoff, get_handoff, accept_handoff, list_receipts as list_handoff_fabric_receipts, ResearchHandoffRequest, ResearchHandoffAcceptRequest)
+from .authorization import (profile as authorization_profile, principal_payload as authorization_principal_payload, evaluate_and_record as evaluate_authorization_and_record, list_decisions as list_authorization_decisions, AuthorizationEvaluateRequest)
 from .visualization_specs import (profile as visualization_spec_profile, store_spec as store_visualization_spec, get_spec as get_visualization_spec,
     list_specs as list_visualization_specs, list_revisions as list_visualization_spec_revisions, list_receipts as list_visualization_spec_receipts,
     delete_spec as delete_visualization_spec, metadata as visualization_spec_metadata)
@@ -294,12 +296,26 @@ def health():
         "syncAutomaticSemanticMerge": False,
         "syncRevisionVectorReconciliation": True,
         "durableSyncReceipts": True,
+        "crossProductResearchHandoffFabric": True,
+        "crossProductHandoffSchema": "sc-workspace-cross-product-research-handoff-fabric/1.0",
+        "handoffRevisionPinning": True,
+        "handoffFingerprintPinning": True,
+        "handoffDurableReceipts": True,
+        "handoffGenericDestinationMutation": False,
         "unifiedScientificObjectApi": True,
         "scientificObjectSchema": "sc-workspace-scientific-object/1.0",
         "scientificObjectKindCount": len(SCIENTIFIC_OBJECT_KINDS),
         "scientificObjectRelations": True,
         "scientificObjectRevisionHistory": True,
         "scientificObjectGenericMutation": False,
+        "backendPolicyIdentityAuthorizationConsolidation": True,
+        "backendAuthorizationSchema": "sc-workspace-backend-authorization/1.0",
+        "serverResolvedPrincipalIdentity": True,
+        "routePolicyEnforcement": True,
+        "authorizationDefaultEffect": "deny",
+        "authorizationDecisionReceipts": True,
+        "clientSuppliedRolesTrusted": False,
+        "clientSuppliedScopesTrusted": False,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -316,7 +332,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -377,6 +393,23 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "syncAutomaticSemanticMerge": False,
         "syncRevisionVectorReconciliation": True,
         "durableSyncReceipts": True,
+        "unifiedScientificObjectApi": True,
+        "scientificObjectKindCount": len(SCIENTIFIC_OBJECT_KINDS),
+        "scientificObjectGenericMutation": False,
+        "backendPolicyIdentityAuthorizationConsolidation": True,
+        "backendAuthorizationSchema": "sc-workspace-backend-authorization/1.0",
+        "serverResolvedPrincipalIdentity": True,
+        "routePolicyEnforcement": True,
+        "authorizationDefaultEffect": "deny",
+        "authorizationDecisionReceipts": True,
+        "clientSuppliedRolesTrusted": False,
+        "clientSuppliedScopesTrusted": False,
+        "crossProductResearchHandoffFabric": True,
+        "crossProductHandoffSchema": "sc-workspace-cross-product-research-handoff-fabric/1.0",
+        "handoffRevisionPinning": True,
+        "handoffFingerprintPinning": True,
+        "handoffDurableReceipts": True,
+        "handoffGenericDestinationMutation": False,
         "projectRevisionHistory": True,
         "notebookRevisionHistory": True,
         "revisionPreconditions": True,
@@ -545,6 +578,28 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
     }
 
 
+@app.get("/v1/authorization")
+def authorization_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-backend-authorization-response/1.0", "item": authorization_profile()}
+
+
+@app.get("/v1/authorization/identity")
+def authorization_identity_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-principal-identity-response/1.0", "item": authorization_principal_payload(identity)}
+
+
+@app.post("/v1/authorization/evaluate")
+def authorization_evaluate_route(payload: AuthorizationEvaluateRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return evaluate_authorization_and_record(db, identity, payload)
+
+
+@app.get("/v1/authorization/decisions")
+def authorization_decisions_route(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-authorization-decision-receipt-index/1.0", "items": list_authorization_decisions(db, identity.user_key, limit)}
+
+
 @app.get("/v1/client-contracts")
 def typed_client_contracts(identity: ServiceIdentity = Depends(require_service_identity)):
     return {"ok": True, "schema": "sc-workspace-typed-client-contract-response/1.0", "item": typed_client_contract_profile(app.openapi())}
@@ -627,6 +682,36 @@ def scientific_object_history_route(kind: str, object_id: str, limit: int = Quer
 def scientific_object_relations_route(kind: str, object_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
         return scientific_object_relations(db, identity.user_key, kind, object_id)
+
+
+@app.get("/v1/handoffs/profile")
+def handoff_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-cross-product-research-handoff-fabric-response/1.0","item":handoff_profile()}
+
+@app.post("/v1/handoffs")
+def handoff_create_route(payload: ResearchHandoffRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: return create_handoff(db,identity.user_key,payload)
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"handoff-validation-failed","message":str(exc)}) from exc
+
+@app.get("/v1/handoffs/{handoff_id}")
+def handoff_get_route(handoff_id:str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item=get_handoff(db,identity.user_key,handoff_id)
+        if item is None: raise HTTPException(status_code=404,detail={"code":"handoff-not-found","handoffId":handoff_id})
+        return {"schema":"sc-workspace-research-handoff-response/1.0","item":item}
+
+@app.post("/v1/handoffs/{handoff_id}/accept")
+def handoff_accept_route(handoff_id:str,payload:ResearchHandoffAcceptRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: result=accept_handoff(db,identity.user_key,handoff_id,payload)
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"handoff-acceptance-failed","message":str(exc)}) from exc
+        if result is None: raise HTTPException(status_code=404,detail={"code":"handoff-not-found","handoffId":handoff_id})
+        return result
+
+@app.get("/v1/handoff-receipts")
+def handoff_receipts_route(limit:int=Query(default=100,ge=1,le=500),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"schema":"sc-workspace-research-handoff-receipt-index/1.0","items":list_handoff_fabric_receipts(db,identity.user_key,limit)}
 
 
 @app.get("/v1/domain-authority")

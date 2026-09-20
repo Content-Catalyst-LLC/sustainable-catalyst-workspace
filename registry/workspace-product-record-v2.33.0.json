@@ -1,0 +1,9 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.33.0",
+  "release": "Cross-Product Research Handoff Fabric",
+  "status": "release",
+  "backendFirst": true,
+  "migration": null
+}

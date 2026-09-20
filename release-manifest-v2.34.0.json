@@ -1,0 +1,20 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.34.0",
+  "release": "Backend Policy, Identity & Authorization Consolidation",
+  "backendFirst": true,
+  "migration": "031_backend_policy_identity_authorization_consolidation.sql",
+  "migrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
+  "features": [
+    "server-resolved WordPress user principal identity",
+    "fixed WordPress service principal",
+    "default-deny backend authorization policy",
+    "route-level action policy enforcement",
+    "durable authorization decision receipts",
+    "deterministic authorization decision fingerprints",
+    "typed identity and policy inspection through WordPress proxy",
+    "browser-supplied roles and scopes are not trusted"
+  ],
+  "arbitraryCodeExecution": false
+}

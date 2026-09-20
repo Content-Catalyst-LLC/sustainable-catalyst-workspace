@@ -1,6 +1,6 @@
-# Current release: v2.32.0 — Local-First Synchronization Protocol
+# Current release: v2.34.0 — Backend Policy, Identity & Authorization Consolidation
 
-Workspace now separates transient browser UI state from canonical backend state. Canonical read models hydrate a memory-only client cache; only an explicit transient allowlist may persist in the browser. Canonical mutations remain backend commands, while the v2.28.1 interaction repair and v2.29 typed-client proxy are preserved.
+Workspace now resolves principal identity and authorization policy in the backend. The WordPress proxy authenticates with the server-side service credential; the backend resolves the human WordPress user, maps every protected route to a bounded action under a default-deny policy, and can persist authorization decision receipts with deterministic fingerprints. Browser roles/scopes remain non-authoritative.
 
 # Sustainable Catalyst Workspace v2.24.0
 

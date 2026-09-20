@@ -1,4 +1,4 @@
-/* Workspace v2.32.0 typed browser client. Service credentials remain server-side in WordPress. */
+/* Workspace v2.34.0 typed browser client. Service credentials remain server-side in WordPress. */
 interface WorkspaceTypedClientConfig { baseUrl:string; nonce?:string; authenticated?:boolean; }
 interface WorkspaceClientRequestOptions { method?:'GET'|'POST'|'DELETE'; body?:unknown; }
 class WorkspaceTypedApiError extends Error { readonly status:number; readonly payload:unknown; constructor(status:number,message:string,payload:unknown){super(message);this.name='WorkspaceTypedApiError';this.status=status;this.payload=payload;} }
@@ -10,6 +10,10 @@ class WorkspaceTypedApiClient {
     const response=await fetch(this.config.baseUrl+path,{method:options.method||'GET',credentials:'same-origin',headers,body:options.body===undefined?undefined:JSON.stringify(options.body)});
     let payload:unknown=null; try{payload=await response.json();}catch(_){payload=null;} if(!response.ok){const message=payload&&typeof payload==='object'&&'message' in payload?String((payload as {message?:unknown}).message||'Workspace API request failed'):'Workspace API request failed';throw new WorkspaceTypedApiError(response.status,message,payload);} if(!payload||typeof payload!=='object') throw new WorkspaceTypedApiError(502,'Workspace API returned a non-object envelope',payload); return payload as T;
   }
+  authorizationProfile():Promise<WorkspaceApiEnvelope>{return this.request('/authorization');}
+  authorizationIdentity():Promise<WorkspaceApiEnvelope>{return this.request('/authorization/identity');}
+  evaluateAuthorization(request:WorkspaceAuthorizationEvaluateRequest):Promise<WorkspaceApiEnvelope>{return this.request('/authorization/evaluate',{method:'POST',body:request});}
+  authorizationDecisions():Promise<WorkspaceApiEnvelope>{return this.request('/authorization/decisions');}
   clientContracts():Promise<WorkspaceApiEnvelope>{return this.request('/client-contracts');}
   thinClientStateProfile():Promise<WorkspaceApiEnvelope>{return this.request('/thin-client-state');}
   thinClientBootstrap(projectId?:string):Promise<WorkspaceApiEnvelope>{const q=projectId?'?projectId='+encodeURIComponent(projectId):'';return this.request('/thin-client-state/bootstrap'+q);}
@@ -23,6 +27,11 @@ class WorkspaceTypedApiClient {
   scientificObject(kind:WorkspaceScientificObjectKind,objectId:string):Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/'+encodeURIComponent(kind)+'/'+encodeURIComponent(objectId));}
   scientificObjectHistory(kind:WorkspaceScientificObjectKind,objectId:string,limit=100):Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/'+encodeURIComponent(kind)+'/'+encodeURIComponent(objectId)+'/revisions?limit='+encodeURIComponent(String(limit)));}
   scientificObjectRelations(kind:WorkspaceScientificObjectKind,objectId:string):Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/'+encodeURIComponent(kind)+'/'+encodeURIComponent(objectId)+'/relations');}
+  handoffProfile():Promise<WorkspaceApiEnvelope>{return this.request('/handoffs/profile');}
+  createHandoff(request:WorkspaceResearchHandoffRequest):Promise<WorkspaceApiEnvelope>{return this.request('/handoffs',{method:'POST',body:request});}
+  handoff(handoffId:string):Promise<WorkspaceApiEnvelope>{return this.request('/handoffs/'+encodeURIComponent(handoffId));}
+  acceptHandoff(handoffId:string,request:WorkspaceResearchHandoffAcceptRequest):Promise<WorkspaceApiEnvelope>{return this.request('/handoffs/'+encodeURIComponent(handoffId)+'/accept',{method:'POST',body:request});}
+  handoffReceipts():Promise<WorkspaceApiEnvelope>{return this.request('/handoff-receipts');}
   domainAuthority():Promise<WorkspaceApiEnvelope>{return this.request('/domain-authority');}
   commandQueryProfile():Promise<WorkspaceApiEnvelope>{return this.request('/command-query');}
   executeCommand<C extends WorkspaceCommand>(request:WorkspaceCommandRequest&{command:C}):Promise<WorkspaceApiEnvelope>{return this.request('/commands/execute',{method:'POST',body:request});}

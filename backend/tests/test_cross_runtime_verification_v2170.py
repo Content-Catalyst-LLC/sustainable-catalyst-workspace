@@ -5,7 +5,7 @@ from app.config import Settings
 from app.cross_runtime_verification import _compare_json, profile_catalog
 
 def test_version_and_profiles():
-    assert Settings().service_version == "2.32.0"
+    assert Settings().service_version == "2.34.0"
     modes={x["mode"] for x in profile_catalog()}
     assert modes=={"auto","exact-digest","tolerance-aware-json"}
 

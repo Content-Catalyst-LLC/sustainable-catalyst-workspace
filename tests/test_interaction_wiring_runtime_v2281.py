@@ -2,16 +2,16 @@ from pathlib import Path
 import re
 ROOT=Path(__file__).resolve().parents[1]
 WP=ROOT/'wordpress/sustainable-catalyst-workspace'
-JS=(WP/'assets/js/workspace-v2.30.0.js').read_text()
+JS=(WP/'assets/js/workspace-v2.34.0.js').read_text()
 BOOTSTRAP=(WP/'assets/js/sc-workspace-interaction-bootstrap-v2281.js').read_text()
 PHP=(WP/'includes/class-sc-workspace.php').read_text()
 PLUGIN=(WP/'sustainable-catalyst-workspace.php').read_text()
 
 def test_release_identity_aligned():
-    assert 'Version: 2.30.0' in PLUGIN
-    assert "const WORKSPACE_RELEASE = '2.30.0';" in JS
-    assert 'workspace-v2.30.0.js' in PHP
-    assert 'workspace-v2.30.0.css' in PHP
+    assert 'Version: 2.34.0' in PLUGIN
+    assert "const WORKSPACE_RELEASE = '2.34.0';" in JS
+    assert 'workspace-v2.34.0.js' in PHP
+    assert 'workspace-v2.34.0.css' in PHP
 
 def test_core_click_bindings_are_null_safe():
     assert not re.search(r"root\.querySelector\('[^']+'\)\.addEventListener\('click'", JS)

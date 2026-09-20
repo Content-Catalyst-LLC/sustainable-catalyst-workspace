@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-authorization-evaluate-request-v1.schema.json",
+  "title": "Workspace Authorization Evaluate Request",
+  "type": "object",
+  "required": ["schema", "action"],
+  "properties": {
+    "schema": {"const": "sc-workspace-authorization-evaluate-request/1.0"},
+    "action": {"type": "string"},
+    "resourceKind": {"type": "string"},
+    "resourceId": {"type": "string"},
+    "projectId": {"type": "string"},
+    "context": {"type": "object"}
+  },
+  "additionalProperties": false
+}

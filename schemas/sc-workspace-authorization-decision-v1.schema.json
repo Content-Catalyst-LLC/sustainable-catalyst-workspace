@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-authorization-decision-v1.schema.json",
+  "title": "Workspace Authorization Decision",
+  "type": "object",
+  "required": ["schema", "principalId", "action", "resourceKind", "effect", "reason", "policyId", "policyRevision", "decisionFingerprint", "serverAuthoritative"],
+  "properties": {
+    "schema": {"const": "sc-workspace-authorization-decision/1.0"},
+    "principalId": {"type": "string"},
+    "action": {"type": "string"},
+    "resourceKind": {"type": "string"},
+    "resourceId": {"type": "string"},
+    "projectId": {"type": "string"},
+    "effect": {"enum": ["allow", "deny"]},
+    "reason": {"type": "string"},
+    "policyId": {"type": "string"},
+    "policyRevision": {"type": "integer", "minimum": 1},
+    "decisionFingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "serverAuthoritative": {"const": true}
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.34.0",
+  "release": "Backend Policy, Identity & Authorization Consolidation",
+  "status": "release",
+  "backendFirst": true,
+  "migration": "031_backend_policy_identity_authorization_consolidation.sql"
+}

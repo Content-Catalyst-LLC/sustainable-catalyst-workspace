@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-principal-identity-v1.schema.json",
+  "title": "Workspace Principal Identity",
+  "type": "object",
+  "required": ["schema", "principalId", "principalType", "servicePrincipal", "userKey", "authenticationMethod", "policyId", "policyRevision", "serverResolved"],
+  "properties": {
+    "schema": {"const": "sc-workspace-principal-identity/1.0"},
+    "principalId": {"type": "string"},
+    "principalType": {"type": "string"},
+    "servicePrincipal": {"type": "string"},
+    "userKey": {"type": "string"},
+    "authenticationMethod": {"type": "string"},
+    "policyId": {"type": "string"},
+    "policyRevision": {"type": "integer", "minimum": 1},
+    "effectiveScopes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "serverResolved": {"const": true},
+    "browserAuthoritative": {"const": false}
+  },
+  "additionalProperties": true
+}

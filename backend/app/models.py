@@ -128,6 +128,61 @@ class LocalFirstSyncReceipt(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class AuthorizationDecisionReceipt(Base):
+    __tablename__ = "workspace_authorization_decision_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(String(192), nullable=False)
+    principal_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    service_principal: Mapped[str] = mapped_column(String(96), nullable=False)
+    action: Mapped[str] = mapped_column(String(96), nullable=False)
+    resource_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    resource_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    effect: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str] = mapped_column(String(96), nullable=False)
+    policy_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    policy_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class CrossProductResearchHandoff(Base):
+    __tablename__ = "workspace_cross_product_research_handoffs"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    handoff_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    source_product: Mapped[str] = mapped_column(String(96), nullable=False)
+    destination_product: Mapped[str] = mapped_column(String(96), nullable=False)
+    intent: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="prepared")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    package_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    object_refs_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    destination_result_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class CrossProductResearchHandoffReceipt(Base):
+    __tablename__ = "workspace_cross_product_research_handoff_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    handoff_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_product: Mapped[str] = mapped_column(String(96), nullable=False)
+    destination_product: Mapped[str] = mapped_column(String(96), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    package_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    details_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class CommandReceipt(Base):
     __tablename__ = "workspace_command_receipts"
 
