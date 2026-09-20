@@ -1,0 +1,3 @@
+# Workspace v3.0.0 — Backend-Native Scientific Workspace
+
+Promotes Workspace to the v3 backend-native architecture certified in v2.36. Signed-in scientific work now has an explicit backend-native contract and consolidated bootstrap: PostgreSQL/Python remain canonical, server-resolved identity and default-deny authorization remain authoritative, browser canonical persistence remains disabled, and scientific execution stays behind bounded internal runtime services. Guest/browser-local projects remain supported through the lazy compatibility path without becoming authoritative for signed-in backend work. No database migration is introduced; migration lineage remains at 031 and rollback baseline is v2.36.0.

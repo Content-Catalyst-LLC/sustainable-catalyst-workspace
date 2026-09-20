@@ -43,7 +43,7 @@ def test_bootstrap_without_project_is_still_valid():
 
 def test_typed_contract_includes_thin_state_endpoints():
     item=client_profile(app.openapi())
-    assert item['workspaceVersion'] in {'2.30.0','2.31.0','2.32.0','2.34.0','2.36.0'}
+    assert item['workspaceVersion'] in {'2.30.0','2.31.0','2.32.0','2.34.0','3.0.0'}
     assert item['typedEndpointCount']==len(TYPED_ENDPOINTS) and item['typedEndpointCount']>=15
     assert item['typedEndpoints']['thinClientState']['path']=='/v1/thin-client-state'
     assert item['typedEndpoints']['thinClientBootstrap']['path']=='/v1/thin-client-state/bootstrap'
@@ -52,7 +52,7 @@ def test_typed_contract_includes_thin_state_endpoints():
 
 def test_health_advertises_thin_client_state_architecture():
     item=health()
-    assert item['version'] in {'2.30.0','2.31.0','2.32.0','2.34.0','2.36.0'}
+    assert item['version'] in {'2.30.0','2.31.0','2.32.0','2.34.0','3.0.0'}
     assert item['thinClientStateArchitecture'] is True
     assert item['canonicalClientCachePersistent'] is False
     assert item['persistentBrowserState']=='transient-only'

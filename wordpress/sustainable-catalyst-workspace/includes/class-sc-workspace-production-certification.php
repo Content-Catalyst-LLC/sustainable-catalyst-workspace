@@ -14,8 +14,8 @@ final class SC_Workspace_Production_Certification {
     const CONTRACT_SCHEMA = 'sc-workspace-production-certification-contract/1.0';
     const REPORT_SCHEMA = 'sc-workspace-production-certification-report/1.0';
     const CHECKLIST_SCHEMA = 'sc-workspace-production-certification-checklist/1.0';
-    const PREVIOUS_RELEASE = '2.35.0';
-    const ROLLBACK_RELEASE = '2.35.0';
+    const PREVIOUS_RELEASE = '2.36.0';
+    const ROLLBACK_RELEASE = '2.36.0';
 
     public static function snapshot() {
         $deployment = class_exists('SC_Workspace_Deployment_Hardening')
@@ -25,7 +25,7 @@ final class SC_Workspace_Production_Certification {
         return array(
             'schema' => self::REPORT_SCHEMA,
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'release_stage' => 'production-architecture-certified',
+            'release_stage' => 'backend-native-v3',
             'architecture_certified' => $server_ready,
             'live_production_certified' => false,
             'package_automated_gate' => $server_ready,
@@ -55,7 +55,7 @@ final class SC_Workspace_Production_Certification {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
             'workspace_version' => SC_WORKSPACE_VERSION,
-            'release' => 'Workspace Production Architecture Certification',
+            'release' => 'Backend-Native Scientific Workspace',
             'architecture_certification' => true,
             'architecture_certification_backend_authoritative' => true,
             'live_production_certification' => false,

@@ -1,0 +1,20 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "3.0.0",
+  "release": "Backend-Native Scientific Workspace",
+  "backendFirst": true,
+  "migration": null,
+  "migrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
+  "rollbackBaseline": "2.36.0",
+  "features": [
+    "backend-native scientific workspace contract",
+    "single signed-in backend bootstrap for identity, canonical projection and synchronization authority",
+    "PostgreSQL/Python canonical scientific state with no signed-in browser-authority fallback",
+    "generated typed client and WordPress proxy for backend-native bootstrap",
+    "bounded internal scientific runtime execution authority",
+    "durable provenance, receipts, study packages and cross-product research handoffs",
+    "thin browser interaction layer with guest-only browser-local compatibility"
+  ],
+  "arbitraryCodeExecution": false
+}

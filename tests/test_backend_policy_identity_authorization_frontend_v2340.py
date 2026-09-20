@@ -3,13 +3,13 @@ ROOT=Path(__file__).resolve().parents[1]
 WP=ROOT/'wordpress/sustainable-catalyst-workspace'
 PHP=(WP/'includes/class-sc-workspace.php').read_text()
 PLUGIN=(WP/'sustainable-catalyst-workspace.php').read_text()
-MAIN=(WP/'assets/js/workspace-v2.36.0.js').read_text()
-TYPED=(WP/'assets/js/sc-workspace-typed-client-v2360.js').read_text()
+MAIN=(WP/'assets/js/workspace-v3.0.0.js').read_text()
+TYPED=(WP/'assets/js/sc-workspace-typed-client-v3000.js').read_text()
 TS=(ROOT/'frontend/typed-client/src/60-backend-policy-identity-authorization.ts').read_text()
 
 def test_release_identity_and_working_interaction_lineage_preserved():
-    assert 'Version: 2.36.0' in PLUGIN
-    assert "const WORKSPACE_RELEASE = '2.36.0';" in MAIN
+    assert 'Version: 3.0.0' in PLUGIN
+    assert "const WORKSPACE_RELEASE = '3.0.0';" in MAIN
     assert 'SCWorkspaceInteractionRuntime' in MAIN and 'SCWorkspaceInteractionRepair' in MAIN
 
 def test_wordpress_proxy_exposes_authorization_endpoints_without_service_token():
@@ -33,5 +33,5 @@ def test_browser_boundary_never_becomes_authorization_authority():
 
 def test_generated_typed_client_is_v2340_and_has_35_endpoints():
     generated=(ROOT/'frontend/typed-client/src/00-generated-contracts.ts').read_text()
-    assert "SCW_TYPED_CONTRACT_VERSION = '2.36.0'" in generated
-    assert generated.count("path: '/v1/") == 36
+    assert "SCW_TYPED_CONTRACT_VERSION = '3.0.0'" in generated
+    assert generated.count("path: '/v1/") == 38

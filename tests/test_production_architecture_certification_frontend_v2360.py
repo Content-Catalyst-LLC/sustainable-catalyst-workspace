@@ -4,8 +4,8 @@ WP=ROOT/'wordpress/sustainable-catalyst-workspace'
 PHP=(WP/'includes/class-sc-workspace.php').read_text()
 DEPLOY=(WP/'includes/class-sc-workspace-deployment.php').read_text()
 CERT=(WP/'includes/class-sc-workspace-production-certification.php').read_text()
-TYPED=(WP/'assets/js/sc-workspace-typed-client-v2360.js').read_text()
-MAIN=(WP/'assets/js/workspace-v2.36.0.js').read_text()
+TYPED=(WP/'assets/js/sc-workspace-typed-client-v3000.js').read_text()
+MAIN=(WP/'assets/js/workspace-v3.0.0.js').read_text()
 
 
 def test_wordpress_exposes_production_certification_proxy():
@@ -14,8 +14,8 @@ def test_wordpress_exposes_production_certification_proxy():
 
 
 def test_release_package_uses_v236_active_assets():
-    assert 'sc-workspace-typed-client-v2360.js' in DEPLOY
-    assert 'sc-workspace-local-project-compat-v2360.js' in DEPLOY
+    assert 'sc-workspace-typed-client-v3000.js' in DEPLOY
+    assert 'sc-workspace-local-project-compat-v3000.js' in DEPLOY
     assert "'current_script' => 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js'" in DEPLOY
     assert "'current_style' => 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css'" in DEPLOY
 

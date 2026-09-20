@@ -13,7 +13,7 @@ def profile() -> dict[str, Any]:
     """
     return {
         "schema": PRODUCTION_ARCHITECTURE_CERTIFICATION_SCHEMA,
-        "workspaceVersion": "2.36.0",
+        "workspaceVersion": "3.0.0",
         "release": "Workspace Production Architecture Certification",
         "certificationScope": "automated-architecture",
         "architectureCertified": True,
@@ -26,7 +26,7 @@ def profile() -> dict[str, Any]:
         "canonicalStore": "postgresql",
         "migrationRequired": False,
         "migrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
-        "rollbackBaseline": "2.35.0",
+        "rollbackBaseline": "2.36.0",
         "rollbackSchemaCompatible": True,
         "serviceIdentityBoundary": "server-side-wordpress-proxy",
         "authorizationDefaultEffect": "deny",

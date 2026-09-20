@@ -6,8 +6,8 @@ FRONTEND_RUNTIME_SCHEMA = "sc-workspace-frontend-runtime-policy/1.0"
 def profile() -> dict[str, Any]:
     return {
         "schema": FRONTEND_RUNTIME_SCHEMA,
-        "workspaceVersion": "2.36.0",
-        "mode": "thin-shell-with-browser-local-compatibility",
+        "workspaceVersion": "3.0.0",
+        "mode": "backend-native-thin-shell-with-guest-local-compatibility",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "browserAuthoritativeAuthorization": False,
@@ -25,9 +25,10 @@ def profile() -> dict[str, Any]:
         "legacyLocalCompatibility": True,
         "legacyCompatibilityMode": "lazy-browser-local-only",
         "legacyCompatibilityAuthoritative": False,
+        "signedInLocalCanonicalFallback": False,
         "historicalVersionedFrontendAssetsRetired": True,
-        "activeShell": "workspace-v2.36.0.js",
-        "localCompatibilityBundle": "sc-workspace-local-project-compat-v2360.js",
+        "activeShell": "workspace-v3.0.0.js",
+        "localCompatibilityBundle": "sc-workspace-local-project-compat-v3000.js",
         "packageAssetNamesVersionDerived": True,
         "serviceCredentialsBrowserVisible": False,
         "arbitraryCodeExecution": False,

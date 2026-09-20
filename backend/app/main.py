@@ -42,6 +42,7 @@ from .study_packages import (profile as study_package_profile, create_package as
 from .client_contracts import profile as typed_client_contract_profile
 from .frontend_runtime import profile as frontend_runtime_profile
 from .production_certification import profile as production_architecture_certification_profile
+from .backend_native_workspace import profile as backend_native_workspace_profile, bootstrap as backend_native_workspace_bootstrap
 from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
 from .local_first_sync import profile as local_first_sync_profile, bootstrap as local_first_sync_bootstrap, apply_envelope as apply_local_first_sync_envelope, reconcile as reconcile_local_first_sync, list_receipts as list_local_first_sync_receipts
 from .scientific_objects import (profile as scientific_object_profile, list_objects as list_scientific_objects, get_object as get_scientific_object, history as scientific_object_history, relations as scientific_object_relations, OBJECT_KINDS as SCIENTIFIC_OBJECT_KINDS)
@@ -329,7 +330,11 @@ def health():
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
         "releaseMigrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
-        "rollbackBaseline": "2.35.0",
+        "rollbackBaseline": "2.36.0",
+        "backendNativeScientificWorkspace": True,
+        "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
+        "signedInLocalCanonicalFallback": False,
+        "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -346,7 +351,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -424,6 +429,10 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "legacyLocalCompatibilityLazy": True,
         "historicalVersionedFrontendAssetsRetired": True,
         "packageAssetNamesVersionDerived": True,
+        "backendNativeScientificWorkspace": True,
+        "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
+        "signedInLocalCanonicalFallback": False,
+        "backendNativeBootstrap": True,
         "crossProductResearchHandoffFabric": True,
         "crossProductHandoffSchema": "sc-workspace-cross-product-research-handoff-fabric/1.0",
         "handoffRevisionPinning": True,
@@ -619,6 +628,18 @@ def authorization_decisions_route(limit: int = Query(default=100, ge=1, le=500),
     with session_scope() as db:
         return {"schema": "sc-workspace-authorization-decision-receipt-index/1.0", "items": list_authorization_decisions(db, identity.user_key, limit)}
 
+
+
+
+@app.get("/v1/backend-native-workspace")
+def backend_native_workspace_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-backend-native-scientific-workspace-response/1.0", "item": backend_native_workspace_profile()}
+
+
+@app.get("/v1/backend-native-workspace/bootstrap")
+def backend_native_workspace_bootstrap_route(projectId: str | None = None, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return backend_native_workspace_bootstrap(db, identity, projectId)
 
 @app.get("/v1/frontend-runtime")
 def frontend_runtime_contract(identity: ServiceIdentity = Depends(require_service_identity)):
