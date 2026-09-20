@@ -9,7 +9,7 @@
     "strict": true,
     "noImplicitAny": true,
     "noUncheckedIndexedAccess": true,
-    "outFile": "../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v2340.js",
+    "outFile": "../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v2350.js",
     "removeComments": false,
     "sourceMap": false
   },
@@ -20,6 +20,7 @@
     "src/30-local-first-sync.ts",
     "src/40-scientific-objects.ts",
     "src/50-cross-product-handoffs.ts",
-    "src/60-backend-policy-identity-authorization.ts"
+    "src/60-backend-policy-identity-authorization.ts",
+    "src/70-frontend-runtime.ts"
   ]
 }

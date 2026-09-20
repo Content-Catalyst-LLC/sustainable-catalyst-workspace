@@ -40,6 +40,7 @@ from .study_packages import (profile as study_package_profile, create_package as
     list_packages as list_scientific_study_packages, package_metadata as scientific_study_package_metadata, verify_package as verify_scientific_study_package,
     list_receipts as list_scientific_study_package_receipts, delete_package as delete_scientific_study_package)
 from .client_contracts import profile as typed_client_contract_profile
+from .frontend_runtime import profile as frontend_runtime_profile
 from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
 from .local_first_sync import profile as local_first_sync_profile, bootstrap as local_first_sync_bootstrap, apply_envelope as apply_local_first_sync_envelope, reconcile as reconcile_local_first_sync, list_receipts as list_local_first_sync_receipts
 from .scientific_objects import (profile as scientific_object_profile, list_objects as list_scientific_objects, get_object as get_scientific_object, history as scientific_object_history, relations as scientific_object_relations, OBJECT_KINDS as SCIENTIFIC_OBJECT_KINDS)
@@ -316,6 +317,12 @@ def health():
         "authorizationDecisionReceipts": True,
         "clientSuppliedRolesTrusted": False,
         "clientSuppliedScopesTrusted": False,
+        "frontendLogicReductionLegacyJsRetirement": True,
+        "frontendRuntimeSchema": "sc-workspace-frontend-runtime-policy/1.0",
+        "frontendPrimaryShellThin": True,
+        "legacyLocalCompatibilityLazy": True,
+        "historicalVersionedFrontendAssetsRetired": True,
+        "packageAssetNamesVersionDerived": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -404,6 +411,12 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "authorizationDecisionReceipts": True,
         "clientSuppliedRolesTrusted": False,
         "clientSuppliedScopesTrusted": False,
+        "frontendLogicReductionLegacyJsRetirement": True,
+        "frontendRuntimeSchema": "sc-workspace-frontend-runtime-policy/1.0",
+        "frontendPrimaryShellThin": True,
+        "legacyLocalCompatibilityLazy": True,
+        "historicalVersionedFrontendAssetsRetired": True,
+        "packageAssetNamesVersionDerived": True,
         "crossProductResearchHandoffFabric": True,
         "crossProductHandoffSchema": "sc-workspace-cross-product-research-handoff-fabric/1.0",
         "handoffRevisionPinning": True,
@@ -598,6 +611,11 @@ def authorization_evaluate_route(payload: AuthorizationEvaluateRequest, identity
 def authorization_decisions_route(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
         return {"schema": "sc-workspace-authorization-decision-receipt-index/1.0", "items": list_authorization_decisions(db, identity.user_key, limit)}
+
+
+@app.get("/v1/frontend-runtime")
+def frontend_runtime_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-frontend-runtime-policy-response/1.0", "item": frontend_runtime_profile()}
 
 
 @app.get("/v1/client-contracts")

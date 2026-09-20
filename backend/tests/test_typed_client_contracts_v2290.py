@@ -3,7 +3,7 @@ from app.main import app
 
 def test_contract_profile_is_backend_authoritative_and_proxy_only():
     item=profile(app.openapi())
-    assert item["schema"]==CLIENT_CONTRACT_SCHEMA and item["workspaceVersion"] in {"2.30.0","2.31.0","2.32.0","2.34.0"}
+    assert item["schema"]==CLIENT_CONTRACT_SCHEMA and item["workspaceVersion"] in {"2.30.0","2.31.0","2.32.0","2.34.0","2.35.0"}
     assert item["backendAuthoritative"] is True and item["browserAuthoritativeState"] is False
     assert item["transport"]=="wordpress-server-proxy" and item["browserDirectBackendAccess"] is False
     assert item["serviceCredentialsBrowserVisible"] is False and item["strictTypeScript"] is True

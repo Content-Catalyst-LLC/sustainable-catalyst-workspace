@@ -1,4 +1,4 @@
-# Current release: v2.34.0 — Backend Policy, Identity & Authorization Consolidation
+# Current release: v2.35.0 — Backend Policy, Identity & Authorization Consolidation
 
 Workspace now resolves principal identity and authorization policy in the backend. The WordPress proxy authenticates with the server-side service credential; the backend resolves the human WordPress user, maps every protected route to a bounded action under a default-deny policy, and can persist authorization decision receipts with deterministic fingerprints. Browser roles/scopes remain non-authoritative.
 

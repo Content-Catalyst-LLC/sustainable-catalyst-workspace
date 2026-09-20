@@ -20,8 +20,8 @@ def test_reconciliation_classifies_server_and_client_drift_without_merging():
     by={x['projectId']:x for x in r['items']}; assert by['p1']['status']=='server-ahead'; assert by['p2']['status']=='client-ahead'; assert by['p3']['status']=='missing-server'; assert by['p4']['status']=='server-ahead'; assert r['automaticMerge'] is False
 
 def test_typed_contract_includes_all_sync_routes():
-    item=client_profile(app.openapi()); assert item['workspaceVersion'] in {'2.31.0','2.32.0','2.34.0'}; assert item['typedEndpointCount']==len(TYPED_ENDPOINTS) and item['typedEndpointCount']>=20; assert item['missingOpenApiOperations']==[]
+    item=client_profile(app.openapi()); assert item['workspaceVersion'] in {'2.31.0','2.32.0','2.34.0','2.35.0'}; assert item['typedEndpointCount']==len(TYPED_ENDPOINTS) and item['typedEndpointCount']>=20; assert item['missingOpenApiOperations']==[]
     assert item['typedEndpoints']['syncEnvelope']['path']=='/v1/sync/envelopes'; assert item['requestSchemas']['syncEnvelope']=='sc-workspace-sync-envelope/1.0'
 
 def test_health_advertises_local_first_protocol():
-    h=health(); assert h['version'] in {'2.31.0','2.32.0','2.34.0'}; assert h['localFirstSynchronizationProtocol'] is True; assert h['offlineOutboxAuthoritative'] is False; assert h['syncAutomaticSemanticMerge'] is False
+    h=health(); assert h['version'] in {'2.31.0','2.32.0','2.34.0','2.35.0'}; assert h['localFirstSynchronizationProtocol'] is True; assert h['offlineOutboxAuthoritative'] is False; assert h['syncAutomaticSemanticMerge'] is False

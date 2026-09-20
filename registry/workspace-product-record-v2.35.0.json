@@ -1,0 +1,9 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.35.0",
+  "release": "Frontend Logic Reduction & Legacy JS Retirement",
+  "status": "release",
+  "backendFirst": true,
+  "migration": null
+}

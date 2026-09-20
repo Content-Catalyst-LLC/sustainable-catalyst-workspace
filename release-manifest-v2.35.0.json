@@ -1,0 +1,19 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.35.0",
+  "release": "Frontend Logic Reduction & Legacy JS Retirement",
+  "backendFirst": true,
+  "migration": null,
+  "migrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
+  "features": [
+    "thin primary browser shell",
+    "lazy browser-local compatibility runtime",
+    "historical versioned Workspace JS/CSS retirement",
+    "backend frontend-runtime authority profile",
+    "version-derived WordPress package asset checks",
+    "preserved v2.28.1 delegated interaction repair",
+    "preserved v2.34 backend policy/identity/authorization"
+  ],
+  "arbitraryCodeExecution": false
+}

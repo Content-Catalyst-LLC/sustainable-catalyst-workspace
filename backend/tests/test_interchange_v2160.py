@@ -3,7 +3,7 @@ from app.config import Settings
 from app.interchange import OPERATIONS, operation_catalog
 
 def test_version_and_registry():
-    assert Settings().service_version == "2.34.0"
+    assert Settings().service_version == "2.35.0"
     assert len(OPERATIONS)==8
     assert {x["operation"] for x in operation_catalog()}==set(OPERATIONS)
 

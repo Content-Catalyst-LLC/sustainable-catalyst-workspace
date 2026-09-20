@@ -63,13 +63,13 @@ def test_authorization_decision_is_deterministic_and_unknown_actions_deny():
 
 def test_v234_health_and_typed_contract_expose_consolidated_authorization():
     h = health()
-    assert h["version"] == "2.34.0"
+    assert h["version"] == "2.35.0"
     assert h["backendPolicyIdentityAuthorizationConsolidation"] is True
     assert h["serverResolvedPrincipalIdentity"] is True
     assert h["authorizationDecisionReceipts"] is True
     c = client_profile(app.openapi())
-    assert c["workspaceVersion"] == "2.34.0"
-    assert c["typedEndpointCount"] == len(TYPED_ENDPOINTS) == 34
+    assert c["workspaceVersion"] == "2.35.0"
+    assert c["typedEndpointCount"] == len(TYPED_ENDPOINTS) == 35
     assert c["typedEndpoints"]["authorizationEvaluate"]["path"] == "/v1/authorization/evaluate"
     assert c["requestSchemas"]["authorizationEvaluate"] == "sc-workspace-authorization-evaluate-request/1.0"
     assert c["missingOpenApiOperations"] == []

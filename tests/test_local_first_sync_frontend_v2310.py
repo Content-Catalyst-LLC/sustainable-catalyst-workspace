@@ -1,8 +1,8 @@
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]; WP=ROOT/'wordpress/sustainable-catalyst-workspace'
-PHP=(WP/'includes/class-sc-workspace.php').read_text(); PLUGIN=(WP/'sustainable-catalyst-workspace.php').read_text(); MAIN=(WP/'assets/js/workspace-v2.34.0.js').read_text(); TYPED=(WP/'assets/js/sc-workspace-typed-client-v2340.js').read_text(); TS=(ROOT/'frontend/typed-client/src/30-local-first-sync.ts').read_text()
+PHP=(WP/'includes/class-sc-workspace.php').read_text(); PLUGIN=(WP/'sustainable-catalyst-workspace.php').read_text(); MAIN=(WP/'assets/js/workspace-v2.35.0.js').read_text(); TYPED=(WP/'assets/js/sc-workspace-typed-client-v2350.js').read_text(); TS=(ROOT/'frontend/typed-client/src/30-local-first-sync.ts').read_text()
 def test_release_identity_and_interaction_runtime_preserved():
- assert 'Version: 2.34.0' in PLUGIN and "const WORKSPACE_RELEASE = '2.34.0';" in MAIN; assert 'SCWorkspaceInteractionRuntime' in MAIN and 'SCWorkspaceInteractionRepair' in MAIN
+ assert 'Version: 2.35.0' in PLUGIN and "const WORKSPACE_RELEASE = '2.35.0';" in MAIN; assert 'SCWorkspaceInteractionRuntime' in MAIN and 'SCWorkspaceInteractionRepair' in MAIN
 def test_local_first_outbox_is_explicitly_non_authoritative():
  assert 'sc_workspace_sync_outbox_v2310' in TS; assert 'offlineOutboxAuthoritative:false' in TS; assert 'pendingMutationsAreDrafts:true' in TS; assert 'automaticSemanticMerge:false' in TS
 def test_typed_client_exposes_sync_contract():
