@@ -1,0 +1,9 @@
+{
+  "schema": "sc-workspace-product-record/1.0",
+  "product": "workspace",
+  "version": "2.36.0",
+  "release": "Workspace Production Architecture Certification",
+  "status": "release",
+  "backendFirst": true,
+  "migration": null
+}

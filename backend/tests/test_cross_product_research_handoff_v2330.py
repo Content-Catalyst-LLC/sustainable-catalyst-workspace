@@ -10,10 +10,10 @@ def test_request_requires_distinct_supported_products_and_known_intent():
     r=ResearchHandoffRequest.model_validate({'schema':'sc-workspace-research-handoff-request/1.0','sourceProduct':'workspace','destinationProduct':'research-lab','intent':'analyze','objects':[{'kind':'dataset','objectId':'d1'}]}); assert r.intent in INTENTS
 
 def test_typed_contract_exposes_handoff_routes():
-    item=client_profile(app.openapi()); assert item['workspaceVersion']=='2.35.0'; assert item['typedEndpointCount']==len(TYPED_ENDPOINTS)==35; assert item['typedEndpoints']['handoffCreate']['path']=='/v1/handoffs'; assert item['requestSchemas']['handoffCreate']=='sc-workspace-research-handoff-request/1.0'; assert item['missingOpenApiOperations']==[]
+    item=client_profile(app.openapi()); assert item['workspaceVersion']=='2.36.0'; assert item['typedEndpointCount']==len(TYPED_ENDPOINTS)==36; assert item['typedEndpoints']['handoffCreate']['path']=='/v1/handoffs'; assert item['requestSchemas']['handoffCreate']=='sc-workspace-research-handoff-request/1.0'; assert item['missingOpenApiOperations']==[]
 
 def test_health_advertises_handoff_fabric_without_generic_destination_mutation():
-    h=health(); assert h['version']=='2.35.0'; assert h['crossProductResearchHandoffFabric'] is True; assert h['handoffRevisionPinning'] and h['handoffFingerprintPinning']; assert h['handoffGenericDestinationMutation'] is False
+    h=health(); assert h['version']=='2.36.0'; assert h['crossProductResearchHandoffFabric'] is True; assert h['handoffRevisionPinning'] and h['handoffFingerprintPinning']; assert h['handoffGenericDestinationMutation'] is False
 
 def test_previous_unified_object_layer_remains_enabled():
     h=health(); assert h['unifiedScientificObjectApi'] is True and h['scientificObjectKindCount']==10

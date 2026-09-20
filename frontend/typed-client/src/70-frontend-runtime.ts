@@ -1,7 +1,7 @@
-/* Workspace v2.35.0 — Frontend Logic Reduction & Legacy JS Retirement. */
+/* Workspace v2.36.0 — Frontend Logic Reduction & Legacy JS Retirement. */
 const SCWorkspaceFrontendBoundary=Object.freeze({
   schema:'sc-workspace-frontend-runtime-client/1.0',
-  version:'2.35.0',
+  version:'2.36.0',
   backendAuthoritative:true,
   browserAuthoritativeState:false,
   browserAuthoritativeAuthorization:false,

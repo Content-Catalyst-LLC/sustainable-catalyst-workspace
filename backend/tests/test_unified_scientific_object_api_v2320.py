@@ -33,7 +33,7 @@ def test_unified_list_can_merge_multiple_kinds_and_project_filter():
 
 def test_typed_contract_exposes_five_unified_scientific_object_routes():
     item = client_profile(app.openapi())
-    assert item["workspaceVersion"] in {"2.32.0","2.34.0","2.35.0"}
+    assert item["workspaceVersion"] in {"2.32.0","2.34.0","2.36.0"}
     assert item["typedEndpointCount"] == len(TYPED_ENDPOINTS) and item["typedEndpointCount"] >= 25
     assert item["typedEndpoints"]["scientificObjects"]["path"] == "/v1/scientific-objects"
     assert item["typedEndpoints"]["scientificObjectGet"]["path"] == "/v1/scientific-objects/{kind}/{object_id}"
@@ -43,7 +43,7 @@ def test_typed_contract_exposes_five_unified_scientific_object_routes():
 
 def test_health_advertises_unified_scientific_object_api():
     item = health()
-    assert item["version"] in {"2.32.0","2.34.0","2.35.0"}
+    assert item["version"] in {"2.32.0","2.34.0","2.36.0"}
     assert item["unifiedScientificObjectApi"] is True
     assert item["scientificObjectKindCount"] == len(OBJECT_KINDS)
     assert item["scientificObjectGenericMutation"] is False

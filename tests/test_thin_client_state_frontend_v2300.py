@@ -3,14 +3,14 @@ ROOT=Path(__file__).resolve().parents[1]
 WP=ROOT/'wordpress/sustainable-catalyst-workspace'
 PHP=(WP/'includes/class-sc-workspace.php').read_text()
 PLUGIN=(WP/'sustainable-catalyst-workspace.php').read_text()
-MAIN=(WP/'assets/js/workspace-v2.35.0.js').read_text()
-TYPED=(WP/'assets/js/sc-workspace-typed-client-v2350.js').read_text()
+MAIN=(WP/'assets/js/workspace-v2.36.0.js').read_text()
+TYPED=(WP/'assets/js/sc-workspace-typed-client-v2360.js').read_text()
 TS=(ROOT/'frontend/typed-client/src/20-thin-client-state.ts').read_text()
 
 def test_release_identity_and_working_interaction_runtime_are_preserved():
-    assert 'Version: 2.35.0' in PLUGIN and "const WORKSPACE_RELEASE = '2.35.0';" in MAIN
+    assert 'Version: 2.36.0' in PLUGIN and "const WORKSPACE_RELEASE = '2.36.0';" in MAIN
     assert 'SCWorkspaceInteractionRuntime' in MAIN and 'SCWorkspaceInteractionRepair' in MAIN
-    assert 'workspace-v2.35.0.js' in PHP and 'workspace-v2.35.0.css' in PHP
+    assert 'workspace-v2.36.0.js' in PHP and 'workspace-v2.36.0.css' in PHP
 
 def test_thin_state_runtime_persists_only_allowlisted_transient_keys():
     assert "sc_workspace_transient_v2310" in TS

@@ -41,6 +41,7 @@ from .study_packages import (profile as study_package_profile, create_package as
     list_receipts as list_scientific_study_package_receipts, delete_package as delete_scientific_study_package)
 from .client_contracts import profile as typed_client_contract_profile
 from .frontend_runtime import profile as frontend_runtime_profile
+from .production_certification import profile as production_architecture_certification_profile
 from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
 from .local_first_sync import profile as local_first_sync_profile, bootstrap as local_first_sync_bootstrap, apply_envelope as apply_local_first_sync_envelope, reconcile as reconcile_local_first_sync, list_receipts as list_local_first_sync_receipts
 from .scientific_objects import (profile as scientific_object_profile, list_objects as list_scientific_objects, get_object as get_scientific_object, history as scientific_object_history, relations as scientific_object_relations, OBJECT_KINDS as SCIENTIFIC_OBJECT_KINDS)
@@ -323,6 +324,12 @@ def health():
         "legacyLocalCompatibilityLazy": True,
         "historicalVersionedFrontendAssetsRetired": True,
         "packageAssetNamesVersionDerived": True,
+        "productionArchitectureCertification": True,
+        "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
+        "architectureCertificationAutomated": True,
+        "liveProductionCertificationAutomatic": False,
+        "releaseMigrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
+        "rollbackBaseline": "2.35.0",
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -339,7 +346,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -616,6 +623,11 @@ def authorization_decisions_route(limit: int = Query(default=100, ge=1, le=500),
 @app.get("/v1/frontend-runtime")
 def frontend_runtime_contract(identity: ServiceIdentity = Depends(require_service_identity)):
     return {"ok": True, "schema": "sc-workspace-frontend-runtime-policy-response/1.0", "item": frontend_runtime_profile()}
+
+
+@app.get("/v1/production-certification")
+def production_architecture_certification_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-production-architecture-certification-response/1.0", "item": production_architecture_certification_profile()}
 
 
 @app.get("/v1/client-contracts")

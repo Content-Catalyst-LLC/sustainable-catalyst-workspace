@@ -7,6 +7,7 @@ CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "frontendRuntime": {"method": "GET", "path": "/v1/frontend-runtime"},
+    "productionCertification": {"method": "GET", "path": "/v1/production-certification"},
     "authorizationProfile": {"method": "GET", "path": "/v1/authorization"},
     "authorizationIdentity": {"method": "GET", "path": "/v1/authorization/identity"},
     "authorizationEvaluate": {"method": "POST", "path": "/v1/authorization/evaluate"},
@@ -75,8 +76,8 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "2.35.0",
-        "mode": "generated-typescript-thin-frontend-runtime-client",
+        "workspaceVersion": "2.36.0",
+        "mode": "generated-typescript-production-architecture-certification-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "transport": "wordpress-server-proxy",

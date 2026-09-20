@@ -1,4 +1,4 @@
-/* Workspace v2.35.0 unified scientific object projection. Read-only generic discovery; mutations remain bounded domain APIs. */
+/* Workspace v2.36.0 unified scientific object projection. Read-only generic discovery; mutations remain bounded domain APIs. */
 interface WorkspaceScientificObject extends WorkspaceApiEnvelope { kind?:WorkspaceScientificObjectKind; objectId?:string; projectId?:string; name?:string; revision?:number|null; fingerprint?:string; objectFingerprint?:string; }
 class WorkspaceScientificObjectStore {
   private readonly api:WorkspaceTypedApiClient; private cache:Map<string,WorkspaceScientificObject>=new Map();
@@ -10,8 +10,8 @@ class WorkspaceScientificObjectStore {
   relations(kind:WorkspaceScientificObjectKind,objectId:string):Promise<WorkspaceApiEnvelope>{return this.api.scientificObjectRelations(kind,objectId);}
   cached(kind:WorkspaceScientificObjectKind,objectId:string):WorkspaceScientificObject|undefined{return this.cache.get(this.key(kind,objectId));}
   invalidate():void{this.cache.clear();}
-  diagnostics(){return Object.freeze({schema:'sc-workspace-scientific-object-client/1.0',version:'2.35.0',backendAuthoritative:true,browserAuthoritativeState:false,canonicalCachePersistent:false,genericMutation:false,cachedObjectCount:this.cache.size});}
+  diagnostics(){return Object.freeze({schema:'sc-workspace-scientific-object-client/1.0',version:'2.36.0',backendAuthoritative:true,browserAuthoritativeState:false,canonicalCachePersistent:false,genericMutation:false,cachedObjectCount:this.cache.size});}
 }
-const SCWorkspaceScientificObjectRuntime=Object.freeze({schema:'sc-workspace-scientific-object-client-runtime/1.0',version:'2.35.0',backendAuthoritative:true,browserAuthoritativeState:false,canonicalCachePersistent:false,genericMutation:false,create(api:WorkspaceTypedApiClient){return new WorkspaceScientificObjectStore(api);}});
+const SCWorkspaceScientificObjectRuntime=Object.freeze({schema:'sc-workspace-scientific-object-client-runtime/1.0',version:'2.36.0',backendAuthoritative:true,browserAuthoritativeState:false,canonicalCachePersistent:false,genericMutation:false,create(api:WorkspaceTypedApiClient){return new WorkspaceScientificObjectStore(api);}});
 const scwObjectGlobal=window as unknown as {SCWorkspaceScientificObjects?:typeof SCWorkspaceScientificObjectRuntime;SCWorkspaceApi?:WorkspaceTypedApiClient;SCWorkspaceScientificObjectStore?:WorkspaceScientificObjectStore;};
 scwObjectGlobal.SCWorkspaceScientificObjects=SCWorkspaceScientificObjectRuntime;if(scwObjectGlobal.SCWorkspaceApi){scwObjectGlobal.SCWorkspaceScientificObjectStore=SCWorkspaceScientificObjectRuntime.create(scwObjectGlobal.SCWorkspaceApi);}

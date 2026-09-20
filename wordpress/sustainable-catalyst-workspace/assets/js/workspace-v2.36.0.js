@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const WORKSPACE_RELEASE = '2.35.0';
+  const WORKSPACE_RELEASE = '2.36.0';
   const rootSelector='[data-sc-workspace]';
   const identity=window.SCWorkspaceIdentity||{};
   const interactionRuntime=window.SCWorkspaceInteractionRuntime=window.SCWorkspaceInteractionRuntime||{schema:'sc-workspace-interaction-runtime/1.0',version:WORKSPACE_RELEASE,ready:false,issues:[],unhandledErrors:[]};

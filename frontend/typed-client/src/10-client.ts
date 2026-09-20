@@ -1,4 +1,4 @@
-/* Workspace v2.35.0 typed browser client. Service credentials remain server-side in WordPress. */
+/* Workspace v2.36.0 typed browser client. Service credentials remain server-side in WordPress. */
 interface WorkspaceTypedClientConfig { baseUrl:string; nonce?:string; authenticated?:boolean; }
 interface WorkspaceClientRequestOptions { method?:'GET'|'POST'|'DELETE'; body?:unknown; }
 class WorkspaceTypedApiError extends Error { readonly status:number; readonly payload:unknown; constructor(status:number,message:string,payload:unknown){super(message);this.name='WorkspaceTypedApiError';this.status=status;this.payload=payload;} }
@@ -15,6 +15,7 @@ class WorkspaceTypedApiClient {
   evaluateAuthorization(request:WorkspaceAuthorizationEvaluateRequest):Promise<WorkspaceApiEnvelope>{return this.request('/authorization/evaluate',{method:'POST',body:request});}
   authorizationDecisions():Promise<WorkspaceApiEnvelope>{return this.request('/authorization/decisions');}
   frontendRuntime():Promise<WorkspaceApiEnvelope>{return this.request('/frontend-runtime');}
+  productionCertification():Promise<WorkspaceApiEnvelope>{return this.request('/production-certification');}
   clientContracts():Promise<WorkspaceApiEnvelope>{return this.request('/client-contracts');}
   thinClientStateProfile():Promise<WorkspaceApiEnvelope>{return this.request('/thin-client-state');}
   thinClientBootstrap(projectId?:string):Promise<WorkspaceApiEnvelope>{const q=projectId?'?projectId='+encodeURIComponent(projectId):'';return this.request('/thin-client-state/bootstrap'+q);}

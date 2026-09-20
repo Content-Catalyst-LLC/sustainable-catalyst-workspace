@@ -1,0 +1,19 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.36.0",
+  "release": "Workspace Production Architecture Certification",
+  "backendFirst": true,
+  "migration": null,
+  "migrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
+  "features": [
+    "protected production architecture certification profile",
+    "automated backend authority and authorization certification gates",
+    "typed client and WordPress certification proxy",
+    "bounded runtime isolation deployment gates",
+    "thin frontend responsibility certification",
+    "package integrity and exact release reconstruction gates",
+    "explicit distinction between architecture certification and live field certification"
+  ],
+  "arbitraryCodeExecution": false
+}
