@@ -9,7 +9,7 @@
     "strict": true,
     "noImplicitAny": true,
     "noUncheckedIndexedAccess": true,
-    "outFile": "../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v2310.js",
+    "outFile": "../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v2320.js",
     "removeComments": false,
     "sourceMap": false
   },
@@ -17,6 +17,7 @@
     "src/00-generated-contracts.ts",
     "src/10-client.ts",
     "src/20-thin-client-state.ts",
-    "src/30-local-first-sync.ts"
+    "src/30-local-first-sync.ts",
+    "src/40-scientific-objects.ts"
   ]
 }

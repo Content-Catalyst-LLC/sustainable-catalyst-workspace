@@ -1,4 +1,4 @@
-# Current release: v2.31.0 — Local-First Synchronization Protocol
+# Current release: v2.32.0 — Local-First Synchronization Protocol
 
 Workspace now separates transient browser UI state from canonical backend state. Canonical read models hydrate a memory-only client cache; only an explicit transient allowlist may persist in the browser. Canonical mutations remain backend commands, while the v2.28.1 interaction repair and v2.29 typed-client proxy are preserved.
 

@@ -1705,3 +1705,5 @@
   font-size: 12px;
 }
 .scw-root button:disabled { cursor: not-allowed; opacity: .55; }
+
+/* v2.32.0 Unified Scientific Object API: no visual redesign; preserves v2.31 interaction shell. */

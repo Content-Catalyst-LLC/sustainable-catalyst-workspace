@@ -41,7 +41,7 @@ final class SC_Workspace_Backend {
             'legacyMigrationPlanApply' => true,
             'legacyStoreRetainedAfterMigration' => true,
             'migrationReceipts' => true,
-            'localProjectCanonicalOnDevice' => true,
+            'localProjectCanonicalOnDevice' => false,
             'explicitBackupAndSyncOnly' => true,
             'projectSchema' => 'sc-workspace-project/20.0',
             'notebookSchema' => 'sc-workspace-notebook/3.0',
@@ -135,6 +135,10 @@ final class SC_Workspace_Backend {
             'clientSuppliedRuntimeUrlsAllowed' => false,
             'clientSuppliedRuntimeCredentialsAllowed' => false,
             'arbitraryCodeExecution' => false,
+            'unifiedScientificObjectApi' => true,
+            'scientificObjectSchema' => 'sc-workspace-scientific-object/1.0',
+            'scientificObjectRelations' => true,
+            'scientificObjectGenericMutation' => false,
             'secretEnvironmentValuesCaptured' => false,
         );
     }

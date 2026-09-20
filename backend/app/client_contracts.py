@@ -14,6 +14,11 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "syncEnvelope": {"method": "POST", "path": "/v1/sync/envelopes"},
     "syncReconcile": {"method": "POST", "path": "/v1/sync/reconcile"},
     "syncReceipts": {"method": "GET", "path": "/v1/sync/receipts"},
+    "scientificObjectProfile": {"method": "GET", "path": "/v1/scientific-objects/profile"},
+    "scientificObjects": {"method": "GET", "path": "/v1/scientific-objects"},
+    "scientificObjectGet": {"method": "GET", "path": "/v1/scientific-objects/{kind}/{object_id}"},
+    "scientificObjectHistory": {"method": "GET", "path": "/v1/scientific-objects/{kind}/{object_id}/revisions"},
+    "scientificObjectRelations": {"method": "GET", "path": "/v1/scientific-objects/{kind}/{object_id}/relations"},
     "domainAuthority": {"method": "GET", "path": "/v1/domain-authority"},
     "commandQuery": {"method": "GET", "path": "/v1/command-query"},
     "executeCommand": {"method": "POST", "path": "/v1/commands/execute"},
@@ -57,8 +62,8 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "2.31.0",
-        "mode": "generated-typescript-local-first-thin-client",
+        "workspaceVersion": "2.32.0",
+        "mode": "generated-typescript-local-first-unified-scientific-object-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "transport": "wordpress-server-proxy",

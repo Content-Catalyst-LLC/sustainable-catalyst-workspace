@@ -1,0 +1,20 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "2.32.0",
+  "release": "Unified Scientific Object API",
+  "backendFirst": true,
+  "migration": null,
+  "migrationLineage": "029_local_first_synchronization_protocol.sql",
+  "features": [
+    "ten-kind unified scientific object projection",
+    "typed discovery and project scoping",
+    "canonical object identity and deterministic fingerprints",
+    "revision and execution-event history",
+    "typed provenance relationships",
+    "scientific receipt discovery",
+    "read-only generic object surface",
+    "v2.31 local-first synchronization preserved"
+  ],
+  "arbitraryCodeExecution": false
+}

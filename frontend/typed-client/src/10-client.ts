@@ -1,4 +1,4 @@
-/* Workspace v2.31.0 typed browser client. Service credentials remain server-side in WordPress. */
+/* Workspace v2.32.0 typed browser client. Service credentials remain server-side in WordPress. */
 interface WorkspaceTypedClientConfig { baseUrl:string; nonce?:string; authenticated?:boolean; }
 interface WorkspaceClientRequestOptions { method?:'GET'|'POST'|'DELETE'; body?:unknown; }
 class WorkspaceTypedApiError extends Error { readonly status:number; readonly payload:unknown; constructor(status:number,message:string,payload:unknown){super(message);this.name='WorkspaceTypedApiError';this.status=status;this.payload=payload;} }
@@ -18,6 +18,11 @@ class WorkspaceTypedApiClient {
   syncEnvelope(request:WorkspaceSyncEnvelope):Promise<WorkspaceApiEnvelope>{return this.request('/sync/envelopes',{method:'POST',body:request});}
   syncReconcile(request:WorkspaceSyncReconcileRequest):Promise<WorkspaceApiEnvelope>{return this.request('/sync/reconcile',{method:'POST',body:request});}
   syncReceipts():Promise<WorkspaceApiEnvelope>{return this.request('/sync/receipts');}
+  scientificObjectProfile():Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/profile');}
+  scientificObjects(kind?:WorkspaceScientificObjectKind,projectId?:string,q?:string,limit=100):Promise<WorkspaceApiEnvelope>{const params=new URLSearchParams();if(kind)params.set('kind',kind);if(projectId)params.set('projectId',projectId);if(q)params.set('q',q);params.set('limit',String(limit));return this.request('/scientific-objects?'+params.toString());}
+  scientificObject(kind:WorkspaceScientificObjectKind,objectId:string):Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/'+encodeURIComponent(kind)+'/'+encodeURIComponent(objectId));}
+  scientificObjectHistory(kind:WorkspaceScientificObjectKind,objectId:string,limit=100):Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/'+encodeURIComponent(kind)+'/'+encodeURIComponent(objectId)+'/revisions?limit='+encodeURIComponent(String(limit)));}
+  scientificObjectRelations(kind:WorkspaceScientificObjectKind,objectId:string):Promise<WorkspaceApiEnvelope>{return this.request('/scientific-objects/'+encodeURIComponent(kind)+'/'+encodeURIComponent(objectId)+'/relations');}
   domainAuthority():Promise<WorkspaceApiEnvelope>{return this.request('/domain-authority');}
   commandQueryProfile():Promise<WorkspaceApiEnvelope>{return this.request('/command-query');}
   executeCommand<C extends WorkspaceCommand>(request:WorkspaceCommandRequest&{command:C}):Promise<WorkspaceApiEnvelope>{return this.request('/commands/execute',{method:'POST',body:request});}

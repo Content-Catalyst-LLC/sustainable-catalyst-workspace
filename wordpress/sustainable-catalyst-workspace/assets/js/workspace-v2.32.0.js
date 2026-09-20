@@ -30,7 +30,7 @@
     });
   }
 
-  const WORKSPACE_RELEASE = '2.31.0';
+  const WORKSPACE_RELEASE = '2.32.0';
   const STORAGE_KEY = 'sc_workspace';
   const LEGACY_KEY = 'sc_workspace_v0_1';
   const RECOVERY_KEY = 'sc_workspace_recovery_v0_8_2';
@@ -6656,10 +6656,13 @@ window.SCWorkspaceInteractionRepair = Object.freeze({
 
 
 /* Workspace v2.29.0 — Typed Client Contracts & TypeScript Migration */
-window.SCWorkspaceTypedClientBoundary=Object.freeze({version:'2.31.0',schema:'sc-workspace-typed-client-boundary/1.0',generatedFromOpenApi:true,strictTypeScript:true,transport:'wordpress-server-proxy',browserDirectBackendAccess:false,serviceCredentialsBrowserVisible:false,typedRuntime:window.SCWorkspaceTypedClient||null,api:window.SCWorkspaceApi||null});
+window.SCWorkspaceTypedClientBoundary=Object.freeze({version:'2.32.0',schema:'sc-workspace-typed-client-boundary/1.0',generatedFromOpenApi:true,strictTypeScript:true,transport:'wordpress-server-proxy',browserDirectBackendAccess:false,serviceCredentialsBrowserVisible:false,typedRuntime:window.SCWorkspaceTypedClient||null,api:window.SCWorkspaceApi||null});
 
 
 /* Workspace v2.30.0 — Thin Client State Architecture */
-window.SCWorkspaceThinClientStateBoundary=Object.freeze({version:'2.31.0',schema:'sc-workspace-thin-client-state/1.0',backendAuthoritative:true,browserAuthoritativeState:false,persistentBrowserState:'transient-only',canonicalCache:'memory-only-rehydratable',canonicalCachePersistent:false,canonicalMutations:'command-api-only',guestLocalFirstCompatibility:true,runtime:window.SCWorkspaceThinClientState||null,state:window.SCWorkspaceState||null});
+window.SCWorkspaceThinClientStateBoundary=Object.freeze({version:'2.32.0',schema:'sc-workspace-thin-client-state/1.0',backendAuthoritative:true,browserAuthoritativeState:false,persistentBrowserState:'transient-only',canonicalCache:'memory-only-rehydratable',canonicalCachePersistent:false,canonicalMutations:'command-api-only',guestLocalFirstCompatibility:true,runtime:window.SCWorkspaceThinClientState||null,state:window.SCWorkspaceState||null});
 
-const SCWorkspaceLocalFirstSyncBoundary=Object.freeze({schema:'sc-workspace-local-first-sync-ui-boundary/1.0',version:'2.31.0',backendAuthoritative:true,browserAuthoritativeState:false,offlineOutboxAuthoritative:false,pendingMutationsAreDrafts:true,baseRevisionRequired:true,automaticSemanticMerge:false,rehydrateAfterSync:true});
+const SCWorkspaceLocalFirstSyncBoundary=Object.freeze({schema:'sc-workspace-local-first-sync-ui-boundary/1.0',version:'2.32.0',backendAuthoritative:true,browserAuthoritativeState:false,offlineOutboxAuthoritative:false,pendingMutationsAreDrafts:true,baseRevisionRequired:true,automaticSemanticMerge:false,rehydrateAfterSync:true});
+
+/* Workspace v2.32.0 unified scientific object boundary. */
+window.SCWorkspaceScientificObjectBoundary=Object.freeze({version:'2.32.0',schema:'sc-workspace-scientific-object-api/1.0',backendAuthoritative:true,browserAuthoritativeState:false,canonicalStore:'postgresql',canonicalCachePersistent:false,genericMutation:false,relations:true,typedDiscovery:true,runtime:window.SCWorkspaceScientificObjects||null});

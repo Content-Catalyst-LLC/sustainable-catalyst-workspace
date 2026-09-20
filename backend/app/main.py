@@ -42,6 +42,7 @@ from .study_packages import (profile as study_package_profile, create_package as
 from .client_contracts import profile as typed_client_contract_profile
 from .thin_client_state import profile as thin_client_state_profile, bootstrap as thin_client_state_bootstrap
 from .local_first_sync import profile as local_first_sync_profile, bootstrap as local_first_sync_bootstrap, apply_envelope as apply_local_first_sync_envelope, reconcile as reconcile_local_first_sync, list_receipts as list_local_first_sync_receipts
+from .scientific_objects import (profile as scientific_object_profile, list_objects as list_scientific_objects, get_object as get_scientific_object, history as scientific_object_history, relations as scientific_object_relations, OBJECT_KINDS as SCIENTIFIC_OBJECT_KINDS)
 from .visualization_specs import (profile as visualization_spec_profile, store_spec as store_visualization_spec, get_spec as get_visualization_spec,
     list_specs as list_visualization_specs, list_revisions as list_visualization_spec_revisions, list_receipts as list_visualization_spec_receipts,
     delete_spec as delete_visualization_spec, metadata as visualization_spec_metadata)
@@ -293,6 +294,12 @@ def health():
         "syncAutomaticSemanticMerge": False,
         "syncRevisionVectorReconciliation": True,
         "durableSyncReceipts": True,
+        "unifiedScientificObjectApi": True,
+        "scientificObjectSchema": "sc-workspace-scientific-object/1.0",
+        "scientificObjectKindCount": len(SCIENTIFIC_OBJECT_KINDS),
+        "scientificObjectRelations": True,
+        "scientificObjectRevisionHistory": True,
+        "scientificObjectGenericMutation": False,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
@@ -584,6 +591,42 @@ def local_first_sync_reconcile_route(payload: LocalFirstSyncReconcileRequest, id
 def local_first_sync_receipts_route(limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
         return {"schema":"sc-workspace-local-first-sync-receipt-index/1.0","items":list_local_first_sync_receipts(db,identity.user_key,limit)}
+
+
+@app.get("/v1/scientific-objects/profile")
+def scientific_objects_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-scientific-object-api-response/1.0", "item": scientific_object_profile()}
+
+
+@app.get("/v1/scientific-objects")
+def scientific_objects_index_route(kind: str | None = None, projectId: str | None = None, q: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items = list_scientific_objects(db, identity.user_key, kind, projectId, q, limit)
+        return {"schema": "sc-workspace-scientific-object-index/1.0", "backendAuthoritative": True, "items": items, "count": len(items)}
+
+
+@app.get("/v1/scientific-objects/{kind}/{object_id}")
+def scientific_object_get_route(kind: str, object_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item = get_scientific_object(db, identity.user_key, kind, object_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail={"code": "scientific-object-not-found", "kind": kind, "objectId": object_id})
+        return {"schema": "sc-workspace-scientific-object-response/1.0", "item": item}
+
+
+@app.get("/v1/scientific-objects/{kind}/{object_id}/revisions")
+def scientific_object_history_route(kind: str, object_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item = get_scientific_object(db, identity.user_key, kind, object_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail={"code": "scientific-object-not-found", "kind": kind, "objectId": object_id})
+        return scientific_object_history(db, identity.user_key, kind, object_id, limit)
+
+
+@app.get("/v1/scientific-objects/{kind}/{object_id}/relations")
+def scientific_object_relations_route(kind: str, object_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return scientific_object_relations(db, identity.user_key, kind, object_id)
 
 
 @app.get("/v1/domain-authority")

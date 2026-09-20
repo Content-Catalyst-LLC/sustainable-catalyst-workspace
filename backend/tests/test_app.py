@@ -9,7 +9,7 @@ def test_health_is_database_independent():
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["version"] == "2.31.0"
+    assert body["version"] == "2.32.0"
     assert body["persistence"] == "postgresql"
     assert body["juliaSimulationNumericalRuntime"] is True
     assert body["juliaRuntimeBoundedOperations"] == 8
