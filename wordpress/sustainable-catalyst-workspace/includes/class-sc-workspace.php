@@ -121,6 +121,9 @@ final class SC_Workspace {
     }
 
     public function register_rest_routes() {
+        register_rest_route('sc-workspace/v1', '/backend/research-context', array('methods'=>'GET','callback'=>array($this,'backend_typed_research_context'),'permission_callback'=>array($this,'backend_proxy_permission')));
+        register_rest_route('sc-workspace/v1', '/backend/research-context/projects/(?P<project_id>[A-Za-z0-9._:-]+)', array('methods'=>'GET','callback'=>array($this,'backend_typed_research_project_context'),'permission_callback'=>array($this,'backend_proxy_permission')));
+        register_rest_route('sc-workspace/v1', '/backend/research-context/projects/(?P<project_id>[A-Za-z0-9._:-]+)/snapshots', array('methods'=>'GET,POST','callback'=>array($this,'backend_typed_research_context_snapshots'),'permission_callback'=>array($this,'backend_proxy_permission')));
         register_rest_route('sc-workspace/v1', '/backend/platform-core-runtime', array('methods'=>'GET','callback'=>array($this,'backend_typed_platform_core_runtime'),'permission_callback'=>array($this,'backend_proxy_permission')));
         register_rest_route('sc-workspace/v1', '/backend/platform-core-runtime/readiness', array('methods'=>'GET','callback'=>array($this,'backend_typed_platform_core_readiness'),'permission_callback'=>array($this,'backend_proxy_permission')));
         register_rest_route('sc-workspace/v1', '/backend/platform-core-runtime/sessions', array('methods'=>'POST','callback'=>array($this,'backend_typed_platform_core_session_create'),'permission_callback'=>array($this,'backend_proxy_permission')));
@@ -3984,6 +3987,9 @@ public function research_templates_contract() {
 
     public function backend_proxy_permission() { return is_user_logged_in(); }
     private function typed_backend_body($path, $request) { $body=$request->get_json_params(); if(!is_array($body)) $body=array(); return SC_Workspace_Backend::configured_request('POST',$path,$body); }
+    public function backend_typed_research_context() { return SC_Workspace_Backend::configured_request('GET','/v1/research-context'); }
+    public function backend_typed_research_project_context($request) { return SC_Workspace_Backend::configured_request('GET','/v1/research-context/projects/'.rawurlencode((string)$request['project_id'])); }
+    public function backend_typed_research_context_snapshots($request) { $project=rawurlencode((string)$request['project_id']); if($request->get_method()==='POST') return $this->typed_backend_body('/v1/research-context/projects/'.$project.'/snapshots',$request); $limit=$request->get_param('limit'); $path='/v1/research-context/projects/'.$project.'/snapshots'.($limit!==null?'?limit='.(int)$limit:''); return SC_Workspace_Backend::configured_request('GET',$path); }
     public function backend_typed_platform_core_runtime() { return SC_Workspace_Backend::configured_request('GET','/v1/platform-core-runtime'); }
     public function backend_typed_platform_core_readiness() { return SC_Workspace_Backend::configured_request('GET','/v1/platform-core-runtime/readiness'); }
     public function backend_typed_platform_core_session_create($request) { return $this->typed_backend_body('/v1/platform-core-runtime/sessions',$request); }
@@ -4038,7 +4044,7 @@ public function research_templates_contract() {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.1.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.2.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -4049,6 +4055,7 @@ public function research_templates_contract() {
             SC_WORKSPACE_VERSION,
             true
         );
+        wp_enqueue_script('sc-workspace-unified-research-context-v3200', SC_WORKSPACE_URL . 'assets/js/sc-workspace-unified-research-context-v3200.js', array(), SC_WORKSPACE_VERSION, true);
         wp_enqueue_script(
             'sc-workspace-project-diff-v1',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-project-diff-v1.js',
@@ -4680,13 +4687,13 @@ public function research_templates_contract() {
         );
 
         wp_enqueue_script(
-            'sc-workspace-typed-client-v3100',
-            SC_WORKSPACE_URL . 'assets/js/sc-workspace-typed-client-v3100.js',
+            'sc-workspace-typed-client-v3200',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-typed-client-v3200.js',
             array('sc-workspace-interaction-bootstrap-v2281'),
             SC_WORKSPACE_VERSION,
             true
         );
-        wp_localize_script('sc-workspace-typed-client-v3100', 'SCWorkspaceTypedClientConfig', array(
+        wp_localize_script('sc-workspace-typed-client-v3200', 'SCWorkspaceTypedClientConfig', array(
             'baseUrl' => untrailingslashit(rest_url('sc-workspace/v1/backend')),
             'nonce' => wp_create_nonce('wp_rest'),
             'authenticated' => is_user_logged_in(),
@@ -4695,8 +4702,8 @@ public function research_templates_contract() {
 
         wp_enqueue_script(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v3.1.0.js',
-            array('sc-workspace-interaction-bootstrap-v2281', 'sc-workspace-typed-client-v3100', 'sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1', 'sc-workspace-institutional-audit-studio-v1', 'sc-workspace-institutional-audit-studio-ui-v1', 'sc-workspace-research-operations-v1', 'sc-workspace-research-operations-ui-v1', 'sc-workspace-developer-sdk-v1', 'sc-workspace-developer-api-ui-v1', 'sc-workspace-institutional-scale-hardening-v1', 'sc-workspace-institutional-scale-hardening-ui-v1', 'sc-workspace-connected-intelligence-v1', 'sc-workspace-connected-intelligence-ui-v1', 'sc-workspace-public-research-packages-v1', 'sc-workspace-public-research-packages-ui-v1', 'sc-workspace-product-maturity-v1', 'sc-workspace-product-maturity-ui-v1', 'sc-workspace-connected-knowledge-v2', 'sc-workspace-connected-knowledge-ui-v2'),
+            SC_WORKSPACE_URL . 'assets/js/workspace-v3.2.0.js',
+            array('sc-workspace-interaction-bootstrap-v2281', 'sc-workspace-typed-client-v3200', 'sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1', 'sc-workspace-institutional-audit-studio-v1', 'sc-workspace-institutional-audit-studio-ui-v1', 'sc-workspace-research-operations-v1', 'sc-workspace-research-operations-ui-v1', 'sc-workspace-developer-sdk-v1', 'sc-workspace-developer-api-ui-v1', 'sc-workspace-institutional-scale-hardening-v1', 'sc-workspace-institutional-scale-hardening-ui-v1', 'sc-workspace-connected-intelligence-v1', 'sc-workspace-connected-intelligence-ui-v1', 'sc-workspace-public-research-packages-v1', 'sc-workspace-public-research-packages-ui-v1', 'sc-workspace-product-maturity-v1', 'sc-workspace-product-maturity-ui-v1', 'sc-workspace-connected-knowledge-v2', 'sc-workspace-connected-knowledge-ui-v2'),
             SC_WORKSPACE_VERSION,
             true
         );

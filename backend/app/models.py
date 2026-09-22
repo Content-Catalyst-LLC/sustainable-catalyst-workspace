@@ -1324,3 +1324,19 @@ class PlatformCoreRuntimeReceipt(Base):
     request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     response_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.2.0 Unified Research Project Context
+class UnifiedResearchContextSnapshot(Base):
+    __tablename__ = "workspace_unified_research_context_snapshots"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    project_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    project_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    context_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    core_session_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    component_counts_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

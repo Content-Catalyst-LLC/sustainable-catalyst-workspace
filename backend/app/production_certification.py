@@ -13,7 +13,7 @@ def profile() -> dict[str, Any]:
     """
     return {
         "schema": PRODUCTION_ARCHITECTURE_CERTIFICATION_SCHEMA,
-        "workspaceVersion": "3.1.0",
+        "workspaceVersion": "3.2.0",
         "release": "Workspace Production Architecture Certification",
         "certificationScope": "automated-architecture",
         "architectureCertified": True,

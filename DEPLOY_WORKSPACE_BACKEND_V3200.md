@@ -1,0 +1,20 @@
+# Workspace v3.2.0 backend deployment
+
+Workspace v3.2.0 — Unified Research Project Context
+
+GITHUB PROMOTION
+cd ~/Downloads
+rm -rf sc-workspace-v3.2.0-release
+mkdir -p sc-workspace-v3.2.0-release
+unzip -q sustainable-catalyst-workspace-v3.2.0-release-bundle.zip -d sc-workspace-v3.2.0-release
+cd sc-workspace-v3.2.0-release
+chmod +x PUSH_WORKSPACE_V3200_FINAL.sh
+./PUSH_WORKSPACE_V3200_FINAL.sh "$PWD/sustainable-catalyst-workspace-v3.2.0-repository.zip"
+
+BACKEND COPY
+scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes sustainable-catalyst-workspace-backend-v3.2.0.zip deploy_workspace_backend_v3_2_0_vps.sh catalystadmin@94.72.113.77:/tmp/
+
+BACKEND DEPLOY
+ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes catalystadmin@94.72.113.77
+chmod +x /tmp/deploy_workspace_backend_v3_2_0_vps.sh
+bash /tmp/deploy_workspace_backend_v3_2_0_vps.sh /tmp/sustainable-catalyst-workspace-backend-v3.2.0.zip

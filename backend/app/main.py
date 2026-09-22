@@ -101,6 +101,12 @@ from .platform_core_runtime import (
     CORE_CONTRACT as PLATFORM_CORE_V3_CONTRACT, INTEGRATION_SCHEMA as PLATFORM_CORE_INTEGRATION_SCHEMA,
 )
 
+from .unified_research_context import (
+    profile as unified_research_context_profile, build_context as build_unified_research_context,
+    create_snapshot as create_unified_research_context_snapshot, list_snapshots as list_unified_research_context_snapshots,
+    UnifiedResearchContextSnapshotRequest, CONTEXT_SCHEMA as UNIFIED_RESEARCH_CONTEXT_SCHEMA,
+)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -340,7 +346,6 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "releaseMigrationLineage": "031_backend_policy_identity_authorization_consolidation.sql",
         "rollbackBaseline": "2.36.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
@@ -351,6 +356,11 @@ def health():
         "platformCoreReferenceFirst": True,
         "platformCoreObjectContentReplication": False,
         "platformCoreIntegrationSchema": PLATFORM_CORE_INTEGRATION_SCHEMA,
+        "unifiedResearchProjectContext": True,
+        "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
+        "researchContextImmutableSnapshots": True,
+        "researchContextSpecialistAuthorityPreserved": True,
+        "releaseMigrationLineage": "033_unified_research_project_context.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -369,7 +379,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured", "unifiedResearchProjectContext": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -745,6 +755,38 @@ def platform_core_runtime_receipts(projectId: str | None = None, limit: int = Qu
     with session_scope() as db:
         items = list_platform_core_runtime_receipts(db, identity.user_key, projectId, limit)
         return {"schema": "sc-workspace-platform-core-runtime-receipt-index/1.0", "items": items, "count": len(items)}
+
+
+@app.get("/v1/research-context")
+def unified_research_context_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-unified-research-project-context-profile-response/1.0", "item": unified_research_context_profile()}
+
+
+@app.get("/v1/research-context/projects/{project_id}")
+def unified_research_project_context_route(project_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = build_unified_research_context(db, identity.user_key, project_id, True)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok": True, "schema": "sc-workspace-unified-research-project-context-response/1.0", "item": item}
+
+
+@app.post("/v1/research-context/projects/{project_id}/snapshots")
+def unified_research_project_context_snapshot_create(project_id: str, payload: UnifiedResearchContextSnapshotRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = create_unified_research_context_snapshot(db, identity.user_key, project_id, payload)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok": True, "schema": "sc-workspace-unified-research-project-context-snapshot-response/1.0", "item": item}
+
+
+@app.get("/v1/research-context/projects/{project_id}/snapshots")
+def unified_research_project_context_snapshot_index(project_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items = list_unified_research_context_snapshots(db, identity.user_key, project_id, limit)
+        return {"schema":"sc-workspace-unified-research-project-context-snapshot-index/1.0","items":items,"count":len(items)}
 
 
 @app.get("/v1/backend-native-workspace")

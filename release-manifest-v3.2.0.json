@@ -1,0 +1,10 @@
+{
+  "release": "3.2.0",
+  "product": "Sustainable Catalyst Workspace",
+  "title": "Unified Research Project Context",
+  "migration": "033_unified_research_project_context.sql",
+  "typedEndpointCount": 55,
+  "platformCoreContract": "sc.research.unified-research-scientific-investigation-runtime.v1",
+  "referenceFirst": true,
+  "specialistObjectAuthorityPreserved": true
+}

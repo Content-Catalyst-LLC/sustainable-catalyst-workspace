@@ -6,6 +6,10 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "unifiedResearchContext": {"method": "GET", "path": "/v1/research-context"},
+    "unifiedResearchProjectContext": {"method": "GET", "path": "/v1/research-context/projects/{project_id}"},
+    "unifiedResearchContextSnapshotCreate": {"method": "POST", "path": "/v1/research-context/projects/{project_id}/snapshots"},
+    "unifiedResearchContextSnapshots": {"method": "GET", "path": "/v1/research-context/projects/{project_id}/snapshots"},
     "platformCoreRuntime": {"method": "GET", "path": "/v1/platform-core-runtime"},
     "platformCoreRuntimeReadiness": {"method": "GET", "path": "/v1/platform-core-runtime/readiness"},
     "platformCoreSessionCreate": {"method": "POST", "path": "/v1/platform-core-runtime/sessions"},
@@ -59,6 +63,7 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "unifiedResearchContextSnapshotCreate": "sc-workspace-unified-research-project-context-snapshot-request/1.0",
     "platformCoreSessionCreate": "sc-workspace-platform-core-session-request/1.0",
     "platformCoreObjectBind": "sc-workspace-platform-core-object-binding-request/1.0",
     "platformCoreExecutionBind": "sc-workspace-platform-core-execution-binding-request/1.0",
@@ -97,7 +102,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.1.0",
+        "workspaceVersion": "3.2.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
