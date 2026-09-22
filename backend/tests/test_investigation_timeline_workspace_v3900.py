@@ -77,4 +77,4 @@ def test_event_and_relation_validation():
 
 def test_release_lineage():
     from app.config import get_settings
-    assert get_settings().service_version == "3.9.0"
+    assert get_settings().service_version == "3.9.1"

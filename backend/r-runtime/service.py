@@ -15,10 +15,11 @@ SERVICE_VERSION = "2.13.0"
 RUNTIME = "r-statistical-econometric"
 RUNNER = Path("/app/runner.R")
 PROVIDER_RUNNER = Path("/app/provider_runner.R")
-ADAPTER_VERSION = "3.5.0"
+ADAPTER_VERSION = "3.9.1"
 PROVIDER_KEY = "catalystanalyticsr"
-PROVIDER_VERSION = "2.1.0"
+PROVIDER_VERSION = "2.2.0"
 CORE_PROVIDER_CONTRACT = "sc.core.analytical-runtime-provider.v1"
+DIAGNOSTICS_CONTRACT = "sc.analytics-r.statistical-diagnostics-validation.v1"
 TOKEN = os.getenv("SC_WORKSPACE_R_RUNTIME_TOKEN", "").strip()
 TIMEOUT = max(1.0, min(float(os.getenv("SC_WORKSPACE_R_TIMEOUT_SECONDS", "40")), 120.0))
 MAX_PAYLOAD = max(1024, min(int(os.getenv("SC_WORKSPACE_R_MAX_PAYLOAD_BYTES", str(10 * 1024 * 1024))), 25 * 1024 * 1024))
@@ -62,6 +63,8 @@ def health() -> dict[str, Any]:
         "catalystAnalyticsRProviderKey": PROVIDER_KEY,
         "catalystAnalyticsRProviderVersion": PROVIDER_VERSION,
         "catalystAnalyticsRCoreContract": CORE_PROVIDER_CONTRACT,
+        "catalystAnalyticsRDiagnosticsContract": DIAGNOSTICS_CONTRACT,
+        "catalystAnalyticsRStatisticalDiagnosticsValidation": True,
         "catalystAnalyticsRAdapterVersion": ADAPTER_VERSION,
     }
 

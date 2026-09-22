@@ -16,9 +16,10 @@ from .models import AnalyticalProviderReceipt
 from .utils import sha256_hex
 
 PROVIDER_KEY = "catalystanalyticsr"
-PROVIDER_VERSION = "2.1.0"
+PROVIDER_VERSION = "2.2.0"
 CORE_CONTRACT = "sc.core.analytical-runtime-provider.v1"
-ADAPTER_VERSION = "3.5.0"
+DIAGNOSTICS_CONTRACT = "sc.analytics-r.statistical-diagnostics-validation.v1"
+ADAPTER_VERSION = "3.9.1"
 ENVELOPE_TYPE = "catalyst_workspace_core_analytical_execution"
 RESULT_TYPE = "catalyst_analytics_r_core_result"
 
@@ -32,6 +33,8 @@ def profile() -> dict[str, Any]:
         "providerKey": PROVIDER_KEY,
         "providerVersion": PROVIDER_VERSION,
         "coreContract": CORE_CONTRACT,
+        "diagnosticsContract": DIAGNOSTICS_CONTRACT,
+        "statisticalDiagnosticsValidation": True,
         "runtime": "r",
         "executionHost": "workspace",
         "runtimeConfigured": bool(settings.runtime_r_url.strip()),
@@ -140,6 +143,8 @@ def manifest() -> dict[str, Any]:
         raise HTTPException(status_code=502, detail="Catalyst Analytics R runtime image provider identity mismatch")
     if provider.get("core_contract") != CORE_CONTRACT:
         raise HTTPException(status_code=502, detail="Catalyst Analytics R runtime image Core contract mismatch")
+    if provider.get("diagnostics_contract") != DIAGNOSTICS_CONTRACT:
+        raise HTTPException(status_code=502, detail="Catalyst Analytics R runtime image diagnostics contract mismatch")
     return body
 
 

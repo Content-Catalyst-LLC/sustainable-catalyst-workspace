@@ -1,0 +1,28 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.9.1",
+  "release": "Catalyst Analytics R v2.2 Provider Promotion",
+  "rollbackBaseline": "3.9.0",
+  "migrationLineage": "040_timeline_event_reconstruction_investigative_sequence_workspace.sql",
+  "databaseMigrationRequired": false,
+  "requires": {
+    "workspace": "3.9.0",
+    "catalystAnalyticsRProvider": "2.2.0",
+    "platformCoreProviderContract": "sc.core.analytical-runtime-provider.v1"
+  },
+  "contracts": {
+    "analyticsProvider": "sc.core.analytical-runtime-provider.v1",
+    "statisticalDiagnosticsValidation": "sc.analytics-r.statistical-diagnostics-validation.v1",
+    "timelineWorkspace": "sc-workspace-timeline-event-reconstruction-workspace/1.0"
+  },
+  "boundaries": {
+    "workspaceControlsExecution": true,
+    "arbitraryCodeExecution": false,
+    "clientSuppliedPackagesAllowed": false,
+    "clientSuppliedRuntimeUrlsAllowed": false,
+    "automaticScientificValidityCertification": false,
+    "humanReviewRequired": true,
+    "productionRuntimeReadOnly": true,
+    "productionRuntimeUser": "10001"
+  }
+}

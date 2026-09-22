@@ -13,7 +13,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY vendor/catalystanalyticsr /opt/catalystanalyticsr
 RUN R CMD INSTALL --preclean /opt/catalystanalyticsr \
-    && Rscript --vanilla -e 'library(catalystanalyticsr); p <- catalyst_core_provider_manifest(); stopifnot(as.character(packageVersion("catalystanalyticsr")) == "2.1.0", p$provider_key == "catalystanalyticsr", p$core_contract == "sc.core.analytical-runtime-provider.v1", p$runtime == "r", p$execution_host == "workspace"); cat("Catalyst Analytics R image contract PASS\n")' \
+    && Rscript --vanilla -e 'library(catalystanalyticsr); p <- catalyst_core_provider_manifest(); stopifnot(as.character(packageVersion("catalystanalyticsr")) == "2.2.0", p$provider_key == "catalystanalyticsr", p$core_contract == "sc.core.analytical-runtime-provider.v1", p$runtime == "r", p$execution_host == "workspace", p$diagnostics_contract == "sc.analytics-r.statistical-diagnostics-validation.v1"); cat("Catalyst Analytics R v2.2.0 image contract PASS\n")' \
     && rm -rf /opt/catalystanalyticsr
 COPY service.py runner.R provider_runner.R ./
 RUN useradd --system --uid 10001 --home-dir /tmp --shell /usr/sbin/nologin sc_r_runtime

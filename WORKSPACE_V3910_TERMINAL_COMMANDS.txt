@@ -1,0 +1,38 @@
+WORKSPACE v3.9.1 — Catalyst Analytics R v2.2 Provider Promotion
+
+GIT PUSH (Mac)
+cd ~/Downloads
+rm -rf sc-workspace-v3.9.1-release
+mkdir -p sc-workspace-v3.9.1-release
+unzip -q sustainable-catalyst-workspace-v3.9.1-release-bundle.zip -d sc-workspace-v3.9.1-release
+cd sc-workspace-v3.9.1-release
+chmod +x PUSH_WORKSPACE_V3910_FINAL.sh
+./PUSH_WORKSPACE_V3910_FINAL.sh "$PWD/sustainable-catalyst-workspace-v3.9.1-repository.zip"
+
+BACKEND UPLOAD (Mac)
+scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+  sustainable-catalyst-workspace-backend-v3.9.1.zip \
+  deploy_workspace_backend_v3_9_1_vps.sh \
+  catalystadmin@94.72.113.77:/tmp/
+
+SSH
+ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes catalystadmin@94.72.113.77
+
+BACKEND DEPLOY (VPS)
+chmod +x /tmp/deploy_workspace_backend_v3_9_1_vps.sh
+/tmp/deploy_workspace_backend_v3_9_1_vps.sh \
+  /tmp/sustainable-catalyst-workspace-backend-v3.9.1.zip
+
+HEALTH
+curl -fsS http://127.0.0.1:8094/health | python3 -m json.tool
+
+docker exec sc-workspace-r-runtime Rscript --vanilla -e '
+  library(catalystanalyticsr)
+  p <- catalyst_core_provider_manifest()
+  cat("package=", as.character(packageVersion("catalystanalyticsr")), "\n", sep="")
+  cat("provider=", p$provider_key, "\n", sep="")
+  cat("provider_version=", p$provider_version, "\n", sep="")
+  cat("diagnostics_contract=", p$diagnostics_contract, "\n", sep="")
+'
+
+docker inspect sc-workspace-r-runtime --format 'ReadonlyRootfs={{.HostConfig.ReadonlyRootfs}} User={{.Config.User}}'

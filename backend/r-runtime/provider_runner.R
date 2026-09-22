@@ -53,7 +53,7 @@ EXECUTABLE_METHODS <- c(
 resolve_method <- function(name) {
   name <- safe_scalar(name, "selected_method_ref", 128L)
   if (!(name %in% EXECUTABLE_METHODS)) {
-    fail(paste("provider method is not executable through Workspace v3.5.0:", name))
+    fail(paste("provider method is not executable through Workspace v3.9.1:", name))
   }
   getExportedValue("catalystanalyticsr", name)
 }
@@ -73,7 +73,8 @@ build_environment <- function() {
     provider_ref = provider_manifest$provider_key,
     provider_version = provider_manifest$provider_version,
     core_contract = provider_manifest$core_contract,
-    workspace_adapter_version = "3.5.0",
+    diagnostics_contract = provider_manifest$diagnostics_contract,
+    workspace_adapter_version = "3.9.1",
     read_only_runtime_expected = TRUE
   )
 }
@@ -88,7 +89,7 @@ if (identical(action, "manifest")) {
   out <- list(
     ok = TRUE,
     schema = "sc-workspace-catalyst-analytics-r-provider-adapter/1.0",
-    workspace_version = "3.5.0",
+    workspace_version = "3.9.1",
     action = "manifest",
     provider = provider_manifest,
     executable_method_refs = unname(EXECUTABLE_METHODS),
@@ -132,7 +133,7 @@ if (!is.null(doc$plan$selected_method_ref) && !identical(as.character(doc$plan$s
 base <- list(
   ok = TRUE,
   schema = "sc-workspace-catalyst-analytics-r-provider-adapter/1.0",
-  workspace_version = "3.5.0",
+  workspace_version = "3.9.1",
   action = action,
   request_key = request$request_key,
   provider = provider_manifest,
@@ -158,7 +159,7 @@ if (identical(action, "validate")) {
 }
 
 if (!identical(plan$execution_status, "available")) {
-  fail(paste("provider capability is not executable in Catalyst Analytics R v2.1.0:", request$analysis_type))
+  fail(paste("provider capability is not executable in Catalyst Analytics R v2.2.0:", request$analysis_type))
 }
 method_ref <- as.character(plan$selected_method_ref)
 request$method_ref <- method_ref
@@ -187,7 +188,7 @@ core_result <- catalystanalyticsr::core_analytical_result(
   native_result = native_result,
   provenance = list(
     workspace = list(
-      adapter_version = "3.5.0",
+      adapter_version = "3.9.1",
       execution_started_at = started,
       execution_completed_at = completed,
       selected_method_ref = method_ref

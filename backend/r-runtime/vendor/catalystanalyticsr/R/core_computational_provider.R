@@ -9,7 +9,7 @@
     econometrics = list(category = "statistics", method_refs = c("fit_policy_regression", "panel_regression"), input_types = c("dataset", "regression_spec"), output_types = c("analytical_result", "estimate", "diagnostic"), execution_status = "available"),
     causal_inference = list(category = "causal", method_refs = c("difference_in_differences", "event_study", "interrupted_time_series", "synthetic_control"), input_types = c("dataset", "causal_assumption"), output_types = c("analytical_result", "estimate", "diagnostic"), execution_status = "available"),
     policy_evaluation = list(category = "policy", method_refs = c("policy_evaluation_analysis", "policy_effect_summary"), input_types = c("econometric_evaluation", "causal_assumption"), output_types = c("analytical_result", "estimate", "evidence"), execution_status = "available"),
-    forecasting = list(category = "prediction", method_refs = c("scenario_projection"), input_types = c("scenario", "model"), output_types = c("analytical_result", "projection"), execution_status = "projection_only", limitation = "v2.1.0 exposes governed scenario projection; generic statistical forecasting and calibration arrive in the predictive-runtime sequence."),
+    forecasting = list(category = "prediction", method_refs = c("scenario_projection"), input_types = c("scenario", "model"), output_types = c("analytical_result", "projection"), execution_status = "projection_only", limitation = "v2.2.0 exposes governed scenario projection; generic statistical forecasting and calibration arrive in the predictive-runtime sequence."),
     model_validation = list(category = "validation", method_refs = c("validate_model_fit", "model_validation_analysis", "solver_benchmark", "stability_assessment"), input_types = c("model", "dataset", "scenario"), output_types = c("analytical_result", "diagnostic"), execution_status = "available"),
     climate_accounting = list(category = "sustainability", method_refs = c("climate_accounting"), input_types = c("dataset", "scenario"), output_types = c("analytical_result", "indicator"), execution_status = "available"),
     natural_capital = list(category = "sustainability", method_refs = c("natural_capital_account"), input_types = c("dataset", "capital_account"), output_types = c("analytical_result", "indicator"), execution_status = "available"),
@@ -34,7 +34,8 @@ catalyst_core_provider_manifest <- function() {
     provider_key = "catalystanalyticsr",
     provider_version = .catalyst_package_version(),
     core_contract = .core_contract_ref(),
-    core_minimum_release = "3.1.0",
+    diagnostics_contract = "sc.analytics-r.statistical-diagnostics-validation.v1",
+    core_minimum_release = "3.2.0",
     core_registry_baseline_provider_version = "2.0.1",
     runtime = "r",
     execution_host = "workspace",
@@ -160,7 +161,7 @@ validate_core_analytical_request <- function(request, require_executable = FALSE
   if (!is.list(request$parameters) || !is.list(request$reproducibility)) stop("Core request parameters and reproducibility must be lists.", call. = FALSE)
   if (!request$visibility %in% c("internal", "public")) stop("Unsupported request visibility.", call. = FALSE)
   if (!isFALSE(request$boundary$core_executes_provider) || !isTRUE(request$boundary$workspace_executes_provider)) stop("Core/Workspace execution boundary is invalid.", call. = FALSE)
-  if (isTRUE(require_executable) && identical(caps[[request$analysis_type]]$execution_status, "projection_only") && identical(request$analysis_type, "forecasting")) stop("Generic forecasting is not executable in v2.1.0; use scenario projection or the later predictive-runtime provider.", call. = FALSE)
+  if (isTRUE(require_executable) && identical(caps[[request$analysis_type]]$execution_status, "projection_only") && identical(request$analysis_type, "forecasting")) stop("Generic forecasting is not executable in v2.2.0; use scenario projection or the later predictive-runtime provider.", call. = FALSE)
   invisible(TRUE)
 }
 
