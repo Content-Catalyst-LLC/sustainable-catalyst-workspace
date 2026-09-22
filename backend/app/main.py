@@ -126,6 +126,17 @@ from .visual_research_workspace import (
     list_snapshots as list_visual_research_snapshots, VisualResearchBindingRequest, VisualResearchWorkspaceSnapshotRequest,
     VISUAL_RESEARCH_WORKSPACE_SCHEMA,
 )
+from .investigative_research_workspace import (
+    profile as investigative_research_workspace_profile,
+    store_statement as store_investigation_statement, list_statements as list_investigation_statements,
+    get_statement as get_investigation_statement, list_statement_revisions as list_investigation_statement_revisions,
+    create_evidence_link as create_investigation_evidence_link, list_evidence_links as list_investigation_evidence_links,
+    create_statement_relation as create_investigation_statement_relation, list_statement_relations as list_investigation_statement_relations,
+    build_project_workspace as build_investigative_research_workspace,
+    create_snapshot as create_investigative_research_snapshot, list_snapshots as list_investigative_research_snapshots,
+    InvestigationStatementRequest, InvestigationEvidenceLinkRequest, InvestigationStatementRelationRequest,
+    InvestigativeResearchSnapshotRequest, INVESTIGATIVE_RESEARCH_WORKSPACE_SCHEMA,
+)
 
 
 @asynccontextmanager
@@ -372,7 +383,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.5.0",
+        "rollbackBaseline": "3.6.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -393,13 +404,21 @@ def health():
         "visualResearchSceneGraph": True,
         "visualResearchExplicitCoreBinding": True,
         "visualResearchImmutableSnapshots": True,
+        "claimsEvidenceInvestigativeResearchWorkspace": True,
+        "investigativeResearchWorkspaceSchema": INVESTIGATIVE_RESEARCH_WORKSPACE_SCHEMA,
+        "investigativeStatementRevisionHistory": True,
+        "investigativeEvidenceReferenceFirst": True,
+        "investigativeVisualGraphOverlay": True,
+        "investigativeAutomaticTruthDetermination": False,
+        "investigativeAutomaticEvidenceRanking": False,
+        "investigativeImmutableSnapshots": True,
         "scientificExecutionProvenanceSchema": SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
         "executionProvenanceGraph": True,
         "executionProvenanceImmutableSnapshots": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "037_platform_core_visual_analysis_research_object_workspace.sql",
+        "releaseMigrationLineage": "038_claims_evidence_investigative_research_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -832,6 +851,103 @@ def research_session_bindings_reconcile(project_id: str, payload: ResearchSessio
             return reconcile_research_session_bindings(db, identity.user_key, project_id, payload)
     except PlatformCoreRuntimeError as exc:
         _raise_platform_core_runtime(exc)
+
+
+@app.get("/v1/investigative-research-workspace")
+def investigative_research_workspace_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-claims-evidence-investigative-research-workspace-response/1.0", "item": investigative_research_workspace_profile()}
+
+
+@app.post("/v1/investigative-research-workspace/statements")
+def investigative_research_statement_store(payload: InvestigationStatementRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item, created = store_investigation_statement(db, identity.user_key, payload)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail={"code":"investigation-project-scope-mismatch","message":str(exc)})
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail={"code":"investigation-statement-revision-conflict","message":str(exc)})
+        return {"ok":True,"created":created,"schema":"sc-workspace-investigation-statement-response/1.0","item":item}
+
+
+@app.get("/v1/investigative-research-workspace/statements")
+def investigative_research_statement_index(projectId: str | None = None, statementType: str | None = None, limit: int = Query(default=250, ge=1, le=1000), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_investigation_statements(db,identity.user_key,projectId,statementType,limit)
+        return {"schema":"sc-workspace-investigation-statement-index/1.0","items":items,"count":len(items)}
+
+
+@app.get("/v1/investigative-research-workspace/statements/{statement_id}")
+def investigative_research_statement_get(statement_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item=get_investigation_statement(db,identity.user_key,statement_id)
+        if item is None: raise HTTPException(status_code=404,detail={"code":"investigation-statement-not-found","statementId":statement_id})
+        return {"schema":"sc-workspace-investigation-statement-response/1.0","item":item}
+
+
+@app.get("/v1/investigative-research-workspace/statements/{statement_id}/revisions")
+def investigative_research_statement_revision_index(statement_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_investigation_statement_revisions(db,identity.user_key,statement_id,limit)
+        return {"schema":"sc-workspace-investigation-statement-revision-index/1.0","items":items,"count":len(items)}
+
+
+@app.post("/v1/investigative-research-workspace/evidence-links")
+def investigative_research_evidence_link_create(payload: InvestigationEvidenceLinkRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_investigation_evidence_link(db,identity.user_key,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+        except LookupError as exc: raise HTTPException(status_code=404,detail={"code":"investigation-reference-not-found","reference":str(exc)})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"investigation-project-scope-mismatch","message":str(exc)})
+        return {"ok":True,"schema":"sc-workspace-investigation-evidence-link-response/1.0","item":item}
+
+
+@app.get("/v1/investigative-research-workspace/evidence-links")
+def investigative_research_evidence_link_index(projectId: str | None = None, statementId: str | None = None, limit: int = Query(default=500, ge=1, le=2000), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_investigation_evidence_links(db,identity.user_key,projectId,statementId,limit)
+        return {"schema":"sc-workspace-investigation-evidence-link-index/1.0","items":items,"count":len(items)}
+
+
+@app.post("/v1/investigative-research-workspace/statement-relations")
+def investigative_research_statement_relation_create(payload: InvestigationStatementRelationRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_investigation_statement_relation(db,identity.user_key,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+        except LookupError: raise HTTPException(status_code=404,detail={"code":"investigation-statement-not-found"})
+        return {"ok":True,"schema":"sc-workspace-investigation-statement-relation-response/1.0","item":item}
+
+
+@app.get("/v1/investigative-research-workspace/statement-relations")
+def investigative_research_statement_relation_index(projectId: str | None = None, statementId: str | None = None, limit: int = Query(default=500, ge=1, le=2000), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_investigation_statement_relations(db,identity.user_key,projectId,statementId,limit)
+        return {"schema":"sc-workspace-investigation-statement-relation-index/1.0","items":items,"count":len(items)}
+
+
+@app.get("/v1/investigative-research-workspace/projects/{project_id}")
+def investigative_research_project(project_id: str, includeVisualGraph: bool = Query(default=True), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_investigative_research_workspace(db,identity.user_key,project_id,includeVisualGraph)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"schema":"sc-workspace-investigative-research-project-response/1.0","item":item}
+
+
+@app.post("/v1/investigative-research-workspace/projects/{project_id}/snapshots")
+def investigative_research_snapshot_create(project_id: str, payload: InvestigativeResearchSnapshotRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_investigative_research_snapshot(db,identity.user_key,project_id,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"schema":"sc-workspace-investigative-research-snapshot-response/1.0","item":item}
+
+
+@app.get("/v1/investigative-research-workspace/projects/{project_id}/snapshots")
+def investigative_research_snapshot_index(project_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_investigative_research_snapshots(db,identity.user_key,project_id,limit)
+        return {"schema":"sc-workspace-investigative-research-snapshot-index/1.0","items":items,"count":len(items)}
 
 
 @app.get("/v1/visual-research-workspace")

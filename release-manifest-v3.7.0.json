@@ -1,0 +1,29 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.7.0",
+  "release": "Claims, Evidence & Investigative Research Workspace",
+  "rollbackBaseline": "3.6.0",
+  "migrationLineage": "038_claims_evidence_investigative_research_workspace.sql",
+  "requires": {
+    "workspace": "3.6.0",
+    "visualResearchMigration": "037_platform_core_visual_analysis_research_object_workspace.sql",
+    "analyticsRMigration": "036_catalyst_analytics_r_runtime_adapter.sql",
+    "catalystAnalyticsRProvider": "2.1.0"
+  },
+  "contracts": {
+    "workspace": "sc-workspace-claims-evidence-investigative-research-workspace/1.0",
+    "graph": "sc-workspace-investigative-research-graph/1.0",
+    "statementRequest": "sc-workspace-investigation-statement-request/1.0",
+    "evidenceLinkRequest": "sc-workspace-investigation-evidence-link-request/1.0",
+    "statementRelationRequest": "sc-workspace-investigation-statement-relation-request/1.0",
+    "snapshotRequest": "sc-workspace-investigative-research-snapshot-request/1.0"
+  },
+  "boundaries": {
+    "referenceFirst": true,
+    "specialistObjectAuthorityPreserved": true,
+    "automaticTruthDetermination": false,
+    "automaticEvidenceRanking": false,
+    "automaticClaimScoring": false,
+    "automaticDecisionAuthority": false
+  }
+}

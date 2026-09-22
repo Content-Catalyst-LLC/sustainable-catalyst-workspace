@@ -6,6 +6,18 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "investigativeResearchWorkspace": {"method":"GET","path":"/v1/investigative-research-workspace"},
+    "investigationStatementStore": {"method":"POST","path":"/v1/investigative-research-workspace/statements"},
+    "investigationStatements": {"method":"GET","path":"/v1/investigative-research-workspace/statements"},
+    "investigationStatement": {"method":"GET","path":"/v1/investigative-research-workspace/statements/{statement_id}"},
+    "investigationStatementRevisions": {"method":"GET","path":"/v1/investigative-research-workspace/statements/{statement_id}/revisions"},
+    "investigationEvidenceLinkCreate": {"method":"POST","path":"/v1/investigative-research-workspace/evidence-links"},
+    "investigationEvidenceLinks": {"method":"GET","path":"/v1/investigative-research-workspace/evidence-links"},
+    "investigationStatementRelationCreate": {"method":"POST","path":"/v1/investigative-research-workspace/statement-relations"},
+    "investigationStatementRelations": {"method":"GET","path":"/v1/investigative-research-workspace/statement-relations"},
+    "investigativeResearchProject": {"method":"GET","path":"/v1/investigative-research-workspace/projects/{project_id}"},
+    "investigativeResearchSnapshotCreate": {"method":"POST","path":"/v1/investigative-research-workspace/projects/{project_id}/snapshots"},
+    "investigativeResearchSnapshots": {"method":"GET","path":"/v1/investigative-research-workspace/projects/{project_id}/snapshots"},
     "visualResearchWorkspace": {"method": "GET", "path": "/v1/visual-research-workspace"},
     "visualResearchProject": {"method": "GET", "path": "/v1/visual-research-workspace/projects/{project_id}"},
     "visualResearchVisualization": {"method": "GET", "path": "/v1/visual-research-workspace/projects/{project_id}/visualizations/{visualization_id}"},
@@ -83,6 +95,10 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "investigationStatementStore": "sc-workspace-investigation-statement-request/1.0",
+    "investigationEvidenceLinkCreate": "sc-workspace-investigation-evidence-link-request/1.0",
+    "investigationStatementRelationCreate": "sc-workspace-investigation-statement-relation-request/1.0",
+    "investigativeResearchSnapshotCreate": "sc-workspace-investigative-research-snapshot-request/1.0",
     "visualResearchVisualizationBind": "sc-workspace-visual-research-binding-request/1.0",
     "visualResearchSnapshotCreate": "sc-workspace-visual-research-workspace-snapshot-request/1.0",
     "executionProvenanceSnapshotCreate": "sc-workspace-scientific-execution-provenance-snapshot-request/1.0",
@@ -127,7 +143,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.6.0",
+        "workspaceVersion": "3.7.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

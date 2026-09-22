@@ -13,6 +13,7 @@ from .thin_client_state import profile as thin_client_profile, bootstrap as thin
 from .platform_core_runtime import profile as platform_core_runtime_profile
 from .research_session_bindings import profile as research_session_binding_profile
 from .execution_provenance import profile as execution_provenance_profile
+from .investigative_research_workspace import profile as investigative_research_profile
 from .utils import sha256_hex
 
 BACKEND_NATIVE_WORKSPACE_SCHEMA = "sc-workspace-backend-native-scientific-workspace/1.0"
@@ -23,7 +24,7 @@ def profile() -> dict[str, Any]:
     return {
         "schema": BACKEND_NATIVE_WORKSPACE_SCHEMA,
         "workspaceVersion": "3.5.0",
-        "release": "Scientific Execution & Provenance Workspace",
+        "release": "Claims, Evidence & Investigative Research Workspace",
         "architectureGeneration": 3,
         "backendNative": True,
         "backendFirst": True,
@@ -55,11 +56,13 @@ def profile() -> dict[str, Any]:
         "rendererNeutralVisualizationSpecifications": True,
         "crossProductResearchHandoffs": True,
         "migrationRequired": True,
-        "migrationLineage": "035_scientific_execution_provenance_workspace.sql",
-        "rollbackBaseline": "3.3.0",
+        "migrationLineage": "038_claims_evidence_investigative_research_workspace.sql",
+        "rollbackBaseline": "3.6.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
         "researchSessionObjectBindingRuntime": True,
         "scientificExecutionProvenanceWorkspace": True,
+        "platformCoreVisualAnalysisResearchObjectWorkspace": True,
+        "claimsEvidenceInvestigativeResearchWorkspace": True,
         "platformCoreReferenceFirst": True,
         "rollbackSchemaCompatible": True,
         "bootstrapEndpoint": "/v1/backend-native-workspace/bootstrap",
@@ -68,7 +71,7 @@ def profile() -> dict[str, Any]:
             "scientific-objects", "cross-product-handoffs",
             "notebook-artifact-orchestration", "scientific-study-packages",
             "visualization-specifications", "bounded-scientific-runtimes",
-            "platform-core-v3-unified-research-runtime", "research-session-object-bindings", "scientific-execution-provenance"
+            "platform-core-v3-unified-research-runtime", "research-session-object-bindings", "scientific-execution-provenance", "visual-research", "investigative-research"
         ],
     }
 
@@ -88,6 +91,7 @@ def bootstrap(db: Session, identity: Any, project_id: str | None = None) -> dict
         "platformCoreRuntime": platform_core_runtime_profile(),
         "researchSessionBindings": research_session_binding_profile(),
         "executionProvenance": execution_provenance_profile(),
+        "investigativeResearch": investigative_research_profile(),
     }
     canonical = {
         "thinClient": thin,

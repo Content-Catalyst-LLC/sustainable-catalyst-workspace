@@ -17,6 +17,7 @@ from .platform_core_runtime import project_context as platform_core_project_cont
 from .research_session_bindings import project_binding_state as research_session_binding_state
 from .execution_provenance import project_provenance as scientific_execution_provenance
 from .visual_research_workspace import build_project_workspace as visual_research_workspace
+from .investigative_research_workspace import build_project_workspace as investigative_research_workspace
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -43,7 +44,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -84,6 +85,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     binding_state = research_session_binding_state(db, user_key, project_id)
     execution_provenance = scientific_execution_provenance(db, user_key, project_id, 250)
     visual_research = visual_research_workspace(db, user_key, project_id)
+    investigative_research = investigative_research_workspace(db, user_key, project_id, True)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -124,6 +126,9 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "scientificReceipts": int(execution_provenance.get("receiptCount") or 0),
         "visualResearchNodes": int((visual_research.get("counts") or {}).get("nodes") or 0),
         "visualResearchEdges": int((visual_research.get("counts") or {}).get("edges") or 0),
+        "investigativeStatements": int((investigative_research.get("counts") or {}).get("statements") or 0),
+        "investigativeEvidenceLinks": int((investigative_research.get("counts") or {}).get("evidenceLinks") or 0),
+        "investigativeStatementRelations": int((investigative_research.get("counts") or {}).get("statementRelations") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -146,6 +151,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "researchSessionBindings": binding_state,
         "executionProvenance": execution_provenance,
         "visualResearchWorkspace": visual_research,
+        "investigativeResearchWorkspace": investigative_research,
         "platformCore": core,
         "platformCoreError": core_error,
     }
