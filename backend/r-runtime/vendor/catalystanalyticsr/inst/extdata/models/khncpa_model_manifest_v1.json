@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0.0",
+  "id": "khncpa",
+  "version": "1.0.0",
+  "title": "KH-NC-PA Vector Dynamics Model",
+  "description": "A coupled produced-capital, human-capital, natural-capital, atmospheric-carbon, population, and technology scenario model.",
+  "required_states": [
+    "K",
+    "H",
+    "N",
+    "C",
+    "P",
+    "A"
+  ],
+  "default_state": {
+    "K": 1,
+    "H": 1,
+    "N": 1,
+    "C": 0,
+    "P": 1,
+    "A": 1
+  },
+  "default_parameters": {
+    "alpha": 0.3,
+    "beta": 0.3,
+    "gamma": 0.1,
+    "deltaK": 0.05,
+    "deltaH": 0.03,
+    "Nmax": 1,
+    "regen": 0.02,
+    "depletion_intensity": 0.01,
+    "emissions_intensity": 0.3,
+    "absorption": 0.1,
+    "C0": 0,
+    "damage_scale": 0.001,
+    "pop_growth": 0.01,
+    "Pmax": null,
+    "tech_growth": 0.01,
+    "abatement_cost_scale": 0.02
+  },
+  "default_policy": {
+    "s": 0.2,
+    "e": 0.05,
+    "a": 0
+  },
+  "integration_methods": [
+    "rk4",
+    "euler"
+  ],
+  "state_units": {
+    "K": "index",
+    "H": "index",
+    "N": "index",
+    "C": "index",
+    "P": "people_index",
+    "A": "index"
+  },
+  "flow_map": {
+    "gdp": "Y",
+    "consumption": "consumption",
+    "savings": "savings",
+    "education": "education",
+    "abatement": "a",
+    "emissions": "emissions",
+    "depletion": "depletion",
+    "damages": "damages"
+  },
+  "flow_units": {
+    "gdp": "index",
+    "consumption": "index",
+    "savings": "index",
+    "education": "index",
+    "abatement": "share",
+    "emissions": "tCO2e_index",
+    "depletion": "index",
+    "damages": "index"
+  },
+  "indicator_map": {
+    "gdp": {
+      "source": "gdp",
+      "unit": "index",
+      "direction": "higher_better"
+    },
+    "emissions": {
+      "source": "emissions",
+      "unit": "tCO2e_index",
+      "direction": "lower_better"
+    },
+    "ans": {
+      "source": "ans",
+      "unit": "index",
+      "direction": "higher_better"
+    },
+    "natural_capital": {
+      "source": "N",
+      "unit": "index",
+      "direction": "higher_better"
+    },
+    "atmospheric_carbon": {
+      "source": "C",
+      "unit": "index",
+      "direction": "lower_better"
+    }
+  },
+  "metadata": {
+    "contract_version": "1.0.0",
+    "status": "experimental",
+    "intended_use": "Exploratory sustainable-development scenario analysis",
+    "prohibited_uses": [
+      "forecast",
+      "compliance determination",
+      "professional advice"
+    ]
+  }
+}

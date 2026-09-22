@@ -1377,3 +1377,27 @@ class ScientificExecutionProvenanceSnapshot(Base):
     execution_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     provenance_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.5.0 Catalyst Analytics R Runtime Adapter
+class AnalyticalProviderReceipt(Base):
+    __tablename__ = "workspace_analytical_provider_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    request_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_key: Mapped[str] = mapped_column(String(96), nullable=False)
+    provider_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    core_contract: Mapped[str] = mapped_column(String(160), nullable=False)
+    analysis_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    method_ref: Mapped[str] = mapped_column(String(160), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    external_execution_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    environment_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    request_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

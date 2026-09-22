@@ -1,0 +1,7 @@
+region,year,emissions,removals,energy,gdp,population,opening_stock,regeneration,restoration,additions,extraction,degradation,damages,closing_stock
+Global,2025,100,5,500,1000,100,1000,10,2,0,12,5,2,993
+Global,2026,90,7,480,1030,101,993,11,3,0,11,5,1,990
+Global,2027,78,10,450,1060,102,990,12,4,1,10,5,2,990
+Global,2028,65,14,420,1090,103,990,13,5,1,9,4,3,993
+Global,2029,50,20,380,1120,104,993,14,6,1,8,4,3,999
+Global,2030,35,28,340,1150,105,999,15,7,1,7,3,2,1010

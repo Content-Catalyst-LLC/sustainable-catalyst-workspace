@@ -65,7 +65,7 @@ class ResearchSessionBindingReconcileRequest(BaseModel):
 def profile() -> dict[str, Any]:
     return {
         "schema": BINDING_RUNTIME_SCHEMA,
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "release": "Research Session & Object Binding Runtime",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

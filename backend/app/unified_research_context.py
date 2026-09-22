@@ -29,7 +29,7 @@ class UnifiedResearchContextSnapshotRequest(BaseModel):
 def profile() -> dict[str, Any]:
     return {
         "schema": "sc-workspace-unified-research-project-context-profile/1.0",
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "canonicalProjectAuthority": "workspace-postgresql",

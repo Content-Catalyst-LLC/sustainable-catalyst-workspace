@@ -1,0 +1,11 @@
+time,metric,observed,weight,split
+0,N,1.0,1,calibration
+1,N,1.019,1,calibration
+2,N,1.041,1,calibration
+3,N,1.061,1,calibration
+4,N,1.084,1,calibration
+5,N,1.105,1,calibration
+6,N,1.129,1,calibration
+7,N,1.151,1,holdout
+8,N,1.174,1,holdout
+9,N,1.198,1,holdout

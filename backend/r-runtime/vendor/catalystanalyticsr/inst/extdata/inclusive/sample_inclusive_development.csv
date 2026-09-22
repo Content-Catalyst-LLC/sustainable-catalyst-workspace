@@ -1,0 +1,4 @@
+entity,time,population,produced_opening,produced_investment,produced_depreciation,produced_closing,human_opening,human_investment,human_depreciation,human_closing,natural_opening,natural_investment,natural_depletion,natural_damages,natural_closing,gross_savings,education_investment,health_investment,pollution_damages,climate_damages,gni,life_expectancy,expected_schooling,mean_schooling,income_per_capita
+Example region,2025,5,500,55,20,535,400,36,12,424,300,12,8,6,298,80,22,14,5,6,1000,72,13,9,16000
+Example region,2030,5.15,535,58,23,570,424,39,13,450,298,14,9,6,297,86,24,15,5,6,1100,73,13.5,9.4,17500
+Example region,2035,5.3,570,62,25,607,450,42,14,478,297,16,9,6,298,94,27,16,4,6,1220,74,14,9.8,19300

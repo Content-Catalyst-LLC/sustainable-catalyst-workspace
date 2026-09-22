@@ -1,0 +1,20 @@
+Package: catalystanalyticsr
+Type: Package
+Title: Sustainable Development Scenario Engine for the Catalyst Suite
+Version: 2.1.0
+Authors@R: c(person("Tariq", "Ahmad", email = "tariq@thecontentcatalyst.net", role = c("aut", "cre")))
+Description: Catalyst Analytics R is a sustainable-development analytics engine that simulates vector
+    dynamical systems (calculus), computes inclusive-wealth indicators (e.g., Adjusted Net Savings),
+    evaluates climate and carbon budgets, greenhouse-gas inventories, Kaya decompositions, capital stock-and-flow accounts, inclusive wealth, Adjusted Net Savings, human development, distribution, intergenerational equity, transparent composite scores, natural-capital accounts, sustainability boundaries, governed model calibration, historical and holdout validation, residual diagnostics, numerical solver benchmarks, stability testing, model cards, lifecycle governance, reproducible analytical projects, run histories, environment capture, portable publication bundles, Quarto and HTML outputs, governed Decision Studio and Knowledge Library handoffs, stable public API governance, persistent multi-project workspaces, reusable scenario and parameter libraries, policy packages, workspace snapshots and restoration, portable workspace bundles, governed geography and sector scopes, multi-region comparisons, weighted portfolio indicators, regional carbon-budget allocation, sector transition pathways, constrained policy optimization, target-seeking scenarios, Pareto frontiers, cost-effectiveness and marginal-abatement analysis, adaptive policy pathways, robustness and regret analysis, governed regression, panel-data models, interrupted time series, difference-in-differences, event studies, synthetic controls, robust and clustered uncertainty, explicit causal-assumption records, policy-effect summaries, versioned public API envelopes, endpoint discovery, read-only API dispatch, first-party Sustainable Catalyst handoffs for Site Intelligence, Research Lab, Workbench, Catalyst Canvas, Decision Studio, Knowledge Library, and Workspace, collaborative institutional review workflows, role-based assignments, structured comments, change requests, signed analytical releases, institutional templates, restricted-access policies, audit histories, retention and archival controls, connected analytical graphs, cross-product lineage, federated model and indicator registries, evidence-backed decision records, governed workflow orchestration, connected platform manifests and publication bundles, release-readiness assessment, compatibility manifests, and production release controls; imports and validates documented datasets; computes governed indicators; propagates declared uncertainty; runs sensitivity and stress tests; and produces reproducible tables,
+    plots, and export bundles for the broader Catalyst product suite.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    ggplot2,
+    jsonlite,
+    grid,
+    rlang
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.3

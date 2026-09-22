@@ -85,6 +85,7 @@ from .polyglot import (runtime_catalog as polyglot_runtime_catalog, operation_ca
     list_decision_optimization_receipts, get_decision_optimization_receipt, decision_optimization_receipt_metadata,
     list_reliability_analysis_receipts, get_reliability_analysis_receipt, reliability_analysis_receipt_metadata)
 from .interchange import operation_catalog as interchange_operation_catalog, runtime_health as interchange_runtime_health, list_receipts as list_interchange_receipts, get_receipt as get_interchange_receipt, receipt_metadata as interchange_receipt_metadata
+from .analytics_r_provider import (profile as analytics_r_provider_profile, manifest as analytics_r_provider_manifest, validate as validate_analytics_r_provider, execute as execute_analytics_r_provider, list_receipts as list_analytics_r_provider_receipts, get_receipt as get_analytics_r_provider_receipt, receipt_metadata as analytics_r_provider_receipt_metadata)
 from .cross_runtime_verification import create_cross_runtime_verification, get_receipt as get_cross_runtime_verification_receipt, list_receipts as list_cross_runtime_verification_receipts, receipt_metadata as cross_runtime_verification_receipt_metadata, profile_catalog as cross_runtime_verification_profiles
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
     waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
@@ -216,6 +217,12 @@ def health():
         "rStatisticalEconometricRuntime": True,
         "rRuntimeConfigured": bool(settings.runtime_r_url.strip()),
         "rRuntimeBoundedOperations": 8,
+        "catalystAnalyticsRRuntimeAdapter": True,
+        "catalystAnalyticsRProviderInstalled": True,
+        "catalystAnalyticsRProviderVersion": "2.1.0",
+        "catalystAnalyticsRCoreContract": "sc.core.analytical-runtime-provider.v1",
+        "catalystAnalyticsRAdapterVersion": "3.5.0",
+        "analyticalProviderReceipts": True,
         "statisticalModelReceipts": True,
         "juliaSimulationNumericalRuntime": True,
         "juliaRuntimeConfigured": bool(settings.runtime_julia_url.strip()),
@@ -381,7 +388,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "035_scientific_execution_provenance_workspace.sql",
+        "releaseMigrationLineage": "036_catalyst_analytics_r_runtime_adapter.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -584,6 +591,12 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "rStatisticalEconometricRuntime": True,
         "rRuntimeConfigured": bool(settings.runtime_r_url.strip()),
         "rRuntimeBoundedOperations": 8,
+        "catalystAnalyticsRRuntimeAdapter": True,
+        "catalystAnalyticsRProviderInstalled": True,
+        "catalystAnalyticsRProviderVersion": "2.1.0",
+        "catalystAnalyticsRCoreContract": "sc.core.analytical-runtime-provider.v1",
+        "catalystAnalyticsRAdapterVersion": "3.5.0",
+        "analyticalProviderReceipts": True,
         "statisticalModelReceipts": True,
         "juliaSimulationNumericalRuntime": True,
         "juliaRuntimeConfigured": bool(settings.runtime_julia_url.strip()),
@@ -1478,6 +1491,36 @@ def polyglot_receipt_get_route(receipt_id: str, identity: ServiceIdentity = Depe
 @app.get("/v1/polyglot/runtimes/r/status")
 def r_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
     return {"schema": "sc-workspace-runtime-status/1.0", "item": polyglot_runtime_health("r")}
+
+@app.get("/v1/analytics/providers/catalystanalyticsr")
+def analytics_r_provider_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"profile": analytics_r_provider_profile(), "runtime": analytics_r_provider_manifest()}
+
+
+@app.post("/v1/analytics/providers/catalystanalyticsr/validate")
+def analytics_r_provider_validate_route(payload: dict, identity: ServiceIdentity = Depends(require_service_identity)):
+    return validate_analytics_r_provider(payload)
+
+
+@app.post("/v1/analytics/providers/catalystanalyticsr/execute")
+def analytics_r_provider_execute_route(payload: dict, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return execute_analytics_r_provider(db, identity.user_key, payload)
+
+
+@app.get("/v1/analytics/provider-receipts")
+def analytics_r_provider_receipts_route(limit: int = Query(default=100, ge=1, le=250), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"schema": "sc-workspace-analytical-provider-receipt-index/1.0", "items": list_analytics_r_provider_receipts(db, identity.user_key, limit)}
+
+
+@app.get("/v1/analytics/provider-receipts/{receipt_id}")
+def analytics_r_provider_receipt_route(receipt_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        row = get_analytics_r_provider_receipt(db, identity.user_key, receipt_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Workspace analytical provider receipt not found.")
+        return {"schema": "sc-workspace-analytical-provider-receipt/1.0", "item": analytics_r_provider_receipt_metadata(row)}
 
 
 @app.get("/v1/statistical-model-receipts")

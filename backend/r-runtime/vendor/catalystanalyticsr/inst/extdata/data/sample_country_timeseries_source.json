@@ -1,0 +1,13 @@
+{
+  "id": "sample-country-timeseries-source",
+  "title": "Catalyst Analytics R synthetic country time series",
+  "publisher": "Content Catalyst LLC",
+  "url": "",
+  "license": "CC0-1.0 synthetic example",
+  "retrieved_at": "2026-07-17T00:00:00Z",
+  "citation": "Catalyst Analytics R v0.5.0 synthetic validation fixture.",
+  "metadata": {
+    "synthetic": true,
+    "production_data": false
+  }
+}

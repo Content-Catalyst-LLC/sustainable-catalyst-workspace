@@ -6,6 +6,11 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "analyticsRProvider": {"method": "GET", "path": "/v1/analytics/providers/catalystanalyticsr"},
+    "analyticsRProviderValidate": {"method": "POST", "path": "/v1/analytics/providers/catalystanalyticsr/validate"},
+    "analyticsRProviderExecute": {"method": "POST", "path": "/v1/analytics/providers/catalystanalyticsr/execute"},
+    "analyticsProviderReceipts": {"method": "GET", "path": "/v1/analytics/provider-receipts"},
+    "analyticsProviderReceipt": {"method": "GET", "path": "/v1/analytics/provider-receipts/{receipt_id}"},
     "executionProvenance": {"method": "GET", "path": "/v1/execution-provenance"},
     "executionProvenanceProject": {"method": "GET", "path": "/v1/execution-provenance/projects/{project_id}"},
     "executionProvenanceRun": {"method": "GET", "path": "/v1/execution-provenance/projects/{project_id}/runs/{run_id}"},
@@ -114,7 +119,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

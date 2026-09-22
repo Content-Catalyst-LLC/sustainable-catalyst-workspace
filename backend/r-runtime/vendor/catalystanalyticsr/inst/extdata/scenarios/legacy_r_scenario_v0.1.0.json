@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1.0",
+  "id": "legacy-r-scenario",
+  "scenario_name": "Legacy R scenario",
+  "model": "khncpa",
+  "role": "exploratory",
+  "times": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "x0": {
+    "K": 1,
+    "H": 1,
+    "N": 1,
+    "C": 0,
+    "P": 1,
+    "A": 1
+  },
+  "policy": {
+    "s": 0.2,
+    "e": 0.05,
+    "a": 0
+  },
+  "params": {},
+  "constraints": {
+    "emissions_budget": 5
+  }
+}

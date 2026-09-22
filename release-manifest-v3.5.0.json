@@ -1,0 +1,21 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.5.0",
+  "release": "Catalyst Analytics R Runtime Adapter",
+  "migration": "036_catalyst_analytics_r_runtime_adapter.sql",
+  "typedEndpointCount": 69,
+  "platformCoreAnalyticalProviderContract": "sc.core.analytical-runtime-provider.v1",
+  "analyticalProvider": {
+    "key": "catalystanalyticsr",
+    "version": "2.1.0",
+    "runtime": "r",
+    "executionHost": "workspace",
+    "installation": "build-time",
+    "productionFilesystem": "read-only"
+  },
+  "durableProviderReceipts": true,
+  "referenceFirst": true,
+  "arbitraryCodeExecution": false,
+  "arbitraryFunctionDispatch": false,
+  "rollbackBaseline": "3.4.0"
+}

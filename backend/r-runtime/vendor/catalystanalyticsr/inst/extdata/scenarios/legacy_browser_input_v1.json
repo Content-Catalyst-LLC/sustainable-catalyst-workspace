@@ -1,0 +1,13 @@
+{
+  "scenarioName": "Policy pathway",
+  "years": 20,
+  "savings": 0.22,
+  "emissionsIntensity": 0.07,
+  "adaptation": 0.08,
+  "restoration": 0.06,
+  "humanInvestment": 0.05,
+  "initialCapital": 100,
+  "initialHuman": 100,
+  "initialNatural": 100,
+  "emissionsBudget": 120
+}

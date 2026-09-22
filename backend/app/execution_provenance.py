@@ -81,7 +81,7 @@ _RECEIPT_MODELS: tuple[tuple[str, type], ...] = (
 def profile() -> dict[str, Any]:
     return {
         "schema": EXECUTION_PROVENANCE_SCHEMA,
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "release": "Scientific Execution & Provenance Workspace",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

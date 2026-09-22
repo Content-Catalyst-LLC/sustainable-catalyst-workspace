@@ -1,0 +1,13 @@
+{
+  "id": "sample-climate-accounting-source",
+  "title": "Synthetic climate and natural-capital accounting fixture",
+  "publisher": "Content Catalyst LLC",
+  "url": "",
+  "license": "CC0-1.0 synthetic example",
+  "retrieved_at": "2026-07-17T00:00:00Z",
+  "citation": "Catalyst Analytics R v0.6.0 synthetic climate-accounting fixture.",
+  "metadata": {
+    "synthetic": true,
+    "review_status": "fixture_only"
+  }
+}

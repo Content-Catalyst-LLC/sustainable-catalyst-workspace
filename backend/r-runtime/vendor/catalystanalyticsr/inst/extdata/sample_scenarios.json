@@ -1,0 +1,189 @@
+[
+  {
+    "schema_version": "1.0.0",
+    "id": "canonical-baseline",
+    "title": "Canonical baseline",
+    "role": "baseline",
+    "model": {
+      "id": "khncpa",
+      "version": "1.0.0"
+    },
+    "time": {
+      "start": 0,
+      "end": 4,
+      "step": 1,
+      "unit": "year",
+      "values": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "initial_state": {
+      "K": 1,
+      "H": 1,
+      "N": 1,
+      "C": 0,
+      "P": 1,
+      "A": 1
+    },
+    "policy": {
+      "s": 0.2,
+      "e": 0.05,
+      "a": 0
+    },
+    "parameters": {},
+    "constraints": {
+      "emissions_budget": 10
+    },
+    "units": {
+      "time": "year",
+      "states": {
+        "K": "index",
+        "H": "index",
+        "N": "index",
+        "C": "index",
+        "P": "people_index",
+        "A": "index"
+      },
+      "flows": {
+        "gdp": "index",
+        "consumption": "index",
+        "savings": "index",
+        "education": "index",
+        "abatement": "share",
+        "emissions": "tCO2e_index",
+        "depletion": "index",
+        "damages": "index"
+      }
+    },
+    "scope": {
+      "geography": {
+        "type": "global",
+        "id": "WORLD",
+        "label": "Global"
+      },
+      "sectors": [
+        "all"
+      ]
+    },
+    "currency": {
+      "code": "index",
+      "price_year": null
+    },
+    "sources": [],
+    "assumptions": [],
+    "uncertainty": [],
+    "review": {
+      "status": "draft",
+      "reviewed_by": [],
+      "notes": []
+    },
+    "metadata": {
+      "description": "Deterministic reference scenario for Catalyst Analytics R v0.2.0.",
+      "tags": [
+        "reference",
+        "canonical"
+      ],
+      "created_by": "catalystanalyticsr",
+      "created_at": "2026-07-16T00:00:00Z"
+    }
+  },
+  {
+    "schema_version": "1.0.0",
+    "id": "canonical-policy",
+    "title": "Canonical policy pathway",
+    "role": "intervention",
+    "model": {
+      "id": "khncpa",
+      "version": "1.0.0"
+    },
+    "time": {
+      "start": 0,
+      "end": 4,
+      "step": 1,
+      "unit": "year",
+      "values": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "initial_state": {
+      "K": 1,
+      "H": 1,
+      "N": 1,
+      "C": 0,
+      "P": 1,
+      "A": 1
+    },
+    "policy": {
+      "s": 0.22,
+      "e": 0.05,
+      "a": 0.08
+    },
+    "parameters": {
+      "emissions_intensity": 0.07,
+      "regen": 0.06
+    },
+    "constraints": {
+      "emissions_budget": 5
+    },
+    "units": {
+      "time": "year",
+      "states": {
+        "K": "index",
+        "H": "index",
+        "N": "index",
+        "C": "index",
+        "P": "people_index",
+        "A": "index"
+      },
+      "flows": {
+        "gdp": "index",
+        "consumption": "index",
+        "savings": "index",
+        "education": "index",
+        "abatement": "share",
+        "emissions": "tCO2e_index",
+        "depletion": "index",
+        "damages": "index"
+      }
+    },
+    "scope": {
+      "geography": {
+        "type": "global",
+        "id": "WORLD",
+        "label": "Global"
+      },
+      "sectors": [
+        "all"
+      ]
+    },
+    "currency": {
+      "code": "index",
+      "price_year": null
+    },
+    "sources": [],
+    "assumptions": [],
+    "uncertainty": [],
+    "review": {
+      "status": "draft",
+      "reviewed_by": [],
+      "notes": []
+    },
+    "metadata": {
+      "description": "Canonical intervention sample for Catalyst Analytics R v0.2.0.",
+      "tags": [
+        "sample",
+        "intervention"
+      ],
+      "created_by": "catalystanalyticsr",
+      "created_at": "2026-07-16T00:00:00Z"
+    }
+  }
+]

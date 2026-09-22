@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0.0",
+  "id": "transition-policy-uncertain",
+  "title": "Transition policy with uncertainty",
+  "role": "intervention",
+  "model": {
+    "id": "khncpa",
+    "version": "1.0.0"
+  },
+  "time": {
+    "start": 0,
+    "end": 4,
+    "step": 1,
+    "unit": "year",
+    "values": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  "initial_state": {
+    "K": 1,
+    "H": 1,
+    "N": 1,
+    "C": 0,
+    "P": 1,
+    "A": 1
+  },
+  "policy": {
+    "s": 0.2,
+    "e": 0.05,
+    "a": 0
+  },
+  "parameters": {},
+  "constraints": {
+    "emissions_budget": 10
+  },
+  "units": {
+    "time": "year",
+    "states": {
+      "K": "index",
+      "H": "index",
+      "N": "index",
+      "C": "index",
+      "P": "people_index",
+      "A": "index"
+    },
+    "flows": {
+      "gdp": "index",
+      "consumption": "index",
+      "savings": "index",
+      "education": "index",
+      "abatement": "share",
+      "emissions": "tCO2e_index",
+      "depletion": "index",
+      "damages": "index"
+    }
+  },
+  "scope": {
+    "geography": {
+      "type": "global",
+      "id": "WORLD",
+      "label": "Global"
+    },
+    "sectors": [
+      "all"
+    ]
+  },
+  "currency": {
+    "code": "index",
+    "price_year": null
+  },
+  "sources": [],
+  "assumptions": [],
+  "uncertainty": [
+    {
+      "id": "emissions-intensity",
+      "target": "parameters.emissions_intensity",
+      "distribution": "triangular",
+      "parameters": {
+        "min": 0.08,
+        "mode": 0.12,
+        "max": 0.18
+      },
+      "label": "Emissions intensity",
+      "enabled": true
+    },
+    {
+      "id": "restoration-rate",
+      "target": "parameters.regen",
+      "distribution": "uniform",
+      "parameters": {
+        "min": 0.02,
+        "max": 0.07
+      },
+      "label": "Natural regeneration",
+      "enabled": true
+    },
+    {
+      "id": "adaptation-share",
+      "target": "policy.a",
+      "distribution": "beta",
+      "parameters": {
+        "shape1": 2,
+        "shape2": 5,
+        "min": 0.03,
+        "max": 0.18
+      },
+      "label": "Adaptation share",
+      "enabled": true
+    }
+  ],
+  "review": {
+    "status": "draft",
+    "reviewed_by": [],
+    "notes": []
+  },
+  "metadata": {
+    "description": "Deterministic reference scenario for Catalyst Analytics R v0.2.0.",
+    "tags": [
+      "reference",
+      "canonical"
+    ],
+    "created_by": "catalystanalyticsr",
+    "created_at": "2026-07-16T00:00:00Z"
+  }
+}

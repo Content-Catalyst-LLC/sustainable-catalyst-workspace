@@ -1,0 +1,13 @@
+^\.github$
+^\.pytest_cache$
+^.*\.Rcheck$
+^dist$
+^python$
+^schemas$
+^scripts$
+^tests_py$
+^wordpress$
+^outputs$
+^docs/releases$
+^RELEASE_CONTRACT\.md$
+^catalyst_analytics_r_manifest\.json$

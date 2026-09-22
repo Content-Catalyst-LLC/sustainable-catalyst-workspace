@@ -22,7 +22,7 @@ BACKEND_NATIVE_BOOTSTRAP_SCHEMA = "sc-workspace-backend-native-scientific-worksp
 def profile() -> dict[str, Any]:
     return {
         "schema": BACKEND_NATIVE_WORKSPACE_SCHEMA,
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "release": "Scientific Execution & Provenance Workspace",
         "architectureGeneration": 3,
         "backendNative": True,
@@ -94,7 +94,7 @@ def bootstrap(db: Session, identity: Any, project_id: str | None = None) -> dict
         "sync": sync,
     }
     fingerprint_basis = {
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "principalId": principal.get("principalId", ""),
         "authority": authority,
         "canonicalProjectionFingerprint": thin.get("projectionFingerprint", ""),
@@ -102,7 +102,7 @@ def bootstrap(db: Session, identity: Any, project_id: str | None = None) -> dict
     }
     return {
         "schema": BACKEND_NATIVE_BOOTSTRAP_SCHEMA,
-        "workspaceVersion": "3.4.0",
+        "workspaceVersion": "3.5.0",
         "backendNative": True,
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
