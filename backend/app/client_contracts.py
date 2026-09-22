@@ -6,6 +6,12 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "visualResearchWorkspace": {"method": "GET", "path": "/v1/visual-research-workspace"},
+    "visualResearchProject": {"method": "GET", "path": "/v1/visual-research-workspace/projects/{project_id}"},
+    "visualResearchVisualization": {"method": "GET", "path": "/v1/visual-research-workspace/projects/{project_id}/visualizations/{visualization_id}"},
+    "visualResearchVisualizationBind": {"method": "POST", "path": "/v1/visual-research-workspace/projects/{project_id}/visualizations/{visualization_id}/bind"},
+    "visualResearchSnapshotCreate": {"method": "POST", "path": "/v1/visual-research-workspace/projects/{project_id}/snapshots"},
+    "visualResearchSnapshots": {"method": "GET", "path": "/v1/visual-research-workspace/projects/{project_id}/snapshots"},
     "analyticsRProvider": {"method": "GET", "path": "/v1/analytics/providers/catalystanalyticsr"},
     "analyticsRProviderValidate": {"method": "POST", "path": "/v1/analytics/providers/catalystanalyticsr/validate"},
     "analyticsRProviderExecute": {"method": "POST", "path": "/v1/analytics/providers/catalystanalyticsr/execute"},
@@ -77,6 +83,8 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "visualResearchVisualizationBind": "sc-workspace-visual-research-binding-request/1.0",
+    "visualResearchSnapshotCreate": "sc-workspace-visual-research-workspace-snapshot-request/1.0",
     "executionProvenanceSnapshotCreate": "sc-workspace-scientific-execution-provenance-snapshot-request/1.0",
     "researchSessionBindingCreate": "sc-workspace-research-session-binding-request/1.0",
     "researchSessionBindingsReconcile": "sc-workspace-research-session-binding-reconcile-request/1.0",
@@ -119,7 +127,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.5.0",
+        "workspaceVersion": "3.6.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

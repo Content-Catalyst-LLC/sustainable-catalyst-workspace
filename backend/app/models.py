@@ -1401,3 +1401,20 @@ class AnalyticalProviderReceipt(Base):
     error: Mapped[str] = mapped_column(Text, nullable=False, default="")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+# v3.6.0 Platform Core Visual Analysis & Research Object Workspace
+class VisualResearchWorkspaceSnapshot(Base):
+    __tablename__ = "workspace_visual_research_workspace_snapshots"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    visualization_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    visualization_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    binding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    node_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    edge_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+

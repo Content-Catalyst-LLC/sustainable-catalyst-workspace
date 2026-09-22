@@ -16,6 +16,7 @@ from .registry import list_execution_runs
 from .platform_core_runtime import project_context as platform_core_project_context, get_mapping as get_platform_core_mapping, PlatformCoreRuntimeError
 from .research_session_bindings import project_binding_state as research_session_binding_state
 from .execution_provenance import project_provenance as scientific_execution_provenance
+from .visual_research_workspace import build_project_workspace as visual_research_workspace
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -82,6 +83,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     handoffs = _handoffs(db, user_key, project_id, 250)
     binding_state = research_session_binding_state(db, user_key, project_id)
     execution_provenance = scientific_execution_provenance(db, user_key, project_id, 250)
+    visual_research = visual_research_workspace(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -120,6 +122,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "researchSessionBindings": len(binding_state.get("bindings") or []),
         "executionProvenanceRuns": int(execution_provenance.get("executionCount") or 0),
         "scientificReceipts": int(execution_provenance.get("receiptCount") or 0),
+        "visualResearchNodes": int((visual_research.get("counts") or {}).get("nodes") or 0),
+        "visualResearchEdges": int((visual_research.get("counts") or {}).get("edges") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -141,6 +145,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "researchHandoffs": handoffs,
         "researchSessionBindings": binding_state,
         "executionProvenance": execution_provenance,
+        "visualResearchWorkspace": visual_research,
         "platformCore": core,
         "platformCoreError": core_error,
     }

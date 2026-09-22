@@ -1,0 +1,16 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.6.0",
+  "release": "Platform Core Visual Analysis & Research Object Workspace",
+  "previousVersion": "3.5.0",
+  "migrationLineage": "037_platform_core_visual_analysis_research_object_workspace.sql",
+  "rollbackBaseline": "3.5.0",
+  "requiresBaselineMigration": "036_catalyst_analytics_r_runtime_adapter.sql",
+  "preservesCatalystAnalyticsR": true,
+  "catalystAnalyticsRProviderVersion": "2.1.0",
+  "platformCoreContract": "sc.research.unified-research-scientific-investigation-runtime.v1",
+  "referenceFirst": true,
+  "platformCoreObjectContentReplication": false,
+  "visualResearchWorkspaceSchema": "sc-workspace-platform-core-visual-analysis-research-object-workspace/1.0",
+  "visualResearchGraphSchema": "sc-workspace-visual-research-object-graph/1.0"
+}

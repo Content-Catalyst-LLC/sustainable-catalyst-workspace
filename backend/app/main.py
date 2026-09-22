@@ -120,6 +120,12 @@ from .execution_provenance import (
     list_snapshots as list_execution_provenance_snapshots, ScientificExecutionProvenanceSnapshotRequest,
     EXECUTION_PROVENANCE_SCHEMA as SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
 )
+from .visual_research_workspace import (
+    profile as visual_research_workspace_profile, build_project_workspace as build_visual_research_workspace,
+    bind_visualization as bind_visual_research_visualization, create_snapshot as create_visual_research_snapshot,
+    list_snapshots as list_visual_research_snapshots, VisualResearchBindingRequest, VisualResearchWorkspaceSnapshotRequest,
+    VISUAL_RESEARCH_WORKSPACE_SCHEMA,
+)
 
 
 @asynccontextmanager
@@ -366,7 +372,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "2.36.0",
+        "rollbackBaseline": "3.5.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -382,13 +388,18 @@ def health():
         "researchSessionBindingFingerprintPinning": True,
         "researchSessionBindingIdempotentReplay": True,
         "scientificExecutionProvenanceWorkspace": True,
+        "platformCoreVisualAnalysisResearchObjectWorkspace": True,
+        "visualResearchWorkspaceSchema": VISUAL_RESEARCH_WORKSPACE_SCHEMA,
+        "visualResearchSceneGraph": True,
+        "visualResearchExplicitCoreBinding": True,
+        "visualResearchImmutableSnapshots": True,
         "scientificExecutionProvenanceSchema": SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
         "executionProvenanceGraph": True,
         "executionProvenanceImmutableSnapshots": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "036_catalyst_analytics_r_runtime_adapter.sql",
+        "releaseMigrationLineage": "037_platform_core_visual_analysis_research_object_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -821,6 +832,63 @@ def research_session_bindings_reconcile(project_id: str, payload: ResearchSessio
             return reconcile_research_session_bindings(db, identity.user_key, project_id, payload)
     except PlatformCoreRuntimeError as exc:
         _raise_platform_core_runtime(exc)
+
+
+@app.get("/v1/visual-research-workspace")
+def visual_research_workspace_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-platform-core-visual-analysis-research-object-workspace-response/1.0", "item": visual_research_workspace_profile()}
+
+
+@app.get("/v1/visual-research-workspace/projects/{project_id}")
+def visual_research_workspace_project(project_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = build_visual_research_workspace(db, identity.user_key, project_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok": True, "schema": "sc-workspace-visual-research-workspace-response/1.0", "item": item}
+
+
+@app.get("/v1/visual-research-workspace/projects/{project_id}/visualizations/{visualization_id}")
+def visual_research_workspace_visualization(project_id: str, visualization_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = build_visual_research_workspace(db, identity.user_key, project_id, visualization_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":project_id})
+        except LookupError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-visualization-not-found","visualizationId":visualization_id})
+        return {"ok": True, "schema": "sc-workspace-visual-research-workspace-response/1.0", "item": item}
+
+
+@app.post("/v1/visual-research-workspace/projects/{project_id}/visualizations/{visualization_id}/bind")
+def visual_research_workspace_visualization_bind(project_id: str, visualization_id: str, payload: VisualResearchBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            return bind_visual_research_visualization(db, identity.user_key, project_id, visualization_id, payload)
+        except LookupError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-visualization-not-found","visualizationId":visualization_id})
+        except PlatformCoreRuntimeError as exc:
+            raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": str(exc)})
+
+
+@app.post("/v1/visual-research-workspace/projects/{project_id}/snapshots")
+def visual_research_workspace_snapshot_create(project_id: str, payload: VisualResearchWorkspaceSnapshotRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = create_visual_research_snapshot(db, identity.user_key, project_id, payload)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":project_id})
+        except LookupError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-visualization-not-found","visualizationId":payload.visualizationId})
+        return {"ok": True, "schema": "sc-workspace-visual-research-workspace-snapshot-response/1.0", "item": item}
+
+
+@app.get("/v1/visual-research-workspace/projects/{project_id}/snapshots")
+def visual_research_workspace_snapshot_index(project_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items = list_visual_research_snapshots(db, identity.user_key, project_id, limit)
+        return {"schema":"sc-workspace-visual-research-workspace-snapshot-index/1.0","items":items,"count":len(items)}
 
 
 @app.get("/v1/execution-provenance")
