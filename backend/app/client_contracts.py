@@ -6,6 +6,26 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "entityResolutionWorkspace": {"method":"GET","path":"/v1/entity-resolution-workspace"},
+    "entityStore": {"method":"POST","path":"/v1/entity-resolution-workspace/entities"},
+    "entities": {"method":"GET","path":"/v1/entity-resolution-workspace/entities"},
+    "entity": {"method":"GET","path":"/v1/entity-resolution-workspace/entities/{entity_id}"},
+    "entityRevisions": {"method":"GET","path":"/v1/entity-resolution-workspace/entities/{entity_id}/revisions"},
+    "entityAliasCreate": {"method":"POST","path":"/v1/entity-resolution-workspace/aliases"},
+    "entityAliases": {"method":"GET","path":"/v1/entity-resolution-workspace/aliases"},
+    "entityIdentifierCreate": {"method":"POST","path":"/v1/entity-resolution-workspace/identifiers"},
+    "entityIdentifiers": {"method":"GET","path":"/v1/entity-resolution-workspace/identifiers"},
+    "entityRelationshipCreate": {"method":"POST","path":"/v1/entity-resolution-workspace/relationships"},
+    "entityRelationships": {"method":"GET","path":"/v1/entity-resolution-workspace/relationships"},
+    "entityContextLinkCreate": {"method":"POST","path":"/v1/entity-resolution-workspace/context-links"},
+    "entityContextLinks": {"method":"GET","path":"/v1/entity-resolution-workspace/context-links"},
+    "entityMatchCandidateCreate": {"method":"POST","path":"/v1/entity-resolution-workspace/match-candidates"},
+    "entityMatchCandidates": {"method":"GET","path":"/v1/entity-resolution-workspace/match-candidates"},
+    "entityMatchCandidateReview": {"method":"POST","path":"/v1/entity-resolution-workspace/match-candidates/{candidate_id}/review"},
+    "entityResolutionGraph": {"method":"GET","path":"/v1/entity-resolution-workspace/projects/{project_id}/graph"},
+    "entityResolutionDiagnostics": {"method":"GET","path":"/v1/entity-resolution-workspace/projects/{project_id}/diagnostics"},
+    "entityResolutionSnapshotCreate": {"method":"POST","path":"/v1/entity-resolution-workspace/projects/{project_id}/snapshots"},
+    "entityResolutionSnapshots": {"method":"GET","path":"/v1/entity-resolution-workspace/projects/{project_id}/snapshots"},
     "investigationTimelineWorkspace": {"method":"GET","path":"/v1/investigation-timeline-workspace"},
     "investigationEventStore": {"method":"POST","path":"/v1/investigation-timeline-workspace/events"},
     "investigationEvents": {"method":"GET","path":"/v1/investigation-timeline-workspace/events"},
@@ -119,6 +139,14 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "entityStore": "sc-workspace-investigation-entity-request/1.0",
+    "entityAliasCreate": "sc-workspace-investigation-entity-alias-request/1.0",
+    "entityIdentifierCreate": "sc-workspace-investigation-entity-identifier-request/1.0",
+    "entityRelationshipCreate": "sc-workspace-investigation-entity-relationship-request/1.0",
+    "entityContextLinkCreate": "sc-workspace-investigation-entity-context-link-request/1.0",
+    "entityMatchCandidateCreate": "sc-workspace-investigation-entity-match-candidate-request/1.0",
+    "entityMatchCandidateReview": "sc-workspace-investigation-entity-match-review-request/1.0",
+    "entityResolutionSnapshotCreate": "sc-workspace-investigation-entity-resolution-snapshot-request/1.0",
     "investigationHypothesisSetStore": "sc-workspace-investigation-hypothesis-set-request/1.0",
     "investigationGraphSnapshotCreate": "sc-workspace-investigation-graph-snapshot-request/1.0",
     "investigationStatementStore": "sc-workspace-investigation-statement-request/1.0",
@@ -169,7 +197,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.9.1",
+        "workspaceVersion": "3.10.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

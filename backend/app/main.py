@@ -157,6 +157,20 @@ from .investigation_timeline_workspace import (
     InvestigationTimelineSnapshotRequest, TIMELINE_WORKSPACE_SCHEMA,
 )
 
+from .investigation_entity_workspace import (
+    profile as entity_resolution_workspace_profile,
+    store_entity, list_entities, get_entity, list_entity_revisions,
+    create_alias as create_entity_alias, list_aliases as list_entity_aliases,
+    create_identifier as create_entity_identifier, list_identifiers as list_entity_identifiers,
+    create_relationship as create_entity_relationship, list_relationships as list_entity_relationships,
+    create_context_link as create_entity_context_link, list_context_links as list_entity_context_links,
+    create_match_candidate as create_entity_match_candidate, list_match_candidates as list_entity_match_candidates,
+    review_match_candidate as review_entity_match_candidate, build_entity_graph, resolution_diagnostics as build_entity_resolution_diagnostics,
+    create_resolution_snapshot as create_entity_resolution_snapshot, list_resolution_snapshots as list_entity_resolution_snapshots,
+    InvestigationEntityRequest, InvestigationEntityAliasRequest, InvestigationEntityIdentifierRequest,
+    InvestigationEntityRelationshipRequest, InvestigationEntityContextLinkRequest, InvestigationEntityMatchCandidateRequest,
+    InvestigationEntityMatchReviewRequest, InvestigationEntityResolutionSnapshotRequest, ENTITY_WORKSPACE_SCHEMA,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -404,7 +418,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.8.0",
+        "rollbackBaseline": "3.9.1",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -446,13 +460,23 @@ def health():
         "investigationTemporalConsistencyDiagnostics": True,
         "investigationAutomaticCausalityInference": False,
         "investigationAutomaticNarrativeSelection": False,
+        "entityActorRelationshipResolutionWorkspace": True,
+        "entityResolutionWorkspaceSchema": ENTITY_WORKSPACE_SCHEMA,
+        "entityVersionedRecords": True,
+        "entityAliasesAndIdentifiers": True,
+        "entityHumanAssertedRelationships": True,
+        "entityCandidateMatchReview": True,
+        "entityResolutionDiagnostics": True,
+        "entityAutomaticMerge": False,
+        "entityAutomaticIdentityConfirmation": False,
+        "entityAutomaticRelationshipInference": False,
         "scientificExecutionProvenanceSchema": SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
         "executionProvenanceGraph": True,
         "executionProvenanceImmutableSnapshots": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "040_timeline_event_reconstruction_investigative_sequence_workspace.sql",
+        "releaseMigrationLineage": "041_entity_actor_relationship_resolution_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -640,6 +664,132 @@ def investigation_timeline_snapshot_index(project_id: str, limit: int = Query(de
         items = list_timeline_snapshots(db, identity.user_key, project_id, limit)
         return {"schema":"sc-workspace-investigation-timeline-snapshot-index/1.0","items":items,"count":len(items)}
 
+
+
+@app.get("/v1/entity-resolution-workspace")
+def entity_resolution_workspace_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-entity-resolution-workspace-response/1.0","item":entity_resolution_workspace_profile()}
+
+@app.post("/v1/entity-resolution-workspace/entities")
+def entity_store(payload: InvestigationEntityRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item,created=store_entity(db,identity.user_key,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"investigation-entity-invalid","message":str(exc)})
+        except RuntimeError: raise HTTPException(status_code=409,detail={"code":"investigation-entity-revision-conflict","entityId":payload.entityId})
+        return {"ok":True,"created":created,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/entities")
+def entity_index(projectId: str | None=None, entityType: str | None=None, limit: int=Query(default=500,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entities(db,identity.user_key,projectId,entityType,limit); return {"schema":"sc-workspace-investigation-entity-index/1.0","items":items,"count":len(items)}
+
+@app.get("/v1/entity-resolution-workspace/entities/{entity_id}")
+def entity_get(entity_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        item=get_entity(db,identity.user_key,entity_id)
+        if item is None: raise HTTPException(status_code=404,detail={"code":"investigation-entity-not-found","entityId":entity_id})
+        return {"item":item}
+
+@app.get("/v1/entity-resolution-workspace/entities/{entity_id}/revisions")
+def entity_revision_index(entity_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_revisions(db,identity.user_key,entity_id,limit); return {"schema":"sc-workspace-investigation-entity-revision-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/entity-resolution-workspace/aliases")
+def entity_alias_store(payload: InvestigationEntityAliasRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_entity_alias(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-entity-reference-not-found"})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/aliases")
+def entity_alias_index(projectId: str | None=None, entityId: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_aliases(db,identity.user_key,projectId,entityId,limit); return {"schema":"sc-workspace-investigation-entity-alias-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/entity-resolution-workspace/identifiers")
+def entity_identifier_store(payload: InvestigationEntityIdentifierRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_entity_identifier(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-entity-reference-not-found"})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/identifiers")
+def entity_identifier_index(projectId: str | None=None, entityId: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_identifiers(db,identity.user_key,projectId,entityId,limit); return {"schema":"sc-workspace-investigation-entity-identifier-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/entity-resolution-workspace/relationships")
+def entity_relationship_store(payload: InvestigationEntityRelationshipRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_entity_relationship(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-entity-reference-not-found"})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"investigation-entity-relationship-invalid","message":str(exc)})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/relationships")
+def entity_relationship_index(projectId: str | None=None, entityId: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_relationships(db,identity.user_key,projectId,entityId,limit); return {"schema":"sc-workspace-investigation-entity-relationship-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/entity-resolution-workspace/context-links")
+def entity_context_link_store(payload: InvestigationEntityContextLinkRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_entity_context_link(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-entity-context-reference-not-found"})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/context-links")
+def entity_context_link_index(projectId: str | None=None, entityId: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_context_links(db,identity.user_key,projectId,entityId,limit); return {"schema":"sc-workspace-investigation-entity-context-link-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/entity-resolution-workspace/match-candidates")
+def entity_match_candidate_store(payload: InvestigationEntityMatchCandidateRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_entity_match_candidate(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-entity-reference-not-found"})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"investigation-entity-match-invalid","message":str(exc)})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/match-candidates")
+def entity_match_candidate_index(projectId: str | None=None, reviewState: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_match_candidates(db,identity.user_key,projectId,reviewState,limit); return {"schema":"sc-workspace-investigation-entity-match-candidate-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/entity-resolution-workspace/match-candidates/{candidate_id}/review")
+def entity_match_candidate_review(candidate_id: str, payload: InvestigationEntityMatchReviewRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=review_entity_match_candidate(db,identity.user_key,candidate_id,payload)
+        except LookupError: raise HTTPException(status_code=404,detail={"code":"investigation-entity-match-candidate-not-found","candidateId":candidate_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/projects/{project_id}/graph")
+def entity_resolution_graph(project_id: str, includeTimelineGraph: bool=Query(default=True), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_entity_graph(db,identity.user_key,project_id,includeTimelineGraph)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/projects/{project_id}/diagnostics")
+def entity_resolution_diagnostics(project_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_entity_resolution_diagnostics(db,identity.user_key,project_id)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.post("/v1/entity-resolution-workspace/projects/{project_id}/snapshots")
+def entity_resolution_snapshot_create(project_id: str, payload: InvestigationEntityResolutionSnapshotRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_entity_resolution_snapshot(db,identity.user_key,project_id,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/entity-resolution-workspace/projects/{project_id}/snapshots")
+def entity_resolution_snapshot_index(project_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_entity_resolution_snapshots(db,identity.user_key,project_id,limit); return {"schema":"sc-workspace-investigation-entity-resolution-snapshot-index/1.0","items":items,"count":len(items)}
 
 @app.get("/ready")
 def ready():

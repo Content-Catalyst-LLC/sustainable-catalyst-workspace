@@ -1603,3 +1603,143 @@ class InvestigationTimelineSnapshot(Base):
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
+
+
+# v3.10.0 Entity, Actor & Relationship Resolution Workspace
+class InvestigationEntityHead(Base):
+    __tablename__ = "workspace_investigation_entity_heads"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    entity_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    canonical_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    entity_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class InvestigationEntityRevision(Base):
+    __tablename__ = "workspace_investigation_entity_revisions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    entity_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    entity_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    canonical_name: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    entity_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEntityAlias(Base):
+    __tablename__ = "workspace_investigation_entity_aliases"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    alias_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    alias: Mapped[str] = mapped_column(String(500), nullable=False)
+    normalized_alias: Mapped[str] = mapped_column(String(500), nullable=False)
+    alias_type: Mapped[str] = mapped_column(String(48), nullable=False, default="name")
+    language: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    source_ref: Mapped[str] = mapped_column(String(1200), nullable=False, default="")
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    alias_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEntityIdentifier(Base):
+    __tablename__ = "workspace_investigation_entity_identifiers"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    identifier_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    namespace: Mapped[str] = mapped_column(String(160), nullable=False)
+    value: Mapped[str] = mapped_column(String(1000), nullable=False)
+    normalized_value: Mapped[str] = mapped_column(String(1000), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="observed")
+    source_ref: Mapped[str] = mapped_column(String(1200), nullable=False, default="")
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    identifier_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEntityRelationship(Base):
+    __tablename__ = "workspace_investigation_entity_relationships"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    relationship_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    from_entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    to_entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    relation: Mapped[str] = mapped_column(String(64), nullable=False)
+    evidence_ref: Mapped[str] = mapped_column(String(1200), nullable=False, default="")
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    relationship_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEntityContextLink(Base):
+    __tablename__ = "workspace_investigation_entity_context_links"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    link_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    target_kind: Mapped[str] = mapped_column(String(48), nullable=False)
+    target_ref: Mapped[str] = mapped_column(String(1200), nullable=False)
+    relation: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    link_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEntityMatchCandidate(Base):
+    __tablename__ = "workspace_investigation_entity_match_candidates"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    candidate_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    left_entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    right_entity_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    basis_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    signals_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    source_ref: Mapped[str] = mapped_column(String(1200), nullable=False, default="")
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    review_note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    candidate_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class InvestigationEntityMatchReview(Base):
+    __tablename__ = "workspace_investigation_entity_match_reviews"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    review_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    candidate_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    review_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEntityResolutionSnapshot(Base):
+    __tablename__ = "workspace_investigation_entity_resolution_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    diagnostics_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    entity_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    relationship_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_link_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    match_candidate_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unresolved_match_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
