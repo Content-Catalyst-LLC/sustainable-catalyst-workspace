@@ -89,6 +89,17 @@ from .cross_runtime_verification import create_cross_runtime_verification, get_r
 from .compliance import (trust_policy_metadata, store_trust_policy, get_trust_policy, list_trust_policies, list_trust_policy_revisions,
     waiver_metadata, create_waiver, get_waiver, list_waivers, verification_metadata as compliance_verification_metadata,
     create_verification as create_compliance_verification, get_verification as get_compliance_verification, list_verifications as list_compliance_verifications)
+from .platform_core_runtime import (
+    profile as platform_core_runtime_profile, readiness as platform_core_runtime_readiness,
+    ensure_session as ensure_platform_core_session, project_context as platform_core_project_context,
+    bind_object as bind_platform_core_object, bind_execution as bind_platform_core_execution,
+    bind_visual as bind_platform_core_visual, bind_package as bind_platform_core_package,
+    bind_handoff as bind_platform_core_handoff, session_view as platform_core_session_view,
+    list_receipts as list_platform_core_runtime_receipts, PlatformCoreRuntimeError,
+    PlatformCoreSessionRequest, PlatformCoreObjectBindingRequest, PlatformCoreExecutionBindingRequest,
+    PlatformCoreVisualBindingRequest, PlatformCorePackageBindingRequest, PlatformCoreHandoffBindingRequest,
+    CORE_CONTRACT as PLATFORM_CORE_V3_CONTRACT, INTEGRATION_SCHEMA as PLATFORM_CORE_INTEGRATION_SCHEMA,
+)
 
 
 @asynccontextmanager
@@ -333,6 +344,13 @@ def health():
         "rollbackBaseline": "2.36.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
+        "platformCoreV3UnifiedResearchRuntimeIntegration": True,
+        "platformCoreRuntimeConfigured": settings.platform_core_configured,
+        "platformCoreRuntimeWriteConfigured": settings.platform_core_write_configured,
+        "platformCoreRuntimeContract": PLATFORM_CORE_V3_CONTRACT,
+        "platformCoreReferenceFirst": True,
+        "platformCoreObjectContentReplication": False,
+        "platformCoreIntegrationSchema": PLATFORM_CORE_INTEGRATION_SCHEMA,
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -351,7 +369,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured"}
 
 
 @app.get("/v1/capabilities")
@@ -629,6 +647,104 @@ def authorization_decisions_route(limit: int = Query(default=100, ge=1, le=500),
         return {"schema": "sc-workspace-authorization-decision-receipt-index/1.0", "items": list_authorization_decisions(db, identity.user_key, limit)}
 
 
+
+
+def _raise_platform_core_runtime(exc: PlatformCoreRuntimeError):
+    raise HTTPException(status_code=exc.status_code, detail={"code": exc.code, "message": str(exc)}) from exc
+
+
+@app.get("/v1/platform-core-runtime")
+def platform_core_runtime_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-platform-core-runtime-response/1.0", "item": platform_core_runtime_profile()}
+
+
+@app.get("/v1/platform-core-runtime/readiness")
+def platform_core_runtime_readiness_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return platform_core_runtime_readiness()
+    except PlatformCoreRuntimeError as exc:
+        _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/platform-core-runtime/sessions")
+def platform_core_runtime_session_create(payload: PlatformCoreSessionRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db:
+            return ensure_platform_core_session(db, identity.user_key, payload)
+    except PlatformCoreRuntimeError as exc:
+        _raise_platform_core_runtime(exc)
+
+
+@app.get("/v1/platform-core-runtime/projects/{project_id}")
+def platform_core_runtime_project_context(project_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db:
+            item = platform_core_project_context(db, identity.user_key, project_id)
+            if item is None:
+                raise HTTPException(status_code=404, detail={"code": "platform-core-session-not-found", "projectId": project_id})
+            return item
+    except PlatformCoreRuntimeError as exc:
+        _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/platform-core-runtime/object-bindings")
+def platform_core_runtime_object_bind(payload: PlatformCoreObjectBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return bind_platform_core_object(db, identity.user_key, payload)
+    except PlatformCoreRuntimeError as exc: _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/platform-core-runtime/execution-bindings")
+def platform_core_runtime_execution_bind(payload: PlatformCoreExecutionBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return bind_platform_core_execution(db, identity.user_key, payload)
+    except PlatformCoreRuntimeError as exc: _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/platform-core-runtime/visual-bindings")
+def platform_core_runtime_visual_bind(payload: PlatformCoreVisualBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return bind_platform_core_visual(db, identity.user_key, payload)
+    except PlatformCoreRuntimeError as exc: _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/platform-core-runtime/package-bindings")
+def platform_core_runtime_package_bind(payload: PlatformCorePackageBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return bind_platform_core_package(db, identity.user_key, payload)
+    except PlatformCoreRuntimeError as exc: _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/platform-core-runtime/handoff-bindings")
+def platform_core_runtime_handoff_bind(payload: PlatformCoreHandoffBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return bind_platform_core_handoff(db, identity.user_key, payload)
+    except PlatformCoreRuntimeError as exc: _raise_platform_core_runtime(exc)
+
+
+def _platform_core_session_view_route(session_id: str, view: str, identity: ServiceIdentity):
+    try:
+        with session_scope() as db: return platform_core_session_view(db, identity.user_key, session_id, view)
+    except PlatformCoreRuntimeError as exc: _raise_platform_core_runtime(exc)
+
+
+@app.get("/v1/platform-core-runtime/sessions/{session_id}/summary")
+def platform_core_runtime_session_summary(session_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    return _platform_core_session_view_route(session_id, "summary", identity)
+
+@app.get("/v1/platform-core-runtime/sessions/{session_id}/lineage")
+def platform_core_runtime_session_lineage(session_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    return _platform_core_session_view_route(session_id, "lineage", identity)
+
+@app.get("/v1/platform-core-runtime/sessions/{session_id}/bundle")
+def platform_core_runtime_session_bundle(session_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    return _platform_core_session_view_route(session_id, "bundle", identity)
+
+@app.get("/v1/platform-core-runtime/receipts")
+def platform_core_runtime_receipts(projectId: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items = list_platform_core_runtime_receipts(db, identity.user_key, projectId, limit)
+        return {"schema": "sc-workspace-platform-core-runtime-receipt-index/1.0", "items": items, "count": len(items)}
 
 
 @app.get("/v1/backend-native-workspace")

@@ -1,0 +1,29 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.1.0",
+  "release": "Platform Core v3 Unified Research Runtime Integration",
+  "backendFirst": true,
+  "rollbackBaseline": "3.0.0",
+  "migration": "032_platform_core_v3_unified_research_runtime_integration.sql",
+  "platformCore": {
+    "requiredRelease": "3.0.0",
+    "contract": "sc.research.unified-research-scientific-investigation-runtime.v1",
+    "referenceFirst": true
+  },
+  "features": [
+    "durable-core-session-mappings",
+    "core-readiness-contract-check",
+    "scientific-object-bindings",
+    "execution-lineage-bindings",
+    "visual-bindings",
+    "study-package-bindings",
+    "handoff-bindings",
+    "core-summary-lineage-bundle-proxy",
+    "durable-integration-receipts"
+  ],
+  "security": {
+    "coreCredentialBrowserVisible": false,
+    "browserDirectCoreAccess": false,
+    "arbitraryCodeExecution": false
+  }
+}

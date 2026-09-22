@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '2.36.0';
-    const ROLLBACK_RELEASE = '2.36.0';
+    const PREVIOUS_RELEASE = '3.0.0';
+    const ROLLBACK_RELEASE = '3.0.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
 
@@ -29,7 +29,7 @@ final class SC_Workspace_Deployment_Hardening {
             'backend_bridge' => 'includes/class-sc-workspace-backend.php',
             'current_script' => 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js',
             'current_style' => 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css',
-            'typed_client' => 'assets/js/sc-workspace-typed-client-v3000.js',
+            'typed_client' => 'assets/js/sc-workspace-typed-client-v3100.js',
             'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v3000.js',
             'deployment_runtime' => 'assets/js/sc-workspace-wordpress-deployment-hardening-v1.js',
             'deployment_ui' => 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',

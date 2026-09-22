@@ -1,4 +1,4 @@
-/* Workspace v3.0.0 typed browser client. Service credentials remain server-side in WordPress. */
+/* Workspace v3.1.0 typed browser client. Service credentials remain server-side in WordPress. */
 interface WorkspaceTypedClientConfig { baseUrl:string; nonce?:string; authenticated?:boolean; }
 interface WorkspaceClientRequestOptions { method?:'GET'|'POST'|'DELETE'; body?:unknown; }
 class WorkspaceTypedApiError extends Error { readonly status:number; readonly payload:unknown; constructor(status:number,message:string,payload:unknown){super(message);this.name='WorkspaceTypedApiError';this.status=status;this.payload=payload;} }
@@ -10,6 +10,19 @@ class WorkspaceTypedApiClient {
     const response=await fetch(this.config.baseUrl+path,{method:options.method||'GET',credentials:'same-origin',headers,body:options.body===undefined?undefined:JSON.stringify(options.body)});
     let payload:unknown=null; try{payload=await response.json();}catch(_){payload=null;} if(!response.ok){const message=payload&&typeof payload==='object'&&'message' in payload?String((payload as {message?:unknown}).message||'Workspace API request failed'):'Workspace API request failed';throw new WorkspaceTypedApiError(response.status,message,payload);} if(!payload||typeof payload!=='object') throw new WorkspaceTypedApiError(502,'Workspace API returned a non-object envelope',payload); return payload as T;
   }
+  platformCoreRuntime():Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime');}
+  platformCoreReadiness():Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/readiness');}
+  createPlatformCoreSession(request:PlatformCoreSessionRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/sessions',{method:'POST',body:request});}
+  platformCoreProject(projectId:string):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/projects/'+encodeURIComponent(projectId));}
+  bindPlatformCoreObject(request:PlatformCoreObjectBindingRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/object-bindings',{method:'POST',body:request});}
+  bindPlatformCoreExecution(request:PlatformCoreExecutionBindingRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/execution-bindings',{method:'POST',body:request});}
+  bindPlatformCoreVisual(request:PlatformCoreVisualBindingRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/visual-bindings',{method:'POST',body:request});}
+  bindPlatformCorePackage(request:PlatformCorePackageBindingRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/package-bindings',{method:'POST',body:request});}
+  bindPlatformCoreHandoff(request:PlatformCoreHandoffBindingRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/handoff-bindings',{method:'POST',body:request});}
+  platformCoreSessionSummary(sessionId:string):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/sessions/'+encodeURIComponent(sessionId)+'/summary');}
+  platformCoreSessionLineage(sessionId:string):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/sessions/'+encodeURIComponent(sessionId)+'/lineage');}
+  platformCoreSessionBundle(sessionId:string):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/sessions/'+encodeURIComponent(sessionId)+'/bundle');}
+  platformCoreReceipts(projectId?:string,limit=100):Promise<WorkspaceApiEnvelope>{const p=new URLSearchParams();if(projectId)p.set('projectId',projectId);p.set('limit',String(limit));return this.request('/platform-core-runtime/receipts?'+p.toString());}
   backendNativeWorkspace():Promise<WorkspaceApiEnvelope>{return this.request('/backend-native-workspace');}
   backendNativeBootstrap(projectId?:string):Promise<WorkspaceApiEnvelope>{const q=projectId?'?projectId='+encodeURIComponent(projectId):'';return this.request('/backend-native-workspace/bootstrap'+q);}
   authorizationProfile():Promise<WorkspaceApiEnvelope>{return this.request('/authorization');}

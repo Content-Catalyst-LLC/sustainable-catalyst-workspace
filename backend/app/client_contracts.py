@@ -6,6 +6,19 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "platformCoreRuntime": {"method": "GET", "path": "/v1/platform-core-runtime"},
+    "platformCoreRuntimeReadiness": {"method": "GET", "path": "/v1/platform-core-runtime/readiness"},
+    "platformCoreSessionCreate": {"method": "POST", "path": "/v1/platform-core-runtime/sessions"},
+    "platformCoreProjectContext": {"method": "GET", "path": "/v1/platform-core-runtime/projects/{project_id}"},
+    "platformCoreObjectBind": {"method": "POST", "path": "/v1/platform-core-runtime/object-bindings"},
+    "platformCoreExecutionBind": {"method": "POST", "path": "/v1/platform-core-runtime/execution-bindings"},
+    "platformCoreVisualBind": {"method": "POST", "path": "/v1/platform-core-runtime/visual-bindings"},
+    "platformCorePackageBind": {"method": "POST", "path": "/v1/platform-core-runtime/package-bindings"},
+    "platformCoreHandoffBind": {"method": "POST", "path": "/v1/platform-core-runtime/handoff-bindings"},
+    "platformCoreSessionSummary": {"method": "GET", "path": "/v1/platform-core-runtime/sessions/{session_id}/summary"},
+    "platformCoreSessionLineage": {"method": "GET", "path": "/v1/platform-core-runtime/sessions/{session_id}/lineage"},
+    "platformCoreSessionBundle": {"method": "GET", "path": "/v1/platform-core-runtime/sessions/{session_id}/bundle"},
+    "platformCoreRuntimeReceipts": {"method": "GET", "path": "/v1/platform-core-runtime/receipts"},
     "backendNativeWorkspace": {"method": "GET", "path": "/v1/backend-native-workspace"},
     "backendNativeBootstrap": {"method": "GET", "path": "/v1/backend-native-workspace/bootstrap"},
     "frontendRuntime": {"method": "GET", "path": "/v1/frontend-runtime"},
@@ -46,6 +59,12 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "platformCoreSessionCreate": "sc-workspace-platform-core-session-request/1.0",
+    "platformCoreObjectBind": "sc-workspace-platform-core-object-binding-request/1.0",
+    "platformCoreExecutionBind": "sc-workspace-platform-core-execution-binding-request/1.0",
+    "platformCoreVisualBind": "sc-workspace-platform-core-visual-binding-request/1.0",
+    "platformCorePackageBind": "sc-workspace-platform-core-package-binding-request/1.0",
+    "platformCoreHandoffBind": "sc-workspace-platform-core-handoff-binding-request/1.0",
     "executeCommand": "sc-workspace-command-request/1.0",
     "executeQuery": "sc-workspace-query-request/1.0",
     "notebookPlans": "sc-workspace-notebook-execution-plan-request/1.0",
@@ -78,7 +97,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.0.0",
+        "workspaceVersion": "3.1.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

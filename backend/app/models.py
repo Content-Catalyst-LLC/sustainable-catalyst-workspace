@@ -1287,3 +1287,40 @@ class AttestationVerificationReceipt(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.1.0 Platform Core v3 Unified Research Runtime Integration
+class PlatformCoreResearchSessionBinding(Base):
+    __tablename__ = "workspace_platform_core_research_sessions"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    core_session_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    core_session_key: Mapped[str] = mapped_column(String(180), nullable=False)
+    core_contract: Mapped[str] = mapped_column(String(160), nullable=False)
+    core_release: Mapped[str] = mapped_column(String(32), nullable=False, default="3.0.0")
+    core_product_binding_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    project_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    project_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    core_session_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    last_error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class PlatformCoreRuntimeReceipt(Base):
+    __tablename__ = "workspace_platform_core_runtime_receipts"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    receipt_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    core_session_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    binding_kind: Mapped[str] = mapped_column(String(48), nullable=False, default="")
+    workspace_ref: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
+    core_ref: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="recorded")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

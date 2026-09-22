@@ -1,7 +1,7 @@
-/* Workspace v3.0.0 — Backend-Native Scientific Workspace browser boundary. */
+/* Workspace v3.1.0 — Backend-Native Scientific Workspace browser boundary. */
 const SCWorkspaceBackendNativeScientificWorkspace=Object.freeze({
   schema:'sc-workspace-backend-native-scientific-workspace-client/1.0',
-  version:'3.0.0',
+  version:'3.1.0',
   backendNative:true,
   backendAuthoritative:true,
   browserAuthoritativeState:false,

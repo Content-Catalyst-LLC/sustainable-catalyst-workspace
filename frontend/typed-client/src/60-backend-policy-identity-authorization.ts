@@ -1,7 +1,7 @@
-/* Workspace v3.0.0 — Backend Policy, Identity & Authorization Consolidation. */
+/* Workspace v3.1.0 — Backend Policy, Identity & Authorization Consolidation. */
 const SCWorkspaceAuthorizationRuntime=Object.freeze({
   schema:'sc-workspace-backend-authorization-client/1.0',
-  version:'3.0.0',
+  version:'3.1.0',
   backendAuthoritative:true,
   browserAuthoritativeAuthorization:false,
   serverResolvedPrincipal:true,

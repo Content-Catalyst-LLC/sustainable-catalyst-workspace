@@ -1,7 +1,7 @@
-/* Workspace v3.0.0 — Production Architecture Certification browser boundary. */
+/* Workspace v3.1.0 — Production Architecture Certification browser boundary. */
 const SCWorkspaceProductionArchitectureBoundary=Object.freeze({
   schema:'sc-workspace-production-architecture-certification-client/1.0',
-  version:'3.0.0',
+  version:'3.1.0',
   backendAuthoritative:true,
   browserCanSelfCertify:false,
   architectureCertification:'backend-profile-and-release-gates',
