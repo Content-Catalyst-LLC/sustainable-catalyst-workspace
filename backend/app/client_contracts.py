@@ -6,6 +6,16 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "investigationGraphWorkspace": {"method":"GET","path":"/v1/investigation-graph-workspace"},
+    "investigationHypothesisSetStore": {"method":"POST","path":"/v1/investigation-graph-workspace/hypothesis-sets"},
+    "investigationHypothesisSets": {"method":"GET","path":"/v1/investigation-graph-workspace/hypothesis-sets"},
+    "investigationHypothesisSet": {"method":"GET","path":"/v1/investigation-graph-workspace/hypothesis-sets/{hypothesis_set_id}"},
+    "investigationGraph": {"method":"GET","path":"/v1/investigation-graph-workspace/projects/{project_id}/graph"},
+    "investigationContradictions": {"method":"GET","path":"/v1/investigation-graph-workspace/projects/{project_id}/contradictions"},
+    "investigationHypothesisMatrix": {"method":"GET","path":"/v1/investigation-graph-workspace/projects/{project_id}/hypothesis-matrix"},
+    "investigationCoverage": {"method":"GET","path":"/v1/investigation-graph-workspace/projects/{project_id}/coverage"},
+    "investigationGraphSnapshotCreate": {"method":"POST","path":"/v1/investigation-graph-workspace/projects/{project_id}/snapshots"},
+    "investigationGraphSnapshots": {"method":"GET","path":"/v1/investigation-graph-workspace/projects/{project_id}/snapshots"},
     "investigativeResearchWorkspace": {"method":"GET","path":"/v1/investigative-research-workspace"},
     "investigationStatementStore": {"method":"POST","path":"/v1/investigative-research-workspace/statements"},
     "investigationStatements": {"method":"GET","path":"/v1/investigative-research-workspace/statements"},
@@ -95,6 +105,8 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "investigationHypothesisSetStore": "sc-workspace-investigation-hypothesis-set-request/1.0",
+    "investigationGraphSnapshotCreate": "sc-workspace-investigation-graph-snapshot-request/1.0",
     "investigationStatementStore": "sc-workspace-investigation-statement-request/1.0",
     "investigationEvidenceLinkCreate": "sc-workspace-investigation-evidence-link-request/1.0",
     "investigationStatementRelationCreate": "sc-workspace-investigation-statement-relation-request/1.0",
@@ -143,7 +155,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.7.0",
+        "workspaceVersion": "3.8.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

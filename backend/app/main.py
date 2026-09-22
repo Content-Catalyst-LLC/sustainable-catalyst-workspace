@@ -137,6 +137,13 @@ from .investigative_research_workspace import (
     InvestigationStatementRequest, InvestigationEvidenceLinkRequest, InvestigationStatementRelationRequest,
     InvestigativeResearchSnapshotRequest, INVESTIGATIVE_RESEARCH_WORKSPACE_SCHEMA,
 )
+from .investigation_graph_workspace import (
+    profile as investigation_graph_workspace_profile, store_hypothesis_set, list_hypothesis_sets, get_hypothesis_set,
+    build_graph as build_investigation_graph, contradiction_clusters as build_contradiction_clusters,
+    hypothesis_matrix as build_hypothesis_matrix, coverage as build_investigation_coverage,
+    create_graph_snapshot, list_graph_snapshots, InvestigationHypothesisSetRequest, InvestigationGraphSnapshotRequest,
+    INVESTIGATION_GRAPH_WORKSPACE_SCHEMA,
+)
 
 
 @asynccontextmanager
@@ -412,19 +419,91 @@ def health():
         "investigativeAutomaticTruthDetermination": False,
         "investigativeAutomaticEvidenceRanking": False,
         "investigativeImmutableSnapshots": True,
+        "investigationGraphContradictionHypothesisWorkspace": True,
+        "investigationGraphWorkspaceSchema": INVESTIGATION_GRAPH_WORKSPACE_SCHEMA,
+        "investigationContradictionClusters": True,
+        "investigationCompetingHypothesisMatrix": True,
+        "investigationAutomaticHypothesisRanking": False,
+        "investigationPreferredHypothesisSelection": False,
         "scientificExecutionProvenanceSchema": SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
         "executionProvenanceGraph": True,
         "executionProvenanceImmutableSnapshots": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "038_claims_evidence_investigative_research_workspace.sql",
+        "releaseMigrationLineage": "039_investigation_graph_contradiction_hypothesis_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
         "arbitraryCodeExecution": False,
     }
+
+
+@app.get("/v1/investigation-graph-workspace")
+def investigation_graph_workspace_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-investigation-graph-workspace-response/1.0","item":investigation_graph_workspace_profile()}
+
+@app.post("/v1/investigation-graph-workspace/hypothesis-sets")
+def investigation_hypothesis_set_store(payload: InvestigationHypothesisSetRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item,created=store_hypothesis_set(db,identity.user_key,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+        except LookupError as exc: raise HTTPException(status_code=404,detail={"code":"investigation-statement-not-found","statementId":str(exc)})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"hypothesis-set-invalid","message":str(exc)})
+        return {"ok":True,"created":created,"schema":"sc-workspace-investigation-hypothesis-set-response/1.0","item":item}
+
+@app.get("/v1/investigation-graph-workspace/hypothesis-sets")
+def investigation_hypothesis_set_index(projectId: str | None=None, limit: int=Query(default=250,ge=1,le=1000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_hypothesis_sets(db,identity.user_key,projectId,limit); return {"schema":"sc-workspace-investigation-hypothesis-set-index/1.0","items":items,"count":len(items)}
+
+@app.get("/v1/investigation-graph-workspace/hypothesis-sets/{hypothesis_set_id}")
+def investigation_hypothesis_set_get(hypothesis_set_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        item=get_hypothesis_set(db,identity.user_key,hypothesis_set_id)
+        if item is None: raise HTTPException(status_code=404,detail={"code":"hypothesis-set-not-found","hypothesisSetId":hypothesis_set_id})
+        return {"schema":"sc-workspace-investigation-hypothesis-set-response/1.0","item":item}
+
+@app.get("/v1/investigation-graph-workspace/projects/{project_id}/graph")
+def investigation_graph_project(project_id: str, includeVisualGraph: bool=Query(default=True), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_investigation_graph(db,identity.user_key,project_id,includeVisualGraph)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"schema":"sc-workspace-investigation-graph-response/1.0","item":item}
+
+@app.get("/v1/investigation-graph-workspace/projects/{project_id}/contradictions")
+def investigation_contradictions(project_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_contradiction_clusters(db,identity.user_key,project_id)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/investigation-graph-workspace/projects/{project_id}/hypothesis-matrix")
+def investigation_hypothesis_matrix(project_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_hypothesis_matrix(db,identity.user_key,project_id)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/investigation-graph-workspace/projects/{project_id}/coverage")
+def investigation_coverage(project_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_investigation_coverage(db,identity.user_key,project_id)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.post("/v1/investigation-graph-workspace/projects/{project_id}/snapshots")
+def investigation_graph_snapshot_create(project_id: str, payload: InvestigationGraphSnapshotRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_graph_snapshot(db,identity.user_key,project_id,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/investigation-graph-workspace/projects/{project_id}/snapshots")
+def investigation_graph_snapshot_index(project_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_graph_snapshots(db,identity.user_key,project_id,limit); return {"schema":"sc-workspace-investigation-graph-snapshot-index/1.0","items":items,"count":len(items)}
 
 
 @app.get("/ready")

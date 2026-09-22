@@ -13,7 +13,7 @@ def profile() -> dict[str, Any]:
     """
     return {
         "schema": PRODUCTION_ARCHITECTURE_CERTIFICATION_SCHEMA,
-        "workspaceVersion": "3.7.0",
+        "workspaceVersion": "3.8.0",
         "release": "Workspace Production Architecture Certification",
         "certificationScope": "automated-architecture",
         "architectureCertified": True,
@@ -46,6 +46,7 @@ def profile() -> dict[str, Any]:
         "integrityAlgorithm": "SHA-256",
         "certificationGates": {
             "claimsEvidenceInvestigativeResearchWorkspace": "release-gate",
+            "investigationGraphContradictionHypothesisWorkspace": "release-gate",
             "platformCoreVisualResearchWorkspace": "release-gate",
             "backendAuthority": "certified",
             "persistenceAndRevisionAuthority": "certified",

@@ -18,6 +18,7 @@ from .research_session_bindings import project_binding_state as research_session
 from .execution_provenance import project_provenance as scientific_execution_provenance
 from .visual_research_workspace import build_project_workspace as visual_research_workspace
 from .investigative_research_workspace import build_project_workspace as investigative_research_workspace
+from .investigation_graph_workspace import build_graph as investigation_graph_workspace, contradiction_clusters as investigation_contradiction_clusters
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -44,7 +45,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -86,6 +87,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     execution_provenance = scientific_execution_provenance(db, user_key, project_id, 250)
     visual_research = visual_research_workspace(db, user_key, project_id)
     investigative_research = investigative_research_workspace(db, user_key, project_id, True)
+    investigation_graph = investigation_graph_workspace(db, user_key, project_id, True)
+    contradiction_projection = investigation_contradiction_clusters(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -129,6 +132,9 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigativeStatements": int((investigative_research.get("counts") or {}).get("statements") or 0),
         "investigativeEvidenceLinks": int((investigative_research.get("counts") or {}).get("evidenceLinks") or 0),
         "investigativeStatementRelations": int((investigative_research.get("counts") or {}).get("statementRelations") or 0),
+        "investigationGraphNodes": len(investigation_graph.get("nodes") or []),
+        "investigationGraphEdges": len(investigation_graph.get("edges") or []),
+        "investigationContradictionClusters": int(contradiction_projection.get("count") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -152,6 +158,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "executionProvenance": execution_provenance,
         "visualResearchWorkspace": visual_research,
         "investigativeResearchWorkspace": investigative_research,
+        "investigationGraphWorkspace": investigation_graph,
+        "investigationContradictions": contradiction_projection,
         "platformCore": core,
         "platformCoreError": core_error,
     }

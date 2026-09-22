@@ -14,6 +14,7 @@ from .platform_core_runtime import profile as platform_core_runtime_profile
 from .research_session_bindings import profile as research_session_binding_profile
 from .execution_provenance import profile as execution_provenance_profile
 from .investigative_research_workspace import profile as investigative_research_profile
+from .investigation_graph_workspace import profile as investigation_graph_profile
 from .utils import sha256_hex
 
 BACKEND_NATIVE_WORKSPACE_SCHEMA = "sc-workspace-backend-native-scientific-workspace/1.0"
@@ -63,6 +64,7 @@ def profile() -> dict[str, Any]:
         "scientificExecutionProvenanceWorkspace": True,
         "platformCoreVisualAnalysisResearchObjectWorkspace": True,
         "claimsEvidenceInvestigativeResearchWorkspace": True,
+        "investigationGraphContradictionHypothesisWorkspace": True,
         "platformCoreReferenceFirst": True,
         "rollbackSchemaCompatible": True,
         "bootstrapEndpoint": "/v1/backend-native-workspace/bootstrap",
@@ -92,6 +94,7 @@ def bootstrap(db: Session, identity: Any, project_id: str | None = None) -> dict
         "researchSessionBindings": research_session_binding_profile(),
         "executionProvenance": execution_provenance_profile(),
         "investigativeResearch": investigative_research_profile(),
+        "investigationGraph": investigation_graph_profile(),
     }
     canonical = {
         "thinClient": thin,

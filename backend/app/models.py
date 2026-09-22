@@ -1494,3 +1494,32 @@ class InvestigativeResearchWorkspaceSnapshot(Base):
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
 
+
+# v3.8.0 Investigation Graph, Contradiction & Competing Hypothesis Workspace
+class InvestigationHypothesisSet(Base):
+    __tablename__ = "workspace_investigation_hypothesis_sets"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    hypothesis_set_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    question_statement_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    hypothesis_ids_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    set_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class InvestigationGraphSnapshot(Base):
+    __tablename__ = "workspace_investigation_graph_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    contradiction_cluster_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hypothesis_set_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    node_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    edge_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    graph_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
