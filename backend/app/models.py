@@ -1523,3 +1523,83 @@ class InvestigationGraphSnapshot(Base):
     edge_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     graph_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+# v3.9.0 Timeline, Event Reconstruction & Investigative Sequence Workspace
+class InvestigationEventHead(Base):
+    __tablename__ = "workspace_investigation_event_heads"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_precision: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    time_status: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    location_ref: Mapped[str] = mapped_column(String(1200), nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    event_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class InvestigationEventRevision(Base):
+    __tablename__ = "workspace_investigation_event_revisions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    time_precision: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    time_status: Mapped[str] = mapped_column(String(32), nullable=False, default="unknown")
+    location_ref: Mapped[str] = mapped_column(String(1200), nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    event_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEventStatementLink(Base):
+    __tablename__ = "workspace_investigation_event_statement_links"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    link_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    statement_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    relation: Mapped[str] = mapped_column(String(48), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    link_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationEventRelation(Base):
+    __tablename__ = "workspace_investigation_event_relations"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    relation_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    from_event_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    to_event_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    relation: Mapped[str] = mapped_column(String(48), nullable=False)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    relation_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationTimelineSnapshot(Base):
+    __tablename__ = "workspace_investigation_timeline_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    timeline_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    event_statement_link_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    event_relation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    temporal_issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
