@@ -1,0 +1,11 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.4.0",
+  "release": "Scientific Execution & Provenance Workspace",
+  "migration": "035_scientific_execution_provenance_workspace.sql",
+  "typedEndpointCount": 64,
+  "platformCoreContract": "sc.research.unified-research-scientific-investigation-runtime.v1",
+  "referenceFirst": true,
+  "arbitraryCodeExecution": false,
+  "rollbackBaseline": "3.3.0"
+}

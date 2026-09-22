@@ -16,8 +16,6 @@ VENV="$WORK/venv"
 python3 -m venv "$VENV"
 "$VENV/bin/python" -m pip install -q --upgrade pip
 "$VENV/bin/python" -m pip install -q -r backend/requirements.txt
-"$VENV/bin/python" -m pip install -q pytest
-"$VENV/bin/python" -m pip install -q pytest
 PYTHONPATH="$TARGET/backend" "$VENV/bin/python" scripts/validate_research_session_object_binding_runtime_v3300.py
 PYTHONPATH="$TARGET/backend" "$VENV/bin/python" scripts/generate_typed_client_contracts_v3300.py --check
 PYTHONPATH="$TARGET/backend" "$VENV/bin/python" -m pytest -q backend/tests/test_research_session_object_binding_runtime_v3300.py

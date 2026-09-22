@@ -345,6 +345,7 @@ networks:
   sc-internal:
     external: true
   sc-workspace-runtime:
+    name: sc-workspace-runtime
     driver: bridge
     internal: true
 

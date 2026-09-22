@@ -113,6 +113,12 @@ from .unified_research_context import (
     create_snapshot as create_unified_research_context_snapshot, list_snapshots as list_unified_research_context_snapshots,
     UnifiedResearchContextSnapshotRequest, CONTEXT_SCHEMA as UNIFIED_RESEARCH_CONTEXT_SCHEMA,
 )
+from .execution_provenance import (
+    profile as execution_provenance_profile, project_provenance as build_project_execution_provenance,
+    run_provenance as build_run_execution_provenance, create_snapshot as create_execution_provenance_snapshot,
+    list_snapshots as list_execution_provenance_snapshots, ScientificExecutionProvenanceSnapshotRequest,
+    EXECUTION_PROVENANCE_SCHEMA as SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
+)
 
 
 @asynccontextmanager
@@ -368,10 +374,14 @@ def health():
         "researchSessionObjectBindingSchema": RESEARCH_SESSION_BINDING_SCHEMA,
         "researchSessionBindingFingerprintPinning": True,
         "researchSessionBindingIdempotentReplay": True,
+        "scientificExecutionProvenanceWorkspace": True,
+        "scientificExecutionProvenanceSchema": SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
+        "executionProvenanceGraph": True,
+        "executionProvenanceImmutableSnapshots": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "034_research_session_object_binding_runtime.sql",
+        "releaseMigrationLineage": "035_scientific_execution_provenance_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -390,7 +400,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured", "unifiedResearchProjectContext": "ready", "researchSessionObjectBindings": "ready"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured", "unifiedResearchProjectContext": "ready", "researchSessionObjectBindings": "ready", "scientificExecutionProvenance": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -798,6 +808,49 @@ def research_session_bindings_reconcile(project_id: str, payload: ResearchSessio
             return reconcile_research_session_bindings(db, identity.user_key, project_id, payload)
     except PlatformCoreRuntimeError as exc:
         _raise_platform_core_runtime(exc)
+
+
+@app.get("/v1/execution-provenance")
+def scientific_execution_provenance_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-scientific-execution-provenance-workspace-response/1.0", "item": execution_provenance_profile()}
+
+
+@app.get("/v1/execution-provenance/projects/{project_id}")
+def scientific_execution_provenance_project(project_id: str, limit: int = Query(default=250, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item = build_project_execution_provenance(db, identity.user_key, project_id, limit)
+        return {"ok": True, "schema": "sc-workspace-scientific-execution-provenance-project-response/1.0", "item": item}
+
+
+@app.get("/v1/execution-provenance/projects/{project_id}/runs/{run_id}")
+def scientific_execution_provenance_run(project_id: str, run_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = build_run_execution_provenance(db, identity.user_key, project_id, run_id, True, True)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-execution-run-not-found","runId":run_id})
+        except PermissionError:
+            raise HTTPException(status_code=409, detail={"code":"workspace-project-scope-mismatch","runId":run_id,"projectId":project_id})
+        return {"ok": True, "schema": "sc-workspace-scientific-execution-provenance-run-response/1.0", "item": item}
+
+
+@app.post("/v1/execution-provenance/projects/{project_id}/snapshots")
+def scientific_execution_provenance_snapshot_create(project_id: str, payload: ScientificExecutionProvenanceSnapshotRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            item = create_execution_provenance_snapshot(db, identity.user_key, project_id, payload)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail={"code":"workspace-execution-run-not-found","runId":str(exc)})
+        except PermissionError as exc:
+            raise HTTPException(status_code=409, detail={"code":"workspace-project-scope-mismatch","runId":str(exc),"projectId":project_id})
+        return {"ok": True, "schema": "sc-workspace-scientific-execution-provenance-snapshot-response/1.0", "item": item}
+
+
+@app.get("/v1/execution-provenance/projects/{project_id}/snapshots")
+def scientific_execution_provenance_snapshot_index(project_id: str, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        items = list_execution_provenance_snapshots(db, identity.user_key, project_id, limit)
+        return {"schema":"sc-workspace-scientific-execution-provenance-snapshot-index/1.0","items":items,"count":len(items)}
 
 
 @app.get("/v1/research-context")

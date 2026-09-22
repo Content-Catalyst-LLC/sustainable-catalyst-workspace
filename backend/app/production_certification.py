@@ -13,7 +13,7 @@ def profile() -> dict[str, Any]:
     """
     return {
         "schema": PRODUCTION_ARCHITECTURE_CERTIFICATION_SCHEMA,
-        "workspaceVersion": "3.3.0",
+        "workspaceVersion": "3.4.0",
         "release": "Workspace Production Architecture Certification",
         "certificationScope": "automated-architecture",
         "architectureCertified": True,
@@ -25,8 +25,8 @@ def profile() -> dict[str, Any]:
         "browserAuthoritativeAuthorization": False,
         "canonicalStore": "postgresql",
         "migrationRequired": True,
-        "migrationLineage": "034_research_session_object_binding_runtime.sql",
-        "rollbackBaseline": "3.2.0",
+        "migrationLineage": "035_scientific_execution_provenance_workspace.sql",
+        "rollbackBaseline": "3.3.0",
         "rollbackSchemaCompatible": True,
         "serviceIdentityBoundary": "server-side-wordpress-proxy",
         "authorizationDefaultEffect": "deny",
@@ -54,6 +54,7 @@ def profile() -> dict[str, Any]:
             "scientificObjectBoundary": "certified",
             "crossProductHandoffBoundary": "certified",
             "platformCoreV3RuntimeIntegration": "release-gate",
+            "scientificExecutionProvenance": "release-gate",
             "boundedRuntimeIsolation": "deployment-gate",
             "wordpressPackageIntegrity": "release-gate",
             "releaseReconstruction": "release-gate",

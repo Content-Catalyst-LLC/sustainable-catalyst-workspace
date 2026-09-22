@@ -1364,3 +1364,16 @@ class ResearchSessionObjectBinding(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
+
+# v3.4.0 Scientific Execution & Provenance Workspace
+class ScientificExecutionProvenanceSnapshot(Base):
+    __tablename__ = "workspace_scientific_execution_provenance_snapshots"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    run_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    provenance_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    execution_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    provenance_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

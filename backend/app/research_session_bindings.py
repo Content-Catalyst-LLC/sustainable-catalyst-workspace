@@ -65,7 +65,7 @@ class ResearchSessionBindingReconcileRequest(BaseModel):
 def profile() -> dict[str, Any]:
     return {
         "schema": BINDING_RUNTIME_SCHEMA,
-        "workspaceVersion": "3.3.0",
+        "workspaceVersion": "3.4.0",
         "release": "Research Session & Object Binding Runtime",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
@@ -191,7 +191,7 @@ def bind_reference(db: Session, user_key: str, project_id: str, req: ResearchSes
     if existing is not None and existing.workspace_fingerprint == source["fingerprint"] and existing.status == "active":
         return {"ok": True, "replayed": True, "item": _payload(existing)}
 
-    meta = {"researchSessionBindingRuntime": "3.3.0", **req.metadata}
+    meta = {"researchSessionBindingRuntime": "3.4.0", **req.metadata}
     if req.bindingType == "scientific-object":
         result = bind_object(db, user_key, PlatformCoreObjectBindingRequest(
             schema="sc-workspace-platform-core-object-binding-request/1.0", projectId=project_id,
