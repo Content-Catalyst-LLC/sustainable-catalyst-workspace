@@ -101,6 +101,13 @@ from .platform_core_runtime import (
     CORE_CONTRACT as PLATFORM_CORE_V3_CONTRACT, INTEGRATION_SCHEMA as PLATFORM_CORE_INTEGRATION_SCHEMA,
 )
 
+from .research_session_bindings import (
+    profile as research_session_binding_profile, project_binding_state as research_session_binding_state,
+    bind_reference as bind_research_session_reference, reconcile as reconcile_research_session_bindings,
+    ResearchSessionBindingRequest, ResearchSessionBindingReconcileRequest,
+    BINDING_RUNTIME_SCHEMA as RESEARCH_SESSION_BINDING_SCHEMA,
+)
+
 from .unified_research_context import (
     profile as unified_research_context_profile, build_context as build_unified_research_context,
     create_snapshot as create_unified_research_context_snapshot, list_snapshots as list_unified_research_context_snapshots,
@@ -357,10 +364,14 @@ def health():
         "platformCoreObjectContentReplication": False,
         "platformCoreIntegrationSchema": PLATFORM_CORE_INTEGRATION_SCHEMA,
         "unifiedResearchProjectContext": True,
+        "researchSessionObjectBindingRuntime": True,
+        "researchSessionObjectBindingSchema": RESEARCH_SESSION_BINDING_SCHEMA,
+        "researchSessionBindingFingerprintPinning": True,
+        "researchSessionBindingIdempotentReplay": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "033_unified_research_project_context.sql",
+        "releaseMigrationLineage": "034_research_session_object_binding_runtime.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -379,7 +390,7 @@ def ready():
         raise HTTPException(status_code=503, detail="Service token is not configured.")
     if not settings.runtime_attestation_token_configured:
         raise HTTPException(status_code=503, detail="Runtime-attestation token is not configured.")
-    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured", "unifiedResearchProjectContext": "ready"}
+    return {"ok": True, "database": "ready", "serviceAuth": "ready", "runtimeAttestationAuth": "ready", "authorizationPolicy": "ready", "identityResolution": "ready", "productionArchitectureCertification": "ready", "backendNativeScientificWorkspace": "ready", "platformCoreRuntime": "configured" if settings.platform_core_configured else "optional-unconfigured", "unifiedResearchProjectContext": "ready", "researchSessionObjectBindings": "ready"}
 
 
 @app.get("/v1/capabilities")
@@ -755,6 +766,38 @@ def platform_core_runtime_receipts(projectId: str | None = None, limit: int = Qu
     with session_scope() as db:
         items = list_platform_core_runtime_receipts(db, identity.user_key, projectId, limit)
         return {"schema": "sc-workspace-platform-core-runtime-receipt-index/1.0", "items": items, "count": len(items)}
+
+
+@app.get("/v1/research-bindings")
+def research_session_bindings_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "schema": "sc-workspace-research-session-object-binding-runtime-response/1.0", "item": research_session_binding_profile()}
+
+
+@app.get("/v1/research-bindings/projects/{project_id}")
+def research_session_bindings_project(project_id: str, bindingType: str | None = None, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item = research_session_binding_state(db, identity.user_key, project_id)
+        if bindingType:
+            item["bindings"] = [x for x in item["bindings"] if x.get("bindingType") == bindingType]
+        return {"ok": True, "schema": "sc-workspace-research-session-binding-state-response/1.0", "item": item}
+
+
+@app.post("/v1/research-bindings/projects/{project_id}")
+def research_session_bindings_create(project_id: str, payload: ResearchSessionBindingRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db:
+            return bind_research_session_reference(db, identity.user_key, project_id, payload)
+    except PlatformCoreRuntimeError as exc:
+        _raise_platform_core_runtime(exc)
+
+
+@app.post("/v1/research-bindings/projects/{project_id}/reconcile")
+def research_session_bindings_reconcile(project_id: str, payload: ResearchSessionBindingReconcileRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        with session_scope() as db:
+            return reconcile_research_session_bindings(db, identity.user_key, project_id, payload)
+    except PlatformCoreRuntimeError as exc:
+        _raise_platform_core_runtime(exc)
 
 
 @app.get("/v1/research-context")

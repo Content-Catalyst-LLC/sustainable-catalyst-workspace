@@ -1,0 +1,9 @@
+{
+  "name": "Sustainable Catalyst Workspace",
+  "version": "3.3.0",
+  "release": "Research Session & Object Binding Runtime",
+  "migration": "034_research_session_object_binding_runtime.sql",
+  "typedEndpointCount": 59,
+  "platformCoreContract": "sc.research.unified-research-scientific-investigation-runtime.v1",
+  "referenceFirst": true
+}

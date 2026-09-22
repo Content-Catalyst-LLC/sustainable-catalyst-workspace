@@ -14,6 +14,7 @@ from .study_packages import list_packages
 from .visualization_specs import list_specs
 from .registry import list_execution_runs
 from .platform_core_runtime import project_context as platform_core_project_context, get_mapping as get_platform_core_mapping, PlatformCoreRuntimeError
+from .research_session_bindings import project_binding_state as research_session_binding_state
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -27,7 +28,7 @@ class UnifiedResearchContextSnapshotRequest(BaseModel):
 def profile() -> dict[str, Any]:
     return {
         "schema": "sc-workspace-unified-research-project-context-profile/1.0",
-        "workspaceVersion": "3.2.0",
+        "workspaceVersion": "3.3.0",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
         "canonicalProjectAuthority": "workspace-postgresql",
@@ -40,7 +41,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -78,6 +79,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     visualizations = list_specs(db, user_key, project_id, 250)
     packages = list_packages(db, user_key, project_id, 250)
     handoffs = _handoffs(db, user_key, project_id, 250)
+    binding_state = research_session_binding_state(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -113,6 +115,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "visualizations": len(visualizations),
         "studyPackages": len(packages),
         "researchHandoffs": len(handoffs),
+        "researchSessionBindings": len(binding_state.get("bindings") or []),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -132,6 +135,7 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "visualizations": visualizations,
         "studyPackages": packages,
         "researchHandoffs": handoffs,
+        "researchSessionBindings": binding_state,
         "platformCore": core,
         "platformCoreError": core_error,
     }

@@ -9,7 +9,7 @@
     "strict": true,
     "noImplicitAny": true,
     "noUncheckedIndexedAccess": true,
-    "outFile": "../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v3100.js",
+    "outFile": "../../wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-typed-client-v3300.js",
     "removeComments": false,
     "sourceMap": false
   },
@@ -24,6 +24,8 @@
     "src/70-frontend-runtime.ts",
     "src/80-production-architecture-certification.ts",
     "src/90-backend-native-scientific-workspace.ts",
-    "src/100-platform-core-runtime.ts"
+    "src/100-platform-core-runtime.ts",
+    "src/110-unified-research-context.ts",
+    "src/120-research-session-bindings.ts"
   ]
 }

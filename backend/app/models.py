@@ -1340,3 +1340,27 @@ class UnifiedResearchContextSnapshot(Base):
     component_counts_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+# v3.3.0 Research Session & Object Binding Runtime
+class ResearchSessionObjectBinding(Base):
+    __tablename__ = "workspace_research_session_object_bindings"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    binding_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    core_session_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    binding_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    workspace_ref: Mapped[str] = mapped_column(String(1000), nullable=False)
+    workspace_kind: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    workspace_object_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    workspace_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    workspace_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    core_binding_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(120), nullable=False, default="context")
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    response_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+

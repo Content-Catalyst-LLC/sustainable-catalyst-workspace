@@ -1,4 +1,4 @@
-/* Workspace v3.1.0 typed browser client. Service credentials remain server-side in WordPress. */
+/* Workspace v3.3.0 typed browser client. Service credentials remain server-side in WordPress. */
 interface WorkspaceTypedClientConfig { baseUrl:string; nonce?:string; authenticated?:boolean; }
 interface WorkspaceClientRequestOptions { method?:'GET'|'POST'|'DELETE'; body?:unknown; }
 class WorkspaceTypedApiError extends Error { readonly status:number; readonly payload:unknown; constructor(status:number,message:string,payload:unknown){super(message);this.name='WorkspaceTypedApiError';this.status=status;this.payload=payload;} }
@@ -10,6 +10,14 @@ class WorkspaceTypedApiClient {
     const response=await fetch(this.config.baseUrl+path,{method:options.method||'GET',credentials:'same-origin',headers,body:options.body===undefined?undefined:JSON.stringify(options.body)});
     let payload:unknown=null; try{payload=await response.json();}catch(_){payload=null;} if(!response.ok){const message=payload&&typeof payload==='object'&&'message' in payload?String((payload as {message?:unknown}).message||'Workspace API request failed'):'Workspace API request failed';throw new WorkspaceTypedApiError(response.status,message,payload);} if(!payload||typeof payload!=='object') throw new WorkspaceTypedApiError(502,'Workspace API returned a non-object envelope',payload); return payload as T;
   }
+  researchSessionBindings():Promise<WorkspaceApiEnvelope>{return this.request('/research-bindings');}
+  researchSessionProjectBindings(projectId:string,bindingType?:string):Promise<WorkspaceApiEnvelope>{const q=bindingType?'?bindingType='+encodeURIComponent(bindingType):'';return this.request('/research-bindings/projects/'+encodeURIComponent(projectId)+q);}
+  createResearchSessionBinding(projectId:string,request:ResearchSessionBindingRequest):Promise<WorkspaceApiEnvelope>{return this.request('/research-bindings/projects/'+encodeURIComponent(projectId),{method:'POST',body:request});}
+  reconcileResearchSessionBindings(projectId:string,request:ResearchSessionBindingReconcileRequest):Promise<WorkspaceApiEnvelope>{return this.request('/research-bindings/projects/'+encodeURIComponent(projectId)+'/reconcile',{method:'POST',body:request});}
+  unifiedResearchContext():Promise<WorkspaceApiEnvelope>{return this.request('/research-context');}
+  unifiedResearchProjectContext(projectId:string):Promise<WorkspaceApiEnvelope>{return this.request('/research-context/projects/'+encodeURIComponent(projectId));}
+  createUnifiedResearchContextSnapshot(projectId:string,request:UnifiedResearchContextSnapshotRequest):Promise<WorkspaceApiEnvelope>{return this.request('/research-context/projects/'+encodeURIComponent(projectId)+'/snapshots',{method:'POST',body:request});}
+  unifiedResearchContextSnapshots(projectId:string,limit=100):Promise<WorkspaceApiEnvelope>{return this.request('/research-context/projects/'+encodeURIComponent(projectId)+'/snapshots?limit='+encodeURIComponent(String(limit)));}
   platformCoreRuntime():Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime');}
   platformCoreReadiness():Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/readiness');}
   createPlatformCoreSession(request:PlatformCoreSessionRequest):Promise<WorkspaceApiEnvelope>{return this.request('/platform-core-runtime/sessions',{method:'POST',body:request});}
