@@ -13,7 +13,7 @@ def profile() -> dict[str, Any]:
     """
     return {
         "schema": PRODUCTION_ARCHITECTURE_CERTIFICATION_SCHEMA,
-        "workspaceVersion": "3.10.0",
+        "workspaceVersion": "3.11.0",
         "release": "Workspace Production Architecture Certification",
         "certificationScope": "automated-architecture",
         "architectureCertified": True,
@@ -25,8 +25,8 @@ def profile() -> dict[str, Any]:
         "browserAuthoritativeAuthorization": False,
         "canonicalStore": "postgresql",
         "migrationRequired": True,
-        "migrationLineage": "038_claims_evidence_investigative_research_workspace.sql",
-        "rollbackBaseline": "3.6.0",
+        "migrationLineage": "042_documentary_evidence_testimony_statement_analysis_workspace.sql",
+        "rollbackBaseline": "3.10.0",
         "rollbackSchemaCompatible": True,
         "serviceIdentityBoundary": "server-side-wordpress-proxy",
         "authorizationDefaultEffect": "deny",
@@ -47,6 +47,7 @@ def profile() -> dict[str, Any]:
         "certificationGates": {
             "claimsEvidenceInvestigativeResearchWorkspace": "release-gate",
             "investigationGraphContradictionHypothesisWorkspace": "release-gate",
+            "documentaryEvidenceTestimonyStatementAnalysisWorkspace": "release-gate",
             "platformCoreVisualResearchWorkspace": "release-gate",
             "backendAuthority": "certified",
             "persistenceAndRevisionAuthority": "certified",

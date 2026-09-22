@@ -172,6 +172,21 @@ from .investigation_entity_workspace import (
     InvestigationEntityMatchReviewRequest, InvestigationEntityResolutionSnapshotRequest, ENTITY_WORKSPACE_SCHEMA,
 )
 
+
+from .investigation_documentary_workspace import (
+    profile as documentary_evidence_workspace_profile,
+    store_document, list_documents, get_document, list_document_revisions,
+    create_excerpt as create_document_excerpt, list_excerpts as list_document_excerpts,
+    store_testimony, list_testimonies, get_testimony, list_testimony_revisions,
+    create_context_link as create_documentary_context_link, list_context_links as list_documentary_context_links,
+    create_testimony_relation, list_testimony_relations,
+    build_documentary_graph, documentary_analysis,
+    create_documentary_snapshot, list_documentary_snapshots,
+    InvestigationDocumentRequest, InvestigationDocumentExcerptRequest, InvestigationTestimonyRequest,
+    InvestigationDocumentaryContextLinkRequest, InvestigationTestimonyRelationRequest,
+    InvestigationDocumentarySnapshotRequest, DOCUMENTARY_WORKSPACE_SCHEMA,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -418,7 +433,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.9.1",
+        "rollbackBaseline": "3.10.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -470,13 +485,24 @@ def health():
         "entityAutomaticMerge": False,
         "entityAutomaticIdentityConfirmation": False,
         "entityAutomaticRelationshipInference": False,
+        "documentaryEvidenceTestimonyStatementAnalysisWorkspace": True,
+        "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
+        "documentaryVersionedDocuments": True,
+        "documentaryLocatorPreservingExcerpts": True,
+        "documentaryVersionedTestimony": True,
+        "documentaryHumanAssertedRelations": True,
+        "documentaryDescriptiveAnalysis": True,
+        "documentaryAutomaticCredibilityScoring": False,
+        "documentaryAutomaticTruthDetermination": False,
+        "documentaryAutomaticEvidenceRanking": False,
+        "documentaryAutomaticNarrativeSelection": False,
         "scientificExecutionProvenanceSchema": SCIENTIFIC_EXECUTION_PROVENANCE_SCHEMA,
         "executionProvenanceGraph": True,
         "executionProvenanceImmutableSnapshots": True,
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "041_entity_actor_relationship_resolution_workspace.sql",
+        "releaseMigrationLineage": "042_documentary_evidence_testimony_statement_analysis_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -790,6 +816,124 @@ def entity_resolution_snapshot_create(project_id: str, payload: InvestigationEnt
 def entity_resolution_snapshot_index(project_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:
         items=list_entity_resolution_snapshots(db,identity.user_key,project_id,limit); return {"schema":"sc-workspace-investigation-entity-resolution-snapshot-index/1.0","items":items,"count":len(items)}
+
+@app.get("/v1/documentary-evidence-workspace")
+def documentary_evidence_workspace_contract(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-documentary-evidence-workspace-response/1.0","item":documentary_evidence_workspace_profile()}
+
+@app.post("/v1/documentary-evidence-workspace/documents")
+def investigation_document_store(payload: InvestigationDocumentRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item,created=store_document(db,identity.user_key,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"investigation-document-invalid","message":str(exc)})
+        except RuntimeError: raise HTTPException(status_code=409,detail={"code":"investigation-document-revision-conflict","documentId":payload.documentId})
+        return {"ok":True,"created":created,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/documents")
+def investigation_document_index(projectId: str | None=None, documentType: str | None=None, limit: int=Query(default=500,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_documents(db,identity.user_key,projectId,documentType,limit); return {"schema":"sc-workspace-investigation-document-index/1.0","items":items,"count":len(items)}
+
+@app.get("/v1/documentary-evidence-workspace/documents/{document_id}")
+def investigation_document_get(document_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        item=get_document(db,identity.user_key,document_id)
+        if item is None: raise HTTPException(status_code=404,detail={"code":"investigation-document-not-found","documentId":document_id})
+        return {"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/documents/{document_id}/revisions")
+def investigation_document_revision_index(document_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_document_revisions(db,identity.user_key,document_id,limit); return {"schema":"sc-workspace-investigation-document-revision-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/documentary-evidence-workspace/excerpts")
+def investigation_document_excerpt_store(payload: InvestigationDocumentExcerptRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_document_excerpt(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-document-reference-not-found"})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/excerpts")
+def investigation_document_excerpt_index(projectId: str | None=None, documentId: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_document_excerpts(db,identity.user_key,projectId,documentId,limit); return {"schema":"sc-workspace-investigation-document-excerpt-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/documentary-evidence-workspace/testimonies")
+def investigation_testimony_store(payload: InvestigationTestimonyRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item,created=store_testimony(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-testimony-reference-not-found"})
+        except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"investigation-testimony-invalid","message":str(exc)})
+        except RuntimeError: raise HTTPException(status_code=409,detail={"code":"investigation-testimony-revision-conflict","testimonyId":payload.testimonyId})
+        return {"ok":True,"created":created,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/testimonies")
+def investigation_testimony_index(projectId: str | None=None, speakerEntityId: str | None=None, limit: int=Query(default=500,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_testimonies(db,identity.user_key,projectId,speakerEntityId,limit); return {"schema":"sc-workspace-investigation-testimony-index/1.0","items":items,"count":len(items)}
+
+@app.get("/v1/documentary-evidence-workspace/testimonies/{testimony_id}")
+def investigation_testimony_get(testimony_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        item=get_testimony(db,identity.user_key,testimony_id)
+        if item is None: raise HTTPException(status_code=404,detail={"code":"investigation-testimony-not-found","testimonyId":testimony_id})
+        return {"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/testimonies/{testimony_id}/revisions")
+def investigation_testimony_revision_index(testimony_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_testimony_revisions(db,identity.user_key,testimony_id,limit); return {"schema":"sc-workspace-investigation-testimony-revision-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/documentary-evidence-workspace/context-links")
+def investigation_documentary_context_link_store(payload: InvestigationDocumentaryContextLinkRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_documentary_context_link(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-documentary-context-reference-not-found"})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/context-links")
+def investigation_documentary_context_link_index(projectId: str | None=None, sourceId: str | None=None, targetRef: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_documentary_context_links(db,identity.user_key,projectId,sourceId,targetRef,limit); return {"schema":"sc-workspace-investigation-documentary-context-link-index/1.0","items":items,"count":len(items)}
+
+@app.post("/v1/documentary-evidence-workspace/testimony-relations")
+def investigation_testimony_relation_store(payload: InvestigationTestimonyRelationRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_testimony_relation(db,identity.user_key,payload)
+        except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"investigation-testimony-reference-not-found"})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/testimony-relations")
+def investigation_testimony_relation_index(projectId: str | None=None, testimonyId: str | None=None, limit: int=Query(default=1000,ge=1,le=5000), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_testimony_relations(db,identity.user_key,projectId,testimonyId,limit); return {"schema":"sc-workspace-investigation-testimony-relation-index/1.0","items":items,"count":len(items)}
+
+@app.get("/v1/documentary-evidence-workspace/projects/{project_id}/graph")
+def investigation_documentary_graph(project_id: str, includeEntityGraph: bool=Query(default=True), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=build_documentary_graph(db,identity.user_key,project_id,includeEntityGraph)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/projects/{project_id}/analysis")
+def investigation_documentary_analysis(project_id: str, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=documentary_analysis(db,identity.user_key,project_id)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.post("/v1/documentary-evidence-workspace/projects/{project_id}/snapshots")
+def investigation_documentary_snapshot_create(project_id: str, payload: InvestigationDocumentarySnapshotRequest, identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        try: item=create_documentary_snapshot(db,identity.user_key,project_id,payload)
+        except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+        return {"ok":True,"item":item}
+
+@app.get("/v1/documentary-evidence-workspace/projects/{project_id}/snapshots")
+def investigation_documentary_snapshot_index(project_id: str, limit: int=Query(default=100,ge=1,le=500), identity: ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        items=list_documentary_snapshots(db,identity.user_key,project_id,limit); return {"schema":"sc-workspace-investigation-documentary-snapshot-index/1.0","items":items,"count":len(items)}
 
 @app.get("/ready")
 def ready():

@@ -6,6 +6,25 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "documentaryEvidenceWorkspace": {"method":"GET","path":"/v1/documentary-evidence-workspace"},
+    "documentStore": {"method":"POST","path":"/v1/documentary-evidence-workspace/documents"},
+    "documents": {"method":"GET","path":"/v1/documentary-evidence-workspace/documents"},
+    "document": {"method":"GET","path":"/v1/documentary-evidence-workspace/documents/{document_id}"},
+    "documentRevisions": {"method":"GET","path":"/v1/documentary-evidence-workspace/documents/{document_id}/revisions"},
+    "documentExcerptCreate": {"method":"POST","path":"/v1/documentary-evidence-workspace/excerpts"},
+    "documentExcerpts": {"method":"GET","path":"/v1/documentary-evidence-workspace/excerpts"},
+    "testimonyStore": {"method":"POST","path":"/v1/documentary-evidence-workspace/testimonies"},
+    "testimonies": {"method":"GET","path":"/v1/documentary-evidence-workspace/testimonies"},
+    "testimony": {"method":"GET","path":"/v1/documentary-evidence-workspace/testimonies/{testimony_id}"},
+    "testimonyRevisions": {"method":"GET","path":"/v1/documentary-evidence-workspace/testimonies/{testimony_id}/revisions"},
+    "documentaryContextLinkCreate": {"method":"POST","path":"/v1/documentary-evidence-workspace/context-links"},
+    "documentaryContextLinks": {"method":"GET","path":"/v1/documentary-evidence-workspace/context-links"},
+    "testimonyRelationCreate": {"method":"POST","path":"/v1/documentary-evidence-workspace/testimony-relations"},
+    "testimonyRelations": {"method":"GET","path":"/v1/documentary-evidence-workspace/testimony-relations"},
+    "documentaryGraph": {"method":"GET","path":"/v1/documentary-evidence-workspace/projects/{project_id}/graph"},
+    "documentaryAnalysis": {"method":"GET","path":"/v1/documentary-evidence-workspace/projects/{project_id}/analysis"},
+    "documentarySnapshotCreate": {"method":"POST","path":"/v1/documentary-evidence-workspace/projects/{project_id}/snapshots"},
+    "documentarySnapshots": {"method":"GET","path":"/v1/documentary-evidence-workspace/projects/{project_id}/snapshots"},
     "entityResolutionWorkspace": {"method":"GET","path":"/v1/entity-resolution-workspace"},
     "entityStore": {"method":"POST","path":"/v1/entity-resolution-workspace/entities"},
     "entities": {"method":"GET","path":"/v1/entity-resolution-workspace/entities"},
@@ -139,6 +158,12 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "documentStore": "sc-workspace-investigation-document-request/1.0",
+    "documentExcerptCreate": "sc-workspace-investigation-document-excerpt-request/1.0",
+    "testimonyStore": "sc-workspace-investigation-testimony-request/1.0",
+    "documentaryContextLinkCreate": "sc-workspace-investigation-documentary-context-link-request/1.0",
+    "testimonyRelationCreate": "sc-workspace-investigation-testimony-relation-request/1.0",
+    "documentarySnapshotCreate": "sc-workspace-investigation-documentary-snapshot-request/1.0",
     "entityStore": "sc-workspace-investigation-entity-request/1.0",
     "entityAliasCreate": "sc-workspace-investigation-entity-alias-request/1.0",
     "entityIdentifierCreate": "sc-workspace-investigation-entity-identifier-request/1.0",
@@ -197,7 +222,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.10.0",
+        "workspaceVersion": "3.11.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
