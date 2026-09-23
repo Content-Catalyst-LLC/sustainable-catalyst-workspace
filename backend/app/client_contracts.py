@@ -6,6 +6,21 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "spatialEvidenceWorkspace": {"method":"GET","path":"/v1/spatial-evidence-workspace"},
+    "spatialObservationStore": {"method":"POST","path":"/v1/spatial-evidence-workspace/observations"},
+    "spatialObservations": {"method":"GET","path":"/v1/spatial-evidence-workspace/observations"},
+    "spatialObservation": {"method":"GET","path":"/v1/spatial-evidence-workspace/observations/{observation_id}"},
+    "spatialObservationRevisions": {"method":"GET","path":"/v1/spatial-evidence-workspace/observations/{observation_id}/revisions"},
+    "spatialContextLinkCreate": {"method":"POST","path":"/v1/spatial-evidence-workspace/context-links"},
+    "spatialContextLinks": {"method":"GET","path":"/v1/spatial-evidence-workspace/context-links"},
+    "spatialRelationCreate": {"method":"POST","path":"/v1/spatial-evidence-workspace/relations"},
+    "spatialRelations": {"method":"GET","path":"/v1/spatial-evidence-workspace/relations"},
+    "spatialMapProjection": {"method":"GET","path":"/v1/spatial-evidence-workspace/projects/{project_id}/map"},
+    "spatialGraph": {"method":"GET","path":"/v1/spatial-evidence-workspace/projects/{project_id}/graph"},
+    "spatialDiagnostics": {"method":"GET","path":"/v1/spatial-evidence-workspace/projects/{project_id}/diagnostics"},
+    "spatialSnapshotCreate": {"method":"POST","path":"/v1/spatial-evidence-workspace/projects/{project_id}/snapshots"},
+    "spatialSnapshots": {"method":"GET","path":"/v1/spatial-evidence-workspace/projects/{project_id}/snapshots"},
+
     "documentaryEvidenceWorkspace": {"method":"GET","path":"/v1/documentary-evidence-workspace"},
     "documentStore": {"method":"POST","path":"/v1/documentary-evidence-workspace/documents"},
     "documents": {"method":"GET","path":"/v1/documentary-evidence-workspace/documents"},
@@ -222,7 +237,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.11.0",
+        "workspaceVersion": "3.12.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

@@ -1880,3 +1880,89 @@ class InvestigationDocumentarySnapshot(Base):
     issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.12.0 Spatial Evidence & Geospatial Investigation Workspace
+class InvestigationSpatialObservationHead(Base):
+    __tablename__ = "workspace_investigation_spatial_observation_heads"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    observation_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    observation_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    label: Mapped[str] = mapped_column(String(1000), nullable=False)
+    geometry_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    place_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    coordinate_system: Mapped[str] = mapped_column(String(64), nullable=False, default="EPSG:4326")
+    source_ref: Mapped[str] = mapped_column(String(2000), nullable=False)
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    observation_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class InvestigationSpatialObservationRevision(Base):
+    __tablename__ = "workspace_investigation_spatial_observation_revisions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    observation_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    observation_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    label: Mapped[str] = mapped_column(String(1000), nullable=False)
+    geometry_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    place_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    coordinate_system: Mapped[str] = mapped_column(String(64), nullable=False, default="EPSG:4326")
+    source_ref: Mapped[str] = mapped_column(String(2000), nullable=False)
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
+    observed_at: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="open")
+    observation_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationSpatialContextLink(Base):
+    __tablename__ = "workspace_investigation_spatial_context_links"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    link_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    observation_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    target_kind: Mapped[str] = mapped_column(String(48), nullable=False)
+    target_ref: Mapped[str] = mapped_column(String(2000), nullable=False)
+    relation: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    link_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationSpatialRelation(Base):
+    __tablename__ = "workspace_investigation_spatial_relations"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    relation_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    from_observation_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    to_observation_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    relation: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    source_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    relation_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationSpatialSnapshot(Base):
+    __tablename__ = "workspace_investigation_spatial_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    diagnostics_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    observation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_link_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    relation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

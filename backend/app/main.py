@@ -186,6 +186,11 @@ from .investigation_documentary_workspace import (
     InvestigationDocumentaryContextLinkRequest, InvestigationTestimonyRelationRequest,
     InvestigationDocumentarySnapshotRequest, DOCUMENTARY_WORKSPACE_SCHEMA,
 )
+from .investigation_spatial_workspace import (
+    profile as spatial_evidence_workspace_profile, InvestigationSpatialObservationRequest, InvestigationSpatialContextLinkRequest, InvestigationSpatialRelationRequest, InvestigationSpatialSnapshotRequest,
+    store_observation as store_spatial_observation, list_observations as list_spatial_observations, get_observation as get_spatial_observation, observation_revisions as spatial_observation_revisions,
+    create_context_link as create_spatial_context_link, list_context_links as list_spatial_context_links, create_spatial_relation, list_spatial_relations, map_projection as spatial_map_projection, build_spatial_graph, spatial_diagnostics, create_spatial_snapshot, list_spatial_snapshots)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -433,7 +438,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.10.0",
+        "rollbackBaseline": "3.11.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -486,6 +491,22 @@ def health():
         "entityAutomaticIdentityConfirmation": False,
         "entityAutomaticRelationshipInference": False,
         "documentaryEvidenceTestimonyStatementAnalysisWorkspace": True,
+        "spatialEvidenceGeospatialInvestigationWorkspace": True,
+        "spatialEvidenceWorkspaceSchema": "sc-workspace-spatial-evidence-geospatial-investigation-workspace/1.0",
+        "spatialVersionedObservations": True,
+        "spatialSourceFingerprintRequired": True,
+        "spatialHumanAssertedContextLinks": True,
+        "spatialHumanAssertedRelations": True,
+        "spatialMapReadyProjection": True,
+        "spatialTemporalConsistencyDiagnostics": True,
+        "spatialImmutableSnapshots": True,
+        "spatialAutomaticGeolocationInference": False,
+        "spatialAutomaticRelationshipInference": False,
+        "spatialAutomaticCausalityInference": False,
+        "spatialAutomaticTruthDetermination": False,
+        "spatialAutomaticEvidenceRanking": False,
+        "spatialAutomaticCulpabilityInference": False,
+        "spatialAutomaticNarrativeSelection": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -502,7 +523,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "042_documentary_evidence_testimony_statement_analysis_workspace.sql",
+        "releaseMigrationLineage": "043_spatial_evidence_geospatial_investigation_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -2916,3 +2937,55 @@ def reliability_analysis_receipt_get_route(receipt_id: str, identity: ServiceIde
         row=get_reliability_analysis_receipt(db,identity.user_key,receipt_id)
         if row is None: raise HTTPException(status_code=404,detail="Workspace reliability analysis receipt not found.")
         return {"schema":"sc-workspace-reliability-analysis-receipt/1.0","item":reliability_analysis_receipt_metadata(row)}
+
+
+@app.get("/v1/spatial-evidence-workspace")
+def spatial_evidence_workspace(): return {"ok":True,"schema":"sc-workspace-spatial-evidence-workspace-response/1.0","item":spatial_evidence_workspace_profile()}
+@app.post("/v1/spatial-evidence-workspace/observations")
+def spatial_observation_store(payload:InvestigationSpatialObservationRequest, identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return {"ok":True,"item":store_spatial_observation(db,identity.user_key,payload)}
+    except (KeyError,ValueError) as e: raise HTTPException(status_code=409,detail=str(e))
+@app.get("/v1/spatial-evidence-workspace/observations")
+def spatial_observations(projectId:str|None=None, observationType:str|None=None, limit:int=Query(1000,ge=1,le=5000), identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"items":list_spatial_observations(db,identity.user_key,projectId,observationType,limit)}
+@app.get("/v1/spatial-evidence-workspace/observations/{observation_id}")
+def spatial_observation(observation_id:str, identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_spatial_observation(db,identity.user_key,observation_id)
+        if x is None: raise HTTPException(status_code=404,detail="spatial observation not found")
+        return {"ok":True,"item":x}
+@app.get("/v1/spatial-evidence-workspace/observations/{observation_id}/revisions")
+def spatial_observation_history(observation_id:str, limit:int=Query(100,ge=1,le=1000), identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"items":spatial_observation_revisions(db,identity.user_key,observation_id,limit)}
+@app.post("/v1/spatial-evidence-workspace/context-links")
+def spatial_context_link_store(payload:InvestigationSpatialContextLinkRequest, identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return {"ok":True,"item":create_spatial_context_link(db,identity.user_key,payload)}
+    except (KeyError,ValueError) as e: raise HTTPException(status_code=409,detail=str(e))
+@app.get("/v1/spatial-evidence-workspace/context-links")
+def spatial_context_links(projectId:str|None=None, observationId:str|None=None, targetRef:str|None=None, limit:int=Query(2000,ge=1,le=10000), identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"items":list_spatial_context_links(db,identity.user_key,projectId,observationId,targetRef,limit)}
+@app.post("/v1/spatial-evidence-workspace/relations")
+def spatial_relation_store(payload:InvestigationSpatialRelationRequest, identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db: return {"ok":True,"item":create_spatial_relation(db,identity.user_key,payload)}
+    except (KeyError,ValueError) as e: raise HTTPException(status_code=409,detail=str(e))
+@app.get("/v1/spatial-evidence-workspace/relations")
+def spatial_relations(projectId:str|None=None, observationId:str|None=None, limit:int=Query(2000,ge=1,le=10000), identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"items":list_spatial_relations(db,identity.user_key,projectId,observationId,limit)}
+@app.get("/v1/spatial-evidence-workspace/projects/{project_id}/map")
+def spatial_project_map(project_id:str, identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"item":spatial_map_projection(db,identity.user_key,project_id)}
+@app.get("/v1/spatial-evidence-workspace/projects/{project_id}/graph")
+def spatial_project_graph(project_id:str, includeDocumentaryGraph:bool=True, identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"item":build_spatial_graph(db,identity.user_key,project_id,includeDocumentaryGraph)}
+@app.get("/v1/spatial-evidence-workspace/projects/{project_id}/diagnostics")
+def spatial_project_diagnostics(project_id:str, identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"item":spatial_diagnostics(db,identity.user_key,project_id)}
+@app.post("/v1/spatial-evidence-workspace/projects/{project_id}/snapshots")
+def spatial_snapshot_store(project_id:str,payload:InvestigationSpatialSnapshotRequest, identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"item":create_spatial_snapshot(db,identity.user_key,project_id,payload)}
+@app.get("/v1/spatial-evidence-workspace/projects/{project_id}/snapshots")
+def spatial_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db: return {"ok":True,"items":list_spatial_snapshots(db,identity.user_key,project_id,limit)}

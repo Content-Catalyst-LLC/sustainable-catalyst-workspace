@@ -26,7 +26,7 @@ def profile() -> dict[str, Any]:
         "canonicalStore": "postgresql",
         "migrationRequired": True,
         "migrationLineage": "042_documentary_evidence_testimony_statement_analysis_workspace.sql",
-        "rollbackBaseline": "3.10.0",
+        "rollbackBaseline": "3.11.0",
         "rollbackSchemaCompatible": True,
         "serviceIdentityBoundary": "server-side-wordpress-proxy",
         "authorizationDefaultEffect": "deny",

@@ -22,6 +22,7 @@ from .investigation_graph_workspace import build_graph as investigation_graph_wo
 from .investigation_timeline_workspace import build_timeline as investigation_timeline_workspace, temporal_diagnostics as investigation_temporal_diagnostics
 from .investigation_entity_workspace import build_entity_graph as investigation_entity_graph, resolution_diagnostics as investigation_entity_diagnostics
 from .investigation_documentary_workspace import build_documentary_graph as investigation_documentary_graph, documentary_analysis as investigation_documentary_analysis
+from .investigation_spatial_workspace import build_spatial_graph as investigation_spatial_graph, spatial_diagnostics as investigation_spatial_diagnostics
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -48,7 +49,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -98,6 +99,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     entity_diagnostics = investigation_entity_diagnostics(db, user_key, project_id)
     documentary_graph = investigation_documentary_graph(db, user_key, project_id, False)
     documentary_analysis = investigation_documentary_analysis(db, user_key, project_id)
+    spatial_graph = investigation_spatial_graph(db, user_key, project_id, False)
+    spatial_diagnostics = investigation_spatial_diagnostics(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -155,6 +158,10 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationTestimonies": int(documentary_graph.get("testimonyCount") or 0),
         "investigationDocumentaryContextLinks": int(documentary_graph.get("contextLinkCount") or 0),
         "investigationDocumentaryIssues": int(documentary_analysis.get("issueCount") or 0),
+        "investigationSpatialObservations": int(spatial_graph.get("observationCount") or 0),
+        "investigationSpatialContextLinks": int(spatial_graph.get("contextLinkCount") or 0),
+        "investigationSpatialRelations": int(spatial_graph.get("relationCount") or 0),
+        "investigationSpatialIssues": int(spatial_diagnostics.get("issueCount") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -186,6 +193,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationEntityResolutionDiagnostics": entity_diagnostics,
         "investigationDocumentaryEvidenceWorkspace": documentary_graph,
         "investigationDocumentaryAnalysis": documentary_analysis,
+        "investigationSpatialEvidenceWorkspace": spatial_graph,
+        "investigationSpatialDiagnostics": spatial_diagnostics,
         "platformCore": core,
         "platformCoreError": core_error,
     }
