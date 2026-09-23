@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.17.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.18.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "causalAnalysisWorkspace": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace"
+  },
+  "causalQuestionStore": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/questions"
+  },
+  "causalQuestions": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/questions"
+  },
+  "causalQuestion": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/questions/{question_id}"
+  },
+  "causalQuestionRevisions": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/questions/{question_id}/revisions"
+  },
+  "causalStructureCreate": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/structures"
+  },
+  "causalStructures": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/structures"
+  },
+  "alternativeExplanationCreate": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/alternative-explanations"
+  },
+  "alternativeExplanations": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/alternative-explanations"
+  },
+  "identificationAssumptionCreate": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/identification-assumptions"
+  },
+  "identificationAssumptions": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/identification-assumptions"
+  },
+  "causalAnalysisHandoffCreate": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/handoffs"
+  },
+  "causalAnalysisHandoffs": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/handoffs"
+  },
+  "causalResultBindingCreate": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/result-bindings"
+  },
+  "causalResultBindings": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/result-bindings"
+  },
+  "causalProjectAnalysis": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/projects/{project_id}/analysis"
+  },
+  "causalInvestigationSnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/causal-analysis-workspace/projects/{project_id}/snapshots"
+  },
+  "causalInvestigationSnapshots": {
+    "method": "GET",
+    "path": "/v1/causal-analysis-workspace/projects/{project_id}/snapshots"
+  },
   "uncertaintyInvestigationWorkspace": {
     "method": "GET",
     "path": "/v1/uncertainty-investigation-workspace"

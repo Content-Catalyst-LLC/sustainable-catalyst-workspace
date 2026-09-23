@@ -6,6 +6,24 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "causalAnalysisWorkspace": {"method":"GET","path":"/v1/causal-analysis-workspace"},
+    "causalQuestionStore": {"method":"POST","path":"/v1/causal-analysis-workspace/questions"},
+    "causalQuestions": {"method":"GET","path":"/v1/causal-analysis-workspace/questions"},
+    "causalQuestion": {"method":"GET","path":"/v1/causal-analysis-workspace/questions/{question_id}"},
+    "causalQuestionRevisions": {"method":"GET","path":"/v1/causal-analysis-workspace/questions/{question_id}/revisions"},
+    "causalStructureCreate": {"method":"POST","path":"/v1/causal-analysis-workspace/structures"},
+    "causalStructures": {"method":"GET","path":"/v1/causal-analysis-workspace/structures"},
+    "alternativeExplanationCreate": {"method":"POST","path":"/v1/causal-analysis-workspace/alternative-explanations"},
+    "alternativeExplanations": {"method":"GET","path":"/v1/causal-analysis-workspace/alternative-explanations"},
+    "identificationAssumptionCreate": {"method":"POST","path":"/v1/causal-analysis-workspace/identification-assumptions"},
+    "identificationAssumptions": {"method":"GET","path":"/v1/causal-analysis-workspace/identification-assumptions"},
+    "causalAnalysisHandoffCreate": {"method":"POST","path":"/v1/causal-analysis-workspace/handoffs"},
+    "causalAnalysisHandoffs": {"method":"GET","path":"/v1/causal-analysis-workspace/handoffs"},
+    "causalResultBindingCreate": {"method":"POST","path":"/v1/causal-analysis-workspace/result-bindings"},
+    "causalResultBindings": {"method":"GET","path":"/v1/causal-analysis-workspace/result-bindings"},
+    "causalProjectAnalysis": {"method":"GET","path":"/v1/causal-analysis-workspace/projects/{project_id}/analysis"},
+    "causalInvestigationSnapshotCreate": {"method":"POST","path":"/v1/causal-analysis-workspace/projects/{project_id}/snapshots"},
+    "causalInvestigationSnapshots": {"method":"GET","path":"/v1/causal-analysis-workspace/projects/{project_id}/snapshots"},
     "uncertaintyInvestigationWorkspace": {"method":"GET","path":"/v1/uncertainty-investigation-workspace"},
     "uncertaintyAssessmentStore": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/assessments"},
     "uncertaintyAssessments": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/assessments"},
@@ -265,6 +283,13 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "causalQuestionStore": "sc-workspace-causal-question-request/1.0",
+    "causalStructureCreate": "sc-workspace-causal-structure-request/1.0",
+    "alternativeExplanationCreate": "sc-workspace-alternative-explanation-request/1.0",
+    "identificationAssumptionCreate": "sc-workspace-causal-identification-assumption-request/1.0",
+    "causalAnalysisHandoffCreate": "sc-workspace-causal-analysis-handoff-request/1.0",
+    "causalResultBindingCreate": "sc-workspace-causal-result-binding-request/1.0",
+    "causalInvestigationSnapshotCreate": "sc-workspace-causal-investigation-snapshot-request/1.0",
     "mediaArtifactStore": "sc-workspace-investigation-media-artifact-request/1.0",
     "mediaLocatorCreate": "sc-workspace-investigation-media-locator-request/1.0",
     "mediaDerivativeCreate": "sc-workspace-investigation-media-derivative-request/1.0",
@@ -341,7 +366,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.17.0",
+        "workspaceVersion": "3.18.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

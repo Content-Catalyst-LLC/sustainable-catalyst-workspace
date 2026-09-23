@@ -1,0 +1,25 @@
+{
+  "automaticAlternativeExplanationRanking": false,
+  "automaticCausalDiscovery": false,
+  "automaticCausalityInference": false,
+  "automaticEvidenceRanking": false,
+  "automaticIdentificationClaim": false,
+  "automaticTruthDetermination": false,
+  "baseline": "3.17.0",
+  "catalystAnalyticsRProviderVersion": "2.2.0",
+  "humanReviewRequired": true,
+  "migration": "049_causal_analysis_alternative_explanation_workspace.sql",
+  "newTypedEndpoints": 18,
+  "platformCoreContract": "sc.research.unified-research-scientific-investigation-runtime.v1",
+  "product": "Sustainable Catalyst Workspace",
+  "release": "Causal Analysis & Alternative Explanation Workspace",
+  "rollbackRuntime": "3.17.0",
+  "specialistDestinations": [
+    "workbench",
+    "research-lab",
+    "catalyst-analytics-r",
+    "platform-core"
+  ],
+  "typedEndpointCount": 272,
+  "version": "3.18.0"
+}

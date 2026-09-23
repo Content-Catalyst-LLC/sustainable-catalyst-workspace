@@ -228,6 +228,17 @@ from .uncertainty_investigation_workspace import (
     manifest as uncertainty_investigation_manifest, graph as uncertainty_investigation_graph, diagnostics as uncertainty_investigation_diagnostics,
     create_snapshot as create_uncertainty_investigation_snapshot, list_snapshots as list_uncertainty_investigation_snapshots)
 
+from .causal_analysis_workspace import (
+    CAUSAL_WORKSPACE_SCHEMA, profile as causal_analysis_workspace_profile,
+    CausalQuestionRequest, CausalStructureRequest, AlternativeExplanationRequest, IdentificationAssumptionRequest,
+    CausalAnalysisHandoffRequest, CausalResultBindingRequest, CausalInvestigationSnapshotRequest,
+    store_question as store_causal_question, list_questions as list_causal_questions, get_question as get_causal_question, question_revisions as causal_question_revisions,
+    create_structure as create_causal_structure, list_structures as list_causal_structures,
+    create_alternative_explanation, list_alternative_explanations, create_identification_assumption, list_identification_assumptions,
+    create_handoff as create_causal_analysis_handoff, list_handoffs as list_causal_analysis_handoffs,
+    create_result_binding as create_causal_result_binding, list_result_bindings as list_causal_result_bindings,
+    analysis as causal_project_analysis, create_snapshot as create_causal_investigation_snapshot, list_snapshots as list_causal_investigation_snapshots)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -474,7 +485,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.16.0",
+        "rollbackBaseline": "3.17.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -614,6 +625,26 @@ def health():
         "uncertaintyAutomaticTruthDetermination": False,
         "uncertaintyAutomaticCausalityInference": False,
         "uncertaintyAutomaticCulpabilityInference": False,
+        "causalAnalysisAlternativeExplanationWorkspace": True,
+        "causalAnalysisWorkspaceSchema": CAUSAL_WORKSPACE_SCHEMA,
+        "causalExplicitQuestions": True,
+        "causalExplicitStructures": True,
+        "causalAlternativeExplanationsPreserved": True,
+        "causalIdentificationAssumptionsExplicit": True,
+        "causalAnalysisHandoffs": True,
+        "causalResultBindings": True,
+        "causalResultsModelConditional": True,
+        "causalImmutableSnapshots": True,
+        "causalHumanReviewRequired": True,
+        "causalAutomaticCausalityInference": False,
+        "causalAutomaticCausalDiscovery": False,
+        "causalAutomaticConfounderSelection": False,
+        "causalAutomaticIdentificationClaim": False,
+        "causalAutomaticAlternativeExplanationRanking": False,
+        "causalAutomaticEvidenceRanking": False,
+        "causalAutomaticTruthDetermination": False,
+        "causalAutomaticCulpabilityInference": False,
+        "causalAutomaticNarrativeSelection": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -630,7 +661,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "048_uncertainty_sensitivity_probabilistic_investigation_workspace.sql",
+        "releaseMigrationLineage": "049_causal_analysis_alternative_explanation_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -3476,3 +3507,84 @@ def uncertainty_project_snapshot_create(project_id:str,payload:UncertaintyInvest
 @app.get("/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots")
 def uncertainty_project_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_uncertainty_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+@app.get("/v1/causal-analysis-workspace")
+def causal_analysis_workspace(identity:ServiceIdentity=Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-causal-analysis-workspace-response/1.0","item":causal_analysis_workspace_profile()}
+@app.post("/v1/causal-analysis-workspace/questions")
+def causal_question_store(payload:CausalQuestionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_causal_question(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"causal-question-invalid","message":str(e)})
+@app.get("/v1/causal-analysis-workspace/questions")
+def causal_questions(projectId:str|None=None,reviewState:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_causal_questions(db,identity.user_key,projectId,reviewState,limit)}
+@app.get("/v1/causal-analysis-workspace/questions/{question_id}")
+def causal_question(question_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_causal_question(db,identity.user_key,question_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"causal-question-not-found","questionId":question_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/causal-analysis-workspace/questions/{question_id}/revisions")
+def causal_question_revision_list(question_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":causal_question_revisions(db,identity.user_key,question_id,limit)}
+@app.post("/v1/causal-analysis-workspace/structures")
+def causal_structure_create(payload:CausalStructureRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_causal_structure(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"causal-question-not-found","questionId":payload.questionId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"causal-structure-invalid","message":str(e)})
+@app.get("/v1/causal-analysis-workspace/structures")
+def causal_structures(projectId:str|None=None,questionId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_causal_structures(db,identity.user_key,projectId,questionId,limit)}
+@app.post("/v1/causal-analysis-workspace/alternative-explanations")
+def alternative_explanation_create(payload:AlternativeExplanationRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_alternative_explanation(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"causal-question-not-found","questionId":payload.questionId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"alternative-explanation-invalid","message":str(e)})
+@app.get("/v1/causal-analysis-workspace/alternative-explanations")
+def alternative_explanations(projectId:str|None=None,questionId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_alternative_explanations(db,identity.user_key,projectId,questionId,limit)}
+@app.post("/v1/causal-analysis-workspace/identification-assumptions")
+def identification_assumption_create(payload:IdentificationAssumptionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_identification_assumption(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"causal-question-not-found","questionId":payload.questionId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"identification-assumption-invalid","message":str(e)})
+@app.get("/v1/causal-analysis-workspace/identification-assumptions")
+def identification_assumptions(projectId:str|None=None,questionId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_identification_assumptions(db,identity.user_key,projectId,questionId,limit)}
+@app.post("/v1/causal-analysis-workspace/handoffs")
+def causal_analysis_handoff_create(payload:CausalAnalysisHandoffRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_causal_analysis_handoff(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"causal-question-not-found","questionId":payload.questionId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"causal-analysis-handoff-invalid","message":str(e)})
+@app.get("/v1/causal-analysis-workspace/handoffs")
+def causal_analysis_handoffs(projectId:str|None=None,questionId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_causal_analysis_handoffs(db,identity.user_key,projectId,questionId,limit)}
+@app.post("/v1/causal-analysis-workspace/result-bindings")
+def causal_result_binding_create(payload:CausalResultBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_causal_result_binding(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"causal-reference-not-found","referenceId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"causal-result-binding-invalid","message":str(e)})
+@app.get("/v1/causal-analysis-workspace/result-bindings")
+def causal_result_bindings(projectId:str|None=None,questionId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_causal_result_bindings(db,identity.user_key,projectId,questionId,limit)}
+@app.get("/v1/causal-analysis-workspace/projects/{project_id}/analysis")
+def causal_project_analysis_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":causal_project_analysis(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.post("/v1/causal-analysis-workspace/projects/{project_id}/snapshots")
+def causal_investigation_snapshot_create(project_id:str,payload:CausalInvestigationSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_causal_investigation_snapshot(db,identity.user_key,project_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/causal-analysis-workspace/projects/{project_id}/snapshots")
+def causal_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_causal_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
