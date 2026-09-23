@@ -1,0 +1,28 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.15.0",
+  "release": "Investigative Search, Discovery & Cross-Case Retrieval Workspace",
+  "baseline": "3.14.0",
+  "migration": "046_investigative_search_discovery_cross_case_retrieval_workspace.sql",
+  "typedEndpointMinimum": 218,
+  "newTypedEndpoints": 18,
+  "focusedTests": 6,
+  "rollbackBaseline": "3.14.0",
+  "analyticsRProviderVersion": "2.2.0",
+  "boundaries": {
+    "automaticEvidenceRanking": false,
+    "automaticSourceReliabilityScoring": false,
+    "automaticCredibilityScoring": false,
+    "automaticTruthDetermination": false,
+    "automaticRelationshipInference": false,
+    "automaticCulpabilityInference": false,
+    "automaticNarrativeSelection": false
+  },
+  "tables": [
+    "workspace_investigation_saved_search_heads",
+    "workspace_investigation_saved_search_revisions",
+    "workspace_investigation_search_executions",
+    "workspace_investigation_search_collections",
+    "workspace_investigation_search_snapshots"
+  ]
+}

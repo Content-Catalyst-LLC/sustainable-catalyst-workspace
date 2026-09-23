@@ -2210,3 +2210,76 @@ class InvestigationSourceIntegritySnapshot(Base):
     issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.15.0 Investigative Search, Discovery & Cross-Case Retrieval Workspace
+class InvestigationSavedSearchHead(Base):
+    __tablename__ = "workspace_investigation_saved_search_heads"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    search_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    query_text: Mapped[str] = mapped_column(Text, nullable=False)
+    project_scope_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    kinds_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    filters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    search_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class InvestigationSavedSearchRevision(Base):
+    __tablename__ = "workspace_investigation_saved_search_revisions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    search_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    query_text: Mapped[str] = mapped_column(Text, nullable=False)
+    project_scope_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    kinds_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    filters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    search_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationSearchExecution(Base):
+    __tablename__ = "workspace_investigation_search_executions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    execution_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    saved_search_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    query_text: Mapped[str] = mapped_column(Text, nullable=False)
+    project_scope_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    kinds_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    filters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    results_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationSearchCollection(Base):
+    __tablename__ = "workspace_investigation_search_collections"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    collection_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    name: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    project_scope_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    object_refs_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    collection_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class InvestigationSearchSnapshot(Base):
+    __tablename__ = "workspace_investigation_search_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    query_text: Mapped[str] = mapped_column(Text, nullable=False)
+    result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    facets_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    diagnostics_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

@@ -6,6 +6,24 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "investigativeSearchWorkspace": {"method":"GET","path":"/v1/investigative-search-workspace"},
+    "savedSearchStore": {"method":"POST","path":"/v1/investigative-search-workspace/saved-searches"},
+    "savedSearches": {"method":"GET","path":"/v1/investigative-search-workspace/saved-searches"},
+    "savedSearch": {"method":"GET","path":"/v1/investigative-search-workspace/saved-searches/{search_id}"},
+    "savedSearchRevisions": {"method":"GET","path":"/v1/investigative-search-workspace/saved-searches/{search_id}/revisions"},
+    "investigativeSearchExecute": {"method":"POST","path":"/v1/investigative-search-workspace/executions"},
+    "investigativeSearchExecutions": {"method":"GET","path":"/v1/investigative-search-workspace/executions"},
+    "investigativeSearchExecution": {"method":"GET","path":"/v1/investigative-search-workspace/executions/{execution_id}"},
+    "projectInvestigativeSearch": {"method":"GET","path":"/v1/investigative-search-workspace/projects/{project_id}/search"},
+    "crossCaseInvestigativeSearch": {"method":"GET","path":"/v1/investigative-search-workspace/cross-case/search"},
+    "investigativeSearchFacets": {"method":"GET","path":"/v1/investigative-search-workspace/projects/{project_id}/facets"},
+    "investigativeSearchDiagnostics": {"method":"GET","path":"/v1/investigative-search-workspace/projects/{project_id}/diagnostics"},
+    "investigativeSearchSnapshotCreate": {"method":"POST","path":"/v1/investigative-search-workspace/projects/{project_id}/snapshots"},
+    "investigativeSearchSnapshots": {"method":"GET","path":"/v1/investigative-search-workspace/projects/{project_id}/snapshots"},
+    "investigativeSearchCollectionCreate": {"method":"POST","path":"/v1/investigative-search-workspace/collections"},
+    "investigativeSearchCollections": {"method":"GET","path":"/v1/investigative-search-workspace/collections"},
+    "investigativeSearchCollection": {"method":"GET","path":"/v1/investigative-search-workspace/collections/{collection_id}"},
+    "investigativeSearchDiscoveryGraph": {"method":"GET","path":"/v1/investigative-search-workspace/projects/{project_id}/discovery-graph"},
     "sourceIntegrityWorkspace": {"method":"GET","path":"/v1/source-integrity-workspace"},
     "sourceStore": {"method":"POST","path":"/v1/source-integrity-workspace/sources"},
     "sources": {"method":"GET","path":"/v1/source-integrity-workspace/sources"},
@@ -281,7 +299,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.14.0",
+        "workspaceVersion": "3.15.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

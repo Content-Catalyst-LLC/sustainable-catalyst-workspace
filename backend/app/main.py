@@ -201,6 +201,11 @@ from .investigation_source_integrity_workspace import (
     create_integrity_assertion, list_integrity_assertions, create_evidence_binding as create_source_evidence_binding, list_evidence_bindings as list_source_evidence_bindings,
     build_integrity_graph as build_source_integrity_graph, source_integrity_diagnostics, source_integrity_assessment, create_integrity_snapshot as create_source_integrity_snapshot, list_integrity_snapshots as list_source_integrity_snapshots)
 
+from .investigation_search_workspace import (
+    SEARCH_WORKSPACE_SCHEMA, profile as investigative_search_workspace_profile, SavedSearchRequest, SearchExecutionRequest, SearchCollectionRequest, SearchSnapshotRequest,
+    store_saved_search, list_saved_searches, get_saved_search, saved_search_revisions, execute_search, list_executions as list_search_executions, get_execution as get_search_execution,
+    search as run_investigative_search, facets as investigative_search_facets, diagnostics as investigative_search_diagnostics, discovery_graph as investigative_search_discovery_graph,
+    create_collection as create_search_collection, list_collections as list_search_collections, get_collection as get_search_collection, create_snapshot as create_search_snapshot, list_snapshots as list_search_snapshots)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -448,7 +453,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.13.0",
+        "rollbackBaseline": "3.14.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -552,6 +557,16 @@ def health():
         "sourceAutomaticTruthDetermination": False,
         "sourceAutomaticCulpabilityInference": False,
         "sourceAutomaticNarrativeSelection": False,
+        "investigativeSearchDiscoveryCrossCaseRetrievalWorkspace": True,
+        "investigativeSearchWorkspaceSchema": SEARCH_WORKSPACE_SCHEMA,
+        "investigativeSearchCrossCaseRetrieval": True,
+        "investigativeSearchSavedQueries": True,
+        "investigativeSearchRetrievalProvenance": True,
+        "investigativeSearchImmutableSnapshots": True,
+        "investigativeSearchAutomaticEvidenceRanking": False,
+        "investigativeSearchAutomaticSourceReliabilityScoring": False,
+        "investigativeSearchAutomaticTruthDetermination": False,
+        "investigativeSearchAutomaticRelationshipInference": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -568,7 +583,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "045_source_reliability_provenance_evidence_integrity_workspace.sql",
+        "releaseMigrationLineage": "046_investigative_search_discovery_cross_case_retrieval_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -3173,3 +3188,80 @@ def source_integrity_snapshot_create(project_id:str,payload:SourceIntegritySnaps
 @app.get("/v1/source-integrity-workspace/projects/{project_id}/snapshots")
 def source_integrity_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_source_integrity_snapshots(db,identity.user_key,project_id,limit)}
+
+
+@app.get("/v1/investigative-search-workspace")
+def investigative_search_workspace(identity:ServiceIdentity=Depends(require_service_identity)): return {"ok":True,"schema":"sc-workspace-investigative-search-workspace-response/1.0","item":investigative_search_workspace_profile()}
+@app.post("/v1/investigative-search-workspace/saved-searches")
+def saved_search_store(payload:SavedSearchRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_saved_search(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+    except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"saved-search-conflict","message":str(exc)})
+@app.get("/v1/investigative-search-workspace/saved-searches")
+def saved_searches(projectId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_saved_searches(db,identity.user_key,projectId,limit)}
+@app.get("/v1/investigative-search-workspace/saved-searches/{search_id}")
+def saved_search(search_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_saved_search(db,identity.user_key,search_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"saved-search-not-found","searchId":search_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/investigative-search-workspace/saved-searches/{search_id}/revisions")
+def saved_search_revision_list(search_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":saved_search_revisions(db,identity.user_key,search_id,limit)}
+@app.post("/v1/investigative-search-workspace/executions")
+def investigative_search_execute(payload:SearchExecutionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":execute_search(db,identity.user_key,payload)}
+@app.get("/v1/investigative-search-workspace/executions")
+def investigative_search_executions(limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_search_executions(db,identity.user_key,limit)}
+@app.get("/v1/investigative-search-workspace/executions/{execution_id}")
+def investigative_search_execution(execution_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_search_execution(db,identity.user_key,execution_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"search-execution-not-found","executionId":execution_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/investigative-search-workspace/projects/{project_id}/search")
+def project_investigative_search(project_id:str,q:str=Query(...,min_length=1,max_length=4000),kinds:str|None=None,reviewState:str|None=None,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    kk=[x for x in (kinds or '').split(',') if x]; filters={"reviewState":reviewState} if reviewState else {}
+    with session_scope() as db:return {"ok":True,"item":run_investigative_search(db,identity.user_key,q,[project_id],kk,filters,limit)}
+@app.get("/v1/investigative-search-workspace/cross-case/search")
+def cross_case_investigative_search(q:str=Query(...,min_length=1,max_length=4000),projectIds:str|None=None,kinds:str|None=None,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    scope=[x for x in (projectIds or '').split(',') if x]; kk=[x for x in (kinds or '').split(',') if x]
+    with session_scope() as db:return {"ok":True,"item":run_investigative_search(db,identity.user_key,q,scope,kk,{},limit)}
+@app.get("/v1/investigative-search-workspace/projects/{project_id}/facets")
+def investigative_search_facets_route(project_id:str,q:str="",kinds:str|None=None,identity:ServiceIdentity=Depends(require_service_identity)):
+    kk=[x for x in (kinds or '').split(',') if x]
+    try:
+        with session_scope() as db:return {"ok":True,"item":investigative_search_facets(db,identity.user_key,project_id,q,kk,{})}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/investigative-search-workspace/projects/{project_id}/diagnostics")
+def investigative_search_diagnostics_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":investigative_search_diagnostics(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.post("/v1/investigative-search-workspace/projects/{project_id}/snapshots")
+def investigative_search_snapshot_create(project_id:str,payload:SearchSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_search_snapshot(db,identity.user_key,project_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/investigative-search-workspace/projects/{project_id}/snapshots")
+def investigative_search_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_search_snapshots(db,identity.user_key,project_id,limit)}
+@app.post("/v1/investigative-search-workspace/collections")
+def investigative_search_collection_create(payload:SearchCollectionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":create_search_collection(db,identity.user_key,payload)}
+@app.get("/v1/investigative-search-workspace/collections")
+def investigative_search_collections(limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_search_collections(db,identity.user_key,limit)}
+@app.get("/v1/investigative-search-workspace/collections/{collection_id}")
+def investigative_search_collection(collection_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_search_collection(db,identity.user_key,collection_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"search-collection-not-found","collectionId":collection_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/investigative-search-workspace/projects/{project_id}/discovery-graph")
+def investigative_search_discovery_graph_route(project_id:str,q:str=Query(...,min_length=1,max_length=4000),limit:int=Query(250,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":investigative_search_discovery_graph(db,identity.user_key,project_id,q,limit)}
+

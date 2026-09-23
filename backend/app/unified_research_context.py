@@ -25,6 +25,7 @@ from .investigation_documentary_workspace import build_documentary_graph as inve
 from .investigation_spatial_workspace import build_spatial_graph as investigation_spatial_graph, spatial_diagnostics as investigation_spatial_diagnostics
 from .investigation_media_workspace import build_media_graph as investigation_media_graph, media_diagnostics as investigation_media_diagnostics, media_integrity as investigation_media_integrity
 from .investigation_source_integrity_workspace import build_integrity_graph as investigation_source_integrity_graph, source_integrity_diagnostics as investigation_source_integrity_diagnostics, source_integrity_assessment as investigation_source_integrity_assessment
+from .investigation_search_workspace import facets as investigation_search_facets, diagnostics as investigation_search_diagnostics
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -51,7 +52,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "investigationMediaProvenanceWorkspace", "investigationSourceIntegrityWorkspace", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "investigationMediaProvenanceWorkspace", "investigationSourceIntegrityWorkspace", "investigationSearchDiscoveryWorkspace", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -109,6 +110,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     source_integrity_graph = investigation_source_integrity_graph(db, user_key, project_id, False)
     source_integrity_diagnostics = investigation_source_integrity_diagnostics(db, user_key, project_id)
     source_integrity_assessment = investigation_source_integrity_assessment(db, user_key, project_id)
+    search_facets = investigation_search_facets(db, user_key, project_id)
+    search_diagnostics = investigation_search_diagnostics(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -182,6 +185,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationIntegrityAssertions": int(source_integrity_graph.get("assertionCount") or 0),
         "investigationSourceEvidenceBindings": int(source_integrity_graph.get("bindingCount") or 0),
         "investigationSourceIntegrityIssues": int(source_integrity_diagnostics.get("issueCount") or 0),
+        "investigationSearchableObjects": int(search_facets.get("resultCount") or 0),
+        "investigationSearchDiagnostics": int(search_diagnostics.get("issueCount") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -221,6 +226,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationSourceIntegrityWorkspace": source_integrity_graph,
         "investigationSourceIntegrityDiagnostics": source_integrity_diagnostics,
         "investigationSourceIntegrityAssessment": source_integrity_assessment,
+        "investigationSearchFacets": search_facets,
+        "investigationSearchDiagnostics": search_diagnostics,
         "platformCore": core,
         "platformCoreError": core_error,
     }

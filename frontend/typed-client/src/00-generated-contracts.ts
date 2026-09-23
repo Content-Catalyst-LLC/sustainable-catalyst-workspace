@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.14.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.15.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "investigativeSearchWorkspace": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace"
+  },
+  "savedSearchStore": {
+    "method": "POST",
+    "path": "/v1/investigative-search-workspace/saved-searches"
+  },
+  "savedSearches": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/saved-searches"
+  },
+  "savedSearch": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/saved-searches/{search_id}"
+  },
+  "savedSearchRevisions": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/saved-searches/{search_id}/revisions"
+  },
+  "investigativeSearchExecute": {
+    "method": "POST",
+    "path": "/v1/investigative-search-workspace/executions"
+  },
+  "investigativeSearchExecutions": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/executions"
+  },
+  "investigativeSearchExecution": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/executions/{execution_id}"
+  },
+  "projectInvestigativeSearch": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/projects/{project_id}/search"
+  },
+  "crossCaseInvestigativeSearch": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/cross-case/search"
+  },
+  "investigativeSearchFacets": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/projects/{project_id}/facets"
+  },
+  "investigativeSearchDiagnostics": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/projects/{project_id}/diagnostics"
+  },
+  "investigativeSearchSnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/investigative-search-workspace/projects/{project_id}/snapshots"
+  },
+  "investigativeSearchSnapshots": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/projects/{project_id}/snapshots"
+  },
+  "investigativeSearchCollectionCreate": {
+    "method": "POST",
+    "path": "/v1/investigative-search-workspace/collections"
+  },
+  "investigativeSearchCollections": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/collections"
+  },
+  "investigativeSearchCollection": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/collections/{collection_id}"
+  },
+  "investigativeSearchDiscoveryGraph": {
+    "method": "GET",
+    "path": "/v1/investigative-search-workspace/projects/{project_id}/discovery-graph"
+  },
   "sourceIntegrityWorkspace": {
     "method": "GET",
     "path": "/v1/source-integrity-workspace"
