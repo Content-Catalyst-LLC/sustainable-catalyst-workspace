@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.13.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.14.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "sourceIntegrityWorkspace": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace"
+  },
+  "sourceStore": {
+    "method": "POST",
+    "path": "/v1/source-integrity-workspace/sources"
+  },
+  "sources": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/sources"
+  },
+  "source": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/sources/{source_id}"
+  },
+  "sourceRevisions": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/sources/{source_id}/revisions"
+  },
+  "sourceProvenanceEventCreate": {
+    "method": "POST",
+    "path": "/v1/source-integrity-workspace/provenance-events"
+  },
+  "sourceProvenanceEvents": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/provenance-events"
+  },
+  "sourceCustodyEventCreate": {
+    "method": "POST",
+    "path": "/v1/source-integrity-workspace/custody-events"
+  },
+  "sourceCustodyEvents": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/custody-events"
+  },
+  "integrityAssertionCreate": {
+    "method": "POST",
+    "path": "/v1/source-integrity-workspace/integrity-assertions"
+  },
+  "integrityAssertions": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/integrity-assertions"
+  },
+  "sourceEvidenceBindingCreate": {
+    "method": "POST",
+    "path": "/v1/source-integrity-workspace/evidence-bindings"
+  },
+  "sourceEvidenceBindings": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/evidence-bindings"
+  },
+  "sourceIntegrityGraph": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/projects/{project_id}/graph"
+  },
+  "sourceIntegrityDiagnostics": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/projects/{project_id}/diagnostics"
+  },
+  "sourceIntegrityAssessment": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/projects/{project_id}/integrity"
+  },
+  "sourceIntegritySnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/source-integrity-workspace/projects/{project_id}/snapshots"
+  },
+  "sourceIntegritySnapshots": {
+    "method": "GET",
+    "path": "/v1/source-integrity-workspace/projects/{project_id}/snapshots"
+  },
   "mediaProvenanceWorkspace": {
     "method": "GET",
     "path": "/v1/media-provenance-workspace"

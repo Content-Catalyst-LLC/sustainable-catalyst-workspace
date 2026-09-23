@@ -1,0 +1,5 @@
+(function(w){'use strict';
+var root='sc-workspace/v1/backend/source-integrity-workspace';
+function api(path,opts){return w.wp&&wp.apiFetch?wp.apiFetch(Object.assign({path:'/'+root+path},opts||{})):Promise.reject(new Error('wp.apiFetch unavailable'));}
+w.SCWorkspaceSourceIntegrity={version:'3.14.0',profile:function(){return api('');},sources:function(q){return api('/sources'+(q?'?'+q:''));},storeSource:function(body){return api('/sources',{method:'POST',data:body});},provenance:function(q){return api('/provenance-events'+(q?'?'+q:''));},custody:function(q){return api('/custody-events'+(q?'?'+q:''));},assertions:function(q){return api('/integrity-assertions'+(q?'?'+q:''));},bindings:function(q){return api('/evidence-bindings'+(q?'?'+q:''));},graph:function(id){return api('/projects/'+encodeURIComponent(id)+'/graph');},diagnostics:function(id){return api('/projects/'+encodeURIComponent(id)+'/diagnostics');},integrity:function(id){return api('/projects/'+encodeURIComponent(id)+'/integrity');}};
+})(window);

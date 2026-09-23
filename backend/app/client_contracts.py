@@ -6,6 +6,25 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "sourceIntegrityWorkspace": {"method":"GET","path":"/v1/source-integrity-workspace"},
+    "sourceStore": {"method":"POST","path":"/v1/source-integrity-workspace/sources"},
+    "sources": {"method":"GET","path":"/v1/source-integrity-workspace/sources"},
+    "source": {"method":"GET","path":"/v1/source-integrity-workspace/sources/{source_id}"},
+    "sourceRevisions": {"method":"GET","path":"/v1/source-integrity-workspace/sources/{source_id}/revisions"},
+    "sourceProvenanceEventCreate": {"method":"POST","path":"/v1/source-integrity-workspace/provenance-events"},
+    "sourceProvenanceEvents": {"method":"GET","path":"/v1/source-integrity-workspace/provenance-events"},
+    "sourceCustodyEventCreate": {"method":"POST","path":"/v1/source-integrity-workspace/custody-events"},
+    "sourceCustodyEvents": {"method":"GET","path":"/v1/source-integrity-workspace/custody-events"},
+    "integrityAssertionCreate": {"method":"POST","path":"/v1/source-integrity-workspace/integrity-assertions"},
+    "integrityAssertions": {"method":"GET","path":"/v1/source-integrity-workspace/integrity-assertions"},
+    "sourceEvidenceBindingCreate": {"method":"POST","path":"/v1/source-integrity-workspace/evidence-bindings"},
+    "sourceEvidenceBindings": {"method":"GET","path":"/v1/source-integrity-workspace/evidence-bindings"},
+    "sourceIntegrityGraph": {"method":"GET","path":"/v1/source-integrity-workspace/projects/{project_id}/graph"},
+    "sourceIntegrityDiagnostics": {"method":"GET","path":"/v1/source-integrity-workspace/projects/{project_id}/diagnostics"},
+    "sourceIntegrityAssessment": {"method":"GET","path":"/v1/source-integrity-workspace/projects/{project_id}/integrity"},
+    "sourceIntegritySnapshotCreate": {"method":"POST","path":"/v1/source-integrity-workspace/projects/{project_id}/snapshots"},
+    "sourceIntegritySnapshots": {"method":"GET","path":"/v1/source-integrity-workspace/projects/{project_id}/snapshots"},
+
     "mediaProvenanceWorkspace": {"method":"GET","path":"/v1/media-provenance-workspace"},
     "mediaArtifactStore": {"method":"POST","path":"/v1/media-provenance-workspace/artifacts"},
     "mediaArtifacts": {"method":"GET","path":"/v1/media-provenance-workspace/artifacts"},
@@ -262,7 +281,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.13.0",
+        "workspaceVersion": "3.14.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

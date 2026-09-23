@@ -194,6 +194,12 @@ from .investigation_media_workspace import (
     MEDIA_WORKSPACE_SCHEMA, profile as media_provenance_workspace_profile, InvestigationMediaArtifactRequest, InvestigationMediaLocatorRequest, InvestigationMediaDerivativeRequest, InvestigationMediaContextLinkRequest, InvestigationMediaRelationRequest, InvestigationMediaSnapshotRequest,
     store_artifact as store_media_artifact, list_artifacts as list_media_artifacts, get_artifact as get_media_artifact, artifact_revisions as media_artifact_revisions, create_locator as create_media_locator, list_locators as list_media_locators,
     create_derivative as create_media_derivative, list_derivatives as list_media_derivatives, create_context_link as create_media_context_link, list_context_links as list_media_context_links, create_media_relation, list_media_relations, build_media_graph, media_diagnostics, media_integrity, create_media_snapshot, list_media_snapshots)
+from .investigation_source_integrity_workspace import (
+    SOURCE_INTEGRITY_WORKSPACE_SCHEMA, profile as source_integrity_workspace_profile, InvestigationSourceRequest, SourceProvenanceEventRequest, SourceCustodyEventRequest, IntegrityAssertionRequest, SourceEvidenceBindingRequest, SourceIntegritySnapshotRequest,
+    store_source as store_investigation_source, list_sources as list_investigation_sources, get_source as get_investigation_source, source_revisions as investigation_source_revisions,
+    create_provenance_event as create_source_provenance_event, list_provenance_events as list_source_provenance_events, create_custody_event as create_source_custody_event, list_custody_events as list_source_custody_events,
+    create_integrity_assertion, list_integrity_assertions, create_evidence_binding as create_source_evidence_binding, list_evidence_bindings as list_source_evidence_bindings,
+    build_integrity_graph as build_source_integrity_graph, source_integrity_diagnostics, source_integrity_assessment, create_integrity_snapshot as create_source_integrity_snapshot, list_integrity_snapshots as list_source_integrity_snapshots)
 
 
 @asynccontextmanager
@@ -442,7 +448,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.12.0",
+        "rollbackBaseline": "3.13.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -529,6 +535,23 @@ def health():
         "mediaAutomaticEvidenceRanking": False,
         "mediaAutomaticCulpabilityInference": False,
         "mediaAutomaticNarrativeSelection": False,
+        "sourceReliabilityProvenanceEvidenceIntegrityWorkspace": True,
+        "sourceIntegrityWorkspaceSchema": SOURCE_INTEGRITY_WORKSPACE_SCHEMA,
+        "sourceVersionedRecords": True,
+        "sourceContentFingerprintRequired": True,
+        "sourceExplicitProvenanceEvents": True,
+        "sourceExplicitCustodyEvents": True,
+        "sourceHumanAssertedIntegrityAssertions": True,
+        "sourceHumanAssertedEvidenceBindings": True,
+        "sourceImmutableIntegritySnapshots": True,
+        "sourceAutomaticReliabilityScoring": False,
+        "sourceAutomaticCredibilityScoring": False,
+        "sourceAutomaticAuthenticityDetermination": False,
+        "sourceAutomaticIntegrityVerification": False,
+        "sourceAutomaticEvidenceRanking": False,
+        "sourceAutomaticTruthDetermination": False,
+        "sourceAutomaticCulpabilityInference": False,
+        "sourceAutomaticNarrativeSelection": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -545,7 +568,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "044_media_artifact_image_video_derivative_provenance_workspace.sql",
+        "releaseMigrationLineage": "045_source_reliability_provenance_evidence_integrity_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -3079,3 +3102,74 @@ def media_snapshot_store(project_id:str,payload:InvestigationMediaSnapshotReques
 @app.get("/v1/media-provenance-workspace/projects/{project_id}/snapshots")
 def media_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_media_snapshots(db,identity.user_key,project_id,limit)}
+
+
+@app.get("/v1/source-integrity-workspace")
+def source_integrity_workspace(identity:ServiceIdentity=Depends(require_service_identity)): return {"ok":True,"schema":"sc-workspace-source-integrity-workspace-response/1.0","item":source_integrity_workspace_profile()}
+@app.post("/v1/source-integrity-workspace/sources")
+def source_store(payload:InvestigationSourceRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_investigation_source(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+    except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"source-record-invalid","message":str(exc)})
+@app.get("/v1/source-integrity-workspace/sources")
+def sources(projectId:str|None=None,sourceType:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_investigation_sources(db,identity.user_key,projectId,sourceType,limit)}
+@app.get("/v1/source-integrity-workspace/sources/{source_id}")
+def source_record(source_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_investigation_source(db,identity.user_key,source_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"investigation-source-not-found","sourceId":source_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/source-integrity-workspace/sources/{source_id}/revisions")
+def source_record_revisions(source_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":investigation_source_revisions(db,identity.user_key,source_id,limit)}
+@app.post("/v1/source-integrity-workspace/provenance-events")
+def source_provenance_event_create(payload:SourceProvenanceEventRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_source_provenance_event(db,identity.user_key,payload)}
+    except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"source-or-project-not-found"})
+@app.get("/v1/source-integrity-workspace/provenance-events")
+def source_provenance_events(projectId:str|None=None,sourceId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_source_provenance_events(db,identity.user_key,projectId,sourceId,limit)}
+@app.post("/v1/source-integrity-workspace/custody-events")
+def source_custody_event_create(payload:SourceCustodyEventRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_source_custody_event(db,identity.user_key,payload)}
+    except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"source-or-project-not-found"})
+@app.get("/v1/source-integrity-workspace/custody-events")
+def source_custody_events(projectId:str|None=None,sourceId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_source_custody_events(db,identity.user_key,projectId,sourceId,limit)}
+@app.post("/v1/source-integrity-workspace/integrity-assertions")
+def integrity_assertion_create(payload:IntegrityAssertionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_integrity_assertion(db,identity.user_key,payload)}
+    except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"source-or-project-not-found"})
+@app.get("/v1/source-integrity-workspace/integrity-assertions")
+def integrity_assertions(projectId:str|None=None,sourceId:str|None=None,status:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_integrity_assertions(db,identity.user_key,projectId,sourceId,status,limit)}
+@app.post("/v1/source-integrity-workspace/evidence-bindings")
+def source_evidence_binding_create(payload:SourceEvidenceBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_source_evidence_binding(db,identity.user_key,payload)}
+    except (KeyError,LookupError): raise HTTPException(status_code=404,detail={"code":"source-or-project-not-found"})
+@app.get("/v1/source-integrity-workspace/evidence-bindings")
+def source_evidence_bindings(projectId:str|None=None,sourceId:str|None=None,targetRef:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_source_evidence_bindings(db,identity.user_key,projectId,sourceId,targetRef,limit)}
+@app.get("/v1/source-integrity-workspace/projects/{project_id}/graph")
+def source_integrity_graph(project_id:str,includeMediaGraph:bool=True,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":build_source_integrity_graph(db,identity.user_key,project_id,includeMediaGraph)}
+@app.get("/v1/source-integrity-workspace/projects/{project_id}/diagnostics")
+def source_integrity_diagnostics_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":source_integrity_diagnostics(db,identity.user_key,project_id)}
+@app.get("/v1/source-integrity-workspace/projects/{project_id}/integrity")
+def source_integrity_assessment_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":source_integrity_assessment(db,identity.user_key,project_id)}
+@app.post("/v1/source-integrity-workspace/projects/{project_id}/snapshots")
+def source_integrity_snapshot_create(project_id:str,payload:SourceIntegritySnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_source_integrity_snapshot(db,identity.user_key,project_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/source-integrity-workspace/projects/{project_id}/snapshots")
+def source_integrity_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_source_integrity_snapshots(db,identity.user_key,project_id,limit)}

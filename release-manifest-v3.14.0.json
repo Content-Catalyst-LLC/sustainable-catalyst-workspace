@@ -1,0 +1,31 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.14.0",
+  "release": "Source Reliability, Provenance & Evidence Integrity Workspace",
+  "baseline": "3.13.0",
+  "migration": "045_source_reliability_provenance_evidence_integrity_workspace.sql",
+  "typedEndpointMinimum": 200,
+  "newTypedEndpoints": 18,
+  "focusedTests": 6,
+  "rollbackBaseline": "3.13.0",
+  "analyticsRProviderVersion": "2.2.0",
+  "boundaries": {
+    "automaticSourceReliabilityScoring": false,
+    "automaticCredibilityScoring": false,
+    "automaticAuthenticityDetermination": false,
+    "automaticIntegrityVerification": false,
+    "automaticEvidenceRanking": false,
+    "automaticTruthDetermination": false,
+    "automaticCulpabilityInference": false,
+    "automaticNarrativeSelection": false
+  },
+  "tables": [
+    "workspace_investigation_source_heads",
+    "workspace_investigation_source_revisions",
+    "workspace_investigation_source_provenance_events",
+    "workspace_investigation_source_custody_events",
+    "workspace_investigation_integrity_assertions",
+    "workspace_investigation_source_evidence_bindings",
+    "workspace_investigation_source_integrity_snapshots"
+  ]
+}
