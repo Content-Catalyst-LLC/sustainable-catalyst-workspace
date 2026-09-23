@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.18.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.19.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "predictiveInvestigationWorkspace": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace"
+  },
+  "predictiveScenarioStore": {
+    "method": "POST",
+    "path": "/v1/predictive-investigation-workspace/scenarios"
+  },
+  "predictiveScenarios": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/scenarios"
+  },
+  "predictiveScenario": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/scenarios/{scenario_id}"
+  },
+  "predictiveScenarioRevisions": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/scenarios/{scenario_id}/revisions"
+  },
+  "predictiveModelBindingCreate": {
+    "method": "POST",
+    "path": "/v1/predictive-investigation-workspace/model-bindings"
+  },
+  "predictiveModelBindings": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/model-bindings"
+  },
+  "predictiveForecastRequestCreate": {
+    "method": "POST",
+    "path": "/v1/predictive-investigation-workspace/forecast-requests"
+  },
+  "predictiveForecastRequests": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/forecast-requests"
+  },
+  "predictiveForecastResultBindingCreate": {
+    "method": "POST",
+    "path": "/v1/predictive-investigation-workspace/result-bindings"
+  },
+  "predictiveForecastResultBindings": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/result-bindings"
+  },
+  "predictiveScenarioComparisonCreate": {
+    "method": "POST",
+    "path": "/v1/predictive-investigation-workspace/comparisons"
+  },
+  "predictiveScenarioComparisons": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/comparisons"
+  },
+  "predictiveInvestigationManifest": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/projects/{project_id}/manifest"
+  },
+  "predictiveInvestigationGraph": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/projects/{project_id}/graph"
+  },
+  "predictiveInvestigationDiagnostics": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/projects/{project_id}/diagnostics"
+  },
+  "predictiveInvestigationSnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/predictive-investigation-workspace/projects/{project_id}/snapshots"
+  },
+  "predictiveInvestigationSnapshots": {
+    "method": "GET",
+    "path": "/v1/predictive-investigation-workspace/projects/{project_id}/snapshots"
+  },
   "causalAnalysisWorkspace": {
     "method": "GET",
     "path": "/v1/causal-analysis-workspace"

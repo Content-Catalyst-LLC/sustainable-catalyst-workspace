@@ -1,0 +1,33 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.19.0",
+  "release": "Predictive Investigation & Scenario Modeling Workspace",
+  "baseline": "3.18.0",
+  "migration": "050_predictive_investigation_scenario_modeling_workspace.sql",
+  "typedEndpointCount": 290,
+  "newTypedEndpoints": 18,
+  "rollbackBaseline": "3.18.0",
+  "analyticsRProviderVersion": "2.2.0",
+  "humanControlBoundaries": {
+    "automaticForecastExecution": false,
+    "automaticScenarioSelection": false,
+    "automaticModelSelection": false,
+    "automaticModelRetraining": false,
+    "automaticProbabilityAsTruth": false,
+    "automaticForecastAsTruth": false,
+    "automaticEvidenceRanking": false,
+    "automaticCausalityInference": false,
+    "automaticTruthDetermination": false,
+    "automaticCulpabilityInference": false,
+    "automaticNarrativeSelection": false
+  },
+  "artifacts": [
+    "sustainable-catalyst-workspace-v3.19.0-release-bundle.zip",
+    "sustainable-catalyst-workspace-v3.19.0-tiny-patch.zip",
+    "sustainable-catalyst-workspace-backend-v3.19.0-overlay.zip",
+    "sustainable-catalyst-workspace-v3.19.0-wordpress-plugin.zip",
+    "sustainable-catalyst-workspace-backend-v3.19.0.zip",
+    "sustainable-catalyst-workspace-v3.19.0-repository.zip"
+  ]
+}

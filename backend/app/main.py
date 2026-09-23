@@ -239,6 +239,18 @@ from .causal_analysis_workspace import (
     create_result_binding as create_causal_result_binding, list_result_bindings as list_causal_result_bindings,
     analysis as causal_project_analysis, create_snapshot as create_causal_investigation_snapshot, list_snapshots as list_causal_investigation_snapshots)
 
+from .predictive_investigation_workspace import (
+    PREDICTIVE_WORKSPACE_SCHEMA, profile as predictive_investigation_workspace_profile,
+    PredictiveScenarioRequestModel, PredictiveModelBindingRequestModel, PredictiveForecastRequestModel,
+    PredictiveForecastResultBindingRequestModel, PredictiveScenarioComparisonRequestModel, PredictiveInvestigationSnapshotRequestModel,
+    store_scenario as store_predictive_scenario, list_scenarios as list_predictive_scenarios, get_scenario as get_predictive_scenario, scenario_revisions as predictive_scenario_revisions,
+    create_model_binding as create_predictive_model_binding, list_model_bindings as list_predictive_model_bindings,
+    create_forecast_request as create_predictive_forecast_request, list_forecast_requests as list_predictive_forecast_requests,
+    create_result_binding as create_predictive_forecast_result_binding, list_result_bindings as list_predictive_forecast_result_bindings,
+    create_comparison as create_predictive_scenario_comparison, list_comparisons as list_predictive_scenario_comparisons,
+    manifest as predictive_investigation_manifest, graph as predictive_investigation_graph, diagnostics as predictive_investigation_diagnostics,
+    create_snapshot as create_predictive_investigation_snapshot, list_snapshots as list_predictive_investigation_snapshots)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -485,7 +497,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.17.0",
+        "rollbackBaseline": "3.18.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -645,6 +657,29 @@ def health():
         "causalAutomaticTruthDetermination": False,
         "causalAutomaticCulpabilityInference": False,
         "causalAutomaticNarrativeSelection": False,
+        "predictiveInvestigationScenarioModelingWorkspace": True,
+        "predictiveInvestigationWorkspaceSchema": PREDICTIVE_WORKSPACE_SCHEMA,
+        "predictiveExplicitScenarioAssumptions": True,
+        "predictiveModelFingerprintPinning": True,
+        "predictiveCausalContextReferences": True,
+        "predictiveUncertaintyContextReferences": True,
+        "predictiveForecastHandoffs": True,
+        "predictiveForecastResultBindings": True,
+        "predictiveCalibrationAndBacktestReferences": True,
+        "predictiveModelConditionalForecasts": True,
+        "predictiveImmutableSnapshots": True,
+        "predictiveHumanReviewRequired": True,
+        "predictiveAutomaticForecastExecution": False,
+        "predictiveAutomaticScenarioSelection": False,
+        "predictiveAutomaticModelSelection": False,
+        "predictiveAutomaticModelRetraining": False,
+        "predictiveAutomaticProbabilityAsTruth": False,
+        "predictiveAutomaticForecastAsTruth": False,
+        "predictiveAutomaticEvidenceRanking": False,
+        "predictiveAutomaticCausalityInference": False,
+        "predictiveAutomaticTruthDetermination": False,
+        "predictiveAutomaticCulpabilityInference": False,
+        "predictiveAutomaticNarrativeSelection": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -661,7 +696,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "049_causal_analysis_alternative_explanation_workspace.sql",
+        "releaseMigrationLineage": "050_predictive_investigation_scenario_modeling_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -3587,4 +3622,84 @@ def causal_investigation_snapshot_create(project_id:str,payload:CausalInvestigat
 @app.get("/v1/causal-analysis-workspace/projects/{project_id}/snapshots")
 def causal_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_causal_investigation_snapshots(db,identity.user_key,project_id,limit)}
+@app.get("/v1/predictive-investigation-workspace")
+def predictive_investigation_workspace(identity:ServiceIdentity=Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-predictive-investigation-workspace-response/1.0","item":predictive_investigation_workspace_profile()}
+@app.post("/v1/predictive-investigation-workspace/scenarios")
+def predictive_scenario_store(payload:PredictiveScenarioRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_predictive_scenario(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-scenario-invalid","message":str(e)})
+@app.get("/v1/predictive-investigation-workspace/scenarios")
+def predictive_scenarios(projectId:str|None=None,scenarioKind:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_predictive_scenarios(db,identity.user_key,projectId,scenarioKind,limit)}
+@app.get("/v1/predictive-investigation-workspace/scenarios/{scenario_id}")
+def predictive_scenario(scenario_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_predictive_scenario(db,identity.user_key,scenario_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"predictive-scenario-not-found","scenarioId":scenario_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/predictive-investigation-workspace/scenarios/{scenario_id}/revisions")
+def predictive_scenario_revision_list(scenario_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":predictive_scenario_revisions(db,identity.user_key,scenario_id,limit)}
+@app.post("/v1/predictive-investigation-workspace/model-bindings")
+def predictive_model_binding_create(payload:PredictiveModelBindingRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_predictive_model_binding(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-scenario-not-found","referenceId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-model-binding-invalid","message":str(e)})
+@app.get("/v1/predictive-investigation-workspace/model-bindings")
+def predictive_model_bindings(projectId:str|None=None,scenarioId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_predictive_model_bindings(db,identity.user_key,projectId,scenarioId,limit)}
+@app.post("/v1/predictive-investigation-workspace/forecast-requests")
+def predictive_forecast_request_create(payload:PredictiveForecastRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_predictive_forecast_request(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-reference-not-found","referenceId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-forecast-request-invalid","message":str(e)})
+@app.get("/v1/predictive-investigation-workspace/forecast-requests")
+def predictive_forecast_requests(projectId:str|None=None,scenarioId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_predictive_forecast_requests(db,identity.user_key,projectId,scenarioId,limit)}
+@app.post("/v1/predictive-investigation-workspace/result-bindings")
+def predictive_forecast_result_binding_create(payload:PredictiveForecastResultBindingRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_predictive_forecast_result_binding(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-reference-not-found","referenceId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-result-binding-invalid","message":str(e)})
+@app.get("/v1/predictive-investigation-workspace/result-bindings")
+def predictive_forecast_result_bindings(projectId:str|None=None,scenarioId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_predictive_forecast_result_bindings(db,identity.user_key,projectId,scenarioId,limit)}
+@app.post("/v1/predictive-investigation-workspace/comparisons")
+def predictive_scenario_comparison_create(payload:PredictiveScenarioComparisonRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_predictive_scenario_comparison(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-reference-not-found","referenceId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-comparison-invalid","message":str(e)})
+@app.get("/v1/predictive-investigation-workspace/comparisons")
+def predictive_scenario_comparisons(projectId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_predictive_scenario_comparisons(db,identity.user_key,projectId,limit)}
+@app.get("/v1/predictive-investigation-workspace/projects/{project_id}/manifest")
+def predictive_project_manifest(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":predictive_investigation_manifest(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/predictive-investigation-workspace/projects/{project_id}/graph")
+def predictive_project_graph(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":predictive_investigation_graph(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/predictive-investigation-workspace/projects/{project_id}/diagnostics")
+def predictive_project_diagnostics(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":predictive_investigation_diagnostics(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.post("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
+def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveInvestigationSnapshotRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_predictive_investigation_snapshot(db,identity.user_key,project_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
+def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
 

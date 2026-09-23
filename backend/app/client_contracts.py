@@ -6,6 +6,24 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "predictiveInvestigationWorkspace": {"method":"GET","path":"/v1/predictive-investigation-workspace"},
+    "predictiveScenarioStore": {"method":"POST","path":"/v1/predictive-investigation-workspace/scenarios"},
+    "predictiveScenarios": {"method":"GET","path":"/v1/predictive-investigation-workspace/scenarios"},
+    "predictiveScenario": {"method":"GET","path":"/v1/predictive-investigation-workspace/scenarios/{scenario_id}"},
+    "predictiveScenarioRevisions": {"method":"GET","path":"/v1/predictive-investigation-workspace/scenarios/{scenario_id}/revisions"},
+    "predictiveModelBindingCreate": {"method":"POST","path":"/v1/predictive-investigation-workspace/model-bindings"},
+    "predictiveModelBindings": {"method":"GET","path":"/v1/predictive-investigation-workspace/model-bindings"},
+    "predictiveForecastRequestCreate": {"method":"POST","path":"/v1/predictive-investigation-workspace/forecast-requests"},
+    "predictiveForecastRequests": {"method":"GET","path":"/v1/predictive-investigation-workspace/forecast-requests"},
+    "predictiveForecastResultBindingCreate": {"method":"POST","path":"/v1/predictive-investigation-workspace/result-bindings"},
+    "predictiveForecastResultBindings": {"method":"GET","path":"/v1/predictive-investigation-workspace/result-bindings"},
+    "predictiveScenarioComparisonCreate": {"method":"POST","path":"/v1/predictive-investigation-workspace/comparisons"},
+    "predictiveScenarioComparisons": {"method":"GET","path":"/v1/predictive-investigation-workspace/comparisons"},
+    "predictiveInvestigationManifest": {"method":"GET","path":"/v1/predictive-investigation-workspace/projects/{project_id}/manifest"},
+    "predictiveInvestigationGraph": {"method":"GET","path":"/v1/predictive-investigation-workspace/projects/{project_id}/graph"},
+    "predictiveInvestigationDiagnostics": {"method":"GET","path":"/v1/predictive-investigation-workspace/projects/{project_id}/diagnostics"},
+    "predictiveInvestigationSnapshotCreate": {"method":"POST","path":"/v1/predictive-investigation-workspace/projects/{project_id}/snapshots"},
+    "predictiveInvestigationSnapshots": {"method":"GET","path":"/v1/predictive-investigation-workspace/projects/{project_id}/snapshots"},
     "causalAnalysisWorkspace": {"method":"GET","path":"/v1/causal-analysis-workspace"},
     "causalQuestionStore": {"method":"POST","path":"/v1/causal-analysis-workspace/questions"},
     "causalQuestions": {"method":"GET","path":"/v1/causal-analysis-workspace/questions"},
@@ -366,7 +384,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.18.0",
+        "workspaceVersion": "3.19.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
