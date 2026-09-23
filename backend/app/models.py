@@ -2283,3 +2283,107 @@ class InvestigationSearchSnapshot(Base):
     snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.16.0 Quantitative Reconstruction & Scientific Analysis Handoffs
+class QuantitativeReconstructionHead(Base):
+    __tablename__ = "workspace_quantitative_reconstruction_heads"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    reconstruction_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    research_question: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    method_class: Mapped[str] = mapped_column(String(64), nullable=False)
+    assumptions_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    reconstruction_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class QuantitativeReconstructionRevision(Base):
+    __tablename__ = "workspace_quantitative_reconstruction_revisions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    reconstruction_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    research_question: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    method_class: Mapped[str] = mapped_column(String(64), nullable=False)
+    assumptions_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    reconstruction_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class QuantitativeInputBinding(Base):
+    __tablename__ = "workspace_quantitative_input_bindings"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    binding_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    reconstruction_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    input_kind: Mapped[str] = mapped_column(String(80), nullable=False)
+    object_ref: Mapped[str] = mapped_column(String(2000), nullable=False)
+    object_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    role: Mapped[str] = mapped_column(String(80), nullable=False, default="input")
+    transform_spec_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    binding_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class QuantitativeAnalysisHandoff(Base):
+    __tablename__ = "workspace_quantitative_analysis_handoffs"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    handoff_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    reconstruction_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    destination_product: Mapped[str] = mapped_column(String(80), nullable=False)
+    analysis_kind: Mapped[str] = mapped_column(String(160), nullable=False)
+    requested_operations_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    environment_ref: Mapped[str] = mapped_column(String(1000), nullable=False, default="")
+    reproducibility_requirements_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="ready")
+    package_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    external_handoff_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    receipt_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class QuantitativeResultBinding(Base):
+    __tablename__ = "workspace_quantitative_result_bindings"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    binding_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    handoff_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    reconstruction_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_kind: Mapped[str] = mapped_column(String(80), nullable=False)
+    result_ref: Mapped[str] = mapped_column(String(2000), nullable=False)
+    result_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="reported")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    binding_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class QuantitativeAnalysisSnapshot(Base):
+    __tablename__ = "workspace_quantitative_analysis_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    manifest_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    diagnostics_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    reconstruction_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    input_binding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    handoff_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_binding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)

@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.15.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.16.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "quantitativeAnalysisWorkspace": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace"
+  },
+  "quantitativeReconstructionStore": {
+    "method": "POST",
+    "path": "/v1/quantitative-analysis-workspace/reconstructions"
+  },
+  "quantitativeReconstructions": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/reconstructions"
+  },
+  "quantitativeReconstruction": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/reconstructions/{reconstruction_id}"
+  },
+  "quantitativeReconstructionRevisions": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/reconstructions/{reconstruction_id}/revisions"
+  },
+  "quantitativeInputBindingCreate": {
+    "method": "POST",
+    "path": "/v1/quantitative-analysis-workspace/input-bindings"
+  },
+  "quantitativeInputBindings": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/input-bindings"
+  },
+  "quantitativeAnalysisHandoffCreate": {
+    "method": "POST",
+    "path": "/v1/quantitative-analysis-workspace/handoffs"
+  },
+  "quantitativeAnalysisHandoffs": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/handoffs"
+  },
+  "quantitativeAnalysisHandoff": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/handoffs/{handoff_id}"
+  },
+  "quantitativeAnalysisHandoffStatus": {
+    "method": "POST",
+    "path": "/v1/quantitative-analysis-workspace/handoffs/{handoff_id}/status"
+  },
+  "quantitativeResultBindingCreate": {
+    "method": "POST",
+    "path": "/v1/quantitative-analysis-workspace/result-bindings"
+  },
+  "quantitativeResultBindings": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/result-bindings"
+  },
+  "quantitativeAnalysisManifest": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/projects/{project_id}/manifest"
+  },
+  "quantitativeAnalysisGraph": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/projects/{project_id}/graph"
+  },
+  "quantitativeAnalysisDiagnostics": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/projects/{project_id}/diagnostics"
+  },
+  "quantitativeAnalysisSnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/quantitative-analysis-workspace/projects/{project_id}/snapshots"
+  },
+  "quantitativeAnalysisSnapshots": {
+    "method": "GET",
+    "path": "/v1/quantitative-analysis-workspace/projects/{project_id}/snapshots"
+  },
   "investigativeSearchWorkspace": {
     "method": "GET",
     "path": "/v1/investigative-search-workspace"

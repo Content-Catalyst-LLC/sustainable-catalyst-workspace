@@ -1,0 +1,29 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.16.0",
+  "release": "Quantitative Reconstruction & Scientific Analysis Handoffs",
+  "baseline": "3.15.0",
+  "migration": "047_quantitative_reconstruction_scientific_analysis_handoffs.sql",
+  "typedEndpointMinimum": 236,
+  "newTypedEndpoints": 18,
+  "focusedTests": 7,
+  "rollbackBaseline": "3.15.0",
+  "analyticsRProviderVersion": "2.2.0",
+  "boundaries": {
+    "automaticAnalysisExecution": false,
+    "automaticEvidenceTransformation": false,
+    "automaticEvidenceRanking": false,
+    "automaticTruthDetermination": false,
+    "automaticCausalityInference": false,
+    "automaticCulpabilityInference": false,
+    "coreExecutesSpecialistProvider": false
+  },
+  "tables": [
+    "workspace_quantitative_reconstruction_heads",
+    "workspace_quantitative_reconstruction_revisions",
+    "workspace_quantitative_input_bindings",
+    "workspace_quantitative_analysis_handoffs",
+    "workspace_quantitative_result_bindings",
+    "workspace_quantitative_analysis_snapshots"
+  ]
+}

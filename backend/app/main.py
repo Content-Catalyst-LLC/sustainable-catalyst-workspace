@@ -206,6 +206,18 @@ from .investigation_search_workspace import (
     store_saved_search, list_saved_searches, get_saved_search, saved_search_revisions, execute_search, list_executions as list_search_executions, get_execution as get_search_execution,
     search as run_investigative_search, facets as investigative_search_facets, diagnostics as investigative_search_diagnostics, discovery_graph as investigative_search_discovery_graph,
     create_collection as create_search_collection, list_collections as list_search_collections, get_collection as get_search_collection, create_snapshot as create_search_snapshot, list_snapshots as list_search_snapshots)
+from .quantitative_analysis_workspace import (
+    QUANT_WORKSPACE_SCHEMA, profile as quantitative_analysis_workspace_profile,
+    QuantitativeReconstructionRequest, QuantitativeInputBindingRequest, QuantitativeAnalysisHandoffRequest,
+    QuantitativeAnalysisHandoffStatusRequest, QuantitativeResultBindingRequest, QuantitativeAnalysisSnapshotRequest,
+    store_reconstruction, list_reconstructions, get_reconstruction, reconstruction_revisions,
+    create_input_binding as create_quantitative_input_binding, list_input_bindings as list_quantitative_input_bindings,
+    create_analysis_handoff as create_quantitative_analysis_handoff, list_analysis_handoffs as list_quantitative_analysis_handoffs,
+    get_analysis_handoff as get_quantitative_analysis_handoff, update_analysis_handoff_status as update_quantitative_analysis_handoff_status,
+    create_result_binding as create_quantitative_result_binding, list_result_bindings as list_quantitative_result_bindings,
+    analysis_manifest as quantitative_analysis_manifest, analysis_graph as quantitative_analysis_graph,
+    diagnostics as quantitative_analysis_diagnostics, create_snapshot as create_quantitative_analysis_snapshot,
+    list_snapshots as list_quantitative_analysis_snapshots)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -453,7 +465,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.14.0",
+        "rollbackBaseline": "3.15.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -567,6 +579,17 @@ def health():
         "investigativeSearchAutomaticSourceReliabilityScoring": False,
         "investigativeSearchAutomaticTruthDetermination": False,
         "investigativeSearchAutomaticRelationshipInference": False,
+        "quantitativeReconstructionScientificAnalysisHandoffsWorkspace": True,
+        "quantitativeAnalysisWorkspaceSchema": QUANT_WORKSPACE_SCHEMA,
+        "quantitativeAnalysisReproducibleHandoffs": True,
+        "quantitativeAnalysisReferenceFirst": True,
+        "quantitativeAnalysisInputFingerprintPinning": True,
+        "quantitativeAnalysisImmutableSnapshots": True,
+        "quantitativeAnalysisAutomaticExecution": False,
+        "quantitativeAnalysisAutomaticEvidenceTransformation": False,
+        "quantitativeAnalysisAutomaticEvidenceRanking": False,
+        "quantitativeAnalysisAutomaticTruthDetermination": False,
+        "quantitativeAnalysisAutomaticCausalityInference": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -583,7 +606,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "046_investigative_search_discovery_cross_case_retrieval_workspace.sql",
+        "releaseMigrationLineage": "047_quantitative_reconstruction_scientific_analysis_handoffs.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -3264,4 +3287,86 @@ def investigative_search_collection(collection_id:str,identity:ServiceIdentity=D
 @app.get("/v1/investigative-search-workspace/projects/{project_id}/discovery-graph")
 def investigative_search_discovery_graph_route(project_id:str,q:str=Query(...,min_length=1,max_length=4000),limit:int=Query(250,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"item":investigative_search_discovery_graph(db,identity.user_key,project_id,q,limit)}
+
+@app.get("/v1/quantitative-analysis-workspace")
+def quantitative_analysis_workspace(identity:ServiceIdentity=Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-quantitative-analysis-workspace-response/1.0","item":quantitative_analysis_workspace_profile()}
+@app.post("/v1/quantitative-analysis-workspace/reconstructions")
+def quantitative_reconstruction_store(payload:QuantitativeReconstructionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_reconstruction(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
+    except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"quantitative-reconstruction-conflict","message":str(exc)})
+@app.get("/v1/quantitative-analysis-workspace/reconstructions")
+def quantitative_reconstructions(projectId:str|None=None,methodClass:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_reconstructions(db,identity.user_key,projectId,methodClass,limit)}
+@app.get("/v1/quantitative-analysis-workspace/reconstructions/{reconstruction_id}")
+def quantitative_reconstruction(reconstruction_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_reconstruction(db,identity.user_key,reconstruction_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"quantitative-reconstruction-not-found","reconstructionId":reconstruction_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/quantitative-analysis-workspace/reconstructions/{reconstruction_id}/revisions")
+def quantitative_reconstruction_revision_list(reconstruction_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":reconstruction_revisions(db,identity.user_key,reconstruction_id,limit)}
+@app.post("/v1/quantitative-analysis-workspace/input-bindings")
+def quantitative_input_binding_create(payload:QuantitativeInputBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_quantitative_input_binding(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-reconstruction-not-found","reconstructionId":payload.reconstructionId})
+@app.get("/v1/quantitative-analysis-workspace/input-bindings")
+def quantitative_input_bindings(projectId:str|None=None,reconstructionId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_quantitative_input_bindings(db,identity.user_key,projectId,reconstructionId,limit)}
+@app.post("/v1/quantitative-analysis-workspace/handoffs")
+def quantitative_analysis_handoff_create(payload:QuantitativeAnalysisHandoffRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_quantitative_analysis_handoff(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-reconstruction-not-found","reconstructionId":payload.reconstructionId})
+    except ValueError as exc: raise HTTPException(status_code=422,detail={"code":"unsupported-analysis-destination","message":str(exc)})
+@app.get("/v1/quantitative-analysis-workspace/handoffs")
+def quantitative_analysis_handoffs(projectId:str|None=None,reconstructionId:str|None=None,destinationProduct:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_quantitative_analysis_handoffs(db,identity.user_key,projectId,reconstructionId,destinationProduct,limit)}
+@app.get("/v1/quantitative-analysis-workspace/handoffs/{handoff_id}")
+def quantitative_analysis_handoff(handoff_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_quantitative_analysis_handoff(db,identity.user_key,handoff_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"quantitative-analysis-handoff-not-found","handoffId":handoff_id})
+        return {"ok":True,"item":x}
+@app.post("/v1/quantitative-analysis-workspace/handoffs/{handoff_id}/status")
+def quantitative_analysis_handoff_status(handoff_id:str,payload:QuantitativeAnalysisHandoffStatusRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":update_quantitative_analysis_handoff_status(db,identity.user_key,handoff_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-analysis-handoff-not-found","handoffId":handoff_id})
+    except ValueError as exc: raise HTTPException(status_code=422,detail={"code":"unsupported-handoff-status","message":str(exc)})
+@app.post("/v1/quantitative-analysis-workspace/result-bindings")
+def quantitative_result_binding_create(payload:QuantitativeResultBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_quantitative_result_binding(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-analysis-handoff-not-found","handoffId":payload.handoffId})
+@app.get("/v1/quantitative-analysis-workspace/result-bindings")
+def quantitative_result_bindings(projectId:str|None=None,handoffId:str|None=None,reconstructionId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_quantitative_result_bindings(db,identity.user_key,projectId,handoffId,reconstructionId,limit)}
+@app.get("/v1/quantitative-analysis-workspace/projects/{project_id}/manifest")
+def quantitative_analysis_manifest_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":quantitative_analysis_manifest(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/quantitative-analysis-workspace/projects/{project_id}/graph")
+def quantitative_analysis_graph_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":quantitative_analysis_graph(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/quantitative-analysis-workspace/projects/{project_id}/diagnostics")
+def quantitative_analysis_diagnostics_route(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":quantitative_analysis_diagnostics(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.post("/v1/quantitative-analysis-workspace/projects/{project_id}/snapshots")
+def quantitative_analysis_snapshot_create(project_id:str,payload:QuantitativeAnalysisSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_quantitative_analysis_snapshot(db,identity.user_key,project_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/quantitative-analysis-workspace/projects/{project_id}/snapshots")
+def quantitative_analysis_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_quantitative_analysis_snapshots(db,identity.user_key,project_id,limit)}
 
