@@ -219,6 +219,15 @@ from .quantitative_analysis_workspace import (
     diagnostics as quantitative_analysis_diagnostics, create_snapshot as create_quantitative_analysis_snapshot,
     list_snapshots as list_quantitative_analysis_snapshots)
 
+from .uncertainty_investigation_workspace import (
+    UNCERTAINTY_WORKSPACE_SCHEMA, profile as uncertainty_investigation_workspace_profile,
+    UncertaintyAssessmentRequest, UncertaintyParameterRequest, UncertaintyScenarioRequest, SensitivityAnalysisRequest, ProbabilisticResultBindingRequest, UncertaintyInvestigationSnapshotRequest,
+    store_assessment as store_uncertainty_assessment, list_assessments as list_uncertainty_assessments, get_assessment as get_uncertainty_assessment, assessment_revisions as uncertainty_assessment_revisions,
+    create_parameter as create_uncertainty_parameter, list_parameters as list_uncertainty_parameters, create_scenario as create_uncertainty_scenario, list_scenarios as list_uncertainty_scenarios,
+    create_sensitivity_request, list_sensitivity_requests, create_result_binding as create_probabilistic_result_binding, list_result_bindings as list_probabilistic_result_bindings,
+    manifest as uncertainty_investigation_manifest, graph as uncertainty_investigation_graph, diagnostics as uncertainty_investigation_diagnostics,
+    create_snapshot as create_uncertainty_investigation_snapshot, list_snapshots as list_uncertainty_investigation_snapshots)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -465,7 +474,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.15.0",
+        "rollbackBaseline": "3.16.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -590,6 +599,21 @@ def health():
         "quantitativeAnalysisAutomaticEvidenceRanking": False,
         "quantitativeAnalysisAutomaticTruthDetermination": False,
         "quantitativeAnalysisAutomaticCausalityInference": False,
+        "uncertaintySensitivityProbabilisticInvestigationWorkspace": True,
+        "uncertaintyInvestigationWorkspaceSchema": UNCERTAINTY_WORKSPACE_SCHEMA,
+        "uncertaintyExplicitDistributionAssumptions": True,
+        "uncertaintyEvidencePinnedParameters": True,
+        "uncertaintyScenarioEnsembles": True,
+        "uncertaintySensitivityHandoffs": True,
+        "uncertaintyProbabilisticResultBindings": True,
+        "uncertaintyImmutableSnapshots": True,
+        "uncertaintyAutomaticProbabilityAsTruth": False,
+        "uncertaintyAutomaticDistributionInference": False,
+        "uncertaintyAutomaticSensitivityExecution": False,
+        "uncertaintyAutomaticEvidenceRanking": False,
+        "uncertaintyAutomaticTruthDetermination": False,
+        "uncertaintyAutomaticCausalityInference": False,
+        "uncertaintyAutomaticCulpabilityInference": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -606,7 +630,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "047_quantitative_reconstruction_scientific_analysis_handoffs.sql",
+        "releaseMigrationLineage": "048_uncertainty_sensitivity_probabilistic_investigation_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -3370,3 +3394,85 @@ def quantitative_analysis_snapshot_create(project_id:str,payload:QuantitativeAna
 def quantitative_analysis_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_quantitative_analysis_snapshots(db,identity.user_key,project_id,limit)}
 
+
+
+@app.get("/v1/uncertainty-investigation-workspace")
+def uncertainty_investigation_workspace(identity:ServiceIdentity=Depends(require_service_identity)):
+    return {"ok":True,"schema":"sc-workspace-uncertainty-investigation-workspace-response/1.0","item":uncertainty_investigation_workspace_profile()}
+@app.post("/v1/uncertainty-investigation-workspace/assessments")
+def uncertainty_assessment_store(payload:UncertaintyAssessmentRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_uncertainty_assessment(db,identity.user_key,payload)}
+    except KeyError as e: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":str(e.args[0])})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"uncertainty-assessment-invalid","message":str(e)})
+@app.get("/v1/uncertainty-investigation-workspace/assessments")
+def uncertainty_assessments(projectId:str|None=None,methodFamily:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_uncertainty_assessments(db,identity.user_key,projectId,methodFamily,limit)}
+@app.get("/v1/uncertainty-investigation-workspace/assessments/{assessment_id}")
+def uncertainty_assessment(assessment_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_uncertainty_assessment(db,identity.user_key,assessment_id)
+        if x is None: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":assessment_id})
+        return {"ok":True,"item":x}
+@app.get("/v1/uncertainty-investigation-workspace/assessments/{assessment_id}/revisions")
+def uncertainty_assessment_revision_list(assessment_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":uncertainty_assessment_revisions(db,identity.user_key,assessment_id,limit)}
+@app.post("/v1/uncertainty-investigation-workspace/parameters")
+def uncertainty_parameter_create(payload:UncertaintyParameterRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_uncertainty_parameter(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"uncertainty-parameter-invalid","message":str(e)})
+@app.get("/v1/uncertainty-investigation-workspace/parameters")
+def uncertainty_parameters(projectId:str|None=None,assessmentId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_uncertainty_parameters(db,identity.user_key,projectId,assessmentId,limit)}
+@app.post("/v1/uncertainty-investigation-workspace/scenarios")
+def uncertainty_scenario_create(payload:UncertaintyScenarioRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_uncertainty_scenario(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"uncertainty-scenario-invalid","message":str(e)})
+@app.get("/v1/uncertainty-investigation-workspace/scenarios")
+def uncertainty_scenarios(projectId:str|None=None,assessmentId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_uncertainty_scenarios(db,identity.user_key,projectId,assessmentId,limit)}
+@app.post("/v1/uncertainty-investigation-workspace/sensitivity-requests")
+def sensitivity_analysis_request_create(payload:SensitivityAnalysisRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_sensitivity_request(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"sensitivity-request-invalid","message":str(e)})
+@app.get("/v1/uncertainty-investigation-workspace/sensitivity-requests")
+def sensitivity_analysis_requests(projectId:str|None=None,assessmentId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_sensitivity_requests(db,identity.user_key,projectId,assessmentId,limit)}
+@app.post("/v1/uncertainty-investigation-workspace/result-bindings")
+def probabilistic_result_binding_create(payload:ProbabilisticResultBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_probabilistic_result_binding(db,identity.user_key,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
+    except ValueError as e: raise HTTPException(status_code=409,detail={"code":"probabilistic-result-binding-invalid","message":str(e)})
+@app.get("/v1/uncertainty-investigation-workspace/result-bindings")
+def probabilistic_result_bindings(projectId:str|None=None,assessmentId:str|None=None,limit:int=Query(1000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_probabilistic_result_bindings(db,identity.user_key,projectId,assessmentId,limit)}
+@app.get("/v1/uncertainty-investigation-workspace/projects/{project_id}/manifest")
+def uncertainty_project_manifest(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":uncertainty_investigation_manifest(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/uncertainty-investigation-workspace/projects/{project_id}/graph")
+def uncertainty_project_graph(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":uncertainty_investigation_graph(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/uncertainty-investigation-workspace/projects/{project_id}/diagnostics")
+def uncertainty_project_diagnostics(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":uncertainty_investigation_diagnostics(db,identity.user_key,project_id)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.post("/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots")
+def uncertainty_project_snapshot_create(project_id:str,payload:UncertaintyInvestigationSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_uncertainty_investigation_snapshot(db,identity.user_key,project_id,payload)}
+    except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
+@app.get("/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots")
+def uncertainty_project_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_uncertainty_investigation_snapshots(db,identity.user_key,project_id,limit)}

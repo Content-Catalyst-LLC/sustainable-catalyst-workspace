@@ -1,0 +1,29 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.17.0",
+  "baseline": "3.16.0",
+  "release": "Uncertainty, Sensitivity & Probabilistic Investigation Workspace",
+  "migration": "048_uncertainty_sensitivity_probabilistic_investigation_workspace.sql",
+  "typedEndpointCount": 254,
+  "newTypedEndpoints": 18,
+  "boundaries": {
+    "automaticProbabilityAsTruth": false,
+    "automaticDistributionInference": false,
+    "automaticSensitivityExecution": false,
+    "automaticEvidenceRanking": false,
+    "automaticTruthDetermination": false,
+    "automaticCausalityInference": false,
+    "automaticCulpabilityInference": false
+  },
+  "preserves": [
+    "v3.16 quantitative analysis handoffs",
+    "v3.15 investigative search",
+    "v3.14 source integrity",
+    "v3.13 media provenance",
+    "v3.12 spatial evidence",
+    "v3.11 documentary evidence",
+    "v3.10 entity resolution",
+    "v3.9 timeline",
+    "Catalyst Analytics R 2.2"
+  ]
+}

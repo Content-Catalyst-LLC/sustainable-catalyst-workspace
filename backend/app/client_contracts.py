@@ -6,6 +6,24 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "uncertaintyInvestigationWorkspace": {"method":"GET","path":"/v1/uncertainty-investigation-workspace"},
+    "uncertaintyAssessmentStore": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/assessments"},
+    "uncertaintyAssessments": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/assessments"},
+    "uncertaintyAssessment": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/assessments/{assessment_id}"},
+    "uncertaintyAssessmentRevisions": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/assessments/{assessment_id}/revisions"},
+    "uncertaintyParameterCreate": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/parameters"},
+    "uncertaintyParameters": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/parameters"},
+    "uncertaintyScenarioCreate": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/scenarios"},
+    "uncertaintyScenarios": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/scenarios"},
+    "sensitivityAnalysisRequestCreate": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/sensitivity-requests"},
+    "sensitivityAnalysisRequests": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/sensitivity-requests"},
+    "probabilisticResultBindingCreate": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/result-bindings"},
+    "probabilisticResultBindings": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/result-bindings"},
+    "uncertaintyInvestigationManifest": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/projects/{project_id}/manifest"},
+    "uncertaintyInvestigationGraph": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/projects/{project_id}/graph"},
+    "uncertaintyInvestigationDiagnostics": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/projects/{project_id}/diagnostics"},
+    "uncertaintyInvestigationSnapshotCreate": {"method":"POST","path":"/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots"},
+    "uncertaintyInvestigationSnapshots": {"method":"GET","path":"/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots"},
     "quantitativeAnalysisWorkspace": {"method":"GET","path":"/v1/quantitative-analysis-workspace"},
     "quantitativeReconstructionStore": {"method":"POST","path":"/v1/quantitative-analysis-workspace/reconstructions"},
     "quantitativeReconstructions": {"method":"GET","path":"/v1/quantitative-analysis-workspace/reconstructions"},
@@ -323,7 +341,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.16.0",
+        "workspaceVersion": "3.17.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

@@ -27,6 +27,7 @@ from .investigation_media_workspace import build_media_graph as investigation_me
 from .investigation_source_integrity_workspace import build_integrity_graph as investigation_source_integrity_graph, source_integrity_diagnostics as investigation_source_integrity_diagnostics, source_integrity_assessment as investigation_source_integrity_assessment
 from .investigation_search_workspace import facets as investigation_search_facets, diagnostics as investigation_search_diagnostics
 from .quantitative_analysis_workspace import analysis_manifest as quantitative_analysis_manifest, diagnostics as quantitative_analysis_diagnostics
+from .uncertainty_investigation_workspace import manifest as uncertainty_investigation_manifest, diagnostics as uncertainty_investigation_diagnostics
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -53,7 +54,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "investigationMediaProvenanceWorkspace", "investigationSourceIntegrityWorkspace", "investigationSearchDiscoveryWorkspace", "quantitativeAnalysisWorkspace", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "investigationMediaProvenanceWorkspace", "investigationSourceIntegrityWorkspace", "investigationSearchDiscoveryWorkspace", "quantitativeAnalysisWorkspace", "uncertaintySensitivityProbabilisticInvestigationWorkspace", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -115,6 +116,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     search_diagnostics = investigation_search_diagnostics(db, user_key, project_id)
     quantitative_manifest = quantitative_analysis_manifest(db, user_key, project_id)
     quantitative_diagnostics = quantitative_analysis_diagnostics(db, user_key, project_id)
+    uncertainty_manifest = uncertainty_investigation_manifest(db, user_key, project_id)
+    uncertainty_diagnostics = uncertainty_investigation_diagnostics(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -194,6 +197,12 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "quantitativeAnalysisHandoffs": int((quantitative_manifest.get("counts") or {}).get("handoffs") or 0),
         "quantitativeAnalysisResults": int((quantitative_manifest.get("counts") or {}).get("resultBindings") or 0),
         "quantitativeAnalysisDiagnostics": int(quantitative_diagnostics.get("issueCount") or 0),
+        "uncertaintyAssessments": int((uncertainty_manifest.get("counts") or {}).get("assessments") or 0),
+        "uncertaintyParameters": int((uncertainty_manifest.get("counts") or {}).get("parameters") or 0),
+        "uncertaintyScenarios": int((uncertainty_manifest.get("counts") or {}).get("scenarios") or 0),
+        "uncertaintySensitivityRequests": int((uncertainty_manifest.get("counts") or {}).get("sensitivityRequests") or 0),
+        "uncertaintyProbabilisticResults": int((uncertainty_manifest.get("counts") or {}).get("resultBindings") or 0),
+        "uncertaintyDiagnostics": int(uncertainty_diagnostics.get("issueCount") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -237,6 +246,8 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationSearchDiagnostics": search_diagnostics,
         "quantitativeAnalysisManifest": quantitative_manifest,
         "quantitativeAnalysisDiagnostics": quantitative_diagnostics,
+        "uncertaintyInvestigationManifest": uncertainty_manifest,
+        "uncertaintyInvestigationDiagnostics": uncertainty_diagnostics,
         "platformCore": core,
         "platformCoreError": core_error,
     }

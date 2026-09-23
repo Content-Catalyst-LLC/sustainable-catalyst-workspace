@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.16.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.17.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "uncertaintyInvestigationWorkspace": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace"
+  },
+  "uncertaintyAssessmentStore": {
+    "method": "POST",
+    "path": "/v1/uncertainty-investigation-workspace/assessments"
+  },
+  "uncertaintyAssessments": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/assessments"
+  },
+  "uncertaintyAssessment": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/assessments/{assessment_id}"
+  },
+  "uncertaintyAssessmentRevisions": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/assessments/{assessment_id}/revisions"
+  },
+  "uncertaintyParameterCreate": {
+    "method": "POST",
+    "path": "/v1/uncertainty-investigation-workspace/parameters"
+  },
+  "uncertaintyParameters": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/parameters"
+  },
+  "uncertaintyScenarioCreate": {
+    "method": "POST",
+    "path": "/v1/uncertainty-investigation-workspace/scenarios"
+  },
+  "uncertaintyScenarios": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/scenarios"
+  },
+  "sensitivityAnalysisRequestCreate": {
+    "method": "POST",
+    "path": "/v1/uncertainty-investigation-workspace/sensitivity-requests"
+  },
+  "sensitivityAnalysisRequests": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/sensitivity-requests"
+  },
+  "probabilisticResultBindingCreate": {
+    "method": "POST",
+    "path": "/v1/uncertainty-investigation-workspace/result-bindings"
+  },
+  "probabilisticResultBindings": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/result-bindings"
+  },
+  "uncertaintyInvestigationManifest": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/projects/{project_id}/manifest"
+  },
+  "uncertaintyInvestigationGraph": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/projects/{project_id}/graph"
+  },
+  "uncertaintyInvestigationDiagnostics": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/projects/{project_id}/diagnostics"
+  },
+  "uncertaintyInvestigationSnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots"
+  },
+  "uncertaintyInvestigationSnapshots": {
+    "method": "GET",
+    "path": "/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots"
+  },
   "quantitativeAnalysisWorkspace": {
     "method": "GET",
     "path": "/v1/quantitative-analysis-workspace"

@@ -2387,3 +2387,116 @@ class QuantitativeAnalysisSnapshot(Base):
     issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+# v3.17.0 Uncertainty, Sensitivity & Probabilistic Investigation Workspace
+class UncertaintyAssessmentHead(Base):
+    __tablename__ = "workspace_uncertainty_assessment_heads"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    assessment_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    method_family: Mapped[str] = mapped_column(String(80), nullable=False)
+    assumptions_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    assessment_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+class UncertaintyAssessmentRevision(Base):
+    __tablename__ = "workspace_uncertainty_assessment_revisions"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    assessment_id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    revision: Mapped[int] = mapped_column(Integer, primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    method_family: Mapped[str] = mapped_column(String(80), nullable=False)
+    assumptions_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    assessment_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class UncertaintyParameter(Base):
+    __tablename__ = "workspace_uncertainty_parameters"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    parameter_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    assessment_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    name: Mapped[str] = mapped_column(String(240), nullable=False)
+    role: Mapped[str] = mapped_column(String(64), nullable=False)
+    distribution: Mapped[str] = mapped_column(String(80), nullable=False)
+    distribution_parameters_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    units: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    evidence_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    evidence_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    parameter_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class UncertaintyScenario(Base):
+    __tablename__ = "workspace_uncertainty_scenarios"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    scenario_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    assessment_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    weight: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    parameter_overrides_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    evidence_refs_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    scenario_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class SensitivityAnalysisRequestRecord(Base):
+    __tablename__ = "workspace_sensitivity_analysis_requests"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    assessment_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    method: Mapped[str] = mapped_column(String(80), nullable=False)
+    destination_product: Mapped[str] = mapped_column(String(80), nullable=False)
+    output_metrics_json: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    configuration_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="ready")
+    request_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    external_handoff_ref: Mapped[str] = mapped_column(String(2000), nullable=False, default="")
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class ProbabilisticResultBinding(Base):
+    __tablename__ = "workspace_probabilistic_result_bindings"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    binding_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    assessment_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    result_kind: Mapped[str] = mapped_column(String(80), nullable=False)
+    result_ref: Mapped[str] = mapped_column(String(2000), nullable=False)
+    result_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    interpretation_status: Mapped[str] = mapped_column(String(40), nullable=False, default="reported")
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    binding_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+class UncertaintyInvestigationSnapshot(Base):
+    __tablename__ = "workspace_uncertainty_investigation_snapshots"
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    snapshot_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    manifest_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    diagnostics_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    graph_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    snapshot_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    assessment_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    parameter_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    scenario_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sensitivity_request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_binding_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
