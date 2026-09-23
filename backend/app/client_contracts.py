@@ -6,6 +6,25 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "mediaProvenanceWorkspace": {"method":"GET","path":"/v1/media-provenance-workspace"},
+    "mediaArtifactStore": {"method":"POST","path":"/v1/media-provenance-workspace/artifacts"},
+    "mediaArtifacts": {"method":"GET","path":"/v1/media-provenance-workspace/artifacts"},
+    "mediaArtifact": {"method":"GET","path":"/v1/media-provenance-workspace/artifacts/{artifact_id}"},
+    "mediaArtifactRevisions": {"method":"GET","path":"/v1/media-provenance-workspace/artifacts/{artifact_id}/revisions"},
+    "mediaLocatorCreate": {"method":"POST","path":"/v1/media-provenance-workspace/locators"},
+    "mediaLocators": {"method":"GET","path":"/v1/media-provenance-workspace/locators"},
+    "mediaDerivativeCreate": {"method":"POST","path":"/v1/media-provenance-workspace/derivatives"},
+    "mediaDerivatives": {"method":"GET","path":"/v1/media-provenance-workspace/derivatives"},
+    "mediaContextLinkCreate": {"method":"POST","path":"/v1/media-provenance-workspace/context-links"},
+    "mediaContextLinks": {"method":"GET","path":"/v1/media-provenance-workspace/context-links"},
+    "mediaRelationCreate": {"method":"POST","path":"/v1/media-provenance-workspace/relations"},
+    "mediaRelations": {"method":"GET","path":"/v1/media-provenance-workspace/relations"},
+    "mediaProvenanceGraph": {"method":"GET","path":"/v1/media-provenance-workspace/projects/{project_id}/graph"},
+    "mediaDiagnostics": {"method":"GET","path":"/v1/media-provenance-workspace/projects/{project_id}/diagnostics"},
+    "mediaIntegrity": {"method":"GET","path":"/v1/media-provenance-workspace/projects/{project_id}/integrity"},
+    "mediaSnapshotCreate": {"method":"POST","path":"/v1/media-provenance-workspace/projects/{project_id}/snapshots"},
+    "mediaSnapshots": {"method":"GET","path":"/v1/media-provenance-workspace/projects/{project_id}/snapshots"},
+
     "spatialEvidenceWorkspace": {"method":"GET","path":"/v1/spatial-evidence-workspace"},
     "spatialObservationStore": {"method":"POST","path":"/v1/spatial-evidence-workspace/observations"},
     "spatialObservations": {"method":"GET","path":"/v1/spatial-evidence-workspace/observations"},
@@ -173,6 +192,12 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "visualizationReceipts": {"method": "GET", "path": "/v1/visualization-spec-receipts"},
 }
 REQUEST_SCHEMAS = {
+    "mediaArtifactStore": "sc-workspace-investigation-media-artifact-request/1.0",
+    "mediaLocatorCreate": "sc-workspace-investigation-media-locator-request/1.0",
+    "mediaDerivativeCreate": "sc-workspace-investigation-media-derivative-request/1.0",
+    "mediaContextLinkCreate": "sc-workspace-investigation-media-context-link-request/1.0",
+    "mediaRelationCreate": "sc-workspace-investigation-media-relation-request/1.0",
+    "mediaSnapshotCreate": "sc-workspace-investigation-media-snapshot-request/1.0",
     "documentStore": "sc-workspace-investigation-document-request/1.0",
     "documentExcerptCreate": "sc-workspace-investigation-document-excerpt-request/1.0",
     "testimonyStore": "sc-workspace-investigation-testimony-request/1.0",
@@ -237,7 +262,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.12.0",
+        "workspaceVersion": "3.13.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

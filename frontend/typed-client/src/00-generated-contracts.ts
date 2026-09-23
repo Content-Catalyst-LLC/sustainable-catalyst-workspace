@@ -1,5 +1,77 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.12.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.13.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "mediaProvenanceWorkspace": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace"
+  },
+  "mediaArtifactStore": {
+    "method": "POST",
+    "path": "/v1/media-provenance-workspace/artifacts"
+  },
+  "mediaArtifacts": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/artifacts"
+  },
+  "mediaArtifact": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/artifacts/{artifact_id}"
+  },
+  "mediaArtifactRevisions": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/artifacts/{artifact_id}/revisions"
+  },
+  "mediaLocatorCreate": {
+    "method": "POST",
+    "path": "/v1/media-provenance-workspace/locators"
+  },
+  "mediaLocators": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/locators"
+  },
+  "mediaDerivativeCreate": {
+    "method": "POST",
+    "path": "/v1/media-provenance-workspace/derivatives"
+  },
+  "mediaDerivatives": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/derivatives"
+  },
+  "mediaContextLinkCreate": {
+    "method": "POST",
+    "path": "/v1/media-provenance-workspace/context-links"
+  },
+  "mediaContextLinks": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/context-links"
+  },
+  "mediaRelationCreate": {
+    "method": "POST",
+    "path": "/v1/media-provenance-workspace/relations"
+  },
+  "mediaRelations": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/relations"
+  },
+  "mediaProvenanceGraph": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/projects/{project_id}/graph"
+  },
+  "mediaDiagnostics": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/projects/{project_id}/diagnostics"
+  },
+  "mediaIntegrity": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/projects/{project_id}/integrity"
+  },
+  "mediaSnapshotCreate": {
+    "method": "POST",
+    "path": "/v1/media-provenance-workspace/projects/{project_id}/snapshots"
+  },
+  "mediaSnapshots": {
+    "method": "GET",
+    "path": "/v1/media-provenance-workspace/projects/{project_id}/snapshots"
+  },
   "spatialEvidenceWorkspace": {
     "method": "GET",
     "path": "/v1/spatial-evidence-workspace"

@@ -23,6 +23,7 @@ from .investigation_timeline_workspace import build_timeline as investigation_ti
 from .investigation_entity_workspace import build_entity_graph as investigation_entity_graph, resolution_diagnostics as investigation_entity_diagnostics
 from .investigation_documentary_workspace import build_documentary_graph as investigation_documentary_graph, documentary_analysis as investigation_documentary_analysis
 from .investigation_spatial_workspace import build_spatial_graph as investigation_spatial_graph, spatial_diagnostics as investigation_spatial_diagnostics
+from .investigation_media_workspace import build_media_graph as investigation_media_graph, media_diagnostics as investigation_media_diagnostics, media_integrity as investigation_media_integrity
 from .utils import iso, sha256_hex
 
 CONTEXT_SCHEMA = "sc-workspace-unified-research-project-context/1.0"
@@ -49,7 +50,7 @@ def profile() -> dict[str, Any]:
         "includedDomains": [
             "project", "notebooks", "artifacts", "datasets", "models",
             "scientificObjects", "executionRuns", "visualizations",
-            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "platformCoreSession",
+            "studyPackages", "researchHandoffs", "researchSessionBindings", "executionProvenance", "visualResearchWorkspace", "investigativeResearchWorkspace", "investigationGraphWorkspace", "investigationTimelineWorkspace", "investigationEntityResolutionWorkspace", "investigationDocumentaryEvidenceWorkspace", "investigationSpatialEvidenceWorkspace", "investigationMediaProvenanceWorkspace", "platformCoreSession",
         ],
         "automaticScientificInference": False,
         "automaticEvidenceRanking": False,
@@ -101,6 +102,9 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
     documentary_analysis = investigation_documentary_analysis(db, user_key, project_id)
     spatial_graph = investigation_spatial_graph(db, user_key, project_id, False)
     spatial_diagnostics = investigation_spatial_diagnostics(db, user_key, project_id)
+    media_graph = investigation_media_graph(db, user_key, project_id, False)
+    media_diagnostics = investigation_media_diagnostics(db, user_key, project_id)
+    media_integrity = investigation_media_integrity(db, user_key, project_id)
     core: dict[str, Any] | None = None
     core_error = ""
     if include_core_views:
@@ -162,6 +166,12 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationSpatialContextLinks": int(spatial_graph.get("contextLinkCount") or 0),
         "investigationSpatialRelations": int(spatial_graph.get("relationCount") or 0),
         "investigationSpatialIssues": int(spatial_diagnostics.get("issueCount") or 0),
+        "investigationMediaArtifacts": int(media_graph.get("artifactCount") or 0),
+        "investigationMediaLocators": int(media_graph.get("locatorCount") or 0),
+        "investigationMediaDerivatives": int(media_graph.get("derivativeCount") or 0),
+        "investigationMediaContextLinks": int(media_graph.get("contextLinkCount") or 0),
+        "investigationMediaRelations": int(media_graph.get("relationCount") or 0),
+        "investigationMediaIssues": int(media_diagnostics.get("issueCount") or 0),
         "platformCoreSession": 1 if core else 0,
     }
     item = {
@@ -195,6 +205,9 @@ def build_context(db: Session, user_key: str, project_id: str, include_core_view
         "investigationDocumentaryAnalysis": documentary_analysis,
         "investigationSpatialEvidenceWorkspace": spatial_graph,
         "investigationSpatialDiagnostics": spatial_diagnostics,
+        "investigationMediaProvenanceWorkspace": media_graph,
+        "investigationMediaDiagnostics": media_diagnostics,
+        "investigationMediaIntegrity": media_integrity,
         "platformCore": core,
         "platformCoreError": core_error,
     }

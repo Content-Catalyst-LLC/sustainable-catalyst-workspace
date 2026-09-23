@@ -190,6 +190,10 @@ from .investigation_spatial_workspace import (
     profile as spatial_evidence_workspace_profile, InvestigationSpatialObservationRequest, InvestigationSpatialContextLinkRequest, InvestigationSpatialRelationRequest, InvestigationSpatialSnapshotRequest,
     store_observation as store_spatial_observation, list_observations as list_spatial_observations, get_observation as get_spatial_observation, observation_revisions as spatial_observation_revisions,
     create_context_link as create_spatial_context_link, list_context_links as list_spatial_context_links, create_spatial_relation, list_spatial_relations, map_projection as spatial_map_projection, build_spatial_graph, spatial_diagnostics, create_spatial_snapshot, list_spatial_snapshots)
+from .investigation_media_workspace import (
+    MEDIA_WORKSPACE_SCHEMA, profile as media_provenance_workspace_profile, InvestigationMediaArtifactRequest, InvestigationMediaLocatorRequest, InvestigationMediaDerivativeRequest, InvestigationMediaContextLinkRequest, InvestigationMediaRelationRequest, InvestigationMediaSnapshotRequest,
+    store_artifact as store_media_artifact, list_artifacts as list_media_artifacts, get_artifact as get_media_artifact, artifact_revisions as media_artifact_revisions, create_locator as create_media_locator, list_locators as list_media_locators,
+    create_derivative as create_media_derivative, list_derivatives as list_media_derivatives, create_context_link as create_media_context_link, list_context_links as list_media_context_links, create_media_relation, list_media_relations, build_media_graph, media_diagnostics, media_integrity, create_media_snapshot, list_media_snapshots)
 
 
 @asynccontextmanager
@@ -438,7 +442,7 @@ def health():
         "productionArchitectureCertificationSchema": "sc-workspace-production-architecture-certification/1.0",
         "architectureCertificationAutomated": True,
         "liveProductionCertificationAutomatic": False,
-        "rollbackBaseline": "3.11.0",
+        "rollbackBaseline": "3.12.0",
         "backendNativeScientificWorkspace": True,
         "backendNativeScientificWorkspaceSchema": "sc-workspace-backend-native-scientific-workspace/1.0",
         "platformCoreV3UnifiedResearchRuntimeIntegration": True,
@@ -507,6 +511,24 @@ def health():
         "spatialAutomaticEvidenceRanking": False,
         "spatialAutomaticCulpabilityInference": False,
         "spatialAutomaticNarrativeSelection": False,
+        "mediaArtifactDerivativeProvenanceWorkspace": True,
+        "mediaProvenanceWorkspaceSchema": MEDIA_WORKSPACE_SCHEMA,
+        "mediaVersionedArtifacts": True,
+        "mediaContentHashRequired": True,
+        "mediaLocatorPreservingReferences": True,
+        "mediaExplicitDerivativeLineage": True,
+        "mediaHumanAssertedContextLinks": True,
+        "mediaHumanAssertedRelations": True,
+        "mediaImmutableSnapshots": True,
+        "mediaAutomaticSimilarityMatching": False,
+        "mediaAutomaticDerivativeInference": False,
+        "mediaAutomaticAuthenticityDetermination": False,
+        "mediaAutomaticIdentityInference": False,
+        "mediaAutomaticCausalityInference": False,
+        "mediaAutomaticTruthDetermination": False,
+        "mediaAutomaticEvidenceRanking": False,
+        "mediaAutomaticCulpabilityInference": False,
+        "mediaAutomaticNarrativeSelection": False,
         "documentaryEvidenceWorkspaceSchema": DOCUMENTARY_WORKSPACE_SCHEMA,
         "documentaryVersionedDocuments": True,
         "documentaryLocatorPreservingExcerpts": True,
@@ -523,7 +545,7 @@ def health():
         "unifiedResearchProjectContextSchema": UNIFIED_RESEARCH_CONTEXT_SCHEMA,
         "researchContextImmutableSnapshots": True,
         "researchContextSpecialistAuthorityPreserved": True,
-        "releaseMigrationLineage": "043_spatial_evidence_geospatial_investigation_workspace.sql",
+        "releaseMigrationLineage": "044_media_artifact_image_video_derivative_provenance_workspace.sql",
         "signedInLocalCanonicalFallback": False,
         "backendNativeBootstrap": True,
         "automaticReproductionExecution": False,
@@ -2989,3 +3011,71 @@ def spatial_snapshot_store(project_id:str,payload:InvestigationSpatialSnapshotRe
 @app.get("/v1/spatial-evidence-workspace/projects/{project_id}/snapshots")
 def spatial_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db: return {"ok":True,"items":list_spatial_snapshots(db,identity.user_key,project_id,limit)}
+
+
+@app.get("/v1/media-provenance-workspace")
+def media_provenance_workspace(identity:ServiceIdentity=Depends(require_service_identity)): return {"ok":True,"schema":"sc-workspace-media-provenance-workspace-response/1.0","item":media_provenance_workspace_profile()}
+@app.post("/v1/media-provenance-workspace/artifacts")
+def media_artifact_store(payload:InvestigationMediaArtifactRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":store_media_artifact(db,identity.user_key,payload)}
+    except (KeyError,ValueError) as exc: raise HTTPException(status_code=409,detail=str(exc))
+@app.get("/v1/media-provenance-workspace/artifacts")
+def media_artifacts(projectId:str|None=None,mediaType:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_media_artifacts(db,identity.user_key,projectId,mediaType,limit)}
+@app.get("/v1/media-provenance-workspace/artifacts/{artifact_id}")
+def media_artifact(artifact_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        x=get_media_artifact(db,identity.user_key,artifact_id)
+        if x is None: raise HTTPException(status_code=404,detail="media artifact not found")
+        return {"ok":True,"item":x}
+@app.get("/v1/media-provenance-workspace/artifacts/{artifact_id}/revisions")
+def media_artifact_history(artifact_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":media_artifact_revisions(db,identity.user_key,artifact_id,limit)}
+@app.post("/v1/media-provenance-workspace/locators")
+def media_locator_store(payload:InvestigationMediaLocatorRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_media_locator(db,identity.user_key,payload)}
+    except ValueError as exc: raise HTTPException(status_code=409,detail=str(exc))
+@app.get("/v1/media-provenance-workspace/locators")
+def media_locators(projectId:str|None=None,artifactId:str|None=None,limit:int=Query(2000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_media_locators(db,identity.user_key,projectId,artifactId,limit)}
+@app.post("/v1/media-provenance-workspace/derivatives")
+def media_derivative_store(payload:InvestigationMediaDerivativeRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_media_derivative(db,identity.user_key,payload)}
+    except ValueError as exc: raise HTTPException(status_code=409,detail=str(exc))
+@app.get("/v1/media-provenance-workspace/derivatives")
+def media_derivatives(projectId:str|None=None,artifactId:str|None=None,limit:int=Query(2000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_media_derivatives(db,identity.user_key,projectId,artifactId,limit)}
+@app.post("/v1/media-provenance-workspace/context-links")
+def media_context_link_store(payload:InvestigationMediaContextLinkRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_media_context_link(db,identity.user_key,payload)}
+    except ValueError as exc: raise HTTPException(status_code=409,detail=str(exc))
+@app.get("/v1/media-provenance-workspace/context-links")
+def media_context_links(projectId:str|None=None,artifactId:str|None=None,targetRef:str|None=None,limit:int=Query(3000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_media_context_links(db,identity.user_key,projectId,artifactId,targetRef,limit)}
+@app.post("/v1/media-provenance-workspace/relations")
+def media_relation_store(payload:InvestigationMediaRelationRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    try:
+        with session_scope() as db:return {"ok":True,"item":create_media_relation(db,identity.user_key,payload)}
+    except ValueError as exc: raise HTTPException(status_code=409,detail=str(exc))
+@app.get("/v1/media-provenance-workspace/relations")
+def media_relations(projectId:str|None=None,artifactId:str|None=None,limit:int=Query(3000,ge=1,le=10000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_media_relations(db,identity.user_key,projectId,artifactId,limit)}
+@app.get("/v1/media-provenance-workspace/projects/{project_id}/graph")
+def media_project_graph(project_id:str,includeSpatialGraph:bool=True,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":build_media_graph(db,identity.user_key,project_id,includeSpatialGraph)}
+@app.get("/v1/media-provenance-workspace/projects/{project_id}/diagnostics")
+def media_project_diagnostics(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":media_diagnostics(db,identity.user_key,project_id)}
+@app.get("/v1/media-provenance-workspace/projects/{project_id}/integrity")
+def media_project_integrity(project_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":media_integrity(db,identity.user_key,project_id)}
+@app.post("/v1/media-provenance-workspace/projects/{project_id}/snapshots")
+def media_snapshot_store(project_id:str,payload:InvestigationMediaSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"item":create_media_snapshot(db,identity.user_key,project_id,payload)}
+@app.get("/v1/media-provenance-workspace/projects/{project_id}/snapshots")
+def media_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:return {"ok":True,"items":list_media_snapshots(db,identity.user_key,project_id,limit)}
