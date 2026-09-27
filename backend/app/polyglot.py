@@ -63,7 +63,8 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.linear-forward", "workspace.neural.mlp-forward",
         "workspace.neural.tensor-contract", "workspace.neural.dataset-manifest",
         "workspace.neural.batch-plan", "workspace.neural.transformation-apply",
-    ), "Hardened PyTorch neural runtime for bounded declarative tensor/model execution plus governed tensor contracts, dataset manifests, deterministic batch plans, and transformation lineage; training and arbitrary code execution remain disabled in v3.21.0."),
+        "workspace.neural.training-plan", "workspace.neural.train-linear", "workspace.neural.train-mlp",
+    ), "Hardened PyTorch neural runtime for bounded declarative tensor/model execution, governed data interchange, and CPU-bounded linear/MLP training jobs with deterministic telemetry; arbitrary code, checkpoint persistence, resume, and accelerator execution remain disabled in v3.22.0."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -362,13 +363,32 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         })
         store_run_output(db,row.user_key,run_id,output_payload)
     finished=datetime.now(timezone.utc)
+    receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
+    if language == "neural" and row.operation in {"workspace.neural.train-linear","workspace.neural.train-mlp"}:
+        remote_body = result.get("remote") if isinstance(result, dict) and isinstance(result.get("remote"), dict) else {}
+        neural_result = remote_body.get("result") if isinstance(remote_body.get("result"), dict) else {}
+        training_run = neural_result.get("trainingRun") if isinstance(neural_result.get("trainingRun"), dict) else {}
+        receipt_details.update({
+            "neuralTraining":True,
+            "trainingRunSchema":training_run.get("schema"),
+            "modelType":training_run.get("modelType"),
+            "task":training_run.get("task"),
+            "seed":training_run.get("seed"),
+            "requestedEpochs":training_run.get("requestedEpochs"),
+            "completedEpochs":training_run.get("completedEpochs"),
+            "stoppedReason":training_run.get("stoppedReason"),
+            "trainingSpecFingerprint":neural_result.get("trainingSpecFingerprint"),
+            "trainingDatasetFingerprint":neural_result.get("trainingDatasetFingerprint"),
+            "trainedModelSpecFingerprint":neural_result.get("trainedModelSpecFingerprint"),
+            "checkpointPersistenceEnabled":False,
+        })
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,
         language=language, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation,
         request_fingerprint=row.request_fingerprint, result_artifact_id=artifact.artifact_id,
         result_sha256=artifact.sha256, result_bytes=artifact.bytes,
         transport=RUNTIME_BY_LANGUAGE[language].transport, status="succeeded",
-        started_at=started, finished_at=finished, details_json={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
+        started_at=started, finished_at=finished, details_json=receipt_details
     )
     db.add(receipt); db.flush()
     # Commit the language-neutral execution receipt before specialist receipt enrichment.

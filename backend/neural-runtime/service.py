@@ -5,6 +5,7 @@ import hmac
 import json
 import math
 import os
+import time
 from typing import Any
 
 import torch
@@ -12,7 +13,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.21.0"
+SERVICE_VERSION = "3.22.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -22,7 +23,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.21.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.22.0 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -33,6 +34,9 @@ OPERATIONS = {
     "workspace.neural.dataset-manifest",
     "workspace.neural.batch-plan",
     "workspace.neural.transformation-apply",
+    "workspace.neural.training-plan",
+    "workspace.neural.train-linear",
+    "workspace.neural.train-mlp",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -51,6 +55,17 @@ ALLOWED_ACTIVATIONS = {"identity", "relu", "sigmoid", "tanh", "softmax"}
 ALLOWED_TRANSFORMS = {"identity", "cast", "standardize", "minmax", "clip", "select-columns"}
 MAX_TRANSFORMS = 16
 MAX_FEATURE_NAMES = 4096
+MAX_TRAINING_EPOCHS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_TRAINING_EPOCHS", "200")), 1000))
+MAX_TRAINING_ROWS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_TRAINING_ROWS", "8192")), 50000))
+MAX_TRAINING_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_TRAINING_PARAMETERS", "250000")), MAX_PARAMETERS))
+MAX_TRAINING_SECONDS = max(1.0, min(float(os.getenv("SC_WORKSPACE_NEURAL_MAX_TRAINING_SECONDS", "30")), 300.0))
+MAX_HIDDEN_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_HIDDEN_LAYERS", "8")), MAX_LAYERS))
+MAX_HIDDEN_UNITS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_HIDDEN_UNITS", "1024")), MAX_FEATURES))
+TRAIN_THREADS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_TRAIN_THREADS", "2")), 8))
+torch.set_num_threads(TRAIN_THREADS)
+ALLOWED_TRAINING_TASKS = {"regression", "binary-classification", "multiclass-classification"}
+ALLOWED_OPTIMIZERS = {"sgd", "adam"}
+ALLOWED_TRAINING_ACTIVATIONS = {"identity", "relu", "sigmoid", "tanh"}
 
 app = FastAPI(title=SERVICE, version=SERVICE_VERSION, docs_url=None, redoc_url=None)
 
@@ -480,6 +495,309 @@ def _transformation_apply(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def _positive_int(value: Any, *, name: str, minimum: int, maximum: int) -> int:
+    try:
+        out = int(value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"{name} must be an integer") from exc
+    if out < minimum or out > maximum:
+        raise HTTPException(status_code=400, detail=f"{name} is outside the supported range")
+    return out
+
+
+def _finite_float(value: Any, *, name: str, minimum: float | None = None, maximum: float | None = None) -> float:
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=f"{name} must be numeric") from exc
+    if not math.isfinite(out):
+        raise HTTPException(status_code=400, detail=f"{name} must be finite")
+    if minimum is not None and out < minimum:
+        raise HTTPException(status_code=400, detail=f"{name} is below the supported range")
+    if maximum is not None and out > maximum:
+        raise HTTPException(status_code=400, detail=f"{name} is above the supported range")
+    return out
+
+
+def _normalized_training_spec(payload: dict[str, Any], *, expected_model_type: str | None = None) -> dict[str, Any]:
+    spec = payload.get("trainingSpec")
+    if not isinstance(spec, dict) or spec.get("schema") != "sc-workspace-neural-training-spec/1.0":
+        raise HTTPException(status_code=400, detail="trainingSpec must use sc-workspace-neural-training-spec/1.0")
+    task = str(spec.get("task") or "regression").strip().lower()
+    if task not in ALLOWED_TRAINING_TASKS:
+        raise HTTPException(status_code=400, detail="training task is not registered")
+    model_type = str(spec.get("modelType") or expected_model_type or "mlp").strip().lower()
+    if model_type not in {"linear", "mlp"}:
+        raise HTTPException(status_code=400, detail="training modelType must be linear or mlp")
+    if expected_model_type and model_type != expected_model_type:
+        raise HTTPException(status_code=400, detail=f"operation requires modelType={expected_model_type}")
+    input_features = _positive_int(spec.get("inputFeatures"), name="trainingSpec.inputFeatures", minimum=1, maximum=MAX_FEATURES)
+    output_features = _positive_int(spec.get("outputFeatures", 1), name="trainingSpec.outputFeatures", minimum=1, maximum=MAX_FEATURES)
+    if task == "binary-classification" and output_features != 1:
+        raise HTTPException(status_code=400, detail="binary classification requires outputFeatures=1")
+    if task == "multiclass-classification" and output_features < 2:
+        raise HTTPException(status_code=400, detail="multiclass classification requires outputFeatures>=2")
+    hidden_raw = spec.get("hiddenLayers") or []
+    if not isinstance(hidden_raw, list):
+        raise HTTPException(status_code=400, detail="trainingSpec.hiddenLayers must be an array")
+    if model_type == "linear" and hidden_raw:
+        raise HTTPException(status_code=400, detail="linear training does not accept hiddenLayers")
+    if len(hidden_raw) > MAX_HIDDEN_LAYERS:
+        raise HTTPException(status_code=413, detail="hidden layer count exceeds the bounded training limit")
+    hidden: list[dict[str, Any]] = []
+    for index, item in enumerate(hidden_raw):
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail=f"trainingSpec.hiddenLayers[{index}] must be an object")
+        units = _positive_int(item.get("units"), name=f"trainingSpec.hiddenLayers[{index}].units", minimum=1, maximum=MAX_HIDDEN_UNITS)
+        activation = str(item.get("activation") or "relu").strip().lower()
+        if activation not in ALLOWED_TRAINING_ACTIVATIONS:
+            raise HTTPException(status_code=400, detail=f"trainingSpec.hiddenLayers[{index}].activation is not registered")
+        hidden.append({"units": units, "activation": activation})
+    if model_type == "mlp" and not hidden:
+        raise HTTPException(status_code=400, detail="MLP training requires at least one hidden layer")
+    optimizer_raw = spec.get("optimizer") or {}
+    if not isinstance(optimizer_raw, dict):
+        raise HTTPException(status_code=400, detail="trainingSpec.optimizer must be an object")
+    optimizer_name = str(optimizer_raw.get("name") or "adam").strip().lower()
+    if optimizer_name not in ALLOWED_OPTIMIZERS:
+        raise HTTPException(status_code=400, detail="optimizer is not registered")
+    learning_rate = _finite_float(optimizer_raw.get("learningRate", 0.01 if optimizer_name == "sgd" else 0.001), name="optimizer.learningRate", minimum=1e-8, maximum=10.0)
+    weight_decay = _finite_float(optimizer_raw.get("weightDecay", 0.0), name="optimizer.weightDecay", minimum=0.0, maximum=10.0)
+    epochs = _positive_int(spec.get("epochs", 10), name="trainingSpec.epochs", minimum=1, maximum=MAX_TRAINING_EPOCHS)
+    batch_size = _positive_int(spec.get("batchSize", min(32, MAX_BATCH)), name="trainingSpec.batchSize", minimum=1, maximum=MAX_BATCH)
+    shuffle = bool(spec.get("shuffle", True))
+    validation_enabled = bool(payload.get("validationFeatures") is not None or payload.get("validationTargets") is not None)
+    if (payload.get("validationFeatures") is None) != (payload.get("validationTargets") is None):
+        raise HTTPException(status_code=400, detail="validationFeatures and validationTargets must be provided together")
+    normalized = {
+        "schema": "sc-workspace-neural-training-spec/1.0",
+        "modelType": model_type,
+        "task": task,
+        "inputFeatures": input_features,
+        "hiddenLayers": hidden,
+        "outputFeatures": output_features,
+        "optimizer": {"name": optimizer_name, "learningRate": learning_rate, "weightDecay": weight_decay},
+        "epochs": epochs,
+        "batchSize": batch_size,
+        "shuffle": shuffle,
+        "validationEnabled": validation_enabled,
+        "device": DEVICE,
+    }
+    return normalized
+
+
+def _parameter_count_for_training(spec: dict[str, Any]) -> int:
+    dims = [int(spec["inputFeatures"])] + [int(x["units"]) for x in spec["hiddenLayers"]] + [int(spec["outputFeatures"])]
+    total = 0
+    for a, b in zip(dims[:-1], dims[1:]):
+        total += a * b + b
+    return total
+
+
+def _training_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    spec = _normalized_training_spec(payload)
+    parameter_count = _parameter_count_for_training(spec)
+    if parameter_count > MAX_TRAINING_PARAMETERS:
+        raise HTTPException(status_code=413, detail="training parameter count exceeds the bounded training limit")
+    plan = {
+        **spec,
+        "parameterCount": parameter_count,
+        "maxTrainingRows": MAX_TRAINING_ROWS,
+        "maxTrainingParameters": MAX_TRAINING_PARAMETERS,
+        "maxTrainingSeconds": MAX_TRAINING_SECONDS,
+        "threadLimit": TRAIN_THREADS,
+        "checkpointPersistenceEnabled": False,
+        "resumeTrainingEnabled": False,
+        "acceleratorExecutionEnabled": False,
+        "arbitraryCodeExecution": False,
+    }
+    return {
+        "kind": "neural-training-plan",
+        "plan": plan,
+        "trainingSpecFingerprint": _canonical_sha256(spec),
+        "planFingerprint": _canonical_sha256(plan),
+    }
+
+
+def _activation_module(name: str) -> torch.nn.Module:
+    if name == "relu": return torch.nn.ReLU()
+    if name == "sigmoid": return torch.nn.Sigmoid()
+    if name == "tanh": return torch.nn.Tanh()
+    return torch.nn.Identity()
+
+
+def _build_training_model(spec: dict[str, Any]) -> torch.nn.Module:
+    layers: list[torch.nn.Module] = []
+    current = int(spec["inputFeatures"])
+    for hidden in spec["hiddenLayers"]:
+        units = int(hidden["units"])
+        layers.append(torch.nn.Linear(current, units))
+        layers.append(_activation_module(str(hidden["activation"])))
+        current = units
+    layers.append(torch.nn.Linear(current, int(spec["outputFeatures"])))
+    return torch.nn.Sequential(*layers).to(DEVICE)
+
+
+def _training_tensors(payload: dict[str, Any], spec: dict[str, Any], *, validation: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
+    prefix = "validation" if validation else ""
+    features_key = "validationFeatures" if validation else "features"
+    targets_key = "validationTargets" if validation else "targets"
+    x = _tensor(payload.get(features_key), name=features_key, dtype_name="float32", ndim=2)
+    if int(x.shape[0]) < 2 or int(x.shape[0]) > MAX_TRAINING_ROWS:
+        raise HTTPException(status_code=413, detail=f"{features_key} row count is outside the bounded training range")
+    if int(x.shape[1]) != int(spec["inputFeatures"]):
+        raise HTTPException(status_code=400, detail=f"{features_key} feature count does not match trainingSpec.inputFeatures")
+    task = spec["task"]
+    if task == "multiclass-classification":
+        y = _tensor(payload.get(targets_key), name=targets_key, dtype_name="int64")
+        if y.ndim == 2 and int(y.shape[1]) == 1: y = y.reshape(-1)
+        if y.ndim != 1:
+            raise HTTPException(status_code=400, detail=f"{targets_key} must be rank 1 for multiclass classification")
+        if y.numel() and (int(y.min().item()) < 0 or int(y.max().item()) >= int(spec["outputFeatures"])):
+            raise HTTPException(status_code=400, detail=f"{targets_key} contains a class outside outputFeatures")
+    else:
+        y = _tensor(payload.get(targets_key), name=targets_key, dtype_name="float32")
+        if y.ndim == 1: y = y.reshape(-1, 1)
+        if y.ndim != 2:
+            raise HTTPException(status_code=400, detail=f"{targets_key} must be rank 1 or rank 2")
+        expected_outputs = 1 if task == "binary-classification" else int(spec["outputFeatures"])
+        if int(y.shape[1]) != expected_outputs:
+            raise HTTPException(status_code=400, detail=f"{targets_key} output width does not match the training task")
+        if task == "binary-classification" and y.numel() and bool(((y < 0) | (y > 1)).any()):
+            raise HTTPException(status_code=400, detail=f"{targets_key} must be in [0,1] for binary classification")
+    if int(x.shape[0]) != int(y.shape[0]):
+        raise HTTPException(status_code=400, detail=f"{features_key} and {targets_key} row counts must match")
+    return x, y
+
+
+def _loss_function(task: str) -> torch.nn.Module:
+    if task == "binary-classification": return torch.nn.BCEWithLogitsLoss()
+    if task == "multiclass-classification": return torch.nn.CrossEntropyLoss()
+    return torch.nn.MSELoss()
+
+
+def _optimizer(model: torch.nn.Module, spec: dict[str, Any]) -> torch.optim.Optimizer:
+    cfg = spec["optimizer"]
+    kwargs = {"lr": float(cfg["learningRate"]), "weight_decay": float(cfg["weightDecay"])}
+    if cfg["name"] == "sgd": return torch.optim.SGD(model.parameters(), **kwargs)
+    return torch.optim.Adam(model.parameters(), **kwargs)
+
+
+def _metrics_from_logits(logits: torch.Tensor, targets: torch.Tensor, task: str, loss_value: float) -> dict[str, Any]:
+    metrics: dict[str, Any] = {"loss": float(loss_value)}
+    if task == "binary-classification":
+        pred = (torch.sigmoid(logits) >= 0.5).to(targets.dtype)
+        metrics["accuracy"] = float((pred == targets).to(torch.float32).mean().item())
+    elif task == "multiclass-classification":
+        pred = torch.argmax(logits, dim=1)
+        metrics["accuracy"] = float((pred == targets).to(torch.float32).mean().item())
+    else:
+        residual = (logits - targets).detach()
+        metrics["mae"] = float(torch.mean(torch.abs(residual)).item())
+        metrics["rmse"] = float(torch.sqrt(torch.mean(residual * residual)).item())
+    return metrics
+
+
+def _export_trained_model_spec(model: torch.nn.Sequential, spec: dict[str, Any]) -> dict[str, Any]:
+    linear_modules = [m for m in model if isinstance(m, torch.nn.Linear)]
+    if spec["modelType"] == "linear":
+        layer = linear_modules[0]
+        return {
+            "schema": "sc-workspace-neural-model-spec/1.0", "modelType": "linear",
+            "weights": _tensor_json(layer.weight), "bias": _tensor_json(layer.bias), "activation": "identity",
+        }
+    layers=[]
+    activation_names=[x["activation"] for x in spec["hiddenLayers"]] + ["identity"]
+    for layer, activation in zip(linear_modules, activation_names):
+        layers.append({"weights": _tensor_json(layer.weight), "bias": _tensor_json(layer.bias), "activation": activation})
+    return {"schema": "sc-workspace-neural-model-spec/1.0", "modelType": "mlp", "layers": layers}
+
+
+def _train(payload: dict[str, Any], *, expected_model_type: str) -> dict[str, Any]:
+    spec = _normalized_training_spec(payload, expected_model_type=expected_model_type)
+    parameter_count = _parameter_count_for_training(spec)
+    if parameter_count > MAX_TRAINING_PARAMETERS:
+        raise HTTPException(status_code=413, detail="training parameter count exceeds the bounded training limit")
+    x, y = _training_tensors(payload, spec)
+    vx=vy=None
+    if spec["validationEnabled"]:
+        vx, vy = _training_tensors(payload, spec, validation=True)
+    seed_value = int(payload.get("seed", 42))
+    torch.manual_seed(seed_value)
+    model = _build_training_model(spec)
+    loss_fn = _loss_function(spec["task"])
+    optimizer = _optimizer(model, spec)
+    started = time.monotonic()
+    telemetry: list[dict[str, Any]] = []
+    n = int(x.shape[0]); batch_size = min(int(spec["batchSize"]), n)
+    completed_epochs = 0; stopped_reason = "completed"
+    for epoch in range(int(spec["epochs"])):
+        if time.monotonic() - started >= MAX_TRAINING_SECONDS:
+            stopped_reason = "time-budget"
+            break
+        if spec["shuffle"]:
+            g=torch.Generator(device="cpu"); g.manual_seed(seed_value + epoch)
+            order=torch.randperm(n,generator=g)
+        else:
+            order=torch.arange(n)
+        model.train(); running=0.0; seen=0
+        for start in range(0,n,batch_size):
+            idx=order[start:start+batch_size]
+            bx=x[idx]; by=y[idx]
+            optimizer.zero_grad(set_to_none=True)
+            logits=model(bx)
+            loss=loss_fn(logits,by)
+            if not bool(torch.isfinite(loss)):
+                raise HTTPException(status_code=422, detail="training produced a non-finite loss")
+            loss.backward(); optimizer.step()
+            size=int(idx.numel()); running += float(loss.detach().item())*size; seen += size
+        completed_epochs += 1
+        row={"epoch":completed_epochs,"trainingLoss":running/max(1,seen)}
+        if vx is not None and vy is not None:
+            model.eval()
+            with torch.no_grad():
+                v_logits=model(vx); v_loss=loss_fn(v_logits,vy)
+            row["validationLoss"]=float(v_loss.item())
+        telemetry.append(row)
+    if completed_epochs == 0:
+        raise HTTPException(status_code=408, detail="training time budget elapsed before the first epoch completed")
+    model.eval()
+    with torch.no_grad():
+        train_logits=model(x); train_loss=float(loss_fn(train_logits,y).item())
+        final_training_metrics=_metrics_from_logits(train_logits,y,spec["task"],train_loss)
+        validation_metrics=None
+        if vx is not None and vy is not None:
+            val_logits=model(vx); val_loss=float(loss_fn(val_logits,vy).item())
+            validation_metrics=_metrics_from_logits(val_logits,vy,spec["task"],val_loss)
+    trained_spec=_export_trained_model_spec(model,spec)
+    elapsed=time.monotonic()-started
+    training_run = {
+        "schema":"sc-workspace-neural-training-run/1.0",
+        "modelType":spec["modelType"],"task":spec["task"],"seed":seed_value,
+        "requestedEpochs":int(spec["epochs"]),"completedEpochs":completed_epochs,
+        "batchSize":batch_size,"shuffle":bool(spec["shuffle"]),
+        "optimizer":spec["optimizer"],"parameterCount":parameter_count,
+        "trainingRows":int(x.shape[0]),"validationRows":int(vx.shape[0]) if vx is not None else 0,
+        "elapsedSeconds":elapsed,"stoppedReason":stopped_reason,
+        "trainingMetrics":final_training_metrics,"validationMetrics":validation_metrics,
+        "telemetry":telemetry,
+        "checkpointCreated":False,"checkpointPersistenceEnabled":False,"resumeTrainingEnabled":False,
+        "device":DEVICE,"threadLimit":TRAIN_THREADS,
+    }
+    return {
+        "kind":"neural-training-result",
+        "trainingRun":training_run,
+        "trainingSpecFingerprint":_canonical_sha256(spec),
+        "trainingDatasetFingerprint":_canonical_sha256({"features":payload.get("features"),"targets":payload.get("targets")}),
+        "validationDatasetFingerprint":_canonical_sha256({"features":payload.get("validationFeatures"),"targets":payload.get("validationTargets")}) if vx is not None else None,
+        "trainedModelSpec":trained_spec,
+        "trainedModelSpecFingerprint":_canonical_sha256(trained_spec),
+        "checkpointArtifact":None,
+        "externalCodeExecuted":False,
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -489,7 +807,7 @@ def health() -> dict[str, Any]:
         "runtime": RUNTIME,
         "engine": ENGINE,
         "engineVersion": torch.__version__,
-        "devicePolicy": "cpu-only-foundation",
+        "devicePolicy": "cpu-only-training-foundation",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -500,7 +818,15 @@ def health() -> dict[str, Any]:
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
-        "trainingEnabled": False,
+        "trainingEnabled": True,
+        "trainingSpecSchema": "sc-workspace-neural-training-spec/1.0",
+        "trainingRunSchema": "sc-workspace-neural-training-run/1.0",
+        "trainingModelTypes": ["linear", "mlp"],
+        "trainingTasks": sorted(ALLOWED_TRAINING_TASKS),
+        "trainingOptimizers": sorted(ALLOWED_OPTIMIZERS),
+        "checkpointPersistenceEnabled": False,
+        "resumeTrainingEnabled": False,
+        "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
@@ -512,6 +838,11 @@ def health() -> dict[str, Any]:
         "maxFeatures": MAX_FEATURES,
         "maxLayers": MAX_LAYERS,
         "maxParameters": MAX_PARAMETERS,
+        "maxTrainingEpochs": MAX_TRAINING_EPOCHS,
+        "maxTrainingRows": MAX_TRAINING_ROWS,
+        "maxTrainingParameters": MAX_TRAINING_PARAMETERS,
+        "maxTrainingSeconds": MAX_TRAINING_SECONDS,
+        "trainingThreadLimit": TRAIN_THREADS,
     }
 
 
@@ -551,8 +882,14 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _dataset_manifest(payload)
     elif operation == "workspace.neural.batch-plan":
         result = _batch_plan(payload)
-    else:
+    elif operation == "workspace.neural.transformation-apply":
         result = _transformation_apply(payload)
+    elif operation == "workspace.neural.training-plan":
+        result = _training_plan(payload)
+    elif operation == "workspace.neural.train-linear":
+        result = _train(payload, expected_model_type="linear")
+    else:
+        result = _train(payload, expected_model_type="mlp")
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -565,6 +902,14 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "operation": operation,
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
-        "trainingEnabled": False,
+        "trainingEnabled": True,
+        "trainingSpecSchema": "sc-workspace-neural-training-spec/1.0",
+        "trainingRunSchema": "sc-workspace-neural-training-run/1.0",
+        "trainingModelTypes": ["linear", "mlp"],
+        "trainingTasks": sorted(ALLOWED_TRAINING_TASKS),
+        "trainingOptimizers": sorted(ALLOWED_OPTIMIZERS),
+        "checkpointPersistenceEnabled": False,
+        "resumeTrainingEnabled": False,
+        "acceleratorExecutionEnabled": False,
         "result": result,
     }

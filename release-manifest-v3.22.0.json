@@ -1,0 +1,44 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.22.0",
+  "release": "Neural Training Job Runtime",
+  "baseline": "3.21.0",
+  "wordpressVersion": "3.22.0",
+  "backendVersion": "3.22.0",
+  "migration": null,
+  "databaseMigrationRequired": false,
+  "backendMutationRequired": true,
+  "neuralRuntime": {
+    "runtime": "python-pytorch-neural",
+    "operations": 11,
+    "trainingEnabled": true,
+    "trainingSpecSchema": "sc-workspace-neural-training-spec/1.0",
+    "trainingRunSchema": "sc-workspace-neural-training-run/1.0",
+    "modelTypes": [
+      "linear",
+      "mlp"
+    ],
+    "tasks": [
+      "regression",
+      "binary-classification",
+      "multiclass-classification"
+    ],
+    "optimizers": [
+      "adam",
+      "sgd"
+    ],
+    "devicePolicy": "cpu-only-training-foundation",
+    "checkpointPersistenceEnabled": false,
+    "resumeTrainingEnabled": false,
+    "acceleratorExecutionEnabled": false,
+    "tensorContracts": true,
+    "datasetManifests": true,
+    "batchPlans": true,
+    "transformationLineage": true,
+    "externalDatasetReadEnabled": false
+  },
+  "stablePackageAssetCoherencePreserved": true,
+  "browserLocalProjectsModified": false,
+  "rollbackBaseline": "3.21.0"
+}
