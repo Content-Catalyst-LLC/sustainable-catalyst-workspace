@@ -1,5 +1,11 @@
 FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HOME=/tmp \
+    USER=scworkspace \
+    LOGNAME=scworkspace \
+    XDG_CACHE_HOME=/tmp/.cache \
+    TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt

@@ -8,12 +8,12 @@ def load(monkeypatch):
     spec=importlib.util.spec_from_file_location("neural_runtime_v32100",ROOT/"neural-runtime"/"service.py")
     module=importlib.util.module_from_spec(spec); assert spec and spec.loader; spec.loader.exec_module(module); return module
 def env(op,payload):
-    return {"schema":"sc-workspace-polyglot-execution-envelope/1.0","workspaceVersion":"3.22.0.1","jobId":"job-v321-test","language":"neural","operation":op,"payload":payload,"arbitraryCodeExecution":False}
+    return {"schema":"sc-workspace-polyglot-execution-envelope/1.0","workspaceVersion":"3.22.0.2","jobId":"job-v321-test","language":"neural","operation":op,"payload":payload,"arbitraryCodeExecution":False}
 def post(client,op,payload): return client.post("/v1/execute",json=env(op,payload),headers={"Authorization":f"Bearer {TOKEN}"})
 def test_health_declares_v321_interchange(monkeypatch):
     m=load(monkeypatch)
     with TestClient(m.app) as c: body=c.get('/health').json()
-    assert body['version']=='3.22.0.1'; assert len(body['operations'])==11
+    assert body['version']=='3.22.0.2'; assert len(body['operations'])==11
     assert body['tensorDatasetTransformationInterchange'] is True
     assert body['transformationLineage'] is True
     assert body['externalDatasetReadEnabled'] is False
@@ -42,4 +42,4 @@ def test_polyglot_preserves_interchange_operations_with_training_extension():
 def test_client_contract_version_and_count():
     from app.client_contracts import TYPED_ENDPOINTS,profile
     from app.main import app
-    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.22.0.1'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.22.0.2'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]

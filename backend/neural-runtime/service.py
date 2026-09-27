@@ -9,6 +9,16 @@ import threading
 import time
 from typing import Any
 
+# The runtime deliberately executes as numeric UID 65532 with a read-only root FS.
+# PyTorch 2.10 Dynamo/Inductor may otherwise call getpass.getuser() while deriving
+# a cache path, which fails when that UID has no passwd entry. Pin all identity and
+# compiler/cache locations to the writable /tmp tmpfs before importing torch._dynamo.
+os.environ["HOME"] = "/tmp"
+os.environ["USER"] = "scworkspace"
+os.environ["LOGNAME"] = "scworkspace"
+os.environ["XDG_CACHE_HOME"] = "/tmp/.cache"
+os.environ["TORCHINDUCTOR_CACHE_DIR"] = "/tmp/torchinductor"
+
 import numpy as np
 import torch
 # PyTorch 2.10 lazily imports torch._dynamo from optimizer methods.
@@ -20,7 +30,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.22.0.1"
+SERVICE_VERSION = "3.22.0.2"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -30,7 +40,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.22.0.1 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.22.0.2 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -833,6 +843,10 @@ def health() -> dict[str, Any]:
         "engine": ENGINE,
         "engineVersion": torch.__version__,
         "numpyVersion": np.__version__,
+        "runtimeIdentity": os.getenv("USER", ""),
+        "runtimeHome": os.getenv("HOME", ""),
+        "torchInductorCacheDir": os.getenv("TORCHINDUCTOR_CACHE_DIR", ""),
+        "xdgCacheHome": os.getenv("XDG_CACHE_HOME", ""),
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,

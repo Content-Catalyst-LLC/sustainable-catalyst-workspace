@@ -1,0 +1,58 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.22.0.2",
+  "release": "Hardened Neural Runtime Identity & Cache Repair",
+  "baseline": "3.22.0.1",
+  "wordpressVersion": "3.22.0.2",
+  "backendVersion": "3.22.0.2",
+  "migration": null,
+  "databaseMigrationRequired": false,
+  "backendMutationRequired": true,
+  "neuralRuntime": {
+    "runtime": "python-pytorch-neural",
+    "operations": 11,
+    "trainingEnabled": true,
+    "trainingSpecSchema": "sc-workspace-neural-training-spec/1.0",
+    "trainingRunSchema": "sc-workspace-neural-training-run/1.0",
+    "modelTypes": [
+      "linear",
+      "mlp"
+    ],
+    "tasks": [
+      "regression",
+      "binary-classification",
+      "multiclass-classification"
+    ],
+    "optimizers": [
+      "adam",
+      "sgd"
+    ],
+    "devicePolicy": "cpu-only-training-foundation",
+    "checkpointPersistenceEnabled": false,
+    "resumeTrainingEnabled": false,
+    "acceleratorExecutionEnabled": false,
+    "torchDynamoPreloaded": true,
+    "optimizerRuntimeWarm": true,
+    "optimizerInitializationSerialized": true,
+    "numpyDependencyPinned": "2.2.6",
+    "runtimeUid": "65532:65532",
+    "runtimeIdentity": "scworkspace",
+    "runtimeHome": "/tmp",
+    "torchInductorCacheDir": "/tmp/torchinductor",
+    "xdgCacheHome": "/tmp/.cache"
+  },
+  "productionRepair": {
+    "incident": "v3.22.0.1 pre-switch hardened certification failed while importing torch._dynamo",
+    "rootCause": "PyTorch 2.10 default cache discovery called getpass.getuser()/pwd.getpwuid for numeric UID 65532, which has no passwd entry in the hardened image",
+    "repair": [
+      "pin HOME/USER/LOGNAME before torch._dynamo import",
+      "pin XDG_CACHE_HOME to writable /tmp tmpfs",
+      "pin TORCHINDUCTOR_CACHE_DIR to writable /tmp tmpfs",
+      "preserve numeric UID 65532 and existing hardening"
+    ]
+  },
+  "stablePackageAssetCoherencePreserved": true,
+  "browserLocalProjectsModified": false,
+  "rollbackBaseline": "3.21.0"
+}

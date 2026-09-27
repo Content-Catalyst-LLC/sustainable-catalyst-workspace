@@ -209,6 +209,11 @@ services:
       SC_WORKSPACE_NEURAL_MAX_HIDDEN_LAYERS: ${SC_WORKSPACE_NEURAL_MAX_HIDDEN_LAYERS:-8}
       SC_WORKSPACE_NEURAL_MAX_HIDDEN_UNITS: ${SC_WORKSPACE_NEURAL_MAX_HIDDEN_UNITS:-1024}
       SC_WORKSPACE_NEURAL_TRAIN_THREADS: ${SC_WORKSPACE_NEURAL_TRAIN_THREADS:-2}
+      HOME: /tmp
+      USER: scworkspace
+      LOGNAME: scworkspace
+      XDG_CACHE_HOME: /tmp/.cache
+      TORCHINDUCTOR_CACHE_DIR: /tmp/torchinductor
     networks:
       - sc-workspace-runtime
     cpus: 2.0
