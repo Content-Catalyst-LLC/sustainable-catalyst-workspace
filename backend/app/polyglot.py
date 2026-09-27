@@ -58,6 +58,10 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.ml.gradient-boosting-regression", "workspace.ml.gradient-boosting-classification",
         "workspace.ml.cross-validate", "workspace.ml.predict",
     ), "Hardened Python/scikit-learn runtime for bounded predictive modeling, evaluation, cross-validation, and scoring."),
+    RuntimeSpec("neural", "python-pytorch-neural", "server-configured-http", (
+        "workspace.neural.tensor-summary", "workspace.neural.model-summary",
+        "workspace.neural.linear-forward", "workspace.neural.mlp-forward",
+    ), "Hardened PyTorch neural runtime foundation for bounded declarative tensor inspection and forward inference; training and arbitrary code execution are disabled in v3.20.0."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -103,6 +107,7 @@ def _runtime_route(language: str) -> tuple[str, str]:
         "r": (s.runtime_r_url, s.runtime_r_token),
         "julia": (s.runtime_julia_url, s.runtime_julia_token),
         "ml": (s.runtime_ml_url, s.runtime_ml_token),
+        "neural": (s.runtime_neural_url, s.runtime_neural_token),
         "forecast": (s.runtime_forecast_url, s.runtime_forecast_token),
         "probability": (s.runtime_probability_url, s.runtime_probability_token),
         "uncertainty": (s.runtime_uncertainty_url, s.runtime_uncertainty_token),
@@ -151,7 +156,7 @@ def operation_catalog() -> list[dict[str, Any]]:
 
 
 def runtime_health(language: str) -> dict[str, Any]:
-    if language not in {"r", "julia", "ml", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "wasm"}:
+    if language not in {"r", "julia", "ml", "neural", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "wasm"}:
         raise HTTPException(status_code=400, detail="Runtime health is only available for external runtimes")
     url, _token = _runtime_route(language)
     if not url.strip():

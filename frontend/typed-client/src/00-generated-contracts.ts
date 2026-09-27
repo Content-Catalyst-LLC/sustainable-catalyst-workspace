@@ -1,4 +1,4 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.19.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.20.0';
 export const SCW_TYPED_ENDPOINTS = {
   "predictiveInvestigationWorkspace": {
     "method": "GET",
@@ -1007,6 +1007,10 @@ export const SCW_TYPED_ENDPOINTS = {
   "platformCoreRuntimeReceipts": {
     "method": "GET",
     "path": "/v1/platform-core-runtime/receipts"
+  },
+  "neuralRuntimeStatus": {
+    "method": "GET",
+    "path": "/v1/polyglot/runtimes/neural/status"
   },
   "backendNativeWorkspace": {
     "method": "GET",

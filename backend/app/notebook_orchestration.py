@@ -20,7 +20,7 @@ ORCHESTRATION_SCHEMA = "sc-workspace-notebook-orchestration/1.0"
 EXECUTION_SCHEMA = "sc-workspace-notebook-cell-execution/1.0"
 ALLOWED_TARGETS = {"workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"}
 WORKSPACE_PREFIXES = (
-    "workspace.compute.", "workspace.polyglot.", "workspace.ml.", "workspace.forecast.",
+    "workspace.compute.", "workspace.polyglot.", "workspace.ml.", "workspace.neural.", "workspace.forecast.",
     "workspace.probability.", "workspace.uncertainty.", "workspace.optimize.",
     "workspace.decision.", "workspace.reliability.", "workspace.interchange.",
 )

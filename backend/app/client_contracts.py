@@ -261,6 +261,7 @@ TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
     "platformCoreSessionLineage": {"method": "GET", "path": "/v1/platform-core-runtime/sessions/{session_id}/lineage"},
     "platformCoreSessionBundle": {"method": "GET", "path": "/v1/platform-core-runtime/sessions/{session_id}/bundle"},
     "platformCoreRuntimeReceipts": {"method": "GET", "path": "/v1/platform-core-runtime/receipts"},
+    "neuralRuntimeStatus": {"method": "GET", "path": "/v1/polyglot/runtimes/neural/status"},
     "backendNativeWorkspace": {"method": "GET", "path": "/v1/backend-native-workspace"},
     "backendNativeBootstrap": {"method": "GET", "path": "/v1/backend-native-workspace/bootstrap"},
     "frontendRuntime": {"method": "GET", "path": "/v1/frontend-runtime"},
@@ -384,7 +385,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.19.0",
+        "workspaceVersion": "3.20.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,

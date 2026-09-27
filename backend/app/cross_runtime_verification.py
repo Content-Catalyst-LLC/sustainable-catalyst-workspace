@@ -29,6 +29,7 @@ def _runtime_label(run:ExecutionRun)->str:
         if rid: return f"{rid}@{rev}" if rev is not None else rid
     op=(run.operation or "").lower()
     if op.startswith("workspace.ml."): return "ml"
+    if op.startswith("workspace.neural."): return "neural"
     if op.startswith("workspace.polyglot.r.") or ".r." in op: return "r"
     if op.startswith("workspace.polyglot.julia.") or ".julia." in op: return "julia"
     if op.startswith("workspace.compute."): return "python-scientific"

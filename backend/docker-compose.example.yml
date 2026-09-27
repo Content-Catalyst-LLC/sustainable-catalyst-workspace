@@ -42,6 +42,8 @@ services:
       SC_WORKSPACE_RUNTIME_JULIA_TOKEN: ${SC_WORKSPACE_RUNTIME_JULIA_TOKEN:-}
       SC_WORKSPACE_RUNTIME_ML_URL: ${SC_WORKSPACE_RUNTIME_ML_URL:-http://sc-workspace-ml-runtime:8092/v1/execute}
       SC_WORKSPACE_RUNTIME_ML_TOKEN: ${SC_WORKSPACE_RUNTIME_ML_TOKEN:-}
+      SC_WORKSPACE_RUNTIME_NEURAL_URL: ${SC_WORKSPACE_RUNTIME_NEURAL_URL:-http://sc-workspace-neural-runtime:8101/v1/execute}
+      SC_WORKSPACE_RUNTIME_NEURAL_TOKEN: ${SC_WORKSPACE_RUNTIME_NEURAL_TOKEN:-}
       SC_WORKSPACE_RUNTIME_INTERCHANGE_URL: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_URL:-http://sc-workspace-interchange-runtime:8093/v1/execute}
       SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN: ${SC_WORKSPACE_RUNTIME_INTERCHANGE_TOKEN:-}
       SC_WORKSPACE_RUNTIME_FORECAST_URL: ${SC_WORKSPACE_RUNTIME_FORECAST_URL:-http://sc-workspace-forecast-runtime:8095/v1/execute}
@@ -103,6 +105,7 @@ services:
       - sc-workspace-r-runtime
       - sc-workspace-julia-runtime
       - sc-workspace-ml-runtime
+      - sc-workspace-neural-runtime
       - sc-workspace-interchange-runtime
       - sc-workspace-forecast-runtime
       - sc-workspace-probability-runtime
@@ -186,6 +189,31 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=256m
+
+  sc-workspace-neural-runtime:
+    build: ./neural-runtime
+    container_name: sc-workspace-neural-runtime
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_NEURAL_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_NEURAL_TOKEN}
+      SC_WORKSPACE_NEURAL_MAX_PAYLOAD_BYTES: ${SC_WORKSPACE_POLYGLOT_MAX_PAYLOAD_BYTES:-10485760}
+      SC_WORKSPACE_NEURAL_MAX_TENSOR_ELEMENTS: ${SC_WORKSPACE_NEURAL_MAX_TENSOR_ELEMENTS:-262144}
+      SC_WORKSPACE_NEURAL_MAX_BATCH: ${SC_WORKSPACE_NEURAL_MAX_BATCH:-4096}
+      SC_WORKSPACE_NEURAL_MAX_FEATURES: ${SC_WORKSPACE_NEURAL_MAX_FEATURES:-4096}
+      SC_WORKSPACE_NEURAL_MAX_LAYERS: ${SC_WORKSPACE_NEURAL_MAX_LAYERS:-16}
+      SC_WORKSPACE_NEURAL_MAX_PARAMETERS: ${SC_WORKSPACE_NEURAL_MAX_PARAMETERS:-5000000}
+    networks:
+      - sc-workspace-runtime
+    cpus: 2.0
+    mem_limit: 3g
+    pids_limit: 128
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=512m
 
   sc-workspace-forecast-runtime:
     build: ./forecast-runtime

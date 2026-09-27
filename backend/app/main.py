@@ -340,7 +340,7 @@ def health():
         "computeProgressEvents": True,
         "boundedScientificOperationsOnly": True,
         "polyglotScientificRuntimeFabric": True,
-        "polyglotLanguages": ["python", "r", "julia", "ml", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
+        "polyglotLanguages": ["python", "r", "julia", "ml", "neural", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -362,6 +362,12 @@ def health():
         "predictiveAnalyticsMachineLearningRuntime": True,
         "mlRuntimeConfigured": bool(settings.runtime_ml_url.strip()),
         "mlRuntimeBoundedOperations": 8,
+        "neuralPyTorchRuntimeFoundation": True,
+        "neuralRuntimeConfigured": bool(settings.runtime_neural_url.strip()),
+        "neuralRuntimeBoundedOperations": 4,
+        "neuralRuntimeTrainingEnabled": False,
+        "neuralRuntimeDeclarativeModelSpecsOnly": True,
+        "neuralRuntimeDevicePolicy": "cpu-only-foundation",
         "predictiveModelReceipts": True,
         "modelEvaluationReceipts": True,
         "nativeArrowParquetInterchange": True,
@@ -1300,7 +1306,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "computeProgressEvents": True,
         "computeCancellationChecks": True,
         "polyglotScientificRuntimeFabric": True,
-        "polyglotLanguages": ["python", "r", "julia", "ml", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
+        "polyglotLanguages": ["python", "r", "julia", "ml", "neural", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "polyglotRuntimeCatalog": True,
@@ -1339,6 +1345,12 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
         "predictiveAnalyticsMachineLearningRuntime": True,
         "mlRuntimeConfigured": bool(settings.runtime_ml_url.strip()),
         "mlRuntimeBoundedOperations": 8,
+        "neuralPyTorchRuntimeFoundation": True,
+        "neuralRuntimeConfigured": bool(settings.runtime_neural_url.strip()),
+        "neuralRuntimeBoundedOperations": 4,
+        "neuralRuntimeTrainingEnabled": False,
+        "neuralRuntimeDeclarativeModelSpecsOnly": True,
+        "neuralRuntimeDevicePolicy": "cpu-only-foundation",
         "predictiveModelReceipts": True,
         "modelEvaluationReceipts": True,
         "nativeArrowParquetInterchange": True,
@@ -2450,6 +2462,11 @@ def numerical_simulation_receipt_get_route(receipt_id: str, identity: ServiceIde
 @app.get("/v1/polyglot/runtimes/ml/status")
 def ml_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
     return {"schema": "sc-workspace-runtime-status/1.0", "item": polyglot_runtime_health("ml")}
+
+
+@app.get("/v1/polyglot/runtimes/neural/status")
+def neural_runtime_status_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema": "sc-workspace-runtime-status/1.0", "item": polyglot_runtime_health("neural")}
 
 
 @app.get("/v1/predictive-model-receipts")

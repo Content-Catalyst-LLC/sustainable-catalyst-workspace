@@ -4408,6 +4408,7 @@ public function research_templates_contract() {
         wp_enqueue_script('sc-workspace-causal-analysis-v31800', SC_WORKSPACE_URL . 'assets/js/sc-workspace-causal-analysis-v31800.js', array('sc-workspace-uncertainty-v31700', 'sc-workspace-typed-client-v31800'), SC_WORKSPACE_VERSION, true);
         wp_enqueue_script('sc-workspace-typed-client-v31900', SC_WORKSPACE_URL . 'assets/js/sc-workspace-typed-client-v31900.js', array('sc-workspace-typed-client-v31800'), SC_WORKSPACE_VERSION, true);
         wp_enqueue_script('sc-workspace-predictive-investigation-v31900', SC_WORKSPACE_URL . 'assets/js/sc-workspace-predictive-investigation-v31900.js', array('sc-workspace-causal-analysis-v31800', 'sc-workspace-typed-client-v31900'), SC_WORKSPACE_VERSION, true);
+        wp_enqueue_script('sc-workspace-typed-client-v32000', SC_WORKSPACE_URL . 'assets/js/sc-workspace-typed-client-v32000.js', array('sc-workspace-typed-client-v31900'), SC_WORKSPACE_VERSION, true);
         wp_enqueue_script('sc-workspace-catalyst-analytics-r-v3910', SC_WORKSPACE_URL . 'assets/js/sc-workspace-catalyst-analytics-r-v3910.js', array('sc-workspace-execution-provenance-v3400'), SC_WORKSPACE_VERSION, true);
         wp_enqueue_script(
             'sc-workspace-project-diff-v1',

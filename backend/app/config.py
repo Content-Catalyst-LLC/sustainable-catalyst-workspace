@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
 
     service_name: str = "Sustainable Catalyst Workspace Backend"
-    service_version: str = "3.19.0"
+    service_version: str = "3.20.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     runtime_julia_token: str = ""
     runtime_ml_url: str = ""
     runtime_ml_token: str = ""
+    runtime_neural_url: str = ""
+    runtime_neural_token: str = ""
     runtime_interchange_url: str = ""
     runtime_interchange_token: str = ""
     runtime_forecast_url: str = ""
