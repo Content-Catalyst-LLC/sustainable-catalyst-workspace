@@ -5,15 +5,22 @@ import hmac
 import json
 import math
 import os
+import threading
 import time
 from typing import Any
 
+import numpy as np
 import torch
+# PyTorch 2.10 lazily imports torch._dynamo from optimizer methods.
+# Preload it on the single main import thread before FastAPI dispatches
+# training work into AnyIO worker threads. This avoids duplicate cache-artifact
+# registration observed in hardened production containers on first Adam init.
+import torch._dynamo as _torch_dynamo  # noqa: F401
 import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.22.0"
+SERVICE_VERSION = "3.22.0.1"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -23,7 +30,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.22.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.22.0.1 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -63,6 +70,19 @@ MAX_HIDDEN_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_HIDDEN_LAY
 MAX_HIDDEN_UNITS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_HIDDEN_UNITS", "1024")), MAX_FEATURES))
 TRAIN_THREADS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_TRAIN_THREADS", "2")), 8))
 torch.set_num_threads(TRAIN_THREADS)
+_OPTIMIZER_INIT_LOCK = threading.Lock()
+
+
+def _warm_optimizer_runtime() -> bool:
+    """Initialize PyTorch optimizer/Dynamo integration once before request threads."""
+    probe = torch.nn.Linear(1, 1, device=DEVICE)
+    with _OPTIMIZER_INIT_LOCK:
+        # Adam is used because it exercised the production-only failure path.
+        torch.optim.Adam(probe.parameters(), lr=0.001)
+    return True
+
+
+OPTIMIZER_RUNTIME_WARM = _warm_optimizer_runtime()
 ALLOWED_TRAINING_TASKS = {"regression", "binary-classification", "multiclass-classification"}
 ALLOWED_OPTIMIZERS = {"sgd", "adam"}
 ALLOWED_TRAINING_ACTIVATIONS = {"identity", "relu", "sigmoid", "tanh"}
@@ -680,8 +700,13 @@ def _loss_function(task: str) -> torch.nn.Module:
 def _optimizer(model: torch.nn.Module, spec: dict[str, Any]) -> torch.optim.Optimizer:
     cfg = spec["optimizer"]
     kwargs = {"lr": float(cfg["learningRate"]), "weight_decay": float(cfg["weightDecay"])}
-    if cfg["name"] == "sgd": return torch.optim.SGD(model.parameters(), **kwargs)
-    return torch.optim.Adam(model.parameters(), **kwargs)
+    # Keep first-use optimizer initialization serialized even though Dynamo is
+    # already preloaded/warmed. This is intentionally narrow; training itself
+    # remains outside the lock.
+    with _OPTIMIZER_INIT_LOCK:
+        if cfg["name"] == "sgd":
+            return torch.optim.SGD(model.parameters(), **kwargs)
+        return torch.optim.Adam(model.parameters(), **kwargs)
 
 
 def _metrics_from_logits(logits: torch.Tensor, targets: torch.Tensor, task: str, loss_value: float) -> dict[str, Any]:
@@ -807,6 +832,10 @@ def health() -> dict[str, Any]:
         "runtime": RUNTIME,
         "engine": ENGINE,
         "engineVersion": torch.__version__,
+        "numpyVersion": np.__version__,
+        "torchDynamoPreloaded": True,
+        "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
+        "optimizerInitializationSerialized": True,
         "devicePolicy": "cpu-only-training-foundation",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",

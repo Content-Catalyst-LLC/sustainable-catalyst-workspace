@@ -12,7 +12,7 @@ def load_runtime(monkeypatch):
     return mod,TestClient(mod.app)
 
 def env(op,payload):
-    return {'schema':'sc-workspace-polyglot-execution-envelope/1.0','workspaceVersion':'3.22.0','jobId':'job-v322','language':'neural','operation':op,'payload':payload,'arbitraryCodeExecution':False}
+    return {'schema':'sc-workspace-polyglot-execution-envelope/1.0','workspaceVersion':'3.22.0.1','jobId':'job-v322','language':'neural','operation':op,'payload':payload,'arbitraryCodeExecution':False}
 
 def post(client,op,payload):
     return client.post('/v1/execute',json=env(op,payload),headers={'Authorization':f'Bearer {TOKEN}'})
@@ -22,7 +22,7 @@ def linear_spec(epochs=8):
 
 def test_health_enables_bounded_training_but_not_checkpoints(monkeypatch):
     _,c=load_runtime(monkeypatch); body=c.get('/health').json()
-    assert body['version']=='3.22.0'; assert len(body['operations'])==11
+    assert body['version']=='3.22.0.1'; assert len(body['operations'])==11
     assert body['trainingEnabled'] is True
     assert body['checkpointPersistenceEnabled'] is False and body['resumeTrainingEnabled'] is False
     assert body['acceleratorExecutionEnabled'] is False and body['devicePolicy']=='cpu-only-training-foundation'

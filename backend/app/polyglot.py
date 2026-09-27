@@ -64,7 +64,7 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.tensor-contract", "workspace.neural.dataset-manifest",
         "workspace.neural.batch-plan", "workspace.neural.transformation-apply",
         "workspace.neural.training-plan", "workspace.neural.train-linear", "workspace.neural.train-mlp",
-    ), "Hardened PyTorch neural runtime for bounded declarative tensor/model execution, governed data interchange, and CPU-bounded linear/MLP training jobs with deterministic telemetry; arbitrary code, checkpoint persistence, resume, and accelerator execution remain disabled in v3.22.0."),
+    ), "Hardened PyTorch neural runtime for bounded declarative tensor/model execution, governed data interchange, and CPU-bounded linear/MLP training jobs with deterministic telemetry; arbitrary code, checkpoint persistence, resume, and accelerator execution remain disabled in v3.22.0.1."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
