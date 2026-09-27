@@ -20,7 +20,7 @@ def _load_service():
 
 def test_hardened_runtime_identity_and_cache_contract():
     svc = _load_service()
-    assert svc.SERVICE_VERSION == "3.22.0.2"
+    assert svc.SERVICE_VERSION == "3.23.0"
     assert os.environ["HOME"] == "/tmp"
     assert os.environ["USER"] == "scworkspace"
     assert os.environ["LOGNAME"] == "scworkspace"
@@ -62,4 +62,4 @@ def test_adam_training_executes_with_pinned_runtime_identity():
     }
     r = svc._train(payload, expected_model_type="linear")
     assert r["trainingRun"]["completedEpochs"] == 30
-    assert r["trainingRun"]["checkpointCreated"] is False
+    assert r["trainingRun"]["checkpointCreated"] is True

@@ -64,7 +64,8 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.tensor-contract", "workspace.neural.dataset-manifest",
         "workspace.neural.batch-plan", "workspace.neural.transformation-apply",
         "workspace.neural.training-plan", "workspace.neural.train-linear", "workspace.neural.train-mlp",
-    ), "Hardened PyTorch neural runtime for bounded declarative tensor/model execution, governed data interchange, and CPU-bounded linear/MLP training jobs with deterministic telemetry; arbitrary code, checkpoint persistence, resume, and accelerator execution remain disabled in v3.22.0.2."),
+        "workspace.neural.checkpoint-inspect", "workspace.neural.resume-linear", "workspace.neural.resume-mlp",
+    ), "Hardened PyTorch neural runtime for bounded declarative tensor/model execution, governed data interchange, CPU-bounded training, portable checkpoint persistence, deterministic resume, and checkpoint lineage; arbitrary code, raw serialized model loading, and accelerator execution remain disabled in v3.23.0."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -331,6 +332,42 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             model_artifact=store_artifact(db,row.user_key,model_payload)
             model_artifact_sha256=model_artifact.sha256
             ml_result["modelArtifact"]={"artifactId":model_artifact.artifact_id,"format":"joblib","mediaType":model_artifact.media_type,"sha256":model_artifact.sha256,"bytes":model_artifact.bytes}
+    neural_checkpoint_artifact = None
+    neural_training_ops = {"workspace.neural.train-linear", "workspace.neural.train-mlp", "workspace.neural.resume-linear", "workspace.neural.resume-mlp"}
+    if language == "neural" and row.operation in neural_training_ops and isinstance(result, dict):
+        remote_body = result.get("remote") if isinstance(result.get("remote"), dict) else {}
+        neural_result = remote_body.get("result") if isinstance(remote_body.get("result"), dict) else {}
+        checkpoint_blob = neural_result.get("checkpointArtifact") if isinstance(neural_result.get("checkpointArtifact"), dict) else None
+        if checkpoint_blob:
+            checkpoint_raw = json.dumps(checkpoint_blob, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str).encode()
+            checkpoint_artifact_id = f"neural-checkpoint-{row.job_id}"
+            existing_checkpoint = get_artifact(db, row.user_key, checkpoint_artifact_id)
+            checkpoint_payload = ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0",
+                "artifactId":checkpoint_artifact_id,
+                "projectId":row.project_id or None,
+                "filename":f"neural-checkpoint-{row.job_id}.json",
+                "mediaType":"application/vnd.sc.workspace.neural-checkpoint+json",
+                "contentBase64":__import__('base64').b64encode(checkpoint_raw).decode("ascii"),
+                "expectedRevision":existing_checkpoint.revision if existing_checkpoint is not None else 0,
+                "metadata":{
+                    "kind":"neural-checkpoint", "language":"neural", "operation":row.operation, "jobId":row.job_id,
+                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,
+                    "checkpointId":checkpoint_blob.get("checkpointId"),
+                    "checkpointFingerprint":checkpoint_blob.get("artifactFingerprint"),
+                    "parentCheckpointFingerprint":checkpoint_blob.get("parentCheckpointFingerprint"),
+                    "lineageDepth":checkpoint_blob.get("lineageDepth"),
+                    "modelType":checkpoint_blob.get("modelType"), "task":checkpoint_blob.get("task"),
+                },
+            })
+            neural_checkpoint_artifact = store_artifact(db, row.user_key, checkpoint_payload)
+            neural_result["workspaceCheckpointArtifact"] = {
+                "artifactId":neural_checkpoint_artifact.artifact_id,
+                "mediaType":neural_checkpoint_artifact.media_type,
+                "sha256":neural_checkpoint_artifact.sha256,
+                "bytes":neural_checkpoint_artifact.bytes,
+                "checkpointFingerprint":checkpoint_blob.get("artifactFingerprint"),
+            }
     result_doc={"schema":"sc-workspace-polyglot-result/1.0","language":language,"operation":row.operation,"result":result}
     raw=json.dumps(result_doc,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
     if len(raw)>get_settings().compute_max_result_bytes:
@@ -362,9 +399,22 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "metadata":{"language":language,"operation":row.operation},
         })
         store_run_output(db,row.user_key,run_id,output_payload)
+        if neural_checkpoint_artifact is not None:
+            checkpoint_output = ExecutionRunOutputRequest.model_validate({
+                "schema":"sc-workspace-execution-run-output/1.0",
+                "outputId":"neural-checkpoint",
+                "artifactId":neural_checkpoint_artifact.artifact_id,
+                "role":"checkpoint",
+                "label":"Neural training checkpoint",
+                "mediaType":neural_checkpoint_artifact.media_type,
+                "sha256":neural_checkpoint_artifact.sha256,
+                "bytes":neural_checkpoint_artifact.bytes,
+                "metadata":{"language":"neural","operation":row.operation,"checkpointPersistence":True},
+            })
+            store_run_output(db,row.user_key,run_id,checkpoint_output)
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
-    if language == "neural" and row.operation in {"workspace.neural.train-linear","workspace.neural.train-mlp"}:
+    if language == "neural" and row.operation in {"workspace.neural.train-linear","workspace.neural.train-mlp","workspace.neural.resume-linear","workspace.neural.resume-mlp"}:
         remote_body = result.get("remote") if isinstance(result, dict) and isinstance(result.get("remote"), dict) else {}
         neural_result = remote_body.get("result") if isinstance(remote_body.get("result"), dict) else {}
         training_run = neural_result.get("trainingRun") if isinstance(neural_result.get("trainingRun"), dict) else {}
@@ -380,7 +430,18 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "trainingSpecFingerprint":neural_result.get("trainingSpecFingerprint"),
             "trainingDatasetFingerprint":neural_result.get("trainingDatasetFingerprint"),
             "trainedModelSpecFingerprint":neural_result.get("trainedModelSpecFingerprint"),
-            "checkpointPersistenceEnabled":False,
+            "checkpointPersistenceEnabled":True,
+            "resumeTrainingEnabled":True,
+            "checkpointArtifactSchema":"sc-workspace-neural-checkpoint-artifact/1.0",
+            "checkpointArtifactFingerprint":neural_result.get("checkpointArtifactFingerprint"),
+            "parentCheckpointFingerprint":neural_result.get("parentCheckpointFingerprint"),
+            "checkpointLineageDepth":neural_result.get("checkpointLineageDepth"),
+            "workspaceCheckpointArtifactId":neural_checkpoint_artifact.artifact_id if neural_checkpoint_artifact is not None else None,
+            "workspaceCheckpointArtifactSha256":neural_checkpoint_artifact.sha256 if neural_checkpoint_artifact is not None else None,
+            "resumed":training_run.get("resumed"),
+            "resumedFromCheckpointFingerprint":training_run.get("resumedFromCheckpointFingerprint"),
+            "startingEpoch":training_run.get("startingEpoch"),
+            "cumulativeEpochs":training_run.get("cumulativeEpochs"),
         })
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,

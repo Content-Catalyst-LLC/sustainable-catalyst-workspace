@@ -1,4 +1,4 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.22.0.2';
+export const SCW_TYPED_CONTRACT_VERSION = '3.23.0';
 export const SCW_TYPED_ENDPOINTS = {
   "predictiveInvestigationWorkspace": {
     "method": "GET",

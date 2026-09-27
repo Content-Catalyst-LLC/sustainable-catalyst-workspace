@@ -12,7 +12,7 @@ def load_runtime(monkeypatch):
     return mod,TestClient(mod.app)
 
 def env(op,payload):
-    return {'schema':'sc-workspace-polyglot-execution-envelope/1.0','workspaceVersion':'3.22.0.2','jobId':'job-v322','language':'neural','operation':op,'payload':payload,'arbitraryCodeExecution':False}
+    return {'schema':'sc-workspace-polyglot-execution-envelope/1.0','workspaceVersion':'3.23.0','jobId':'job-v322','language':'neural','operation':op,'payload':payload,'arbitraryCodeExecution':False}
 
 def post(client,op,payload):
     return client.post('/v1/execute',json=env(op,payload),headers={'Authorization':f'Bearer {TOKEN}'})
@@ -22,10 +22,10 @@ def linear_spec(epochs=8):
 
 def test_health_enables_bounded_training_but_not_checkpoints(monkeypatch):
     _,c=load_runtime(monkeypatch); body=c.get('/health').json()
-    assert body['version']=='3.22.0.2'; assert len(body['operations'])==11
+    assert body['version']=='3.23.0'; assert len(body['operations'])==14
     assert body['trainingEnabled'] is True
-    assert body['checkpointPersistenceEnabled'] is False and body['resumeTrainingEnabled'] is False
-    assert body['acceleratorExecutionEnabled'] is False and body['devicePolicy']=='cpu-only-training-foundation'
+    assert body['checkpointPersistenceEnabled'] is True and body['resumeTrainingEnabled'] is True
+    assert body['acceleratorExecutionEnabled'] is False and body['devicePolicy']=='cpu-only-checkpoint-resume-foundation'
     assert body['trainingSpecSchema']=='sc-workspace-neural-training-spec/1.0'
 
 def test_training_plan_is_bounded_and_fingerprinted(monkeypatch):
@@ -33,7 +33,7 @@ def test_training_plan_is_bounded_and_fingerprinted(monkeypatch):
     r=post(c,'workspace.neural.training-plan',{'seed':7,'trainingSpec':linear_spec()})
     assert r.status_code==200,r.text
     x=r.json()['result']; assert x['kind']=='neural-training-plan'; assert x['plan']['parameterCount']==2
-    assert x['plan']['checkpointPersistenceEnabled'] is False and len(x['planFingerprint'])==64
+    assert x['plan']['checkpointPersistenceEnabled'] is True and len(x['planFingerprint'])==64
 
 def test_linear_training_is_deterministic_and_learns(monkeypatch):
     _,c=load_runtime(monkeypatch)
@@ -44,7 +44,7 @@ def test_linear_training_is_deterministic_and_learns(monkeypatch):
     run=ar['trainingRun']; assert run['completedEpochs']==40 and run['stoppedReason']=='completed'
     assert run['trainingMetrics']['loss'] < run['telemetry'][0]['trainingLoss']
     assert ar['trainedModelSpecFingerprint']==br['trainedModelSpecFingerprint']
-    assert ar['checkpointArtifact'] is None and run['checkpointCreated'] is False
+    assert isinstance(ar['checkpointArtifact'],dict) and run['checkpointCreated'] is True
 
 def test_mlp_binary_training_and_validation_telemetry(monkeypatch):
     _,c=load_runtime(monkeypatch)

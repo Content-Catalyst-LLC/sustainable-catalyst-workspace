@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
@@ -7,6 +8,7 @@ import math
 import os
 import threading
 import time
+import zlib
 from typing import Any
 
 # The runtime deliberately executes as numeric UID 65532 with a read-only root FS.
@@ -30,7 +32,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.22.0.2"
+SERVICE_VERSION = "3.23.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -54,6 +56,9 @@ OPERATIONS = {
     "workspace.neural.training-plan",
     "workspace.neural.train-linear",
     "workspace.neural.train-mlp",
+    "workspace.neural.checkpoint-inspect",
+    "workspace.neural.resume-linear",
+    "workspace.neural.resume-mlp",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -96,6 +101,13 @@ OPTIMIZER_RUNTIME_WARM = _warm_optimizer_runtime()
 ALLOWED_TRAINING_TASKS = {"regression", "binary-classification", "multiclass-classification"}
 ALLOWED_OPTIMIZERS = {"sgd", "adam"}
 ALLOWED_TRAINING_ACTIVATIONS = {"identity", "relu", "sigmoid", "tanh"}
+CHECKPOINT_SCHEMA = "sc-workspace-neural-checkpoint-artifact/1.0"
+CHECKPOINT_STATE_SCHEMA = "sc-workspace-neural-checkpoint-state/1.0"
+CHECKPOINT_FORMAT = "sc-workspace-neural-portable-checkpoint/1.0"
+CHECKPOINT_BUNDLE_ENCODING = "zlib+base64+canonical-json-v1"
+CHECKPOINT_RESUME_POLICY = "same-dataset-only"
+MAX_CHECKPOINT_COMPRESSED_BYTES = max(64 * 1024, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_CHECKPOINT_COMPRESSED_BYTES", str(7 * 1024 * 1024))), 12 * 1024 * 1024))
+MAX_CHECKPOINT_JSON_BYTES = max(256 * 1024, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_CHECKPOINT_JSON_BYTES", str(24 * 1024 * 1024))), 48 * 1024 * 1024))
 
 app = FastAPI(title=SERVICE, version=SERVICE_VERSION, docs_url=None, redoc_url=None)
 
@@ -637,8 +649,12 @@ def _training_plan(payload: dict[str, Any]) -> dict[str, Any]:
         "maxTrainingParameters": MAX_TRAINING_PARAMETERS,
         "maxTrainingSeconds": MAX_TRAINING_SECONDS,
         "threadLimit": TRAIN_THREADS,
-        "checkpointPersistenceEnabled": False,
-        "resumeTrainingEnabled": False,
+        "checkpointPersistenceEnabled": True,
+        "resumeTrainingEnabled": True,
+        "checkpointArtifactSchema": CHECKPOINT_SCHEMA,
+        "checkpointStateSchema": CHECKPOINT_STATE_SCHEMA,
+        "checkpointFormat": CHECKPOINT_FORMAT,
+        "checkpointResumePolicy": CHECKPOINT_RESUME_POLICY,
         "acceleratorExecutionEnabled": False,
         "arbitraryCodeExecution": False,
     }
@@ -749,20 +765,281 @@ def _export_trained_model_spec(model: torch.nn.Sequential, spec: dict[str, Any])
     return {"schema": "sc-workspace-neural-model-spec/1.0", "modelType": "mlp", "layers": layers}
 
 
-def _train(payload: dict[str, Any], *, expected_model_type: str) -> dict[str, Any]:
+def _checkpoint_compatibility_spec(spec: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "modelType": spec["modelType"],
+        "task": spec["task"],
+        "inputFeatures": int(spec["inputFeatures"]),
+        "outputFeatures": int(spec["outputFeatures"]),
+        "hiddenLayers": spec["hiddenLayers"],
+        "optimizer": spec["optimizer"],
+        "batchSize": int(spec["batchSize"]),
+        "shuffle": bool(spec["shuffle"]),
+    }
+
+
+def _state_key_encode(value: Any) -> dict[str, Any]:
+    if isinstance(value, bool):
+        return {"type": "bool", "value": value}
+    if isinstance(value, int):
+        return {"type": "int", "value": value}
+    if isinstance(value, str):
+        return {"type": "str", "value": value}
+    raise HTTPException(status_code=500, detail="checkpoint state contains an unsupported dictionary key")
+
+
+def _state_key_decode(value: Any) -> Any:
+    if not isinstance(value, dict):
+        raise HTTPException(status_code=400, detail="checkpoint state dictionary key is malformed")
+    kind = value.get("type")
+    raw = value.get("value")
+    if kind == "bool" and isinstance(raw, bool): return raw
+    if kind == "int" and isinstance(raw, int) and not isinstance(raw, bool): return raw
+    if kind == "str" and isinstance(raw, str): return raw
+    raise HTTPException(status_code=400, detail="checkpoint state dictionary key is unsupported")
+
+
+def _state_encode(value: Any) -> Any:
+    if isinstance(value, torch.Tensor):
+        tensor = value.detach().cpu()
+        return {
+            "__sc_tensor__": True,
+            "dtype": str(tensor.dtype).replace("torch.", ""),
+            "shape": list(tensor.shape),
+            "values": tensor.tolist(),
+        }
+    if isinstance(value, dict):
+        return {"__sc_dict__": [[_state_key_encode(k), _state_encode(v)] for k, v in value.items()]}
+    if isinstance(value, (list, tuple)):
+        return {"__sc_list__": [_state_encode(v) for v in value]}
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise HTTPException(status_code=500, detail=f"checkpoint state value type is not portable: {type(value).__name__}")
+
+
+def _state_decode(value: Any) -> Any:
+    if isinstance(value, dict) and value.get("__sc_tensor__") is True:
+        dtype_name = str(value.get("dtype") or "")
+        dtype_map = {
+            "float16": torch.float16, "float32": torch.float32, "float64": torch.float64,
+            "bfloat16": torch.bfloat16, "int32": torch.int32, "int64": torch.int64, "bool": torch.bool,
+        }
+        dtype = dtype_map.get(dtype_name)
+        if dtype is None:
+            raise HTTPException(status_code=400, detail="checkpoint tensor dtype is unsupported")
+        tensor = torch.tensor(value.get("values"), dtype=dtype, device="cpu")
+        expected_shape = value.get("shape")
+        if not isinstance(expected_shape, list) or list(tensor.shape) != expected_shape:
+            raise HTTPException(status_code=400, detail="checkpoint tensor shape does not match encoded values")
+        return tensor
+    if isinstance(value, dict) and "__sc_dict__" in value:
+        rows = value.get("__sc_dict__")
+        if not isinstance(rows, list):
+            raise HTTPException(status_code=400, detail="checkpoint state dictionary is malformed")
+        out: dict[Any, Any] = {}
+        for row in rows:
+            if not isinstance(row, list) or len(row) != 2:
+                raise HTTPException(status_code=400, detail="checkpoint state dictionary row is malformed")
+            out[_state_key_decode(row[0])] = _state_decode(row[1])
+        return out
+    if isinstance(value, dict) and "__sc_list__" in value:
+        rows = value.get("__sc_list__")
+        if not isinstance(rows, list):
+            raise HTTPException(status_code=400, detail="checkpoint state list is malformed")
+        return [_state_decode(v) for v in rows]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    raise HTTPException(status_code=400, detail="checkpoint state value is malformed")
+
+
+def _checkpoint_state_bundle(model: torch.nn.Module, optimizer: torch.optim.Optimizer) -> dict[str, Any]:
+    state_doc = {
+        "schema": CHECKPOINT_STATE_SCHEMA,
+        "modelState": _state_encode(model.state_dict()),
+        "optimizerState": _state_encode(optimizer.state_dict()),
+    }
+    raw = json.dumps(state_doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
+    if len(raw) > MAX_CHECKPOINT_JSON_BYTES:
+        raise HTTPException(status_code=413, detail="checkpoint state exceeds the bounded portable JSON limit")
+    compressed = zlib.compress(raw, 9)
+    if len(compressed) > MAX_CHECKPOINT_COMPRESSED_BYTES:
+        raise HTTPException(status_code=413, detail="checkpoint state exceeds the bounded compressed artifact limit")
+    return {
+        "stateBundleEncoding": CHECKPOINT_BUNDLE_ENCODING,
+        "stateBundleBase64": base64.b64encode(compressed).decode("ascii"),
+        "stateBundleSha256": hashlib.sha256(compressed).hexdigest(),
+        "stateBundleJsonSha256": hashlib.sha256(raw).hexdigest(),
+        "stateBundleCompressedBytes": len(compressed),
+        "stateBundleJsonBytes": len(raw),
+    }
+
+
+def _decode_checkpoint_state(artifact: dict[str, Any]) -> dict[str, Any]:
+    if artifact.get("stateBundleEncoding") != CHECKPOINT_BUNDLE_ENCODING:
+        raise HTTPException(status_code=400, detail="checkpoint state bundle encoding is unsupported")
+    encoded = artifact.get("stateBundleBase64")
+    if not isinstance(encoded, str) or not encoded:
+        raise HTTPException(status_code=400, detail="checkpoint state bundle is missing")
+    try:
+        compressed = base64.b64decode(encoded, validate=True)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="checkpoint state bundle is not valid base64") from exc
+    if len(compressed) > MAX_CHECKPOINT_COMPRESSED_BYTES:
+        raise HTTPException(status_code=413, detail="checkpoint compressed artifact exceeds the bounded limit")
+    if hashlib.sha256(compressed).hexdigest() != artifact.get("stateBundleSha256"):
+        raise HTTPException(status_code=400, detail="checkpoint compressed-state fingerprint mismatch")
+    try:
+        dec = zlib.decompressobj()
+        raw = dec.decompress(compressed, MAX_CHECKPOINT_JSON_BYTES + 1)
+        if len(raw) > MAX_CHECKPOINT_JSON_BYTES or dec.unconsumed_tail or not dec.eof:
+            raise HTTPException(status_code=413, detail="checkpoint JSON state exceeds the bounded decompression limit")
+        raw += dec.flush()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="checkpoint state bundle cannot be decompressed") from exc
+    if len(raw) > MAX_CHECKPOINT_JSON_BYTES:
+        raise HTTPException(status_code=413, detail="checkpoint JSON state exceeds the bounded limit")
+    if hashlib.sha256(raw).hexdigest() != artifact.get("stateBundleJsonSha256"):
+        raise HTTPException(status_code=400, detail="checkpoint JSON-state fingerprint mismatch")
+    try:
+        state_doc = json.loads(raw.decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="checkpoint state bundle is not canonical JSON") from exc
+    if not isinstance(state_doc, dict) or state_doc.get("schema") != CHECKPOINT_STATE_SCHEMA:
+        raise HTTPException(status_code=400, detail="checkpoint state schema is unsupported")
+    return state_doc
+
+
+def _checkpoint_body_for_fingerprint(artifact: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in artifact.items() if k not in {"artifactFingerprint", "checkpointId"}}
+
+
+def _validate_checkpoint_artifact(value: Any, *, decode_state: bool = True) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    if not isinstance(value, dict) or value.get("schema") != CHECKPOINT_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"checkpointArtifact must use {CHECKPOINT_SCHEMA}")
+    artifact = dict(value)
+    if artifact.get("format") != CHECKPOINT_FORMAT:
+        raise HTTPException(status_code=400, detail="checkpoint artifact format is unsupported")
+    supplied_fp = str(artifact.get("artifactFingerprint") or "")
+    expected_fp = _canonical_sha256(_checkpoint_body_for_fingerprint(artifact))
+    if not supplied_fp or not hmac.compare_digest(supplied_fp, expected_fp):
+        raise HTTPException(status_code=400, detail="checkpoint artifact fingerprint mismatch")
+    expected_id = "nck_" + expected_fp[:24]
+    if artifact.get("checkpointId") != expected_id:
+        raise HTTPException(status_code=400, detail="checkpoint artifact id does not match its fingerprint")
+    if artifact.get("runtime") != RUNTIME:
+        raise HTTPException(status_code=400, detail="checkpoint artifact runtime is incompatible")
+    state_doc = _decode_checkpoint_state(artifact) if decode_state else None
+    return artifact, state_doc
+
+
+def _create_checkpoint_artifact(
+    model: torch.nn.Module, optimizer: torch.optim.Optimizer, spec: dict[str, Any], payload: dict[str, Any],
+    *, trained_spec: dict[str, Any], starting_epoch: int, completed_segment_epochs: int,
+    parent_checkpoint: dict[str, Any] | None, operation: str,
+) -> dict[str, Any]:
+    dataset_fp = _canonical_sha256({"features": payload.get("features"), "targets": payload.get("targets")})
+    cumulative_epochs = starting_epoch + completed_segment_epochs
+    parent_fp = parent_checkpoint.get("artifactFingerprint") if parent_checkpoint else None
+    lineage_depth = int(parent_checkpoint.get("lineageDepth", 0)) + 1 if parent_checkpoint else 0
+    body: dict[str, Any] = {
+        "schema": CHECKPOINT_SCHEMA,
+        "format": CHECKPOINT_FORMAT,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "portable": True,
+        "arbitrarySerializedModel": False,
+        "modelType": spec["modelType"],
+        "task": spec["task"],
+        "seed": int(payload.get("seed", 42)),
+        "startingEpoch": starting_epoch,
+        "completedSegmentEpochs": completed_segment_epochs,
+        "completedEpochs": cumulative_epochs,
+        "optimizer": spec["optimizer"],
+        "trainingSpecFingerprint": _canonical_sha256(spec),
+        "trainingCompatibilityFingerprint": _canonical_sha256(_checkpoint_compatibility_spec(spec)),
+        "trainingDatasetFingerprint": dataset_fp,
+        "trainedModelSpecFingerprint": _canonical_sha256(trained_spec),
+        "parentCheckpointFingerprint": parent_fp,
+        "lineageDepth": lineage_depth,
+        "resumePolicy": CHECKPOINT_RESUME_POLICY,
+        "createdFromOperation": operation,
+        **_checkpoint_state_bundle(model, optimizer),
+    }
+    fingerprint = _canonical_sha256(body)
+    body["artifactFingerprint"] = fingerprint
+    body["checkpointId"] = "nck_" + fingerprint[:24]
+    return body
+
+
+def _checkpoint_inspect(payload: dict[str, Any]) -> dict[str, Any]:
+    artifact, _ = _validate_checkpoint_artifact(payload.get("checkpointArtifact"), decode_state=True)
+    metadata = {k: v for k, v in artifact.items() if k != "stateBundleBase64"}
+    return {
+        "kind": "neural-checkpoint-inspection",
+        "checkpoint": metadata,
+        "stateBundleVerified": True,
+        "checkpointPersistenceEnabled": True,
+        "resumeTrainingEnabled": True,
+        "resumePolicy": CHECKPOINT_RESUME_POLICY,
+    }
+
+
+def _resume_checkpoint(payload: dict[str, Any], spec: dict[str, Any], *, expected_model_type: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    artifact, state_doc = _validate_checkpoint_artifact(payload.get("checkpointArtifact"), decode_state=True)
+    assert state_doc is not None
+    if artifact.get("modelType") != expected_model_type or spec["modelType"] != expected_model_type:
+        raise HTTPException(status_code=400, detail="checkpoint model type is incompatible with the resume operation")
+    if artifact.get("task") != spec["task"]:
+        raise HTTPException(status_code=400, detail="checkpoint task is incompatible with the resume training spec")
+    seed_value = int(payload.get("seed", artifact.get("seed", 42)))
+    if seed_value != int(artifact.get("seed", -1)):
+        raise HTTPException(status_code=400, detail="resume seed must match the checkpoint seed")
+    compatibility_fp = _canonical_sha256(_checkpoint_compatibility_spec(spec))
+    if compatibility_fp != artifact.get("trainingCompatibilityFingerprint"):
+        raise HTTPException(status_code=400, detail="resume training spec is incompatible with the checkpoint architecture/optimizer contract")
+    dataset_fp = _canonical_sha256({"features": payload.get("features"), "targets": payload.get("targets")})
+    if CHECKPOINT_RESUME_POLICY == "same-dataset-only" and dataset_fp != artifact.get("trainingDatasetFingerprint"):
+        raise HTTPException(status_code=400, detail="resume dataset fingerprint must match the checkpoint under same-dataset-only policy")
+    return artifact, state_doc
+
+
+def _restore_checkpoint_state(model: torch.nn.Module, optimizer: torch.optim.Optimizer, state_doc: dict[str, Any]) -> None:
+    try:
+        model_state = _state_decode(state_doc.get("modelState"))
+        optimizer_state = _state_decode(state_doc.get("optimizerState"))
+        if not isinstance(model_state, dict) or not isinstance(optimizer_state, dict):
+            raise ValueError("decoded checkpoint state is not a mapping")
+        model.load_state_dict(model_state, strict=True)
+        optimizer.load_state_dict(optimizer_state)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"checkpoint state cannot be restored: {exc.__class__.__name__}") from exc
+
+
+def _train(payload: dict[str, Any], *, expected_model_type: str, resume: bool = False) -> dict[str, Any]:
     spec = _normalized_training_spec(payload, expected_model_type=expected_model_type)
     parameter_count = _parameter_count_for_training(spec)
     if parameter_count > MAX_TRAINING_PARAMETERS:
         raise HTTPException(status_code=413, detail="training parameter count exceeds the bounded training limit")
     x, y = _training_tensors(payload, spec)
-    vx=vy=None
+    vx = vy = None
     if spec["validationEnabled"]:
         vx, vy = _training_tensors(payload, spec, validation=True)
-    seed_value = int(payload.get("seed", 42))
+    checkpoint_in: dict[str, Any] | None = None
+    state_doc: dict[str, Any] | None = None
+    if resume:
+        checkpoint_in, state_doc = _resume_checkpoint(payload, spec, expected_model_type=expected_model_type)
+    seed_value = int(payload.get("seed", checkpoint_in.get("seed", 42) if checkpoint_in else 42))
     torch.manual_seed(seed_value)
     model = _build_training_model(spec)
     loss_fn = _loss_function(spec["task"])
     optimizer = _optimizer(model, spec)
+    starting_epoch = int(checkpoint_in.get("completedEpochs", 0)) if checkpoint_in else 0
+    if state_doc is not None:
+        _restore_checkpoint_state(model, optimizer, state_doc)
     started = time.monotonic()
     telemetry: list[dict[str, Any]] = []
     n = int(x.shape[0]); batch_size = min(int(spec["batchSize"]), n)
@@ -771,65 +1048,82 @@ def _train(payload: dict[str, Any], *, expected_model_type: str) -> dict[str, An
         if time.monotonic() - started >= MAX_TRAINING_SECONDS:
             stopped_reason = "time-budget"
             break
+        global_epoch = starting_epoch + epoch
         if spec["shuffle"]:
-            g=torch.Generator(device="cpu"); g.manual_seed(seed_value + epoch)
-            order=torch.randperm(n,generator=g)
+            g = torch.Generator(device="cpu"); g.manual_seed(seed_value + global_epoch)
+            order = torch.randperm(n, generator=g)
         else:
-            order=torch.arange(n)
-        model.train(); running=0.0; seen=0
-        for start in range(0,n,batch_size):
-            idx=order[start:start+batch_size]
-            bx=x[idx]; by=y[idx]
+            order = torch.arange(n)
+        model.train(); running = 0.0; seen = 0
+        for start in range(0, n, batch_size):
+            idx = order[start:start + batch_size]
+            bx = x[idx]; by = y[idx]
             optimizer.zero_grad(set_to_none=True)
-            logits=model(bx)
-            loss=loss_fn(logits,by)
+            logits = model(bx)
+            loss = loss_fn(logits, by)
             if not bool(torch.isfinite(loss)):
                 raise HTTPException(status_code=422, detail="training produced a non-finite loss")
             loss.backward(); optimizer.step()
-            size=int(idx.numel()); running += float(loss.detach().item())*size; seen += size
+            size = int(idx.numel()); running += float(loss.detach().item()) * size; seen += size
         completed_epochs += 1
-        row={"epoch":completed_epochs,"trainingLoss":running/max(1,seen)}
+        row = {"epoch": starting_epoch + completed_epochs, "segmentEpoch": completed_epochs, "trainingLoss": running / max(1, seen)}
         if vx is not None and vy is not None:
             model.eval()
             with torch.no_grad():
-                v_logits=model(vx); v_loss=loss_fn(v_logits,vy)
-            row["validationLoss"]=float(v_loss.item())
+                v_logits = model(vx); v_loss = loss_fn(v_logits, vy)
+            row["validationLoss"] = float(v_loss.item())
         telemetry.append(row)
     if completed_epochs == 0:
         raise HTTPException(status_code=408, detail="training time budget elapsed before the first epoch completed")
     model.eval()
     with torch.no_grad():
-        train_logits=model(x); train_loss=float(loss_fn(train_logits,y).item())
-        final_training_metrics=_metrics_from_logits(train_logits,y,spec["task"],train_loss)
-        validation_metrics=None
+        train_logits = model(x); train_loss = float(loss_fn(train_logits, y).item())
+        final_training_metrics = _metrics_from_logits(train_logits, y, spec["task"], train_loss)
+        validation_metrics = None
         if vx is not None and vy is not None:
-            val_logits=model(vx); val_loss=float(loss_fn(val_logits,vy).item())
-            validation_metrics=_metrics_from_logits(val_logits,vy,spec["task"],val_loss)
-    trained_spec=_export_trained_model_spec(model,spec)
-    elapsed=time.monotonic()-started
+            val_logits = model(vx); val_loss = float(loss_fn(val_logits, vy).item())
+            validation_metrics = _metrics_from_logits(val_logits, vy, spec["task"], val_loss)
+    trained_spec = _export_trained_model_spec(model, spec)
+    elapsed = time.monotonic() - started
+    operation = f"workspace.neural.{'resume' if resume else 'train'}-{expected_model_type}"
+    checkpoint_out = _create_checkpoint_artifact(
+        model, optimizer, spec, payload, trained_spec=trained_spec, starting_epoch=starting_epoch,
+        completed_segment_epochs=completed_epochs, parent_checkpoint=checkpoint_in, operation=operation,
+    )
+    cumulative_epochs = starting_epoch + completed_epochs
     training_run = {
-        "schema":"sc-workspace-neural-training-run/1.0",
-        "modelType":spec["modelType"],"task":spec["task"],"seed":seed_value,
-        "requestedEpochs":int(spec["epochs"]),"completedEpochs":completed_epochs,
-        "batchSize":batch_size,"shuffle":bool(spec["shuffle"]),
-        "optimizer":spec["optimizer"],"parameterCount":parameter_count,
-        "trainingRows":int(x.shape[0]),"validationRows":int(vx.shape[0]) if vx is not None else 0,
-        "elapsedSeconds":elapsed,"stoppedReason":stopped_reason,
-        "trainingMetrics":final_training_metrics,"validationMetrics":validation_metrics,
-        "telemetry":telemetry,
-        "checkpointCreated":False,"checkpointPersistenceEnabled":False,"resumeTrainingEnabled":False,
-        "device":DEVICE,"threadLimit":TRAIN_THREADS,
+        "schema": "sc-workspace-neural-training-run/1.0",
+        "modelType": spec["modelType"], "task": spec["task"], "seed": seed_value,
+        "requestedEpochs": int(spec["epochs"]), "completedEpochs": completed_epochs,
+        "startingEpoch": starting_epoch, "cumulativeEpochs": cumulative_epochs,
+        "batchSize": batch_size, "shuffle": bool(spec["shuffle"]),
+        "optimizer": spec["optimizer"], "parameterCount": parameter_count,
+        "trainingRows": int(x.shape[0]), "validationRows": int(vx.shape[0]) if vx is not None else 0,
+        "elapsedSeconds": elapsed, "stoppedReason": stopped_reason,
+        "trainingMetrics": final_training_metrics, "validationMetrics": validation_metrics,
+        "telemetry": telemetry,
+        "checkpointCreated": True, "checkpointPersistenceEnabled": True, "resumeTrainingEnabled": True,
+        "checkpointArtifactSchema": CHECKPOINT_SCHEMA, "checkpointId": checkpoint_out["checkpointId"],
+        "checkpointFingerprint": checkpoint_out["artifactFingerprint"],
+        "resumed": resume,
+        "resumedFromCheckpointFingerprint": checkpoint_in.get("artifactFingerprint") if checkpoint_in else None,
+        "lineageDepth": checkpoint_out["lineageDepth"],
+        "device": DEVICE, "threadLimit": TRAIN_THREADS,
     }
+    dataset_fp = _canonical_sha256({"features": payload.get("features"), "targets": payload.get("targets")})
     return {
-        "kind":"neural-training-result",
-        "trainingRun":training_run,
-        "trainingSpecFingerprint":_canonical_sha256(spec),
-        "trainingDatasetFingerprint":_canonical_sha256({"features":payload.get("features"),"targets":payload.get("targets")}),
-        "validationDatasetFingerprint":_canonical_sha256({"features":payload.get("validationFeatures"),"targets":payload.get("validationTargets")}) if vx is not None else None,
-        "trainedModelSpec":trained_spec,
-        "trainedModelSpecFingerprint":_canonical_sha256(trained_spec),
-        "checkpointArtifact":None,
-        "externalCodeExecuted":False,
+        "kind": "neural-resume-result" if resume else "neural-training-result",
+        "trainingRun": training_run,
+        "trainingSpecFingerprint": _canonical_sha256(spec),
+        "trainingDatasetFingerprint": dataset_fp,
+        "validationDatasetFingerprint": _canonical_sha256({"features": payload.get("validationFeatures"), "targets": payload.get("validationTargets")}) if vx is not None else None,
+        "trainedModelSpec": trained_spec,
+        "trainedModelSpecFingerprint": _canonical_sha256(trained_spec),
+        "checkpointArtifact": checkpoint_out,
+        "checkpointArtifactFingerprint": checkpoint_out["artifactFingerprint"],
+        "parentCheckpointFingerprint": checkpoint_out["parentCheckpointFingerprint"],
+        "checkpointLineageDepth": checkpoint_out["lineageDepth"],
+        "externalCodeExecuted": False,
     }
 
 
@@ -850,7 +1144,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-training-foundation",
+        "devicePolicy": "cpu-only-checkpoint-resume-foundation",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -867,8 +1161,16 @@ def health() -> dict[str, Any]:
         "trainingModelTypes": ["linear", "mlp"],
         "trainingTasks": sorted(ALLOWED_TRAINING_TASKS),
         "trainingOptimizers": sorted(ALLOWED_OPTIMIZERS),
-        "checkpointPersistenceEnabled": False,
-        "resumeTrainingEnabled": False,
+        "checkpointPersistenceEnabled": True,
+        "resumeTrainingEnabled": True,
+        "checkpointArtifactSchema": CHECKPOINT_SCHEMA,
+        "checkpointStateSchema": CHECKPOINT_STATE_SCHEMA,
+        "checkpointFormat": CHECKPOINT_FORMAT,
+        "checkpointBundleEncoding": CHECKPOINT_BUNDLE_ENCODING,
+        "checkpointResumePolicy": CHECKPOINT_RESUME_POLICY,
+        "checkpointStoragePolicy": "workspace-artifact-store-via-job-result",
+        "maxCheckpointCompressedBytes": MAX_CHECKPOINT_COMPRESSED_BYTES,
+        "maxCheckpointJsonBytes": MAX_CHECKPOINT_JSON_BYTES,
         "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
@@ -910,6 +1212,11 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     blocked = sorted(k for k in BLOCKED_PAYLOAD_KEYS if k in payload)
     if blocked:
         raise HTTPException(status_code=400, detail="client-supplied code/packages/runtime credentials/serialized neural models are not accepted")
+    if operation in {"workspace.neural.checkpoint-inspect", "workspace.neural.resume-linear", "workspace.neural.resume-mlp"} and "seed" not in payload:
+        candidate = payload.get("checkpointArtifact")
+        if isinstance(candidate, dict) and isinstance(candidate.get("seed"), int):
+            payload = dict(payload)
+            payload["seed"] = candidate["seed"]
     seed = _seed(payload)
     if operation == "workspace.neural.tensor-summary":
         result = _tensor_summary(payload)
@@ -930,9 +1237,15 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     elif operation == "workspace.neural.training-plan":
         result = _training_plan(payload)
     elif operation == "workspace.neural.train-linear":
-        result = _train(payload, expected_model_type="linear")
+        result = _train(payload, expected_model_type="linear", resume=False)
+    elif operation == "workspace.neural.train-mlp":
+        result = _train(payload, expected_model_type="mlp", resume=False)
+    elif operation == "workspace.neural.checkpoint-inspect":
+        result = _checkpoint_inspect(payload)
+    elif operation == "workspace.neural.resume-linear":
+        result = _train(payload, expected_model_type="linear", resume=True)
     else:
-        result = _train(payload, expected_model_type="mlp")
+        result = _train(payload, expected_model_type="mlp", resume=True)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -951,8 +1264,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "trainingModelTypes": ["linear", "mlp"],
         "trainingTasks": sorted(ALLOWED_TRAINING_TASKS),
         "trainingOptimizers": sorted(ALLOWED_OPTIMIZERS),
-        "checkpointPersistenceEnabled": False,
-        "resumeTrainingEnabled": False,
+        "checkpointPersistenceEnabled": True,
+        "resumeTrainingEnabled": True,
+        "checkpointArtifactSchema": CHECKPOINT_SCHEMA,
+        "checkpointStateSchema": CHECKPOINT_STATE_SCHEMA,
+        "checkpointFormat": CHECKPOINT_FORMAT,
+        "checkpointBundleEncoding": CHECKPOINT_BUNDLE_ENCODING,
+        "checkpointResumePolicy": CHECKPOINT_RESUME_POLICY,
+        "checkpointStoragePolicy": "workspace-artifact-store-via-job-result",
+        "maxCheckpointCompressedBytes": MAX_CHECKPOINT_COMPRESSED_BYTES,
+        "maxCheckpointJsonBytes": MAX_CHECKPOINT_JSON_BYTES,
         "acceleratorExecutionEnabled": False,
         "result": result,
     }
