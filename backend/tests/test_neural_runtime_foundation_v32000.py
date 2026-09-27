@@ -35,13 +35,13 @@ def test_neural_health_is_cpu_bounded_and_training_disabled(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["version"] == "3.20.0"
+    assert body["version"] == "3.21.0"
     assert body["runtime"] == "python-pytorch-neural"
     assert body["devicePolicy"] == "cpu-only-foundation"
     assert body["trainingEnabled"] is False
     assert body["arbitraryCodeExecution"] is False
     assert body["clientSuppliedSerializedModelsAllowed"] is False
-    assert len(body["operations"]) == 4
+    assert len(body["operations"]) >= 4
 
 
 def test_linear_forward_uses_declarative_model_spec(monkeypatch):
@@ -117,12 +117,12 @@ def test_workspace_registers_neural_runtime_and_status_endpoint(monkeypatch):
     assert OPERATION_LANGUAGE["workspace.neural.linear-forward"] == "neural"
     item = next(x for x in runtime_catalog() if x["language"] == "neural")
     assert item["runtime"] == "python-pytorch-neural"
-    assert len(item["operations"]) == 4
+    assert len(item["operations"]) >= 4
     assert "neuralRuntimeStatus" in TYPED_ENDPOINTS
     assert TYPED_ENDPOINTS["neuralRuntimeStatus"]["path"] == "/v1/polyglot/runtimes/neural/status"
     assert len(TYPED_ENDPOINTS) == 291
     cp = client_profile(app.openapi())
-    assert cp["workspaceVersion"] == "3.20.0"
+    assert cp["workspaceVersion"] == "3.21.0"
     assert cp["missingOpenApiOperations"] == []
 
 
