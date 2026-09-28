@@ -80,7 +80,9 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.trial-plan", "workspace.neural.trial-execute",
         "workspace.neural.batch-execute", "workspace.neural.hyperparameter-grid",
         "workspace.neural.hyperparameter-random",
-    ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
+        "workspace.neural.remote-worker-inventory", "workspace.neural.remote-dispatch-plan",
+        "workspace.neural.remote-execute", "workspace.neural.remote-receipt-verify",
+    ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, device orchestration, reproducible trial execution, and operator-governed remote GPU dispatch."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -579,6 +581,36 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "artifactFingerprint":blob.get("artifactFingerprint"),
             }
 
+    neural_remote_execution_artifact = None
+    if language == "neural" and row.operation == "workspace.neural.remote-execute" and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        neural_result=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=neural_result.get("remoteExecutionArtifact") if isinstance(neural_result.get("remoteExecutionArtifact"),dict) else None
+        if blob and blob.get("schema")=="sc-workspace-neural-remote-execution-artifact/1.0":
+            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            aid=f"neural-remote-execution-{row.job_id}"
+            existing_remote=get_artifact(db,row.user_key,aid)
+            req=ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
+                "filename":f"neural-remote-execution-{row.job_id}.json",
+                "mediaType":"application/vnd.sc.workspace.neural-remote-execution+json",
+                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
+                "expectedRevision":existing_remote.revision if existing_remote is not None else 0,
+                "metadata":{
+                    "kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
+                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
+                    "dispatchId":blob.get("dispatchId"),"workerId":blob.get("workerId"),
+                    "remoteOperation":blob.get("operation"),"resultFingerprint":blob.get("resultFingerprint"),
+                    "receiptFingerprint":blob.get("receiptFingerprint"),"role":"remote-execution",
+                },
+            })
+            neural_remote_execution_artifact=store_artifact(db,row.user_key,req)
+            neural_result["workspaceRemoteExecutionArtifact"]={
+                "artifactId":neural_remote_execution_artifact.artifact_id,"mediaType":neural_remote_execution_artifact.media_type,
+                "sha256":neural_remote_execution_artifact.sha256,"bytes":neural_remote_execution_artifact.bytes,
+                "artifactFingerprint":blob.get("artifactFingerprint"),
+            }
+
     result_doc={"schema":"sc-workspace-polyglot-result/1.0","language":language,"operation":row.operation,"result":result}
     raw=json.dumps(result_doc,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
     if len(raw)>get_settings().compute_max_result_bytes:
@@ -809,6 +841,32 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "searchKind":blob.get("searchKind"),"searchSpaceFingerprint":blob.get("searchSpaceFingerprint"),
             "workspaceTrialSearchArtifactId":neural_trial_search_artifact.artifact_id if neural_trial_search_artifact is not None else None,
             "workspaceTrialSearchArtifactSha256":neural_trial_search_artifact.sha256 if neural_trial_search_artifact is not None else None,
+        })
+    if language == "neural" and row.operation in {
+        "workspace.neural.remote-worker-inventory","workspace.neural.remote-dispatch-plan",
+        "workspace.neural.remote-execute","workspace.neural.remote-receipt-verify",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        plan=nr.get("dispatchPlan") if isinstance(nr.get("dispatchPlan"),dict) else {}
+        receipt_blob=nr.get("remoteReceipt") if isinstance(nr.get("remoteReceipt"),dict) else {}
+        art=nr.get("remoteExecutionArtifact") if isinstance(nr.get("remoteExecutionArtifact"),dict) else {}
+        receipt_details.update({
+            "neuralRemoteGpuExecutionBroker":True,
+            "remoteWorkerInventorySchema":"sc-workspace-neural-remote-worker-inventory/1.0",
+            "remoteDispatchPlanSchema":"sc-workspace-neural-remote-dispatch-plan/1.0",
+            "remoteExecutionReceiptSchema":"sc-workspace-neural-remote-execution-receipt/1.0",
+            "remoteExecutionArtifactSchema":art.get("schema"),
+            "remoteExecutionArtifactFingerprint":art.get("artifactFingerprint"),
+            "remoteDispatchId":art.get("dispatchId") or receipt_blob.get("dispatchId"),
+            "remoteWorkerId":art.get("workerId") or receipt_blob.get("workerId") or plan.get("workerId"),
+            "remoteOperation":art.get("operation") or receipt_blob.get("operation") or plan.get("operation"),
+            "remoteResultFingerprint":art.get("resultFingerprint") or receipt_blob.get("resultFingerprint"),
+            "remoteReceiptFingerprint":art.get("receiptFingerprint") or receipt_blob.get("receiptFingerprint"),
+            "remoteDispatchPlanFingerprint":art.get("dispatchPlanFingerprint") or plan.get("planFingerprint"),
+            "workspaceRemoteExecutionArtifactId":neural_remote_execution_artifact.artifact_id if neural_remote_execution_artifact is not None else None,
+            "workspaceRemoteExecutionArtifactSha256":neural_remote_execution_artifact.sha256 if neural_remote_execution_artifact is not None else None,
+            "clientSuppliedRemoteWorkerUrlsAllowed":False,
         })
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,

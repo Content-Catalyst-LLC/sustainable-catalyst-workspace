@@ -24,13 +24,13 @@ def create(c,task='regression',**extra):
 
 def test_health_exposes_reproducible_model_packages(monkeypatch):
     _,c=load_runtime(monkeypatch); x=c.get('/health').json()
-    assert x['version'] in {'3.28.0','3.29.0','3.30.0'} and len(x['operations'])>=35
+    assert x['version'] in {'3.28.0','3.29.0','3.30.0','3.31.0'} and len(x['operations'])>=35
     assert x['reproducibleModelPackagesEnabled'] is True
     assert x['modelPackageSchema']=='sc-workspace-neural-model-package/1.0'
     assert x['modelPackageFormat']=='sc-workspace-neural-reproducible-model-package/1.0'
     assert x['modelPackageDependencyPins']=={'torch':'2.10.0','numpy':'2.2.6'}
     assert x['modelPackageArbitraryCodeAllowed'] is False and x['modelPackageSerializedPyTorchAllowed'] is False
-    assert x['devicePolicy'] in {'cpu-only-reproducible-model-packages','governed-explicit-device-orchestration'}
+    assert x['devicePolicy'] in {'cpu-only-reproducible-model-packages','governed-explicit-device-orchestration','governed-remote-gpu-execution-broker'}
 
 def test_package_create_is_portable_fingerprinted_and_dependency_explicit(monkeypatch):
     _,c=load_runtime(monkeypatch); x=create(c); p=x['modelPackage']
@@ -96,7 +96,7 @@ def test_workspace_registry_and_persistence_contract_expose_v328():
     from app.polyglot import RUNTIME_BY_LANGUAGE
     n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=35
     for op in ['workspace.neural.package-create','workspace.neural.package-verify','workspace.neural.package-inspect','workspace.neural.package-infer']: assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0'} and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0','3.31.0'} and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
     poly=(ROOT/'app'/'polyglot.py').read_text()
     assert 'application/vnd.sc.workspace.neural-model-package+json' in poly
     assert 'workspaceModelPackageArtifactId' in poly and 'sourceModelPackageFingerprint' in poly

@@ -34,7 +34,7 @@ def base_payload():
 
 def test_health_and_registry_expose_v330(monkeypatch):
     _,c=load_runtime(monkeypatch); h=c.get('/health').json()
-    assert h['version']=='3.30.0' and len(h['operations'])==44
+    assert h['version'] in {'3.30.0','3.31.0'} and len(h['operations'])>=44
     assert h['batchTrialHyperparameterExecutionEnabled'] is True
     assert h['trialArtifactSchema']=='sc-workspace-neural-trial-artifact/1.0'
     assert h['batchArtifactSchema']=='sc-workspace-neural-batch-artifact/1.0'
@@ -90,10 +90,10 @@ def test_workspace_registry_persistence_and_typed_contract_expose_v330():
     from app.client_contracts import profile
     from app.main import app
     from app.polyglot import RUNTIME_BY_LANGUAGE
-    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==44
+    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=44
     for op in ['workspace.neural.trial-plan','workspace.neural.trial-execute','workspace.neural.batch-execute','workspace.neural.hyperparameter-grid','workspace.neural.hyperparameter-random']:
         assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.30.0' and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.30.0','3.31.0'} and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
     poly=(ROOT/'app'/'polyglot.py').read_text()
     assert 'application/vnd.sc.workspace.neural-trial+json' in poly
     assert 'application/vnd.sc.workspace.neural-batch+json' in poly

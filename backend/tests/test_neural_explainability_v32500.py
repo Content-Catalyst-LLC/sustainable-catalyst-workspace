@@ -25,11 +25,11 @@ def multiclass_model(): return {"schema":"sc-workspace-neural-model-spec/1.0","m
 
 def test_health_exposes_v325_explainability(monkeypatch):
     _,c=load_runtime(monkeypatch); x=c.get('/health').json()
-    assert x['version'] in {'3.28.0','3.29.0','3.30.0'}; assert len(x['operations'])>=35
+    assert x['version'] in {'3.28.0','3.29.0','3.30.0','3.31.0'}; assert len(x['operations'])>=35
     assert x['explainabilityRuntimeEnabled'] is True
     assert x['explainabilityArtifactSchema']=='sc-workspace-neural-explainability-artifact/1.0'
     assert set(x['explainabilityMethods'])=={'input-gradient','integrated-gradients','feature-occlusion','global-gradient-sensitivity'}
-    assert x['devicePolicy'] in {'cpu-only-neural-explainability','cpu-only-embedding-representation','cpu-only-inference-prediction-provenance','cpu-only-reproducible-model-packages','governed-explicit-device-orchestration'}
+    assert x['devicePolicy'] in {'cpu-only-neural-explainability','cpu-only-embedding-representation','cpu-only-inference-prediction-provenance','cpu-only-reproducible-model-packages','governed-explicit-device-orchestration','governed-remote-gpu-execution-broker'}
 
 def test_regression_gradient_is_exact(monkeypatch):
     _,c=load_runtime(monkeypatch)
@@ -87,4 +87,4 @@ def test_bounds_and_workspace_registry():
     from app.polyglot import RUNTIME_BY_LANGUAGE
     n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=35
     for op in ['workspace.neural.explain-gradient','workspace.neural.explain-integrated-gradients','workspace.neural.explain-occlusion','workspace.neural.explain-global-sensitivity']: assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0','3.31.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]

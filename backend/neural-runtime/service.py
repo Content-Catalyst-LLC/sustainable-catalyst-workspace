@@ -9,6 +9,10 @@ import os
 import threading
 import time
 import zlib
+import secrets
+import urllib.error
+import urllib.request
+from uuid import uuid4
 from typing import Any
 from contextvars import ContextVar
 
@@ -33,7 +37,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.30.0"
+SERVICE_VERSION = "3.31.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -99,6 +103,10 @@ OPERATIONS = {
     "workspace.neural.batch-execute",
     "workspace.neural.hyperparameter-grid",
     "workspace.neural.hyperparameter-random",
+    "workspace.neural.remote-worker-inventory",
+    "workspace.neural.remote-dispatch-plan",
+    "workspace.neural.remote-execute",
+    "workspace.neural.remote-receipt-verify",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -139,6 +147,41 @@ ALLOWED_HYPERPARAMETER_PATHS = {
     "optimizer.name", "optimizer.learningRate", "optimizer.weightDecay", "batchSize", "epochs"
 }
 ALLOWED_TRIAL_OBJECTIVE_METRICS = {"loss", "accuracy", "mae", "rmse"}
+# v3.31 governed remote GPU execution broker. Remote endpoints are operator-configured
+# only; clients can never supply a runtime URL. The broker is disabled by default.
+REMOTE_WORKER_INVENTORY_SCHEMA = "sc-workspace-neural-remote-worker-inventory/1.0"
+REMOTE_DISPATCH_PLAN_SCHEMA = "sc-workspace-neural-remote-dispatch-plan/1.0"
+REMOTE_DISPATCH_ENVELOPE_SCHEMA = "sc-workspace-neural-remote-dispatch-envelope/1.0"
+REMOTE_EXECUTION_RECEIPT_SCHEMA = "sc-workspace-neural-remote-execution-receipt/1.0"
+REMOTE_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-remote-execution-artifact/1.0"
+REMOTE_WORKER_RESPONSE_SCHEMA = "sc-workspace-neural-remote-worker-response/1.0"
+REMOTE_BROKER_ENABLED = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_BROKER_ENABLED", "false").strip().lower() in {"1","true","yes","on"}
+REMOTE_WORKER_MODE = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_MODE", "false").strip().lower() in {"1","true","yes","on"}
+REMOTE_SHARED_SECRET = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_HMAC_SECRET", "").strip()
+REMOTE_WORKER_ID = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_ID", "").strip()
+REMOTE_WORKER_DEVICE = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_DEVICE", "cuda:0").strip().lower() or "cuda:0"
+REMOTE_WORKERS_JSON = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKERS_JSON", "[]").strip() or "[]"
+REMOTE_ALLOW_INSECURE_HTTP = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_ALLOW_INSECURE_HTTP", "false").strip().lower() in {"1","true","yes","on"}
+MAX_REMOTE_WORKERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_REMOTE_WORKERS", "8")), 32))
+REMOTE_TIMEOUT_SECONDS = max(1.0, min(float(os.getenv("SC_WORKSPACE_NEURAL_REMOTE_TIMEOUT_SECONDS", "60")), 300.0))
+REMOTE_ENVELOPE_TTL_SECONDS = max(15, min(int(os.getenv("SC_WORKSPACE_NEURAL_REMOTE_ENVELOPE_TTL_SECONDS", "120")), 600))
+MAX_REMOTE_RESPONSE_BYTES = max(1024 * 1024, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_REMOTE_RESPONSE_BYTES", str(25 * 1024 * 1024))), 50 * 1024 * 1024))
+REMOTE_ALLOWED_OPERATIONS = {
+    "workspace.neural.train-linear", "workspace.neural.train-mlp",
+    "workspace.neural.resume-linear", "workspace.neural.resume-mlp",
+    "workspace.neural.evaluate-regression", "workspace.neural.evaluate-binary", "workspace.neural.evaluate-multiclass",
+    "workspace.neural.calibration-report", "workspace.neural.uncertainty-summary",
+    "workspace.neural.explain-gradient", "workspace.neural.explain-integrated-gradients",
+    "workspace.neural.explain-occlusion", "workspace.neural.explain-global-sensitivity",
+    "workspace.neural.embedding-generate", "workspace.neural.representation-summary",
+    "workspace.neural.embedding-similarity", "workspace.neural.embedding-neighbors",
+    "workspace.neural.infer-regression", "workspace.neural.infer-binary", "workspace.neural.infer-multiclass",
+    "workspace.neural.package-infer", "workspace.neural.accelerator-smoke",
+    "workspace.neural.trial-execute", "workspace.neural.batch-execute",
+    "workspace.neural.hyperparameter-grid", "workspace.neural.hyperparameter-random",
+}
+_REMOTE_NONCES: dict[str, int] = {}
+_REMOTE_NONCE_LOCK = threading.Lock()
 torch.set_num_threads(TRAIN_THREADS)
 _OPTIMIZER_INIT_LOCK = threading.Lock()
 
@@ -2485,7 +2528,7 @@ def _package_runtime_contract() -> dict[str, Any]:
         "engineVersion": torch.__version__,
         "numpyVersion": np.__version__,
         "requiredDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
-        "devicePolicy": "governed-explicit-device-orchestration",
+        "devicePolicy": "governed-remote-gpu-execution-broker",
         "acceleratorRequired": False,
         "supportedDeviceClasses": ["cpu", "cuda"],
         "deviceSelectionMustBeExplicit": True,
@@ -2678,6 +2721,271 @@ def _model_package_infer(payload: dict[str, Any]) -> dict[str, Any]:
     result["kind"]="neural-packaged-inference-result"
     return result
 
+def _remote_hmac(value: dict[str, Any]) -> str:
+    if not REMOTE_SHARED_SECRET:
+        raise HTTPException(status_code=503, detail="remote GPU broker signing secret is not configured")
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str).encode("utf-8")
+    return hmac.new(REMOTE_SHARED_SECRET.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+
+
+def _remote_worker_registry() -> list[dict[str, Any]]:
+    try:
+        raw = json.loads(REMOTE_WORKERS_JSON)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="remote GPU worker registry JSON is invalid") from exc
+    if not isinstance(raw, list) or len(raw) > MAX_REMOTE_WORKERS:
+        raise HTTPException(status_code=503, detail="remote GPU worker registry exceeds bounded size or is not an array")
+    workers: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=503, detail="remote GPU worker registry entry must be an object")
+        worker_id = str(item.get("workerId") or "").strip()
+        url = str(item.get("url") or "").strip().rstrip("/")
+        device = str(item.get("device") or "cuda:0").strip().lower()
+        enabled = bool(item.get("enabled", True))
+        tags = item.get("tags") if isinstance(item.get("tags"), list) else []
+        if not worker_id or worker_id in seen or not url:
+            raise HTTPException(status_code=503, detail="remote GPU worker registry contains missing or duplicate identity")
+        if not url.startswith("https://") and not (REMOTE_ALLOW_INSECURE_HTTP and url.startswith("http://")):
+            raise HTTPException(status_code=503, detail="remote GPU worker endpoint must use HTTPS under current policy")
+        if not device.startswith("cuda:"):
+            raise HTTPException(status_code=503, detail="remote GPU worker must declare an explicit CUDA device")
+        seen.add(worker_id)
+        workers.append({"workerId": worker_id, "url": url, "device": device, "enabled": enabled, "tags": [str(x) for x in tags[:16]]})
+    return sorted(workers, key=lambda x: x["workerId"])
+
+
+def _remote_registry_fingerprint(workers: list[dict[str, Any]]) -> str:
+    public = [{k: v for k, v in w.items() if k != "url"} | {"endpointConfigured": True} for w in workers]
+    return _canonical_sha256(public)
+
+
+def _remote_worker_inventory(payload: dict[str, Any]) -> dict[str, Any]:
+    workers = _remote_worker_registry()
+    public = [{k: v for k, v in w.items() if k != "url"} | {"endpointConfigured": True} for w in workers]
+    body = {
+        "schema": REMOTE_WORKER_INVENTORY_SCHEMA,
+        "brokerEnabled": REMOTE_BROKER_ENABLED,
+        "workerMode": REMOTE_WORKER_MODE,
+        "workerCount": len(public),
+        "enabledWorkerCount": sum(1 for w in public if w.get("enabled")),
+        "workers": public,
+        "clientSuppliedWorkerUrlsAllowed": False,
+    }
+    body["inventoryFingerprint"] = _canonical_sha256(body)
+    return {"kind": "neural-remote-worker-inventory", "remoteWorkerInventory": body, "inventoryFingerprint": body["inventoryFingerprint"]}
+
+
+def _remote_dispatch_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    if not REMOTE_BROKER_ENABLED:
+        raise HTTPException(status_code=409, detail="remote GPU execution broker is disabled by operator policy")
+    operation = str(payload.get("remoteOperation") or "").strip()
+    remote_payload = payload.get("remotePayload")
+    if operation not in REMOTE_ALLOWED_OPERATIONS or operation.startswith("workspace.neural.remote-"):
+        raise HTTPException(status_code=400, detail="remote neural operation is not allowed by broker policy")
+    if not isinstance(remote_payload, dict):
+        raise HTTPException(status_code=400, detail="remotePayload must be an object")
+    if any(k in remote_payload for k in BLOCKED_PAYLOAD_KEYS):
+        raise HTTPException(status_code=400, detail="remotePayload contains a blocked client-supplied execution field")
+    workers = [w for w in _remote_worker_registry() if w.get("enabled")]
+    requested_id = str(payload.get("workerId") or "").strip()
+    if requested_id:
+        workers = [w for w in workers if w["workerId"] == requested_id]
+    if not workers:
+        raise HTTPException(status_code=409, detail="no enabled registered remote GPU worker satisfies the dispatch request")
+    worker = workers[0]
+    plan = {
+        "schema": REMOTE_DISPATCH_PLAN_SCHEMA,
+        "workerId": worker["workerId"],
+        "selectedDevice": worker["device"],
+        "operation": operation,
+        "payloadFingerprint": _canonical_sha256(remote_payload),
+        "workerRegistryFingerprint": _remote_registry_fingerprint(_remote_worker_registry()),
+        "dispatchPolicy": "operator-managed-worker-allowlist",
+        "clientSuppliedWorkerUrlsAllowed": False,
+    }
+    plan["planFingerprint"] = _canonical_sha256(plan)
+    return {"kind": "neural-remote-dispatch-plan", "dispatchPlan": plan, "planFingerprint": plan["planFingerprint"]}
+
+
+def _validate_remote_receipt(receipt: Any, *, expected_dispatch_id: str | None = None, expected_worker_id: str | None = None, expected_operation: str | None = None, expected_result_fingerprint: str | None = None) -> dict[str, Any]:
+    if not isinstance(receipt, dict) or receipt.get("schema") != REMOTE_EXECUTION_RECEIPT_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"remoteReceipt must use {REMOTE_EXECUTION_RECEIPT_SCHEMA}")
+    supplied_fp = str(receipt.get("receiptFingerprint") or "")
+    base = {k: v for k, v in receipt.items() if k not in {"receiptFingerprint", "signature"}}
+    if not supplied_fp or not hmac.compare_digest(supplied_fp, _canonical_sha256(base)):
+        raise HTTPException(status_code=400, detail="remote execution receipt fingerprint verification failed")
+    sig_base = dict(base); sig_base["receiptFingerprint"] = supplied_fp
+    supplied_sig = str(receipt.get("signature") or "")
+    if not supplied_sig or not hmac.compare_digest(supplied_sig, _remote_hmac(sig_base)):
+        raise HTTPException(status_code=400, detail="remote execution receipt signature verification failed")
+    if expected_dispatch_id and receipt.get("dispatchId") != expected_dispatch_id:
+        raise HTTPException(status_code=400, detail="remote execution receipt dispatch identity mismatch")
+    if expected_worker_id and receipt.get("workerId") != expected_worker_id:
+        raise HTTPException(status_code=400, detail="remote execution receipt worker identity mismatch")
+    if expected_operation and receipt.get("operation") != expected_operation:
+        raise HTTPException(status_code=400, detail="remote execution receipt operation mismatch")
+    if expected_result_fingerprint and receipt.get("resultFingerprint") != expected_result_fingerprint:
+        raise HTTPException(status_code=400, detail="remote execution receipt result fingerprint mismatch")
+    return receipt
+
+
+def _remote_receipt_verify(payload: dict[str, Any]) -> dict[str, Any]:
+    receipt = _validate_remote_receipt(payload.get("remoteReceipt"))
+    return {
+        "kind": "neural-remote-receipt-verification",
+        "valid": True,
+        "workerId": receipt.get("workerId"),
+        "dispatchId": receipt.get("dispatchId"),
+        "operation": receipt.get("operation"),
+        "resultFingerprint": receipt.get("resultFingerprint"),
+        "receiptFingerprint": receipt.get("receiptFingerprint"),
+    }
+
+
+def _remote_execute(payload: dict[str, Any]) -> dict[str, Any]:
+    if not REMOTE_SHARED_SECRET:
+        raise HTTPException(status_code=503, detail="remote GPU broker signing secret is not configured")
+    planned = _remote_dispatch_plan(payload)["dispatchPlan"]
+    worker = next((w for w in _remote_worker_registry() if w["workerId"] == planned["workerId"]), None)
+    if worker is None:
+        raise HTTPException(status_code=409, detail="planned remote GPU worker is no longer registered")
+    issued = int(time.time())
+    dispatch = {
+        "schema": REMOTE_DISPATCH_ENVELOPE_SCHEMA,
+        "dispatchId": f"ngd_{uuid4().hex}",
+        "nonce": secrets.token_hex(16),
+        "issuedAt": issued,
+        "expiresAt": issued + REMOTE_ENVELOPE_TTL_SECONDS,
+        "workerId": worker["workerId"],
+        "operation": planned["operation"],
+        "payload": payload["remotePayload"],
+        "payloadFingerprint": planned["payloadFingerprint"],
+        "dispatchPlanFingerprint": planned["planFingerprint"],
+        "requestedDevice": worker["device"],
+        "originRuntimeVersion": SERVICE_VERSION,
+    }
+    dispatch["signature"] = _remote_hmac(dispatch)
+    raw = json.dumps(dispatch, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(worker["url"] + "/v1/remote/execute", data=raw, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=REMOTE_TIMEOUT_SECONDS) as resp:
+            response_raw = resp.read(MAX_REMOTE_RESPONSE_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read(4096).decode("utf-8", "replace")
+        raise HTTPException(status_code=502, detail=f"remote GPU worker rejected dispatch: {exc.code} {detail[:500]}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="remote GPU worker dispatch failed") from exc
+    if len(response_raw) > MAX_REMOTE_RESPONSE_BYTES:
+        raise HTTPException(status_code=502, detail="remote GPU worker response exceeded bounded size")
+    try:
+        response = json.loads(response_raw.decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="remote GPU worker returned invalid JSON") from exc
+    if not isinstance(response, dict) or response.get("schema") != REMOTE_WORKER_RESPONSE_SCHEMA or response.get("ok") is not True:
+        raise HTTPException(status_code=502, detail="remote GPU worker returned an invalid response contract")
+    remote_result = response.get("result")
+    if not isinstance(remote_result, dict):
+        raise HTTPException(status_code=502, detail="remote GPU worker response is missing result")
+    result_fp = _canonical_sha256(remote_result)
+    receipt = _validate_remote_receipt(response.get("receipt"), expected_dispatch_id=dispatch["dispatchId"], expected_worker_id=worker["workerId"], expected_operation=planned["operation"], expected_result_fingerprint=result_fp)
+    artifact = {
+        "schema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
+        "kind": "neural-remote-gpu-execution",
+        "dispatchId": dispatch["dispatchId"],
+        "workerId": worker["workerId"],
+        "operation": planned["operation"],
+        "selectedDevice": receipt.get("selectedDevice"),
+        "dispatchPlanFingerprint": planned["planFingerprint"],
+        "payloadFingerprint": planned["payloadFingerprint"],
+        "resultFingerprint": result_fp,
+        "receiptFingerprint": receipt.get("receiptFingerprint"),
+        "remoteRuntimeVersion": receipt.get("runtimeVersion"),
+        "evidenceBoundary": "remote-execution-receipt-is-compute-provenance-not-observed-evidence",
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    return {"kind": "neural-remote-gpu-execution", "remoteExecutionArtifact": artifact, "remoteReceipt": receipt, "remoteResult": remote_result}
+
+
+def _prune_and_claim_remote_nonce(nonce: str, expires_at: int) -> None:
+    now = int(time.time())
+    with _REMOTE_NONCE_LOCK:
+        stale = [k for k, v in _REMOTE_NONCES.items() if v < now]
+        for key in stale:
+            _REMOTE_NONCES.pop(key, None)
+        if nonce in _REMOTE_NONCES:
+            raise HTTPException(status_code=409, detail="remote dispatch nonce has already been used")
+        _REMOTE_NONCES[nonce] = expires_at
+
+
+@app.post("/v1/remote/execute")
+def remote_worker_execute(envelope: dict[str, Any]) -> dict[str, Any]:
+    if not REMOTE_WORKER_MODE:
+        raise HTTPException(status_code=404, detail="remote GPU worker mode is disabled")
+    if not REMOTE_SHARED_SECRET or not REMOTE_WORKER_ID:
+        raise HTTPException(status_code=503, detail="remote GPU worker identity/signing configuration is incomplete")
+    if envelope.get("schema") != REMOTE_DISPATCH_ENVELOPE_SCHEMA:
+        raise HTTPException(status_code=400, detail="unsupported remote dispatch envelope")
+    supplied_sig = str(envelope.get("signature") or "")
+    base = {k: v for k, v in envelope.items() if k != "signature"}
+    if not supplied_sig or not hmac.compare_digest(supplied_sig, _remote_hmac(base)):
+        raise HTTPException(status_code=401, detail="remote dispatch signature verification failed")
+    now = int(time.time())
+    issued = int(envelope.get("issuedAt") or 0); expires = int(envelope.get("expiresAt") or 0)
+    if issued <= 0 or expires <= now or issued > now + 30 or expires - issued > REMOTE_ENVELOPE_TTL_SECONDS:
+        raise HTTPException(status_code=401, detail="remote dispatch envelope is expired or outside the allowed clock window")
+    if str(envelope.get("workerId") or "") != REMOTE_WORKER_ID:
+        raise HTTPException(status_code=403, detail="remote dispatch worker identity mismatch")
+    nonce = str(envelope.get("nonce") or "")
+    if len(nonce) < 16:
+        raise HTTPException(status_code=400, detail="remote dispatch nonce is invalid")
+    _prune_and_claim_remote_nonce(nonce, expires)
+    operation = str(envelope.get("operation") or "")
+    if operation not in REMOTE_ALLOWED_OPERATIONS or operation.startswith("workspace.neural.remote-"):
+        raise HTTPException(status_code=400, detail="remote dispatch operation is not allowed")
+    payload = envelope.get("payload")
+    if not isinstance(payload, dict) or _canonical_sha256(payload) != str(envelope.get("payloadFingerprint") or ""):
+        raise HTTPException(status_code=400, detail="remote dispatch payload fingerprint verification failed")
+    requested_device = str(envelope.get("requestedDevice") or "").lower()
+    if requested_device != REMOTE_WORKER_DEVICE:
+        raise HTTPException(status_code=409, detail="remote dispatch requested device does not match worker device contract")
+    local_payload = dict(payload)
+    local_payload["deviceRequest"] = {"preference": REMOTE_WORKER_DEVICE, "strict": True, "allowFallback": False}
+    local_envelope = {
+        "schema": "sc-workspace-polyglot-execution-envelope/1.0",
+        "workspaceVersion": SERVICE_VERSION,
+        "jobId": str(envelope.get("dispatchId") or "remote-job"),
+        "language": "neural",
+        "operation": operation,
+        "payload": local_payload,
+        "arbitraryCodeExecution": False,
+    }
+    started = int(time.time())
+    result = execute(local_envelope, authorization=f"Bearer {TOKEN}")
+    finished = int(time.time())
+    result_fp = _canonical_sha256(result)
+    receipt_base = {
+        "schema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "dispatchId": str(envelope.get("dispatchId")),
+        "workerId": REMOTE_WORKER_ID,
+        "operation": operation,
+        "payloadFingerprint": str(envelope.get("payloadFingerprint")),
+        "dispatchPlanFingerprint": str(envelope.get("dispatchPlanFingerprint")),
+        "resultFingerprint": result_fp,
+        "selectedDevice": result.get("device"),
+        "devicePlanFingerprint": (result.get("devicePlan") or {}).get("planFingerprint"),
+        "runtimeVersion": SERVICE_VERSION,
+        "engineVersion": torch.__version__,
+        "startedAt": started,
+        "finishedAt": finished,
+    }
+    receipt_fp = _canonical_sha256(receipt_base)
+    receipt_sig_base = dict(receipt_base); receipt_sig_base["receiptFingerprint"] = receipt_fp
+    receipt = dict(receipt_sig_base); receipt["signature"] = _remote_hmac(receipt_sig_base)
+    return {"ok": True, "schema": REMOTE_WORKER_RESPONSE_SCHEMA, "result": result, "receipt": receipt}
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -2695,7 +3003,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "governed-explicit-device-orchestration",
+        "devicePolicy": "governed-remote-gpu-execution-broker",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -2706,6 +3014,15 @@ def health() -> dict[str, Any]:
         "deviceInventorySchema": DEVICE_INVENTORY_SCHEMA,
         "devicePlanSchema": DEVICE_PLAN_SCHEMA,
         "deviceOrchestrationEnabled": True,
+        "remoteGpuExecutionBrokerEnabled": REMOTE_BROKER_ENABLED,
+        "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
+        "remoteWorkerInventorySchema": REMOTE_WORKER_INVENTORY_SCHEMA,
+        "remoteDispatchPlanSchema": REMOTE_DISPATCH_PLAN_SCHEMA,
+        "remoteDispatchEnvelopeSchema": REMOTE_DISPATCH_ENVELOPE_SCHEMA,
+        "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
+        "remoteBrokerOperations": ["remote-worker-inventory", "remote-dispatch-plan", "remote-execute", "remote-receipt-verify"],
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
         "deviceRequestModes": ["cpu", "auto", "accelerator", "cuda:N"],
         "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
         "operations": sorted(OPERATIONS),
@@ -2733,6 +3050,10 @@ def health() -> dict[str, Any]:
         "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
         "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
         "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
+        "remoteGpuExecutionBrokerEnabled": REMOTE_BROKER_ENABLED,
+        "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
+        "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,
@@ -2917,8 +3238,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _batch_execute(payload)
     elif operation == "workspace.neural.hyperparameter-grid":
         result = _hyperparameter_grid(payload)
-    else:
+    elif operation == "workspace.neural.hyperparameter-random":
         result = _hyperparameter_random(payload)
+    elif operation == "workspace.neural.remote-worker-inventory":
+        result = _remote_worker_inventory(payload)
+    elif operation == "workspace.neural.remote-dispatch-plan":
+        result = _remote_dispatch_plan(payload)
+    elif operation == "workspace.neural.remote-execute":
+        result = _remote_execute(payload)
+    else:
+        result = _remote_receipt_verify(payload)
     selected_device = _current_device_name()
     _CURRENT_DEVICE.reset(device_token)
     return {
@@ -2956,6 +3285,10 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
         "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
         "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
+        "remoteGpuExecutionBrokerEnabled": REMOTE_BROKER_ENABLED,
+        "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
+        "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,

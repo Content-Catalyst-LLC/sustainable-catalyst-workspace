@@ -1,0 +1,41 @@
+{
+  "backendMutation": true,
+  "backendVersion": "3.31.0",
+  "baselineVersion": "3.30.0",
+  "databaseMigration": false,
+  "neuralRuntime": {
+    "boundedOperations": 48,
+    "brokerEnabledByDefault": false,
+    "clientSuppliedWorkerUrlsAllowed": false,
+    "dispatchEnvelopeSchema": "sc-workspace-neural-remote-dispatch-envelope/1.0",
+    "dispatchPlanSchema": "sc-workspace-neural-remote-dispatch-plan/1.0",
+    "dispatchSignature": "HMAC-SHA256",
+    "executionArtifactSchema": "sc-workspace-neural-remote-execution-artifact/1.0",
+    "executionReceiptSchema": "sc-workspace-neural-remote-execution-receipt/1.0",
+    "nonceReplayProtection": true,
+    "remoteGpuExecutionBroker": true,
+    "remoteGpuWorkerRequiresNvidiaHost": true,
+    "remoteWorkerModeEnabledByDefault": false,
+    "standardContaboAcceleratorRequired": false,
+    "transportSecurity": "https-required-by-default",
+    "workerInventorySchema": "sc-workspace-neural-remote-worker-inventory/1.0",
+    "workerRegistry": "operator-managed-server-configuration",
+    "workspaceMediaType": "application/vnd.sc.workspace.neural-remote-execution+json"
+  },
+  "payloadFiles": 45,
+  "product": "Sustainable Catalyst Workspace",
+  "productionPrerequisite": "Workspace v3.30.0 must be present as the rollback baseline before running the v3.31 deployer",
+  "release": "Remote GPU Execution Broker",
+  "rollbackVersion": "3.30.0",
+  "schema": "sc-workspace-release-manifest/1.0",
+  "typedEndpointCount": 291,
+  "validation": {
+    "fullBackendPassed": 312,
+    "historicalFailures": 46,
+    "neuralTestsPassed": 98,
+    "newBrokerTestsPassed": 9,
+    "newFailureCategory": false
+  },
+  "version": "3.31.0",
+  "wordpressVersion": "3.31.0"
+}

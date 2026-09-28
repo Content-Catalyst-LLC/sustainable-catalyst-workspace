@@ -1,0 +1,29 @@
+services:
+  sc-workspace-neural-remote-worker:
+    build: ./neural-runtime
+    container_name: sc-workspace-neural-remote-worker
+    restart: unless-stopped
+    environment:
+      SC_WORKSPACE_NEURAL_RUNTIME_TOKEN: ${SC_WORKSPACE_RUNTIME_NEURAL_TOKEN}
+      SC_WORKSPACE_NEURAL_ACCELERATOR_ENABLED: "true"
+      SC_WORKSPACE_NEURAL_ALLOWED_DEVICES: ${SC_WORKSPACE_NEURAL_ALLOWED_DEVICES:-cpu,cuda:0}
+      SC_WORKSPACE_NEURAL_REMOTE_BROKER_ENABLED: "false"
+      SC_WORKSPACE_NEURAL_REMOTE_WORKER_MODE: "true"
+      SC_WORKSPACE_NEURAL_REMOTE_WORKER_ID: ${SC_WORKSPACE_NEURAL_REMOTE_WORKER_ID:?required}
+      SC_WORKSPACE_NEURAL_REMOTE_WORKER_DEVICE: ${SC_WORKSPACE_NEURAL_REMOTE_WORKER_DEVICE:-cuda:0}
+      SC_WORKSPACE_NEURAL_REMOTE_HMAC_SECRET: ${SC_WORKSPACE_NEURAL_REMOTE_HMAC_SECRET:?required}
+      SC_WORKSPACE_NEURAL_REMOTE_WORKERS_JSON: "[]"
+      SC_WORKSPACE_NEURAL_REMOTE_ALLOW_INSECURE_HTTP: "false"
+    gpus: all
+    ports:
+      - "127.0.0.1:18101:8101"
+    cpus: 4.0
+    mem_limit: 12g
+    pids_limit: 256
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g

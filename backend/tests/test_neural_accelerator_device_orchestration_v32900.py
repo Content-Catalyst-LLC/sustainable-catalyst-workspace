@@ -25,8 +25,8 @@ def post(c,op,payload):
 
 def test_health_exposes_governed_device_orchestration(monkeypatch):
     _,c=load_runtime(monkeypatch); h=c.get('/health').json()
-    assert h['version']in {'3.29.0','3.30.0'} and len(h['operations'])>=39
-    assert h['devicePolicy']=='governed-explicit-device-orchestration'
+    assert h['version']in {'3.29.0','3.30.0','3.31.0'} and len(h['operations'])>=39
+    assert h['devicePolicy'] in {'governed-explicit-device-orchestration','governed-remote-gpu-execution-broker'}
     assert h['deviceOrchestrationEnabled'] is True and h['acceleratorDeviceOrchestrationEnabled'] is True
     assert h['devicePlanSchema']=='sc-workspace-neural-device-plan/1.0'
     assert h['deviceInventorySchema']=='sc-workspace-neural-device-inventory/1.0'
@@ -72,7 +72,7 @@ def test_model_package_runtime_contract_is_device_orchestration_aware(monkeypatc
     model={'schema':'sc-workspace-neural-model-spec/1.0','modelType':'linear','weights':[[1.0]],'bias':[0.0],'activation':'identity'}
     r=post(c,'workspace.neural.package-create',{'modelSpec':model,'task':'regression','featureNames':['x']}); assert r.status_code==200,r.text
     contract=r.json()['result']['modelPackage']['runtimeContract']
-    assert contract['devicePolicy']=='governed-explicit-device-orchestration'
+    assert contract['devicePolicy'] in {'governed-explicit-device-orchestration','governed-remote-gpu-execution-broker'}
     assert contract['supportedDeviceClasses']==['cpu','cuda'] and contract['acceleratorRequired'] is False
 
 def test_workspace_registry_compose_and_typed_contract_expose_v329():
@@ -82,7 +82,7 @@ def test_workspace_registry_compose_and_typed_contract_expose_v329():
     n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=39
     for op in ['workspace.neural.device-inventory','workspace.neural.device-plan','workspace.neural.device-verify','workspace.neural.accelerator-smoke']:
         assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.29.0','3.30.0'} and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.29.0','3.30.0','3.31.0'} and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
     compose=(ROOT/'docker-compose.example.yml').read_text(); gpu=(ROOT/'docker-compose.neural-gpu.example.yml').read_text()
     assert 'SC_WORKSPACE_NEURAL_ACCELERATOR_ENABLED' in compose and 'SC_WORKSPACE_NEURAL_ALLOWED_DEVICES' in compose
     assert 'gpus: all' in gpu and 'SC_WORKSPACE_NEURAL_ACCELERATOR_ENABLED: "true"' in gpu
