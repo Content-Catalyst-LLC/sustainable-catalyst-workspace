@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.26.0"
+SERVICE_VERSION = "3.27.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -42,7 +42,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.26.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.27.0 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -72,6 +72,10 @@ OPERATIONS = {
     "workspace.neural.representation-summary",
     "workspace.neural.embedding-similarity",
     "workspace.neural.embedding-neighbors",
+    "workspace.neural.infer-regression",
+    "workspace.neural.infer-binary",
+    "workspace.neural.infer-multiclass",
+    "workspace.neural.prediction-inspect",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -1803,6 +1807,166 @@ def _embedding_neighbors(payload: dict[str, Any]) -> dict[str, Any]:
             "sourceEmbeddingArtifactFingerprint":source["artifactFingerprint"]}
 
 
+
+PREDICTION_ARTIFACT_SCHEMA = "sc-workspace-neural-prediction-artifact/1.0"
+MAX_INFERENCE_ROWS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_INFERENCE_ROWS", "4096")), 16384))
+MAX_PREDICTION_OUTPUTS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PREDICTION_OUTPUTS", "512")), 4096))
+DEFAULT_BINARY_THRESHOLD = 0.5
+
+
+def _prediction_row_ids(payload: dict[str, Any], rows: int) -> list[str]:
+    raw = payload.get("rowIds")
+    if raw is None:
+        return [str(i) for i in range(rows)]
+    if not isinstance(raw, list) or len(raw) != rows:
+        raise HTTPException(status_code=400, detail="rowIds must contain one value per inference row")
+    out=[]
+    for value in raw:
+        if not isinstance(value,(str,int)):
+            raise HTTPException(status_code=400, detail="rowIds must contain only strings or integers")
+        v=str(value).strip()
+        if not v or len(v)>160:
+            raise HTTPException(status_code=400, detail="rowIds values must be non-empty and bounded")
+        out.append(v)
+    if len(set(out)) != len(out):
+        raise HTTPException(status_code=400, detail="rowIds must be unique within an inference job")
+    return out
+
+
+def _inference_logits(payload: dict[str, Any]) -> tuple[torch.Tensor, torch.Tensor, dict[str, Any], str, str | None, str, list[str]]:
+    if "targets" in payload:
+        raise HTTPException(status_code=400, detail="inference operations do not accept targets; use evaluation operations for observed outcomes")
+    summary, model_fp, checkpoint_fp = _analysis_source(payload)
+    features = _tensor(payload.get("features"), name="features", dtype_name="float32", ndim=2)
+    rows=int(features.shape[0]); outputs=int(summary["outputFeatures"])
+    if rows < 1 or rows > MAX_INFERENCE_ROWS:
+        raise HTTPException(status_code=413, detail="inference row count is outside the bounded range")
+    if outputs < 1 or outputs > MAX_PREDICTION_OUTPUTS:
+        raise HTTPException(status_code=413, detail="prediction output dimension is outside the bounded range")
+    if int(features.shape[1]) != int(summary["inputFeatures"]):
+        raise HTTPException(status_code=400, detail="features width does not match model specification")
+    spec=payload.get("modelSpec")
+    if summary["modelType"] == "linear":
+        weights,bias,activation,_=_linear_spec(spec,layer_name="modelSpec")
+        raw=F.linear(features,weights,bias)
+        logits=raw if activation in {"identity","sigmoid","softmax"} else _activation(raw,activation)
+    else:
+        x=features
+        for index,layer in enumerate(spec["layers"]):
+            weights,bias,activation,_=_linear_spec(layer,layer_name=f"modelSpec.layers[{index}]")
+            raw=F.linear(x,weights,bias)
+            x=raw if index==len(spec["layers"])-1 else _activation(raw,activation)
+        logits=x
+    ids=_prediction_row_ids(payload,rows)
+    dataset_fp=_canonical_sha256({"features":payload.get("features"),"rowIds":ids})
+    return features,logits,summary,model_fp,checkpoint_fp,dataset_fp,ids
+
+
+def _prediction_artifact(operation: str, task: str, summary: dict[str, Any], model_fp: str, checkpoint_fp: str | None, dataset_fp: str, row_ids: list[str], policy: dict[str, Any], uncertainty: dict[str, Any], predictions: list[dict[str, Any]]) -> dict[str, Any]:
+    return _artifact(PREDICTION_ARTIFACT_SCHEMA,"neural-prediction",{
+        "operation":operation,"task":task,"modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,
+        "inferenceDatasetFingerprint":dataset_fp,"rows":len(row_ids),
+        "outputDimensions":int(summary["outputFeatures"]),"rowIds":row_ids,
+        "predictionPolicy":policy,"uncertaintySemantics":uncertainty,
+        "evidenceBoundary":{
+            "source":"model-inference","isObservedEvidence":False,"isEvaluation":False,
+            "targetsAccepted":False,"interpretationRequired":True,
+        },
+        "predictions":predictions,
+    })
+
+
+def _infer_regression(payload: dict[str, Any]) -> dict[str, Any]:
+    _,raw,summary,model_fp,checkpoint_fp,dataset_fp,ids=_inference_logits(payload)
+    preds=[]
+    for i,row_id in enumerate(ids):
+        values=[float(v) for v in raw[i].detach().tolist()]
+        preds.append({"rowId":row_id,"outputs":values,"uncertainty":{"status":"not-estimated","method":None}})
+    uncertainty={
+        "status":"not-estimated","method":None,
+        "meaning":"deterministic forward-pass outputs do not by themselves provide predictive uncertainty",
+    }
+    policy={"output":"raw-regression-output","decisionRule":None,"calibrationStatus":"not-applicable"}
+    art=_prediction_artifact("workspace.neural.infer-regression","regression",summary,model_fp,checkpoint_fp,dataset_fp,ids,policy,uncertainty,preds)
+    return {"kind":"neural-inference-result","task":"regression","predictions":preds,"predictionArtifact":art,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"inferenceDatasetFingerprint":dataset_fp}
+
+
+def _binary_entropy(p: float) -> float:
+    eps=1e-12; q=min(max(p,eps),1.0-eps)
+    return float(-(q*math.log(q)+(1.0-q)*math.log(1.0-q)))
+
+
+def _infer_binary(payload: dict[str, Any]) -> dict[str, Any]:
+    _,logits,summary,model_fp,checkpoint_fp,dataset_fp,ids=_inference_logits(payload)
+    if int(logits.shape[1]) != 1:
+        raise HTTPException(status_code=400,detail="binary inference requires one model output")
+    threshold=float(payload.get("threshold",DEFAULT_BINARY_THRESHOLD))
+    if not (0.0 < threshold < 1.0):
+        raise HTTPException(status_code=400,detail="binary threshold must be between 0 and 1")
+    prob=torch.sigmoid(logits).reshape(-1)
+    preds=[]
+    for row_id,logit,p in zip(ids,logits.reshape(-1).tolist(),prob.tolist()):
+        ent=_binary_entropy(float(p))
+        preds.append({"rowId":row_id,"logit":float(logit),"probability":float(p),
+                      "predictedClass":int(p>=threshold),"confidence":float(max(p,1.0-p)),
+                      "entropy":ent,"normalizedEntropy":float(ent/math.log(2.0))})
+    policy={"output":"sigmoid-probability","threshold":threshold,"calibrationStatus":"not-assessed"}
+    uncertainty={"status":"model-derived","method":"predictive-entropy","probabilitySemantics":"model-output-not-calibrated-real-world-probability"}
+    art=_prediction_artifact("workspace.neural.infer-binary","binary-classification",summary,model_fp,checkpoint_fp,dataset_fp,ids,policy,uncertainty,preds)
+    return {"kind":"neural-inference-result","task":"binary-classification","predictions":preds,"predictionArtifact":art,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"inferenceDatasetFingerprint":dataset_fp}
+
+
+def _infer_multiclass(payload: dict[str, Any]) -> dict[str, Any]:
+    _,logits,summary,model_fp,checkpoint_fp,dataset_fp,ids=_inference_logits(payload)
+    classes=int(logits.shape[1])
+    if classes < 2:
+        raise HTTPException(status_code=400,detail="multiclass inference requires at least two model outputs")
+    prob=torch.softmax(logits,dim=1)
+    preds=[]
+    norm=math.log(float(classes))
+    for i,row_id in enumerate(ids):
+        ps=[float(v) for v in prob[i].tolist()]; ls=[float(v) for v in logits[i].tolist()]
+        order=sorted(range(classes),key=lambda j:ps[j],reverse=True); top=order[0]; second=order[1]
+        ent=float(-sum(max(p,1e-12)*math.log(max(p,1e-12)) for p in ps))
+        preds.append({"rowId":row_id,"logits":ls,"probabilities":ps,"predictedClass":int(top),
+                      "confidence":ps[top],"margin":float(ps[top]-ps[second]),
+                      "entropy":ent,"normalizedEntropy":float(ent/norm)})
+    policy={"output":"softmax-probabilities","decisionRule":"argmax","calibrationStatus":"not-assessed"}
+    uncertainty={"status":"model-derived","method":"predictive-entropy-and-margin","probabilitySemantics":"model-output-not-calibrated-real-world-probability"}
+    art=_prediction_artifact("workspace.neural.infer-multiclass","multiclass-classification",summary,model_fp,checkpoint_fp,dataset_fp,ids,policy,uncertainty,preds)
+    return {"kind":"neural-inference-result","task":"multiclass-classification","predictions":preds,"predictionArtifact":art,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"inferenceDatasetFingerprint":dataset_fp}
+
+
+def _validate_prediction_artifact(value: Any) -> dict[str, Any]:
+    if not isinstance(value,dict) or value.get("schema")!=PREDICTION_ARTIFACT_SCHEMA or value.get("kind")!="neural-prediction":
+        raise HTTPException(status_code=400,detail="predictionArtifact must use the governed neural prediction schema")
+    fp=str(value.get("artifactFingerprint") or "")
+    base={k:v for k,v in value.items() if k not in {"artifactFingerprint","artifactId"}}
+    if not fp or not hmac.compare_digest(fp,_canonical_sha256(base)):
+        raise HTTPException(status_code=400,detail="predictionArtifact fingerprint verification failed")
+    rows=int(value.get("rows") or 0); preds=value.get("predictions"); ids=value.get("rowIds")
+    if rows<1 or rows>MAX_INFERENCE_ROWS or not isinstance(preds,list) or len(preds)!=rows or not isinstance(ids,list) or len(ids)!=rows:
+        raise HTTPException(status_code=400,detail="predictionArtifact row metadata is invalid")
+    if value.get("evidenceBoundary",{}).get("isObservedEvidence") is not False or value.get("evidenceBoundary",{}).get("targetsAccepted") is not False:
+        raise HTTPException(status_code=400,detail="predictionArtifact evidence boundary is invalid")
+    return value
+
+
+def _prediction_inspect(payload: dict[str, Any]) -> dict[str, Any]:
+    art=_validate_prediction_artifact(payload.get("predictionArtifact"))
+    summary={
+        "task":art.get("task"),"rows":art.get("rows"),"outputDimensions":art.get("outputDimensions"),
+        "modelSpecFingerprint":art.get("modelSpecFingerprint"),"checkpointFingerprint":art.get("checkpointFingerprint"),
+        "inferenceDatasetFingerprint":art.get("inferenceDatasetFingerprint"),
+        "predictionPolicy":art.get("predictionPolicy"),"uncertaintySemantics":art.get("uncertaintySemantics"),
+        "evidenceBoundary":art.get("evidenceBoundary"),"artifactFingerprint":art.get("artifactFingerprint"),
+    }
+    return {"kind":"neural-prediction-inspection","summary":summary,"predictionArtifactFingerprint":art.get("artifactFingerprint")}
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -1820,7 +1984,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-embedding-representation",
+        "devicePolicy": "cpu-only-inference-prediction-provenance",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -1870,6 +2034,12 @@ def health() -> dict[str, Any]:
         "maxSimilarityPairs": MAX_SIMILARITY_PAIRS,
         "maxNeighborQueries": MAX_NEIGHBOR_QUERIES,
         "maxNeighbors": MAX_NEIGHBORS,
+        "neuralInferencePredictionProvenanceEnabled": True,
+        "predictionArtifactSchema": PREDICTION_ARTIFACT_SCHEMA,
+        "inferenceOperations": ["infer-regression", "infer-binary", "infer-multiclass", "prediction-inspect"],
+        "inferenceTargetsAccepted": False,
+        "maxInferenceRows": MAX_INFERENCE_ROWS,
+        "maxPredictionOutputs": MAX_PREDICTION_OUTPUTS,
         "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
@@ -1969,8 +2139,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _representation_summary(payload)
     elif operation == "workspace.neural.embedding-similarity":
         result = _embedding_similarity(payload)
-    else:
+    elif operation == "workspace.neural.embedding-neighbors":
         result = _embedding_neighbors(payload)
+    elif operation == "workspace.neural.infer-regression":
+        result = _infer_regression(payload)
+    elif operation == "workspace.neural.infer-binary":
+        result = _infer_binary(payload)
+    elif operation == "workspace.neural.infer-multiclass":
+        result = _infer_multiclass(payload)
+    else:
+        result = _prediction_inspect(payload)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -2022,6 +2200,12 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "maxSimilarityPairs": MAX_SIMILARITY_PAIRS,
         "maxNeighborQueries": MAX_NEIGHBOR_QUERIES,
         "maxNeighbors": MAX_NEIGHBORS,
+        "neuralInferencePredictionProvenanceEnabled": True,
+        "predictionArtifactSchema": PREDICTION_ARTIFACT_SCHEMA,
+        "inferenceOperations": ["infer-regression", "infer-binary", "infer-multiclass", "prediction-inspect"],
+        "inferenceTargetsAccepted": False,
+        "maxInferenceRows": MAX_INFERENCE_ROWS,
+        "maxPredictionOutputs": MAX_PREDICTION_OUTPUTS,
         "acceleratorExecutionEnabled": False,
         "result": result,
     }

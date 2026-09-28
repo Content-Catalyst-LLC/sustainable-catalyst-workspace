@@ -13,7 +13,7 @@ def load_runtime(monkeypatch):
     assert spec and spec.loader; module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     return module,TestClient(module.app)
 
-def env(op,payload): return {"schema":"sc-workspace-polyglot-execution-envelope/1.0","workspaceVersion":"3.26.0","jobId":"job-v326-embedding","language":"neural","operation":op,"payload":payload,"arbitraryCodeExecution":False}
+def env(op,payload): return {"schema":"sc-workspace-polyglot-execution-envelope/1.0","workspaceVersion":"3.27.0","jobId":"job-v326-embedding","language":"neural","operation":op,"payload":payload,"arbitraryCodeExecution":False}
 def post(c,op,payload): return c.post('/v1/execute',json=env(op,payload),headers={'Authorization':f'Bearer {TOKEN}'})
 
 def mlp_model():
@@ -30,11 +30,11 @@ def generate(c,**extra):
 
 def test_health_exposes_v326_embedding_representation(monkeypatch):
     _,c=load_runtime(monkeypatch); x=c.get('/health').json()
-    assert x['version']=='3.26.0'; assert len(x['operations'])==27
+    assert x['version']=='3.27.0'; assert len(x['operations'])==31
     assert x['embeddingRepresentationRuntimeEnabled'] is True
     assert x['embeddingArtifactSchema']=='sc-workspace-neural-embedding-artifact/1.0'
     assert x['representationAnalysisArtifactSchema']=='sc-workspace-neural-representation-analysis-artifact/1.0'
-    assert x['devicePolicy']=='cpu-only-embedding-representation'
+    assert x['devicePolicy'] in {'cpu-only-embedding-representation','cpu-only-inference-prediction-provenance'}
 
 def test_penultimate_embedding_is_exact_and_governed(monkeypatch):
     _,c=load_runtime(monkeypatch); x=generate(c)
@@ -85,6 +85,6 @@ def test_workspace_registry_and_contract_expose_v326():
     from app.client_contracts import profile
     from app.main import app
     from app.polyglot import RUNTIME_BY_LANGUAGE
-    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==27
+    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==31
     for op in ['workspace.neural.embedding-generate','workspace.neural.representation-summary','workspace.neural.embedding-similarity','workspace.neural.embedding-neighbors']: assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.26.0'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.27.0'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]

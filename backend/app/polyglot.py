@@ -71,7 +71,9 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.explain-occlusion", "workspace.neural.explain-global-sensitivity",
         "workspace.neural.embedding-generate", "workspace.neural.representation-summary",
         "workspace.neural.embedding-similarity", "workspace.neural.embedding-neighbors",
-    ), "Hardened PyTorch neural runtime for bounded declarative training/checkpoint lineage, evaluation/calibration/uncertainty, explainability, and governed embedding/representation compute; arbitrary code, raw serialized model loading, dynamic hooks, and accelerator execution remain disabled in v3.26.0."),
+        "workspace.neural.infer-regression", "workspace.neural.infer-binary",
+        "workspace.neural.infer-multiclass", "workspace.neural.prediction-inspect",
+    ), "Hardened PyTorch neural runtime for bounded declarative training/checkpoint lineage, evaluation/calibration/uncertainty, explainability, governed embeddings, and prediction provenance; arbitrary code, raw serialized model loading, dynamic hooks, and accelerator execution remain disabled in v3.27.0."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -461,6 +463,41 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "artifactFingerprint":representation_blob.get("artifactFingerprint"),
             }
 
+    neural_prediction_artifact = None
+    neural_prediction_ops = {
+        "workspace.neural.infer-regression", "workspace.neural.infer-binary", "workspace.neural.infer-multiclass",
+    }
+    if language == "neural" and row.operation in neural_prediction_ops and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        neural_result=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        prediction_blob=neural_result.get("predictionArtifact") if isinstance(neural_result.get("predictionArtifact"),dict) else None
+        if prediction_blob:
+            prediction_raw=json.dumps(prediction_blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            prediction_artifact_id="neural-prediction-"+row.job_id
+            existing_prediction=get_artifact(db,row.user_key,prediction_artifact_id)
+            prediction_payload=ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0","artifactId":prediction_artifact_id,"projectId":row.project_id or None,
+                "filename":f"neural-prediction-{row.job_id}.json","mediaType":"application/vnd.sc.workspace.neural-prediction+json",
+                "contentBase64":__import__('base64').b64encode(prediction_raw).decode("ascii"),
+                "expectedRevision":existing_prediction.revision if existing_prediction is not None else 0,
+                "metadata":{
+                    "kind":prediction_blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
+                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"task":prediction_blob.get("task"),
+                    "predictionArtifactFingerprint":prediction_blob.get("artifactFingerprint"),
+                    "modelSpecFingerprint":prediction_blob.get("modelSpecFingerprint"),
+                    "checkpointFingerprint":prediction_blob.get("checkpointFingerprint"),
+                    "inferenceDatasetFingerprint":prediction_blob.get("inferenceDatasetFingerprint"),
+                    "rows":prediction_blob.get("rows"),"outputDimensions":prediction_blob.get("outputDimensions"),
+                    "isObservedEvidence":False,"isEvaluation":False,
+                },
+            })
+            neural_prediction_artifact=store_artifact(db,row.user_key,prediction_payload)
+            neural_result["workspacePredictionArtifact"]={
+                "artifactId":neural_prediction_artifact.artifact_id,"mediaType":neural_prediction_artifact.media_type,
+                "sha256":neural_prediction_artifact.sha256,"bytes":neural_prediction_artifact.bytes,
+                "predictionArtifactFingerprint":prediction_blob.get("artifactFingerprint"),
+            }
+
     result_doc={"schema":"sc-workspace-polyglot-result/1.0","language":language,"operation":row.operation,"result":result}
     raw=json.dumps(result_doc,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
     if len(raw)>get_settings().compute_max_result_bytes:
@@ -521,6 +558,14 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedNeuralRepresentation":True},
             })
             store_run_output(db,row.user_key,run_id,representation_output)
+        if neural_prediction_artifact is not None:
+            prediction_output = ExecutionRunOutputRequest.model_validate({
+                "schema":"sc-workspace-execution-run-output/1.0", "outputId":"neural-prediction",
+                "artifactId":neural_prediction_artifact.artifact_id, "role":"prediction", "label":"Governed neural prediction artifact",
+                "mediaType":neural_prediction_artifact.media_type, "sha256":neural_prediction_artifact.sha256, "bytes":neural_prediction_artifact.bytes,
+                "metadata":{"language":"neural","operation":row.operation,"governedNeuralPrediction":True,"isObservedEvidence":False},
+            })
+            store_run_output(db,row.user_key,run_id,prediction_output)
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
     if language == "neural" and row.operation in {"workspace.neural.train-linear","workspace.neural.train-mlp","workspace.neural.resume-linear","workspace.neural.resume-mlp"}:
@@ -600,6 +645,28 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "rows":representation_blob.get("rows"),"dimensions":representation_blob.get("dimensions"),
             "workspaceRepresentationArtifactId":neural_representation_artifact.artifact_id if neural_representation_artifact is not None else None,
             "workspaceRepresentationArtifactSha256":neural_representation_artifact.sha256 if neural_representation_artifact is not None else None,
+        })
+    if language == "neural" and row.operation in {
+        "workspace.neural.infer-regression", "workspace.neural.infer-binary", "workspace.neural.infer-multiclass",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        neural_result=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        prediction_blob=neural_result.get("predictionArtifact") if isinstance(neural_result.get("predictionArtifact"),dict) else {}
+        receipt_details.update({
+            "neuralInferencePredictionProvenance":True,
+            "predictionArtifactSchema":prediction_blob.get("schema"),
+            "predictionArtifactFingerprint":prediction_blob.get("artifactFingerprint"),
+            "task":prediction_blob.get("task"),
+            "modelSpecFingerprint":prediction_blob.get("modelSpecFingerprint"),
+            "checkpointFingerprint":prediction_blob.get("checkpointFingerprint"),
+            "inferenceDatasetFingerprint":prediction_blob.get("inferenceDatasetFingerprint"),
+            "predictionPolicy":prediction_blob.get("predictionPolicy"),
+            "uncertaintySemantics":prediction_blob.get("uncertaintySemantics"),
+            "evidenceBoundary":prediction_blob.get("evidenceBoundary"),
+            "isObservedEvidence":False,"isEvaluation":False,"targetsAccepted":False,
+            "rows":prediction_blob.get("rows"),"outputDimensions":prediction_blob.get("outputDimensions"),
+            "workspacePredictionArtifactId":neural_prediction_artifact.artifact_id if neural_prediction_artifact is not None else None,
+            "workspacePredictionArtifactSha256":neural_prediction_artifact.sha256 if neural_prediction_artifact is not None else None,
         })
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,

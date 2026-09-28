@@ -1,0 +1,32 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.27.0",
+  "title": "Neural Inference & Prediction Provenance",
+  "rollbackBaseline": "3.26.0",
+  "databaseMigration": false,
+  "neuralRuntime": {
+    "runtime": "python-pytorch-neural",
+    "boundedOperations": 31,
+    "newOperations": [
+      "workspace.neural.infer-regression",
+      "workspace.neural.infer-binary",
+      "workspace.neural.infer-multiclass",
+      "workspace.neural.prediction-inspect"
+    ],
+    "predictionArtifactSchema": "sc-workspace-neural-prediction-artifact/1.0",
+    "acceleratorExecution": false
+  },
+  "provenance": {
+    "targetsAcceptedForInference": false,
+    "predictionIsObservedEvidence": false,
+    "predictionIsEvaluation": false,
+    "workspaceArtifactMediaType": "application/vnd.sc.workspace.neural-prediction+json"
+  },
+  "releaseDeltaFiles": 38,
+  "validation": {
+    "focusedNeuralPassed": 64,
+    "fullBackendPassed": 278,
+    "historicalBackendFailures": 46,
+    "typedEndpoints": 291
+  }
+}
