@@ -30,7 +30,7 @@ def generate(c,**extra):
 
 def test_health_exposes_v326_embedding_representation(monkeypatch):
     _,c=load_runtime(monkeypatch); x=c.get('/health').json()
-    assert x['version'] in {'3.28.0','3.29.0','3.30.0','3.31.0'}; assert len(x['operations'])>=35
+    assert x['version'] in {'3.28.0','3.29.0','3.30.0','3.31.0','3.32.0'}; assert len(x['operations'])>=35
     assert x['embeddingRepresentationRuntimeEnabled'] is True
     assert x['embeddingArtifactSchema']=='sc-workspace-neural-embedding-artifact/1.0'
     assert x['representationAnalysisArtifactSchema']=='sc-workspace-neural-representation-analysis-artifact/1.0'
@@ -87,4 +87,4 @@ def test_workspace_registry_and_contract_expose_v326():
     from app.polyglot import RUNTIME_BY_LANGUAGE
     n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=35
     for op in ['workspace.neural.embedding-generate','workspace.neural.representation-summary','workspace.neural.embedding-similarity','workspace.neural.embedding-neighbors']: assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0','3.31.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0','3.31.0','3.32.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]

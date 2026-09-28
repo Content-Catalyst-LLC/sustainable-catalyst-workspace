@@ -44,7 +44,7 @@ def remote_payload():
 
 def test_health_and_registry_expose_v331_broker_contract(monkeypatch):
     _,c=load_runtime(monkeypatch); h=c.get('/health').json()
-    assert h['version']=='3.31.0' and len(h['operations'])==48
+    assert h['version'] in {'3.31.0','3.32.0'} and len(h['operations'])>=48
     assert h['devicePolicy']=='governed-remote-gpu-execution-broker'
     assert h['remoteGpuExecutionBrokerEnabled'] is False
     assert h['remoteExecutionReceiptSchema']=='sc-workspace-neural-remote-execution-receipt/1.0'
@@ -128,10 +128,10 @@ def test_workspace_registry_persistence_and_typed_contract_expose_v331():
     from app.client_contracts import profile
     from app.main import app
     from app.polyglot import RUNTIME_BY_LANGUAGE
-    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==48
+    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=48
     for op in ['workspace.neural.remote-worker-inventory','workspace.neural.remote-dispatch-plan','workspace.neural.remote-execute','workspace.neural.remote-receipt-verify']:
         assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.31.0' and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.31.0','3.32.0'} and cp['typedEndpointCount']==291 and cp['missingOpenApiOperations']==[]
     poly=(ROOT/'app'/'polyglot.py').read_text()
     assert 'application/vnd.sc.workspace.neural-remote-execution+json' in poly
     assert 'workspaceRemoteExecutionArtifactId' in poly and 'clientSuppliedRemoteWorkerUrlsAllowed' in poly

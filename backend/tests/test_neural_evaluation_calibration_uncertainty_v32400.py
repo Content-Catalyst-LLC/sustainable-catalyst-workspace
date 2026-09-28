@@ -52,7 +52,7 @@ def multiclass_model():
 def test_health_exposes_v324_evaluation_calibration_uncertainty(monkeypatch):
     _, client = load_runtime(monkeypatch)
     body = client.get("/health").json()
-    assert body["version"] in {"3.28.0","3.29.0","3.30.0","3.31.0"}
+    assert body["version"] in {"3.28.0","3.29.0","3.30.0","3.31.0","3.32.0"}
     assert len(body["operations"]) >= 19
     assert body["evaluationCalibrationUncertaintyEnabled"] is True
     assert body["evaluationArtifactSchema"] == "sc-workspace-neural-evaluation-artifact/1.0"
@@ -155,6 +155,6 @@ def test_registry_and_workspace_contract_expose_v324_runtime():
     assert "workspace.neural.calibration-report" in neural.operations
     assert "workspace.neural.uncertainty-summary" in neural.operations
     cp=profile(app.openapi())
-    assert cp["workspaceVersion"] in {"3.28.0","3.29.0","3.30.0","3.31.0"}
+    assert cp["workspaceVersion"] in {"3.28.0","3.29.0","3.30.0","3.31.0","3.32.0"}
     assert cp["typedEndpointCount"]==291
     assert cp["missingOpenApiOperations"]==[]

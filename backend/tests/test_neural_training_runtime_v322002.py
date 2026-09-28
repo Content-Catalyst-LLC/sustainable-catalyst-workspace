@@ -20,7 +20,7 @@ def _load_service():
 
 def test_hardened_runtime_identity_and_cache_contract():
     svc = _load_service()
-    assert svc.SERVICE_VERSION in {"3.28.0","3.29.0","3.30.0","3.31.0"}
+    assert svc.SERVICE_VERSION in {"3.28.0","3.29.0","3.30.0","3.31.0","3.32.0"}
     assert os.environ["HOME"] == "/tmp"
     assert os.environ["USER"] == "scworkspace"
     assert os.environ["LOGNAME"] == "scworkspace"

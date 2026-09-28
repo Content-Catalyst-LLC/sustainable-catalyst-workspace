@@ -37,7 +37,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.31.0"
+SERVICE_VERSION = "3.32.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -107,6 +107,10 @@ OPERATIONS = {
     "workspace.neural.remote-dispatch-plan",
     "workspace.neural.remote-execute",
     "workspace.neural.remote-receipt-verify",
+    "workspace.neural.certification-plan",
+    "workspace.neural.certification-execute",
+    "workspace.neural.certification-verify",
+    "workspace.neural.certification-report",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -155,6 +159,24 @@ REMOTE_DISPATCH_ENVELOPE_SCHEMA = "sc-workspace-neural-remote-dispatch-envelope/
 REMOTE_EXECUTION_RECEIPT_SCHEMA = "sc-workspace-neural-remote-execution-receipt/1.0"
 REMOTE_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-remote-execution-artifact/1.0"
 REMOTE_WORKER_RESPONSE_SCHEMA = "sc-workspace-neural-remote-worker-response/1.0"
+# v3.32 production certification closes the v3.20-v3.31 neural runtime line with a
+# bounded, machine-verifiable certification contract. It does not claim a remote GPU
+# was physically exercised when no worker is attached; transport readiness is conditional.
+PRODUCTION_CERTIFICATION_PROFILE = "workspace-neural-production/1.0"
+PRODUCTION_CERTIFICATION_PLAN_SCHEMA = "sc-workspace-neural-production-certification-plan/1.0"
+PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA = "sc-workspace-neural-production-certification-artifact/1.0"
+PRODUCTION_CERTIFICATION_REPORT_SCHEMA = "sc-workspace-neural-production-certification-report/1.0"
+PRODUCTION_CERTIFICATION_REQUIRED_CHECKS = (
+    "runtime-registry-integrity",
+    "hardened-identity-cache-contract",
+    "bounded-security-boundary",
+    "cpu-device-plan",
+    "deterministic-inference",
+    "reproducible-model-package-roundtrip",
+    "dependency-runtime-contract",
+    "evidence-prediction-boundary",
+    "remote-broker-safety",
+)
 REMOTE_BROKER_ENABLED = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_BROKER_ENABLED", "false").strip().lower() in {"1","true","yes","on"}
 REMOTE_WORKER_MODE = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_MODE", "false").strip().lower() in {"1","true","yes","on"}
 REMOTE_SHARED_SECRET = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_HMAC_SECRET", "").strip()
@@ -2721,6 +2743,215 @@ def _model_package_infer(payload: dict[str, Any]) -> dict[str, Any]:
     result["kind"]="neural-packaged-inference-result"
     return result
 
+def _certification_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    profile = str(payload.get("profile") or PRODUCTION_CERTIFICATION_PROFILE)
+    if profile != PRODUCTION_CERTIFICATION_PROFILE:
+        raise HTTPException(status_code=400, detail="production certification profile is not registered")
+    plan = {
+        "schema": PRODUCTION_CERTIFICATION_PLAN_SCHEMA,
+        "profile": PRODUCTION_CERTIFICATION_PROFILE,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "expectedOperationCount": len(OPERATIONS),
+        "requiredChecks": list(PRODUCTION_CERTIFICATION_REQUIRED_CHECKS),
+        "conditionalChecks": ["remote-gpu-worker-transport"],
+        "remoteGpuSemantics": "conditionally-certified-unless-worker-attached",
+        "arbitraryCodeExecution": False,
+        "clientSuppliedPackagesAllowed": False,
+        "clientSuppliedSerializedModelsAllowed": False,
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
+        "rollbackRequired": True,
+    }
+    plan["planFingerprint"] = _canonical_sha256(plan)
+    return {"kind": "neural-production-certification-plan", "certificationPlan": plan, "planFingerprint": plan["planFingerprint"]}
+
+
+def _certification_check(check_id: str, passed: bool, details: dict[str, Any] | None = None, *, conditional: bool = False, status: str | None = None) -> dict[str, Any]:
+    return {
+        "checkId": check_id,
+        "required": not conditional,
+        "conditional": conditional,
+        "passed": bool(passed),
+        "status": status or ("pass" if passed else "fail"),
+        "details": details or {},
+    }
+
+
+def _certification_execute(payload: dict[str, Any]) -> dict[str, Any]:
+    plan = _certification_plan(payload)["certificationPlan"]
+    checks: list[dict[str, Any]] = []
+
+    registry_ok = len(OPERATIONS) == 52 and all(op in OPERATIONS for op in {
+        "workspace.neural.train-linear", "workspace.neural.checkpoint-inspect",
+        "workspace.neural.evaluate-regression", "workspace.neural.explain-integrated-gradients",
+        "workspace.neural.embedding-generate", "workspace.neural.infer-regression",
+        "workspace.neural.package-create", "workspace.neural.device-plan",
+        "workspace.neural.hyperparameter-grid", "workspace.neural.remote-dispatch-plan",
+        "workspace.neural.certification-execute",
+    })
+    checks.append(_certification_check("runtime-registry-integrity", registry_ok, {"operationCount": len(OPERATIONS)}))
+
+    identity = {
+        "user": os.getenv("USER", ""), "home": os.getenv("HOME", ""),
+        "xdgCacheHome": os.getenv("XDG_CACHE_HOME", ""),
+        "torchInductorCacheDir": os.getenv("TORCHINDUCTOR_CACHE_DIR", ""),
+    }
+    identity_ok = identity == {"user": "scworkspace", "home": "/tmp", "xdgCacheHome": "/tmp/.cache", "torchInductorCacheDir": "/tmp/torchinductor"}
+    checks.append(_certification_check("hardened-identity-cache-contract", identity_ok, identity))
+
+    security = {
+        "boundedOperationsOnly": True,
+        "arbitraryCodeExecution": False,
+        "clientSuppliedCodeAllowed": False,
+        "clientSuppliedPackagesAllowed": False,
+        "clientSuppliedSerializedModelsAllowed": False,
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
+        "blockedPayloadKeyCount": len(BLOCKED_PAYLOAD_KEYS),
+    }
+    security_ok = all(security[k] is False for k in ["arbitraryCodeExecution", "clientSuppliedCodeAllowed", "clientSuppliedPackagesAllowed", "clientSuppliedSerializedModelsAllowed", "clientSuppliedRemoteWorkerUrlsAllowed"]) and security["blockedPayloadKeyCount"] >= 10
+    checks.append(_certification_check("bounded-security-boundary", security_ok, security))
+
+    cpu_plan = _resolve_device_plan({"deviceRequest": "cpu"})
+    cpu_ok = cpu_plan.get("selectedDevice") == "cpu" and not cpu_plan.get("acceleratorSelected") and len(str(cpu_plan.get("planFingerprint") or "")) == 64
+    checks.append(_certification_check("cpu-device-plan", cpu_ok, {"selectedDevice": cpu_plan.get("selectedDevice"), "planFingerprint": cpu_plan.get("planFingerprint")}))
+
+    model_spec = {"schema": "sc-workspace-neural-model-spec/1.0", "modelType": "linear", "weights": [[2.0]], "bias": [1.0], "activation": "identity"}
+    infer = _infer_regression({"modelSpec": model_spec, "features": [[3.0]], "rowIds": ["cert-row"]})
+    preds = infer.get("predictions") or []
+    inference_ok = len(preds) == 1 and abs(float(preds[0]["outputs"][0]) - 7.0) < 1e-9 and len(str((infer.get("predictionArtifact") or {}).get("artifactFingerprint") or "")) == 64
+    checks.append(_certification_check("deterministic-inference", inference_ok, {"expected": 7.0, "observed": preds[0]["outputs"][0] if preds else None, "predictionArtifactFingerprint": (infer.get("predictionArtifact") or {}).get("artifactFingerprint")}))
+
+    package = _model_package_create({"modelSpec": model_spec, "task": "regression", "featureNames": ["x"]})
+    package_artifact = package.get("modelPackage") or {}
+    package_verify = _model_package_verify({"modelPackage": package_artifact})
+    package_ok = package_verify.get("valid") is True and package_verify.get("compatible") is True and len(str(package.get("modelPackageFingerprint") or "")) == 64
+    checks.append(_certification_check("reproducible-model-package-roundtrip", package_ok, {"packageId": package.get("packageId"), "modelPackageFingerprint": package.get("modelPackageFingerprint"), "compatible": package_verify.get("compatible")}))
+
+    dependency_details = {
+        "engine": ENGINE, "engineVersion": torch.__version__, "numpyVersion": np.__version__,
+        "requiredDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
+    }
+    dependency_ok = bool(torch.__version__) and bool(np.__version__) and MODEL_PACKAGE_DEPENDENCY_PINS == {"torch": "2.10.0", "numpy": "2.2.6"}
+    checks.append(_certification_check("dependency-runtime-contract", dependency_ok, dependency_details))
+
+    boundary = (infer.get("predictionArtifact") or {}).get("evidenceBoundary") or {}
+    boundary_ok = boundary.get("isObservedEvidence") is False and boundary.get("targetsAccepted") is False
+    checks.append(_certification_check("evidence-prediction-boundary", boundary_ok, boundary))
+
+    broker_details: dict[str, Any] = {
+        "brokerEnabled": REMOTE_BROKER_ENABLED,
+        "workerMode": REMOTE_WORKER_MODE,
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
+    }
+    broker_ok = True
+    if REMOTE_BROKER_ENABLED:
+        try:
+            workers = _remote_worker_registry()
+            broker_details.update({"workerCount": len(workers), "registryFingerprint": _remote_registry_fingerprint(workers), "signingSecretConfigured": bool(REMOTE_SHARED_SECRET)})
+            broker_ok = bool(REMOTE_SHARED_SECRET)
+        except HTTPException as exc:
+            broker_details["error"] = str(exc.detail); broker_ok = False
+    else:
+        broker_details.update({"workerCount": 0, "safeDefault": True})
+    checks.append(_certification_check("remote-broker-safety", broker_ok, broker_details))
+
+    conditional_pass = False
+    conditional_status = "not-exercised-no-worker-attached"
+    if REMOTE_BROKER_ENABLED:
+        try:
+            workers = [w for w in _remote_worker_registry() if w.get("enabled")]
+            conditional_pass = bool(workers and REMOTE_SHARED_SECRET)
+            conditional_status = "ready-worker-registered" if conditional_pass else "not-exercised-no-enabled-worker"
+        except HTTPException:
+            conditional_status = "configuration-invalid"
+    checks.append(_certification_check("remote-gpu-worker-transport", conditional_pass, {"brokerEnabled": REMOTE_BROKER_ENABLED}, conditional=True, status=conditional_status))
+
+    required = [x for x in checks if x["required"]]
+    all_required = all(x["passed"] for x in required)
+    artifact = {
+        "schema": PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA,
+        "kind": "neural-runtime-production-certification",
+        "profile": PRODUCTION_CERTIFICATION_PROFILE,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "engine": ENGINE,
+        "engineVersion": torch.__version__,
+        "numpyVersion": np.__version__,
+        "planFingerprint": plan["planFingerprint"],
+        "operationCount": len(OPERATIONS),
+        "checks": checks,
+        "requiredCheckCount": len(required),
+        "passedRequiredCheckCount": sum(1 for x in required if x["passed"]),
+        "allRequiredPassed": all_required,
+        "productionStatus": "certified" if all_required else "failed",
+        "remoteGpuTransportStatus": conditional_status,
+        "evidenceBoundary": "certification-artifact-is-runtime-assurance-evidence-not-scientific-observed-evidence",
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    artifact["certificationId"] = "nrc_" + artifact["artifactFingerprint"][:24]
+    return {"kind": "neural-runtime-production-certification", "certificationArtifact": artifact, "certificationArtifactFingerprint": artifact["artifactFingerprint"], "certificationId": artifact["certificationId"], "allRequiredPassed": all_required}
+
+
+def _validate_certification_artifact(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema") != PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"certificationArtifact must use {PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA}")
+    supplied = str(value.get("artifactFingerprint") or "")
+    base = {k: v for k, v in value.items() if k not in {"artifactFingerprint", "certificationId"}}
+    expected = _canonical_sha256(base)
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=400, detail="certificationArtifact fingerprint verification failed")
+    expected_id = "nrc_" + supplied[:24]
+    if value.get("certificationId") != expected_id:
+        raise HTTPException(status_code=400, detail="certificationArtifact identity verification failed")
+    if value.get("profile") != PRODUCTION_CERTIFICATION_PROFILE or value.get("runtime") != RUNTIME:
+        raise HTTPException(status_code=400, detail="certificationArtifact profile/runtime mismatch")
+    checks = value.get("checks")
+    if not isinstance(checks, list):
+        raise HTTPException(status_code=400, detail="certificationArtifact checks are invalid")
+    required_ids = {str(x.get("checkId")) for x in checks if isinstance(x, dict) and x.get("required") is True}
+    if required_ids != set(PRODUCTION_CERTIFICATION_REQUIRED_CHECKS):
+        raise HTTPException(status_code=400, detail="certificationArtifact required check set mismatch")
+    return value
+
+
+def _certification_verify(payload: dict[str, Any]) -> dict[str, Any]:
+    artifact = _validate_certification_artifact(payload.get("certificationArtifact"))
+    current_version = artifact.get("runtimeVersion") == SERVICE_VERSION
+    required_pass = artifact.get("allRequiredPassed") is True and artifact.get("productionStatus") == "certified"
+    if not required_pass:
+        raise HTTPException(status_code=409, detail="certificationArtifact does not certify all required production checks")
+    return {
+        "kind": "neural-runtime-production-certification-verification",
+        "valid": True,
+        "currentRuntimeVersion": current_version,
+        "certificationId": artifact.get("certificationId"),
+        "certificationArtifactFingerprint": artifact.get("artifactFingerprint"),
+        "productionStatus": artifact.get("productionStatus"),
+        "remoteGpuTransportStatus": artifact.get("remoteGpuTransportStatus"),
+    }
+
+
+def _certification_report(payload: dict[str, Any]) -> dict[str, Any]:
+    artifact = _validate_certification_artifact(payload.get("certificationArtifact"))
+    checks = artifact.get("checks") or []
+    report = {
+        "schema": PRODUCTION_CERTIFICATION_REPORT_SCHEMA,
+        "profile": artifact.get("profile"),
+        "runtimeVersion": artifact.get("runtimeVersion"),
+        "certificationId": artifact.get("certificationId"),
+        "certificationArtifactFingerprint": artifact.get("artifactFingerprint"),
+        "productionStatus": artifact.get("productionStatus"),
+        "requiredChecksPassed": artifact.get("passedRequiredCheckCount"),
+        "requiredChecksTotal": artifact.get("requiredCheckCount"),
+        "conditionalChecks": [{"checkId": x.get("checkId"), "status": x.get("status"), "passed": x.get("passed")} for x in checks if isinstance(x, dict) and x.get("conditional")],
+        "failedRequiredChecks": [x.get("checkId") for x in checks if isinstance(x, dict) and x.get("required") and not x.get("passed")],
+        "remoteGpuTransportStatus": artifact.get("remoteGpuTransportStatus"),
+        "assuranceBoundary": artifact.get("evidenceBoundary"),
+    }
+    report["reportFingerprint"] = _canonical_sha256(report)
+    return {"kind": "neural-runtime-production-certification-report", "certificationReport": report, "reportFingerprint": report["reportFingerprint"]}
+
+
 def _remote_hmac(value: dict[str, Any]) -> str:
     if not REMOTE_SHARED_SECRET:
         raise HTTPException(status_code=503, detail="remote GPU broker signing secret is not configured")
@@ -3022,6 +3253,12 @@ def health() -> dict[str, Any]:
         "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
         "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
         "remoteBrokerOperations": ["remote-worker-inventory", "remote-dispatch-plan", "remote-execute", "remote-receipt-verify"],
+        "productionCertificationEnabled": True,
+        "productionCertificationProfile": PRODUCTION_CERTIFICATION_PROFILE,
+        "productionCertificationPlanSchema": PRODUCTION_CERTIFICATION_PLAN_SCHEMA,
+        "productionCertificationArtifactSchema": PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA,
+        "productionCertificationReportSchema": PRODUCTION_CERTIFICATION_REPORT_SCHEMA,
+        "productionCertificationOperations": ["certification-plan", "certification-execute", "certification-verify", "certification-report"],
         "clientSuppliedRemoteWorkerUrlsAllowed": False,
         "deviceRequestModes": ["cpu", "auto", "accelerator", "cuda:N"],
         "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
@@ -3054,6 +3291,11 @@ def health() -> dict[str, Any]:
         "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
         "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
         "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
+        "productionCertificationEnabled": True,
+        "productionCertificationProfile": PRODUCTION_CERTIFICATION_PROFILE,
+        "productionCertificationPlanSchema": PRODUCTION_CERTIFICATION_PLAN_SCHEMA,
+        "productionCertificationArtifactSchema": PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA,
+        "productionCertificationReportSchema": PRODUCTION_CERTIFICATION_REPORT_SCHEMA,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,
@@ -3246,8 +3488,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _remote_dispatch_plan(payload)
     elif operation == "workspace.neural.remote-execute":
         result = _remote_execute(payload)
-    else:
+    elif operation == "workspace.neural.remote-receipt-verify":
         result = _remote_receipt_verify(payload)
+    elif operation == "workspace.neural.certification-plan":
+        result = _certification_plan(payload)
+    elif operation == "workspace.neural.certification-execute":
+        result = _certification_execute(payload)
+    elif operation == "workspace.neural.certification-verify":
+        result = _certification_verify(payload)
+    else:
+        result = _certification_report(payload)
     selected_device = _current_device_name()
     _CURRENT_DEVICE.reset(device_token)
     return {

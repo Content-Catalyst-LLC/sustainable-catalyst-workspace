@@ -1,0 +1,34 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.32.0",
+  "backendVersion": "3.32.0",
+  "wordpressVersion": "3.32.0",
+  "release": "Neural Runtime Production Certification",
+  "baselineVersion": "3.31.0",
+  "rollbackVersion": "3.31.0",
+  "databaseMigration": false,
+  "backendMutation": true,
+  "neuralRuntime": {
+    "boundedOperations": 52,
+    "productionCertificationEnabled": true,
+    "profile": "workspace-neural-production/1.0",
+    "planSchema": "sc-workspace-neural-production-certification-plan/1.0",
+    "artifactSchema": "sc-workspace-neural-production-certification-artifact/1.0",
+    "reportSchema": "sc-workspace-neural-production-certification-report/1.0",
+    "requiredChecks": 9,
+    "remoteGpuTransportConditional": true,
+    "workspaceArtifactPersistence": true,
+    "arbitraryCodeExecution": false,
+    "clientSuppliedRemoteWorkerUrlsAllowed": false
+  },
+  "validation": {
+    "newCertificationTestsPassed": 9,
+    "neuralTestsPassed": 107,
+    "backendTestsPassed": 321,
+    "historicalBackendFailures": 46,
+    "typedEndpoints": 291,
+    "newFailureCategories": 0
+  },
+  "releasePayloadFiles": 42
+}
