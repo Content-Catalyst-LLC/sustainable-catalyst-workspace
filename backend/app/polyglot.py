@@ -89,6 +89,11 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.gnn-model-summary",
         "workspace.neural.gnn-forward",
         "workspace.neural.gnn-infer",
+        "workspace.neural.gnn-split-plan",
+        "workspace.neural.gnn-training-plan",
+        "workspace.neural.gnn-train",
+        "workspace.neural.gnn-checkpoint-create",
+        "workspace.neural.gnn-checkpoint-resume",
     ), "Production-certified hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, device orchestration, reproducible trial execution, operator-governed remote GPU dispatch, and machine-verifiable runtime assurance."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -551,6 +556,11 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     neural_gnn_artifact = None
     neural_gnn_ops = {
         "workspace.neural.graph-dataset-project", "workspace.neural.gnn-forward", "workspace.neural.gnn-infer",
+        "workspace.neural.gnn-split-plan",
+        "workspace.neural.gnn-training-plan",
+        "workspace.neural.gnn-train",
+        "workspace.neural.gnn-checkpoint-create",
+        "workspace.neural.gnn-checkpoint-resume",
     }
     if language == "neural" and row.operation in neural_gnn_ops and isinstance(result, dict):
         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
@@ -558,10 +568,18 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         blob=nr.get("graphProjectionArtifact") if isinstance(nr.get("graphProjectionArtifact"),dict) else None
         if blob is None and isinstance(nr.get("gnnExecutionArtifact"),dict): blob=nr.get("gnnExecutionArtifact")
         if blob is None and isinstance(nr.get("gnnPredictionArtifact"),dict): blob=nr.get("gnnPredictionArtifact")
+        if blob is None and isinstance(nr.get("gnnSplitPlanArtifact"),dict): blob=nr.get("gnnSplitPlanArtifact")
+        if blob is None and isinstance(nr.get("gnnTrainingPlanArtifact"),dict): blob=nr.get("gnnTrainingPlanArtifact")
+        if blob is None and isinstance(nr.get("gnnTrainingArtifact"),dict): blob=nr.get("gnnTrainingArtifact")
+        if blob is None and isinstance(nr.get("gnnCheckpointArtifact"),dict): blob=nr.get("gnnCheckpointArtifact")
         if blob:
             raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
             schema=blob.get("schema")
             if schema=="sc-workspace-neural-graph-dataset-projection/1.0": media="application/vnd.sc.workspace.neural-graph-projection+json"; prefix="neural-graph-projection"; role="dataset-projection"
+            elif schema=="sc-workspace-neural-gnn-split-plan/1.0": media="application/vnd.sc.workspace.neural-gnn-split-plan+json"; prefix="neural-gnn-split-plan"; role="split-plan"
+            elif schema=="sc-workspace-neural-gnn-training-plan/1.0": media="application/vnd.sc.workspace.neural-gnn-training-plan+json"; prefix="neural-gnn-training-plan"; role="training-plan"
+            elif schema=="sc-workspace-neural-gnn-training-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-training+json"; prefix="neural-gnn-training"; role="training"
+            elif schema=="sc-workspace-neural-gnn-checkpoint-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-checkpoint+json"; prefix="neural-gnn-checkpoint"; role="checkpoint"
             elif schema=="sc-workspace-neural-gnn-prediction-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-prediction+json"; prefix="neural-gnn-prediction"; role="prediction"
             else: media="application/vnd.sc.workspace.neural-gnn-execution+json"; prefix="neural-gnn-execution"; role="execution"
             aid=f"{prefix}-{row.job_id}"
@@ -977,6 +995,11 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     if language == "neural" and row.operation in {
         "workspace.neural.graph-tensor-contract","workspace.neural.graph-dataset-project","workspace.neural.gnn-model-summary",
         "workspace.neural.gnn-forward","workspace.neural.gnn-infer",
+        "workspace.neural.gnn-split-plan",
+        "workspace.neural.gnn-training-plan",
+        "workspace.neural.gnn-train",
+        "workspace.neural.gnn-checkpoint-create",
+        "workspace.neural.gnn-checkpoint-resume",
     }:
         remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
         nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
@@ -984,8 +1007,13 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         if not blob and isinstance(nr.get("graphProjectionArtifact"),dict): blob=nr.get("graphProjectionArtifact")
         if not blob and isinstance(nr.get("gnnExecutionArtifact"),dict): blob=nr.get("gnnExecutionArtifact")
         if not blob and isinstance(nr.get("gnnPredictionArtifact"),dict): blob=nr.get("gnnPredictionArtifact")
+        if not blob and isinstance(nr.get("gnnSplitPlanArtifact"),dict): blob=nr.get("gnnSplitPlanArtifact")
+        if not blob and isinstance(nr.get("gnnTrainingPlanArtifact"),dict): blob=nr.get("gnnTrainingPlanArtifact")
+        if not blob and isinstance(nr.get("gnnTrainingArtifact"),dict): blob=nr.get("gnnTrainingArtifact")
+        if not blob and isinstance(nr.get("gnnCheckpointArtifact"),dict): blob=nr.get("gnnCheckpointArtifact")
         receipt_details.update({
             "graphNeuralNetworkRuntimeFoundation":True,"gnnArtifactSchema":blob.get("schema"),
+            "gnnTrainingRuntime":True,"gnnCheckpointResumeEnabled":True,
             "gnnArtifactFingerprint":blob.get("artifactFingerprint"),"graphFingerprint":blob.get("graphFingerprint"),
             "modelSpecFingerprint":blob.get("modelSpecFingerprint"),"task":blob.get("task"),"adapter":blob.get("adapter"),
             "isObservedEvidence":False,"clientSuppliedGraphRuntimeUrlAllowed":False,

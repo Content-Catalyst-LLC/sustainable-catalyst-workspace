@@ -37,7 +37,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.33.0"
+SERVICE_VERSION = "3.34.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -116,6 +116,11 @@ OPERATIONS = {
     "workspace.neural.gnn-model-summary",
     "workspace.neural.gnn-forward",
     "workspace.neural.gnn-infer",
+    "workspace.neural.gnn-split-plan",
+    "workspace.neural.gnn-training-plan",
+    "workspace.neural.gnn-train",
+    "workspace.neural.gnn-checkpoint-create",
+    "workspace.neural.gnn-checkpoint-resume",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -3522,6 +3527,303 @@ def _gnn_infer(payload: dict[str, Any]) -> dict[str, Any]:
     artifact["artifactFingerprint"] = _canonical_sha256(artifact)
     return {"kind": "gnn-inference", "task": task, "predictions": predictions, "gnnPredictionArtifact": artifact}
 
+# v3.34.0 Graph Neural Network Training Runtime.
+GNN_SPLIT_PLAN_SCHEMA = "sc-workspace-neural-gnn-split-plan/1.0"
+GNN_TRAINING_PLAN_SCHEMA = "sc-workspace-neural-gnn-training-plan/1.0"
+GNN_TRAINING_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-training-artifact/1.0"
+GNN_CHECKPOINT_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-checkpoint-artifact/1.0"
+GNN_TRAINING_TASKS = {
+    "node-regression", "node-binary-classification", "node-multiclass-classification",
+    "graph-regression", "graph-binary-classification", "graph-multiclass-classification",
+    "link-prediction",
+}
+GNN_TRAINING_OPTIMIZERS = {"sgd"}
+MAX_GNN_EPOCHS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_EPOCHS", "500")), 2000))
+MAX_GNN_GRAPHS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_GRAPHS", "256")), 1024))
+MAX_GNN_LINK_EXAMPLES = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_LINK_EXAMPLES", "65536")), 262144))
+
+
+def _gnn_float(payload: dict[str, Any], key: str, default: float, low: float, high: float) -> float:
+    raw = payload.get(key, default)
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise HTTPException(status_code=400, detail=f"{key} must be numeric")
+    value = float(raw)
+    if not math.isfinite(value) or value < low or value > high:
+        raise HTTPException(status_code=400, detail=f"{key} is outside the allowed range")
+    return value
+
+
+def _gnn_indices(raw: Any, count: int, label: str, allow_empty: bool = False) -> list[int]:
+    if not isinstance(raw, list) or (not raw and not allow_empty):
+        raise HTTPException(status_code=400, detail=f"{label} must be {'an array' if allow_empty else 'a non-empty array'}")
+    out: list[int] = []
+    for v in raw:
+        if not isinstance(v, int) or isinstance(v, bool) or v < 0 or v >= count:
+            raise HTTPException(status_code=400, detail=f"{label} contains an invalid index")
+        out.append(int(v))
+    if len(set(out)) != len(out):
+        raise HTTPException(status_code=400, detail=f"{label} contains duplicate indices")
+    return out
+
+
+def _gnn_split_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    count = payload.get("itemCount")
+    if not isinstance(count, int) or isinstance(count, bool) or count < 2 or count > max(MAX_GNN_LINK_EXAMPLES, MAX_GRAPH_NODES, MAX_GNN_GRAPHS):
+        raise HTTPException(status_code=400, detail="itemCount is outside the governed split range")
+    train_fraction = _gnn_float(payload, "trainFraction", 0.70, 0.05, 0.95)
+    validation_fraction = _gnn_float(payload, "validationFraction", 0.15, 0.0, 0.90)
+    if train_fraction + validation_fraction >= 1.0:
+        raise HTTPException(status_code=400, detail="trainFraction + validationFraction must be less than 1")
+    seed = _seed(payload)
+    gen = torch.Generator(device="cpu"); gen.manual_seed(seed)
+    perm = torch.randperm(count, generator=gen).tolist()
+    n_train = max(1, int(round(count * train_fraction)))
+    n_val = int(round(count * validation_fraction))
+    if n_train + n_val >= count:
+        n_val = max(0, count - n_train - 1)
+    train = perm[:n_train]; validation = perm[n_train:n_train+n_val]; test = perm[n_train+n_val:]
+    if not test:
+        test = [validation.pop()] if validation else [train.pop()]
+    artifact = {
+        "schema": GNN_SPLIT_PLAN_SCHEMA, "kind": "gnn-split-plan", "itemCount": count,
+        "trainIndices": train, "validationIndices": validation, "testIndices": test,
+        "trainFractionRequested": train_fraction, "validationFractionRequested": validation_fraction,
+        "seed": seed, "shufflePolicy": "torch-randperm-seeded", "stratificationEnabled": False,
+        "splitInferenceEnabled": False, "isObservedEvidence": False,
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    return {"splitIndices": {"train": train, "validation": validation, "test": test}, "gnnSplitPlanArtifact": artifact}
+
+
+def _gnn_training_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    task = str(payload.get("task") or "").lower()
+    if task not in GNN_TRAINING_TASKS:
+        raise HTTPException(status_code=400, detail="unsupported GNN training task")
+    spec = _gnn_validate_model_spec(payload.get("modelSpec"))
+    if spec.get("activation") != "identity":
+        raise HTTPException(status_code=400, detail="v3.34 supervised GNN training requires modelSpec.activation=identity")
+    epochs = payload.get("epochs", 25)
+    if not isinstance(epochs, int) or isinstance(epochs, bool) or epochs < 1 or epochs > MAX_GNN_EPOCHS:
+        raise HTTPException(status_code=400, detail="epochs is outside the governed range")
+    optimizer = str(payload.get("optimizer") or "sgd").lower()
+    if optimizer not in GNN_TRAINING_OPTIMIZERS:
+        raise HTTPException(status_code=400, detail="v3.34 GNN training supports governed stateless SGD only")
+    lr = _gnn_float(payload, "learningRate", 0.05, 1e-6, 1.0)
+    wd = _gnn_float(payload, "weightDecay", 0.0, 0.0, 1.0)
+    clip = _gnn_float(payload, "gradientClip", 5.0, 0.0, 1000.0)
+    split = payload.get("splitIndices")
+    split_fp = _canonical_sha256(split) if isinstance(split, dict) else None
+    plan = {
+        "schema": GNN_TRAINING_PLAN_SCHEMA, "kind": "gnn-training-plan", "task": task,
+        "adapter": spec["adapter"], "initialModelSpecFingerprint": spec["modelSpecFingerprint"],
+        "epochs": epochs, "optimizer": optimizer, "learningRate": lr, "weightDecay": wd,
+        "gradientClip": clip, "seed": _seed(payload), "splitFingerprint": split_fp,
+        "device": _current_device_name(), "fullBatch": True, "shuffleWithinEpoch": False,
+        "opaqueSerializedOptimizerStateAllowed": False, "arbitraryTrainingCodeAllowed": False,
+        "externalDatasetReadEnabled": False, "isObservedEvidence": False,
+    }
+    plan["artifactFingerprint"] = _canonical_sha256(plan)
+    return {"gnnTrainingPlanArtifact": plan}
+
+
+def _gnn_neighbor_mean(x: torch.Tensor, edges: list[list[int]], directed: bool, add_self: bool) -> torch.Tensor:
+    n = int(x.shape[0]); device = x.device
+    agg = torch.zeros_like(x); counts = torch.zeros((n, 1), dtype=x.dtype, device=device)
+    src: list[int] = []; dst: list[int] = []
+    for s, d in edges:
+        src.append(s); dst.append(d)
+        if not directed and s != d:
+            src.append(d); dst.append(s)
+    if src:
+        sidx = torch.tensor(src, dtype=torch.long, device=device); didx = torch.tensor(dst, dtype=torch.long, device=device)
+        agg.index_add_(0, didx, x[sidx])
+        counts.index_add_(0, didx, torch.ones((len(dst), 1), dtype=x.dtype, device=device))
+    if add_self:
+        agg = agg + x; counts = counts + 1.0
+    return agg / torch.clamp(counts, min=1.0)
+
+
+def _gnn_train_logits(graph_payload: dict[str, Any], spec: dict[str, Any], weight: torch.Tensor, bias: torch.Tensor) -> tuple[torch.Tensor, str]:
+    x, edges, node_ids, directed = _graph_components(graph_payload)
+    if int(x.shape[1]) != spec["inputFeatures"]:
+        raise HTTPException(status_code=400, detail="graph feature width does not match modelSpec.inputFeatures")
+    if spec["adapter"] == "gcn":
+        basis = _gnn_neighbor_mean(x, edges, directed, bool(spec.get("addSelfLoops", True)))
+    else:
+        neighbor = _gnn_neighbor_mean(x, edges, directed, bool(spec.get("addSelfLoops", False)))
+        basis = torch.cat([x, neighbor], dim=1)
+    logits = basis @ weight + bias
+    fp = _graph_fingerprint(graph_payload["nodeFeatures"], edges, node_ids, directed)
+    return logits, fp
+
+
+def _gnn_loss(payload: dict[str, Any], spec: dict[str, Any], weight: torch.Tensor, bias: torch.Tensor, indices: list[int]) -> tuple[torch.Tensor, str, str]:
+    task = str(payload.get("task") or "").lower()
+    if task.startswith("node-"):
+        logits, graph_fp = _gnn_train_logits(payload, spec, weight, bias)
+        labels = payload.get("labels")
+        if not isinstance(labels, list) or len(labels) != int(logits.shape[0]):
+            raise HTTPException(status_code=400, detail="node training labels must align one-for-one with nodes")
+        idx = torch.tensor(indices, dtype=torch.long, device=logits.device)
+        if task == "node-regression":
+            if spec["outputFeatures"] != 1: raise HTTPException(status_code=400, detail="node regression requires outputFeatures=1")
+            y = torch.tensor(labels, dtype=torch.float32, device=logits.device).reshape(-1)
+            loss = torch.nn.functional.mse_loss(logits[idx, 0], y[idx])
+        elif task == "node-binary-classification":
+            if spec["outputFeatures"] != 1: raise HTTPException(status_code=400, detail="node binary classification requires outputFeatures=1")
+            y = torch.tensor(labels, dtype=torch.float32, device=logits.device).reshape(-1)
+            if not torch.all((y == 0) | (y == 1)): raise HTTPException(status_code=400, detail="binary labels must be 0 or 1")
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits[idx, 0], y[idx])
+        else:
+            if spec["outputFeatures"] < 2: raise HTTPException(status_code=400, detail="node multiclass classification requires outputFeatures>=2")
+            y = torch.tensor(labels, dtype=torch.long, device=logits.device).reshape(-1)
+            if int(y.min()) < 0 or int(y.max()) >= spec["outputFeatures"]: raise HTTPException(status_code=400, detail="multiclass label is outside outputFeatures")
+            loss = torch.nn.functional.cross_entropy(logits[idx], y[idx])
+        return loss, graph_fp, _canonical_sha256(labels)
+
+    if task.startswith("graph-"):
+        graphs = payload.get("graphs")
+        if not isinstance(graphs, list) or not graphs or len(graphs) > MAX_GNN_GRAPHS:
+            raise HTTPException(status_code=400, detail="graphs must be a bounded non-empty array")
+        pooled=[]; labels=[]; graph_fps=[]
+        for i in indices:
+            g=graphs[i]
+            if not isinstance(g, dict): raise HTTPException(status_code=400, detail="each graph must be an object")
+            logits, fp = _gnn_train_logits(g, spec, weight, bias); pooled.append(logits.mean(dim=0)); graph_fps.append(fp)
+            labels.append(g.get("label"))
+        pred=torch.stack(pooled, dim=0)
+        if task == "graph-regression":
+            if spec["outputFeatures"] != 1: raise HTTPException(status_code=400, detail="graph regression requires outputFeatures=1")
+            y=torch.tensor(labels,dtype=torch.float32,device=pred.device); loss=torch.nn.functional.mse_loss(pred[:,0],y)
+        elif task == "graph-binary-classification":
+            if spec["outputFeatures"] != 1: raise HTTPException(status_code=400, detail="graph binary classification requires outputFeatures=1")
+            y=torch.tensor(labels,dtype=torch.float32,device=pred.device)
+            if not torch.all((y==0)|(y==1)): raise HTTPException(status_code=400, detail="binary labels must be 0 or 1")
+            loss=torch.nn.functional.binary_cross_entropy_with_logits(pred[:,0],y)
+        else:
+            if spec["outputFeatures"] < 2: raise HTTPException(status_code=400, detail="graph multiclass classification requires outputFeatures>=2")
+            y=torch.tensor(labels,dtype=torch.long,device=pred.device)
+            if int(y.min())<0 or int(y.max())>=spec["outputFeatures"]: raise HTTPException(status_code=400, detail="multiclass label is outside outputFeatures")
+            loss=torch.nn.functional.cross_entropy(pred,y)
+        return loss, _canonical_sha256(graph_fps), _canonical_sha256(labels)
+
+    if task == "link-prediction":
+        logits, graph_fp = _gnn_train_logits(payload, spec, weight, bias)
+        examples = payload.get("linkExamples")
+        if not isinstance(examples, list) or len(examples) < 2 or len(examples) > MAX_GNN_LINK_EXAMPLES:
+            raise HTTPException(status_code=400, detail="linkExamples must be a bounded array with positive and negative examples")
+        scores=[]; labels=[]; n=int(logits.shape[0])
+        for i in indices:
+            ex=examples[i]
+            if not isinstance(ex,dict): raise HTTPException(status_code=400, detail="each link example must be an object")
+            s,d,l=ex.get("source"),ex.get("target"),ex.get("label")
+            if not isinstance(s,int) or isinstance(s,bool) or not isinstance(d,int) or isinstance(d,bool) or s<0 or d<0 or s>=n or d>=n:
+                raise HTTPException(status_code=400, detail="link example node index is invalid")
+            if l not in (0,1): raise HTTPException(status_code=400, detail="link example label must be 0 or 1")
+            scores.append((logits[s]*logits[d]).sum()/max(1.0,float(spec["outputFeatures"])**0.5)); labels.append(float(l))
+        score=torch.stack(scores); y=torch.tensor(labels,dtype=torch.float32,device=score.device)
+        loss=torch.nn.functional.binary_cross_entropy_with_logits(score,y)
+        return loss, graph_fp, _canonical_sha256(examples)
+    raise HTTPException(status_code=400, detail="unsupported GNN training task")
+
+
+def _gnn_training_count(payload: dict[str, Any]) -> int:
+    task=str(payload.get("task") or "").lower()
+    if task.startswith("node-"):
+        raw=payload.get("nodeFeatures"); return len(raw) if isinstance(raw,list) else 0
+    if task.startswith("graph-"):
+        raw=payload.get("graphs"); return len(raw) if isinstance(raw,list) else 0
+    if task=="link-prediction":
+        raw=payload.get("linkExamples"); return len(raw) if isinstance(raw,list) else 0
+    return 0
+
+
+def _gnn_train(payload: dict[str, Any]) -> dict[str, Any]:
+    plan = _gnn_training_plan(payload)["gnnTrainingPlanArtifact"]
+    spec = _gnn_validate_model_spec(payload.get("modelSpec"))
+    count = _gnn_training_count(payload)
+    if count < 1: raise HTTPException(status_code=400, detail="training data is empty")
+    split = payload.get("splitIndices")
+    if not isinstance(split,dict): raise HTTPException(status_code=400, detail="splitIndices is required; use workspace.neural.gnn-split-plan")
+    train_idx=_gnn_indices(split.get("train"),count,"splitIndices.train")
+    val_idx=_gnn_indices(split.get("validation",[]),count,"splitIndices.validation",allow_empty=True)
+    test_idx=_gnn_indices(split.get("test",[]),count,"splitIndices.test",allow_empty=True)
+    if set(train_idx)&set(val_idx) or set(train_idx)&set(test_idx) or set(val_idx)&set(test_idx):
+        raise HTTPException(status_code=400, detail="train/validation/test split indices must be disjoint")
+    rows = spec["inputFeatures"] if spec["adapter"]=="gcn" else spec["inputFeatures"]*2
+    device=_current_device_name(); seed=_seed(payload); torch.manual_seed(seed)
+    weight=torch.nn.Parameter(torch.tensor(spec["weights"],dtype=torch.float32,device=device))
+    bias=torch.nn.Parameter(torch.tensor(spec["bias"],dtype=torch.float32,device=device))
+    optimizer=torch.optim.SGD([weight,bias],lr=plan["learningRate"],weight_decay=plan["weightDecay"],momentum=0.0)
+    losses=[]; epochs=int(plan["epochs"]); base_epoch=int(payload.get("baseEpoch") or 0)
+    initial_fp=spec["modelSpecFingerprint"]
+    graph_fp=None; label_fp=None
+    for epoch in range(epochs):
+        optimizer.zero_grad(set_to_none=True)
+        loss, graph_fp, label_fp = _gnn_loss(payload,spec,weight,bias,train_idx)
+        if not torch.isfinite(loss): raise HTTPException(status_code=400, detail="GNN training produced a non-finite loss")
+        loss.backward()
+        if plan["gradientClip"]>0: torch.nn.utils.clip_grad_norm_([weight,bias],plan["gradientClip"])
+        optimizer.step(); losses.append(float(loss.detach().cpu().item()))
+    trained={k:v for k,v in spec.items() if k!="modelSpecFingerprint"}
+    trained["weights"]=weight.detach().cpu().tolist(); trained["bias"]=bias.detach().cpu().tolist()
+    trained=_gnn_validate_model_spec(trained)
+    def eval_loss(ix: list[int]):
+        if not ix: return None
+        with torch.no_grad(): return float(_gnn_loss(payload,trained,weight,bias,ix)[0].detach().cpu().item())
+    artifact={
+        "schema":GNN_TRAINING_ARTIFACT_SCHEMA,"kind":"gnn-training","task":plan["task"],"adapter":spec["adapter"],
+        "trainingPlanFingerprint":plan["artifactFingerprint"],"initialModelSpecFingerprint":initial_fp,
+        "finalModelSpecFingerprint":trained["modelSpecFingerprint"],"graphFingerprint":graph_fp,"labelFingerprint":label_fp,
+        "epochStart":base_epoch,"epochsCompleted":epochs,"epochEnd":base_epoch+epochs,
+        "trainingLossFirst":losses[0],"trainingLossLast":losses[-1],"validationLoss":eval_loss(val_idx),"testLoss":eval_loss(test_idx),
+        "lossCurve":losses,"optimizer":"sgd","optimizerMomentum":0.0,"learningRate":plan["learningRate"],
+        "weightDecay":plan["weightDecay"],"gradientClip":plan["gradientClip"],"seed":seed,"device":device,
+        "fullBatch":True,"checkpointResumeExactForSameInputs":True,"opaqueSerializedOptimizerStateAllowed":False,
+        "trainingLabelsPersisted":False,"isObservedEvidence":False,
+    }
+    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
+    checkpoint={
+        "schema":GNN_CHECKPOINT_ARTIFACT_SCHEMA,"kind":"gnn-training-checkpoint","task":plan["task"],
+        "trainedModelSpec":trained,"currentEpoch":base_epoch+epochs,"trainingPlanFingerprint":plan["artifactFingerprint"],
+        "trainingArtifactFingerprint":artifact["artifactFingerprint"],"graphFingerprint":graph_fp,"labelFingerprint":label_fp,
+        "optimizer":"sgd","optimizerMomentum":0.0,"seed":seed,"resumePolicy":"exact-full-batch-stateless-sgd-same-inputs",
+        "opaqueSerializedState":False,"isObservedEvidence":False,
+    }
+    checkpoint["artifactFingerprint"]=_canonical_sha256(checkpoint)
+    return {"kind":"gnn-training","trainedModelSpec":trained,"gnnTrainingPlanArtifact":plan,"gnnTrainingArtifact":artifact,"gnnCheckpointArtifact":checkpoint}
+
+
+def _gnn_checkpoint_create(payload: dict[str, Any]) -> dict[str, Any]:
+    spec=_gnn_validate_model_spec(payload.get("modelSpec")); epoch=payload.get("currentEpoch",0)
+    if not isinstance(epoch,int) or isinstance(epoch,bool) or epoch<0: raise HTTPException(status_code=400, detail="currentEpoch must be a non-negative integer")
+    task=str(payload.get("task") or "").lower()
+    if task not in GNN_TRAINING_TASKS: raise HTTPException(status_code=400, detail="unsupported GNN training task")
+    cp={"schema":GNN_CHECKPOINT_ARTIFACT_SCHEMA,"kind":"gnn-training-checkpoint","task":task,"trainedModelSpec":spec,
+        "currentEpoch":epoch,"trainingPlanFingerprint":str(payload.get("trainingPlanFingerprint") or "")[:128] or None,
+        "trainingArtifactFingerprint":str(payload.get("trainingArtifactFingerprint") or "")[:128] or None,
+        "graphFingerprint":str(payload.get("graphFingerprint") or "")[:128] or None,"labelFingerprint":str(payload.get("labelFingerprint") or "")[:128] or None,
+        "optimizer":"sgd","optimizerMomentum":0.0,"seed":_seed(payload),"resumePolicy":"exact-full-batch-stateless-sgd-same-inputs",
+        "opaqueSerializedState":False,"isObservedEvidence":False}
+    cp["artifactFingerprint"]=_canonical_sha256(cp); return {"gnnCheckpointArtifact":cp}
+
+
+def _gnn_checkpoint_resume(payload: dict[str, Any]) -> dict[str, Any]:
+    checkpoint=payload.get("checkpoint")
+    if not isinstance(checkpoint,dict) or checkpoint.get("schema")!=GNN_CHECKPOINT_ARTIFACT_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"checkpoint.schema must be {GNN_CHECKPOINT_ARTIFACT_SCHEMA}")
+    if checkpoint.get("optimizer")!="sgd" or checkpoint.get("optimizerMomentum") not in (0,0.0):
+        raise HTTPException(status_code=400, detail="v3.34 resume accepts stateless SGD checkpoints only")
+    additional=payload.get("additionalEpochs")
+    if not isinstance(additional,int) or isinstance(additional,bool) or additional<1 or additional>MAX_GNN_EPOCHS:
+        raise HTTPException(status_code=400, detail="additionalEpochs is outside the governed range")
+    p=dict(payload); p.pop("checkpoint",None); p.pop("additionalEpochs",None)
+    p["modelSpec"]=checkpoint.get("trainedModelSpec"); p["task"]=checkpoint.get("task"); p["epochs"]=additional; p["baseEpoch"]=int(checkpoint.get("currentEpoch") or 0)
+    out=_gnn_train(p); out["resumedFromCheckpointFingerprint"]=checkpoint.get("artifactFingerprint")
+    out["gnnTrainingArtifact"]["resumedFromCheckpointFingerprint"]=checkpoint.get("artifactFingerprint")
+    out["gnnTrainingArtifact"]["artifactFingerprint"]=_canonical_sha256({k:v for k,v in out["gnnTrainingArtifact"].items() if k!="artifactFingerprint"})
+    return out
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -3575,8 +3877,16 @@ def health() -> dict[str, Any]:
         "gnnPredictionArtifactSchema": GNN_PREDICTION_ARTIFACT_SCHEMA,
         "gnnAdapters": sorted(GNN_ADAPTERS),
         "gnnOperations": ["graph-tensor-contract", "graph-dataset-project", "gnn-model-summary", "gnn-forward", "gnn-infer"],
-        "gnnTrainingEnabled": False,
+        "gnnTrainingEnabled": True,
         "gnnExternalGraphReadEnabled": False,
+        "gnnTrainingRuntime": True,
+        "gnnSplitPlanSchema": GNN_SPLIT_PLAN_SCHEMA,
+        "gnnTrainingPlanSchema": GNN_TRAINING_PLAN_SCHEMA,
+        "gnnTrainingArtifactSchema": GNN_TRAINING_ARTIFACT_SCHEMA,
+        "gnnCheckpointArtifactSchema": GNN_CHECKPOINT_ARTIFACT_SCHEMA,
+        "gnnTrainingTasks": sorted(GNN_TRAINING_TASKS),
+        "gnnTrainingOptimizers": sorted(GNN_TRAINING_OPTIMIZERS),
+        "gnnCheckpointResumeEnabled": True,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -3709,7 +4019,17 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.graph-tensor-contract":
+    if operation == "workspace.neural.gnn-split-plan":
+        result = _gnn_split_plan(payload)
+    elif operation == "workspace.neural.gnn-training-plan":
+        result = _gnn_training_plan(payload)
+    elif operation == "workspace.neural.gnn-train":
+        result = _gnn_train(payload)
+    elif operation == "workspace.neural.gnn-checkpoint-create":
+        result = _gnn_checkpoint_create(payload)
+    elif operation == "workspace.neural.gnn-checkpoint-resume":
+        result = _gnn_checkpoint_resume(payload)
+    elif operation == "workspace.neural.graph-tensor-contract":
         result = _graph_tensor_contract(payload)
     elif operation == "workspace.neural.graph-dataset-project":
         result = _graph_dataset_project(payload)
@@ -3896,7 +4216,10 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "acceleratorExecutionEnabled": bool(ACCELERATOR_ENABLED),
         "graphNeuralNetworkRuntimeFoundation": True,
         "gnnModelSpecSchema": GNN_MODEL_SPEC_SCHEMA,
-        "gnnTrainingEnabled": False,
+        "gnnTrainingEnabled": True,
         "gnnExternalGraphReadEnabled": False,
+        "gnnTrainingRuntime": True,
+        "gnnTrainingArtifactSchema": GNN_TRAINING_ARTIFACT_SCHEMA,
+        "gnnCheckpointArtifactSchema": GNN_CHECKPOINT_ARTIFACT_SCHEMA,
         "result": result,
     }
