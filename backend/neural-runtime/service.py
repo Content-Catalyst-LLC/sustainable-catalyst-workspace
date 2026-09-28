@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.23.0"
+SERVICE_VERSION = "3.24.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -42,7 +42,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.22.0.2 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.24.0 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -59,6 +59,11 @@ OPERATIONS = {
     "workspace.neural.checkpoint-inspect",
     "workspace.neural.resume-linear",
     "workspace.neural.resume-mlp",
+    "workspace.neural.evaluate-regression",
+    "workspace.neural.evaluate-binary",
+    "workspace.neural.evaluate-multiclass",
+    "workspace.neural.calibration-report",
+    "workspace.neural.uncertainty-summary",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -1127,6 +1132,248 @@ def _train(payload: dict[str, Any], *, expected_model_type: str, resume: bool = 
     }
 
 
+EVALUATION_ARTIFACT_SCHEMA = "sc-workspace-neural-evaluation-artifact/1.0"
+CALIBRATION_ARTIFACT_SCHEMA = "sc-workspace-neural-calibration-artifact/1.0"
+UNCERTAINTY_ARTIFACT_SCHEMA = "sc-workspace-neural-uncertainty-artifact/1.0"
+MAX_EVALUATION_ROWS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_EVALUATION_ROWS", "16384")), 50000))
+MAX_CALIBRATION_BINS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_CALIBRATION_BINS", "20")), 50))
+DEFAULT_CALIBRATION_BINS = 10
+
+
+def _analysis_source(payload: dict[str, Any]) -> tuple[dict[str, Any], str, str | None]:
+    spec = payload.get("modelSpec")
+    summary = _validate_model_spec(spec)
+    model_fp = _canonical_sha256(spec)
+    checkpoint_fp = None
+    checkpoint = payload.get("checkpointArtifact")
+    if checkpoint is not None:
+        checkpoint, _ = _validate_checkpoint_artifact(checkpoint, decode_state=False)
+        if checkpoint.get("trainedModelSpecFingerprint") != model_fp:
+            raise HTTPException(status_code=400, detail="modelSpec fingerprint does not match checkpoint trained model fingerprint")
+        checkpoint_fp = str(checkpoint.get("artifactFingerprint") or "")
+    return summary, model_fp, checkpoint_fp
+
+
+def _analysis_logits(payload: dict[str, Any]) -> tuple[torch.Tensor, torch.Tensor, dict[str, Any], str, str | None, str]:
+    summary, model_fp, checkpoint_fp = _analysis_source(payload)
+    features = _tensor(payload.get("features"), name="features", dtype_name="float32", ndim=2)
+    if int(features.shape[0]) < 2 or int(features.shape[0]) > MAX_EVALUATION_ROWS:
+        raise HTTPException(status_code=413, detail="evaluation row count is outside the bounded range")
+    if int(features.shape[1]) != int(summary["inputFeatures"]):
+        raise HTTPException(status_code=400, detail="features width does not match model specification")
+    spec = payload.get("modelSpec")
+    if summary["modelType"] == "linear":
+        weights, bias, activation, _ = _linear_spec(spec, layer_name="modelSpec")
+        logits = F.linear(features, weights, bias)
+        if activation not in {"identity", "sigmoid", "softmax"}:
+            logits = _activation(logits, activation)
+    else:
+        x = features
+        for index, layer in enumerate(spec["layers"]):
+            weights, bias, activation, _ = _linear_spec(layer, layer_name=f"modelSpec.layers[{index}]")
+            raw = F.linear(x, weights, bias)
+            x = raw if index == len(spec["layers"]) - 1 else _activation(raw, activation)
+        logits = x
+    dataset_fp = _canonical_sha256({"features": payload.get("features"), "targets": payload.get("targets")})
+    return features, logits, summary, model_fp, checkpoint_fp, dataset_fp
+
+
+def _binary_targets(value: Any, rows: int) -> torch.Tensor:
+    y = _tensor(value, name="targets", dtype_name="float32")
+    if y.ndim == 1: y = y.reshape(-1, 1)
+    if y.ndim != 2 or int(y.shape[1]) != 1 or int(y.shape[0]) != rows:
+        raise HTTPException(status_code=400, detail="binary targets must be [rows] or [rows,1]")
+    if bool(((y < 0) | (y > 1)).any()):
+        raise HTTPException(status_code=400, detail="binary targets must be in [0,1]")
+    return y
+
+
+def _multiclass_targets(value: Any, rows: int, classes: int) -> torch.Tensor:
+    y = _tensor(value, name="targets", dtype_name="int64")
+    if y.ndim == 2 and int(y.shape[1]) == 1: y = y.reshape(-1)
+    if y.ndim != 1 or int(y.shape[0]) != rows:
+        raise HTTPException(status_code=400, detail="multiclass targets must be rank 1 with one label per row")
+    if y.numel() and (int(y.min().item()) < 0 or int(y.max().item()) >= classes):
+        raise HTTPException(status_code=400, detail="multiclass target is outside the model class range")
+    return y
+
+
+def _artifact(schema: str, kind: str, body: dict[str, Any]) -> dict[str, Any]:
+    doc = {"schema": schema, "kind": kind, **body}
+    fp = _canonical_sha256(doc)
+    doc["artifactFingerprint"] = fp
+    doc["artifactId"] = "nea_" + fp[:24]
+    return doc
+
+
+def _roc_auc_binary(prob: torch.Tensor, y: torch.Tensor) -> float | None:
+    pairs = [(float(p), int(t)) for p, t in zip(prob.reshape(-1).tolist(), y.reshape(-1).tolist())]
+    pos = sum(t for _, t in pairs); neg = len(pairs) - pos
+    if pos == 0 or neg == 0: return None
+    ordered = sorted(enumerate(pairs), key=lambda x: x[1][0])
+    ranks = [0.0] * len(pairs); i = 0
+    while i < len(ordered):
+        j = i + 1
+        while j < len(ordered) and ordered[j][1][0] == ordered[i][1][0]: j += 1
+        avg = (i + 1 + j) / 2.0
+        for k in range(i, j): ranks[ordered[k][0]] = avg
+        i = j
+    rank_sum_pos = sum(r for r, (_, t) in zip(ranks, pairs) if t == 1)
+    return float((rank_sum_pos - pos * (pos + 1) / 2.0) / (pos * neg))
+
+
+def _evaluate_regression(payload: dict[str, Any]) -> dict[str, Any]:
+    features, pred, summary, model_fp, checkpoint_fp, dataset_fp = _analysis_logits(payload)
+    y = _tensor(payload.get("targets"), name="targets", dtype_name="float32")
+    if y.ndim == 1: y = y.reshape(-1, 1)
+    if y.ndim != 2 or list(y.shape) != list(pred.shape):
+        raise HTTPException(status_code=400, detail="regression targets shape must match model outputs")
+    residual = pred - y
+    mse = float(torch.mean(residual * residual).item())
+    mae = float(torch.mean(torch.abs(residual)).item())
+    rmse = math.sqrt(mse)
+    denom = float(torch.sum((y - torch.mean(y)) ** 2).item())
+    r2 = None if denom == 0 else float(1.0 - float(torch.sum(residual * residual).item()) / denom)
+    metrics = {"mse": mse, "rmse": rmse, "mae": mae, "r2": r2}
+    artifact = _artifact(EVALUATION_ARTIFACT_SCHEMA, "neural-evaluation", {
+        "task":"regression","operation":"workspace.neural.evaluate-regression","modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp,
+        "rows":int(features.shape[0]),"metrics":metrics,
+    })
+    return {"kind":"neural-evaluation-result","task":"regression","metrics":metrics,"analysisArtifact":artifact,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp}
+
+
+def _binary_eval_core(payload: dict[str, Any]) -> tuple[dict[str, Any], torch.Tensor, torch.Tensor, dict[str, Any], str, str | None, str]:
+    features, logits, summary, model_fp, checkpoint_fp, dataset_fp = _analysis_logits(payload)
+    if int(logits.shape[1]) != 1:
+        raise HTTPException(status_code=400, detail="binary evaluation requires one model output")
+    y = _binary_targets(payload.get("targets"), int(features.shape[0]))
+    prob = torch.sigmoid(logits)
+    pred = (prob >= 0.5).to(torch.int64); yi = y.to(torch.int64)
+    tp=int(((pred==1)&(yi==1)).sum().item()); tn=int(((pred==0)&(yi==0)).sum().item())
+    fp=int(((pred==1)&(yi==0)).sum().item()); fn=int(((pred==0)&(yi==1)).sum().item())
+    eps=1e-7
+    logloss=float(-(y*torch.log(prob.clamp(eps,1-eps))+(1-y)*torch.log((1-prob).clamp(eps,1-eps))).mean().item())
+    precision=tp/(tp+fp) if tp+fp else 0.0; recall=tp/(tp+fn) if tp+fn else 0.0
+    f1=2*precision*recall/(precision+recall) if precision+recall else 0.0
+    metrics={"accuracy":float((pred==yi).to(torch.float32).mean().item()),"logLoss":logloss,
+             "brierScore":float(torch.mean((prob-y)**2).item()),"precision":precision,"recall":recall,"f1":f1,
+             "rocAuc":_roc_auc_binary(prob,y),"confusionMatrix":{"tn":tn,"fp":fp,"fn":fn,"tp":tp}}
+    return metrics, prob, y, summary, model_fp, checkpoint_fp, dataset_fp
+
+
+def _evaluate_binary(payload: dict[str, Any]) -> dict[str, Any]:
+    metrics, prob, y, summary, model_fp, checkpoint_fp, dataset_fp = _binary_eval_core(payload)
+    artifact=_artifact(EVALUATION_ARTIFACT_SCHEMA,"neural-evaluation",{
+        "task":"binary-classification","operation":"workspace.neural.evaluate-binary","modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp,
+        "rows":int(y.shape[0]),"metrics":metrics})
+    return {"kind":"neural-evaluation-result","task":"binary-classification","metrics":metrics,"analysisArtifact":artifact,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp}
+
+
+def _multiclass_eval_core(payload: dict[str, Any]) -> tuple[dict[str, Any], torch.Tensor, torch.Tensor, dict[str, Any], str, str | None, str]:
+    features, logits, summary, model_fp, checkpoint_fp, dataset_fp = _analysis_logits(payload)
+    classes=int(logits.shape[1])
+    if classes < 2: raise HTTPException(status_code=400, detail="multiclass evaluation requires at least two outputs")
+    y=_multiclass_targets(payload.get("targets"),int(features.shape[0]),classes)
+    prob=torch.softmax(logits,dim=1); pred=torch.argmax(prob,dim=1); eps=1e-7
+    logloss=float(-torch.log(prob[torch.arange(len(y)),y].clamp(eps,1.0)).mean().item())
+    onehot=F.one_hot(y,num_classes=classes).to(torch.float32)
+    confusion=[]
+    for c in range(classes):
+        row=[]
+        for d in range(classes): row.append(int(((y==c)&(pred==d)).sum().item()))
+        confusion.append(row)
+    ps=[]; rs=[]; f1s=[]
+    for c in range(classes):
+        tp=confusion[c][c]; fp=sum(confusion[r][c] for r in range(classes) if r!=c); fn=sum(confusion[c][d] for d in range(classes) if d!=c)
+        pr=tp/(tp+fp) if tp+fp else 0.0; rc=tp/(tp+fn) if tp+fn else 0.0; ff=2*pr*rc/(pr+rc) if pr+rc else 0.0
+        ps.append(pr); rs.append(rc); f1s.append(ff)
+    metrics={"accuracy":float((pred==y).to(torch.float32).mean().item()),"logLoss":logloss,
+             "brierScore":float(torch.mean(torch.sum((prob-onehot)**2,dim=1)).item()),
+             "macroPrecision":sum(ps)/classes,"macroRecall":sum(rs)/classes,"macroF1":sum(f1s)/classes,"confusionMatrix":confusion}
+    return metrics,prob,y,summary,model_fp,checkpoint_fp,dataset_fp
+
+
+def _evaluate_multiclass(payload: dict[str, Any]) -> dict[str, Any]:
+    metrics, prob, y, summary, model_fp, checkpoint_fp, dataset_fp=_multiclass_eval_core(payload)
+    artifact=_artifact(EVALUATION_ARTIFACT_SCHEMA,"neural-evaluation",{
+        "task":"multiclass-classification","operation":"workspace.neural.evaluate-multiclass","modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp,
+        "rows":int(y.shape[0]),"classes":int(prob.shape[1]),"metrics":metrics})
+    return {"kind":"neural-evaluation-result","task":"multiclass-classification","metrics":metrics,"analysisArtifact":artifact,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp}
+
+
+def _calibration_report(payload: dict[str, Any]) -> dict[str, Any]:
+    task=str(payload.get("task") or "binary-classification").strip().lower()
+    bins=int(payload.get("bins") or DEFAULT_CALIBRATION_BINS)
+    if bins < 2 or bins > MAX_CALIBRATION_BINS: raise HTTPException(status_code=400, detail="bins is outside the supported calibration range")
+    if task=="binary-classification":
+        _, prob, y, summary, model_fp, checkpoint_fp, dataset_fp=_binary_eval_core(payload)
+        confidence=prob.reshape(-1); correct=y.reshape(-1)
+    elif task=="multiclass-classification":
+        _, prob, y, summary, model_fp, checkpoint_fp, dataset_fp=_multiclass_eval_core(payload)
+        confidence,pred=torch.max(prob,dim=1); correct=(pred==y).to(torch.float32)
+    else: raise HTTPException(status_code=400, detail="calibration-report supports classification tasks only")
+    rows=[]; n=int(confidence.numel()); ece=0.0; mce=0.0
+    for i in range(bins):
+        lo=i/bins; hi=(i+1)/bins
+        mask=(confidence>=lo)&(confidence<=hi if i==bins-1 else confidence<hi)
+        count=int(mask.sum().item())
+        if count:
+            ac=float(confidence[mask].mean().item()); aa=float(correct[mask].mean().item()); gap=abs(ac-aa)
+            ece += (count/n)*gap; mce=max(mce,gap)
+        else: ac=aa=gap=None
+        rows.append({"bin":i,"lower":lo,"upper":hi,"count":count,"averageConfidence":ac,"empiricalAccuracy":aa,"absoluteGap":gap})
+    metrics={"expectedCalibrationError":ece,"maximumCalibrationError":mce,"binCount":bins,"strategy":"uniform"}
+    artifact=_artifact(CALIBRATION_ARTIFACT_SCHEMA,"neural-calibration",{
+        "task":task,"operation":"workspace.neural.calibration-report","modelType":summary["modelType"],"modelSpecFingerprint":model_fp,
+        "checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp,"metrics":metrics,"bins":rows})
+    return {"kind":"neural-calibration-result","task":task,"metrics":metrics,"bins":rows,"analysisArtifact":artifact,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp}
+
+
+def _uncertainty_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    task=str(payload.get("task") or "binary-classification").strip().lower()
+    threshold=float(payload.get("confidenceThreshold") or 0.6)
+    if not 0.0 < threshold < 1.0: raise HTTPException(status_code=400, detail="confidenceThreshold must be in (0,1)")
+    if task=="binary-classification":
+        _, prob, y, summary, model_fp, checkpoint_fp, dataset_fp=_binary_eval_core(payload)
+        p=torch.cat([1-prob,prob],dim=1); confidence=torch.max(p,dim=1).values
+        entropy=-(p.clamp(1e-7,1.0)*torch.log(p.clamp(1e-7,1.0))).sum(dim=1); max_entropy=math.log(2.0)
+        margin=torch.abs(prob.reshape(-1)-0.5)*2.0
+        details={"meanPredictiveEntropy":float(entropy.mean().item()),"meanNormalizedEntropy":float((entropy/max_entropy).mean().item()),
+                 "meanConfidence":float(confidence.mean().item()),"meanMargin":float(margin.mean().item()),
+                 "lowConfidenceCount":int((confidence<threshold).sum().item()),"confidenceThreshold":threshold}
+        method="predictive-entropy"
+    elif task=="multiclass-classification":
+        _, prob, y, summary, model_fp, checkpoint_fp, dataset_fp=_multiclass_eval_core(payload)
+        confidence,top=torch.max(prob,dim=1); sortedp=torch.sort(prob,dim=1,descending=True).values
+        entropy=-(prob.clamp(1e-7,1.0)*torch.log(prob.clamp(1e-7,1.0))).sum(dim=1); max_entropy=math.log(float(prob.shape[1]))
+        details={"meanPredictiveEntropy":float(entropy.mean().item()),"meanNormalizedEntropy":float((entropy/max_entropy).mean().item()),
+                 "meanConfidence":float(confidence.mean().item()),"meanMargin":float((sortedp[:,0]-sortedp[:,1]).mean().item()),
+                 "lowConfidenceCount":int((confidence<threshold).sum().item()),"confidenceThreshold":threshold}
+        method="predictive-entropy"
+    elif task=="regression":
+        features,pred,summary,model_fp,checkpoint_fp,dataset_fp=_analysis_logits(payload)
+        y=_tensor(payload.get("targets"),name="targets",dtype_name="float32")
+        if y.ndim==1:y=y.reshape(-1,1)
+        if list(y.shape)!=list(pred.shape):raise HTTPException(status_code=400,detail="regression targets shape must match model outputs")
+        residual=(pred-y).reshape(-1); q=torch.quantile(residual,torch.tensor([0.05,0.5,0.95]))
+        details={"method":"empirical-residual","residualStd":float(torch.std(residual,unbiased=False).item()),"residualMean":float(residual.mean().item()),
+                 "residualQuantiles":{"p05":float(q[0].item()),"p50":float(q[1].item()),"p95":float(q[2].item())},
+                 "rmse":float(torch.sqrt(torch.mean(residual*residual)).item())}; method="empirical-residual"
+    else: raise HTTPException(status_code=400, detail="uncertainty task is not registered")
+    artifact=_artifact(UNCERTAINTY_ARTIFACT_SCHEMA,"neural-uncertainty",{
+        "task":task,"operation":"workspace.neural.uncertainty-summary","modelType":summary["modelType"],"modelSpecFingerprint":model_fp,
+        "checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp,"method":method,"summary":details})
+    return {"kind":"neural-uncertainty-result","task":task,"method":method,"summary":details,"analysisArtifact":artifact,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp}
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -1144,7 +1391,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-checkpoint-resume-foundation",
+        "devicePolicy": "cpu-only-evaluation-calibration-uncertainty",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -1171,6 +1418,12 @@ def health() -> dict[str, Any]:
         "checkpointStoragePolicy": "workspace-artifact-store-via-job-result",
         "maxCheckpointCompressedBytes": MAX_CHECKPOINT_COMPRESSED_BYTES,
         "maxCheckpointJsonBytes": MAX_CHECKPOINT_JSON_BYTES,
+        "evaluationCalibrationUncertaintyEnabled": True,
+        "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
+        "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,
+        "uncertaintyArtifactSchema": UNCERTAINTY_ARTIFACT_SCHEMA,
+        "maxEvaluationRows": MAX_EVALUATION_ROWS,
+        "maxCalibrationBins": MAX_CALIBRATION_BINS,
         "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
@@ -1244,8 +1497,18 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _checkpoint_inspect(payload)
     elif operation == "workspace.neural.resume-linear":
         result = _train(payload, expected_model_type="linear", resume=True)
-    else:
+    elif operation == "workspace.neural.resume-mlp":
         result = _train(payload, expected_model_type="mlp", resume=True)
+    elif operation == "workspace.neural.evaluate-regression":
+        result = _evaluate_regression(payload)
+    elif operation == "workspace.neural.evaluate-binary":
+        result = _evaluate_binary(payload)
+    elif operation == "workspace.neural.evaluate-multiclass":
+        result = _evaluate_multiclass(payload)
+    elif operation == "workspace.neural.calibration-report":
+        result = _calibration_report(payload)
+    else:
+        result = _uncertainty_summary(payload)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -1274,6 +1537,12 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "checkpointStoragePolicy": "workspace-artifact-store-via-job-result",
         "maxCheckpointCompressedBytes": MAX_CHECKPOINT_COMPRESSED_BYTES,
         "maxCheckpointJsonBytes": MAX_CHECKPOINT_JSON_BYTES,
+        "evaluationCalibrationUncertaintyEnabled": True,
+        "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
+        "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,
+        "uncertaintyArtifactSchema": UNCERTAINTY_ARTIFACT_SCHEMA,
+        "maxEvaluationRows": MAX_EVALUATION_ROWS,
+        "maxCalibrationBins": MAX_CALIBRATION_BINS,
         "acceleratorExecutionEnabled": False,
         "result": result,
     }

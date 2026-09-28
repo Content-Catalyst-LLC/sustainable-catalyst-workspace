@@ -1,0 +1,66 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.24.0",
+  "release": "Neural Evaluation, Calibration & Uncertainty Runtime",
+  "baseline": "3.23.0",
+  "wordpressVersion": "3.24.0",
+  "backendVersion": "3.24.0",
+  "migration": null,
+  "databaseMigrationRequired": false,
+  "backendMutationRequired": true,
+  "neuralRuntime": {
+    "runtime": "python-pytorch-neural",
+    "operations": 19,
+    "trainingEnabled": true,
+    "checkpointPersistenceEnabled": true,
+    "resumeTrainingEnabled": true,
+    "evaluationCalibrationUncertaintyEnabled": true,
+    "evaluationOperations": [
+      "workspace.neural.evaluate-regression",
+      "workspace.neural.evaluate-binary",
+      "workspace.neural.evaluate-multiclass"
+    ],
+    "calibrationOperation": "workspace.neural.calibration-report",
+    "uncertaintyOperation": "workspace.neural.uncertainty-summary",
+    "evaluationArtifactSchema": "sc-workspace-neural-evaluation-artifact/1.0",
+    "calibrationArtifactSchema": "sc-workspace-neural-calibration-artifact/1.0",
+    "uncertaintyArtifactSchema": "sc-workspace-neural-uncertainty-artifact/1.0",
+    "classificationMetrics": [
+      "accuracy",
+      "logLoss",
+      "brierScore",
+      "precision/recall/f1",
+      "rocAuc(binary)",
+      "macroPrecision/macroRecall/macroF1(multiclass)"
+    ],
+    "regressionMetrics": [
+      "mse",
+      "rmse",
+      "mae",
+      "r2"
+    ],
+    "calibrationMetrics": [
+      "expectedCalibrationError",
+      "maximumCalibrationError"
+    ],
+    "classificationUncertainty": "predictive-entropy",
+    "regressionUncertainty": "empirical-residual",
+    "checkpointModelBindingRequiredWhenCheckpointSupplied": true,
+    "acceleratorExecutionEnabled": false,
+    "devicePolicy": "cpu-only-evaluation-calibration-uncertainty",
+    "runtimeUid": "65532:65532",
+    "runtimeIdentity": "scworkspace"
+  },
+  "workspaceArtifactLineage": {
+    "evaluationMediaType": "application/vnd.sc.workspace.neural-evaluation+json",
+    "calibrationMediaType": "application/vnd.sc.workspace.neural-calibration+json",
+    "uncertaintyMediaType": "application/vnd.sc.workspace.neural-uncertainty+json",
+    "separateAnalysisArtifactStored": true,
+    "executionRunAnalysisOutputSupported": true,
+    "polyglotReceiptAnalysisMetadata": true
+  },
+  "stablePackageAssetCoherencePreserved": true,
+  "browserLocalProjectsModified": false,
+  "rollbackBaseline": "3.23.0"
+}
