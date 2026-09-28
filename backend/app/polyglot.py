@@ -84,6 +84,11 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.remote-execute", "workspace.neural.remote-receipt-verify",
         "workspace.neural.certification-plan", "workspace.neural.certification-execute",
         "workspace.neural.certification-verify", "workspace.neural.certification-report",
+        "workspace.neural.graph-tensor-contract",
+        "workspace.neural.graph-dataset-project",
+        "workspace.neural.gnn-model-summary",
+        "workspace.neural.gnn-forward",
+        "workspace.neural.gnn-infer",
     ), "Production-certified hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, device orchestration, reproducible trial execution, operator-governed remote GPU dispatch, and machine-verifiable runtime assurance."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -542,6 +547,40 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "predictionArtifactFingerprint":prediction_blob.get("artifactFingerprint"),
             }
 
+
+    neural_gnn_artifact = None
+    neural_gnn_ops = {
+        "workspace.neural.graph-dataset-project", "workspace.neural.gnn-forward", "workspace.neural.gnn-infer",
+    }
+    if language == "neural" and row.operation in neural_gnn_ops and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=nr.get("graphProjectionArtifact") if isinstance(nr.get("graphProjectionArtifact"),dict) else None
+        if blob is None and isinstance(nr.get("gnnExecutionArtifact"),dict): blob=nr.get("gnnExecutionArtifact")
+        if blob is None and isinstance(nr.get("gnnPredictionArtifact"),dict): blob=nr.get("gnnPredictionArtifact")
+        if blob:
+            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            schema=blob.get("schema")
+            if schema=="sc-workspace-neural-graph-dataset-projection/1.0": media="application/vnd.sc.workspace.neural-graph-projection+json"; prefix="neural-graph-projection"; role="dataset-projection"
+            elif schema=="sc-workspace-neural-gnn-prediction-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-prediction+json"; prefix="neural-gnn-prediction"; role="prediction"
+            else: media="application/vnd.sc.workspace.neural-gnn-execution+json"; prefix="neural-gnn-execution"; role="execution"
+            aid=f"{prefix}-{row.job_id}"
+            existing_gnn=get_artifact(db,row.user_key,aid)
+            req=ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
+                "filename":f"{prefix}-{row.job_id}.json","mediaType":media,
+                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
+                "expectedRevision":existing_gnn.revision if existing_gnn is not None else 0,
+                "metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
+                            "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
+                            "graphFingerprint":blob.get("graphFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),
+                            "role":role,"isObservedEvidence":False},
+            })
+            neural_gnn_artifact=store_artifact(db,row.user_key,req)
+            nr["workspaceGnnArtifact"]={"artifactId":neural_gnn_artifact.artifact_id,"mediaType":neural_gnn_artifact.media_type,
+                                       "sha256":neural_gnn_artifact.sha256,"bytes":neural_gnn_artifact.bytes,
+                                       "artifactFingerprint":blob.get("artifactFingerprint")}
+
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -720,6 +759,16 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedNeuralTrialSearch":True},
             })
             store_run_output(db,row.user_key,run_id,trial_output)
+
+        if neural_gnn_artifact is not None:
+            gnn_output = ExecutionRunOutputRequest.model_validate({
+                "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-gnn-artifact",
+                "artifactId":neural_gnn_artifact.artifact_id,"role":"analysis","label":"Governed graph neural network artifact",
+                "mediaType":neural_gnn_artifact.media_type,"sha256":neural_gnn_artifact.sha256,"bytes":neural_gnn_artifact.bytes,
+                "metadata":{"language":"neural","operation":row.operation,"governedGnnArtifact":True,"isObservedEvidence":False},
+            })
+            store_run_output(db,row.user_key,run_id,gnn_output)
+
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
     if language == "neural" and isinstance(result, dict):
@@ -924,6 +973,26 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "workspaceProductionCertificationArtifactId":neural_certification_artifact.artifact_id if neural_certification_artifact is not None else None,
             "workspaceProductionCertificationArtifactSha256":neural_certification_artifact.sha256 if neural_certification_artifact is not None else None,
         })
+
+    if language == "neural" and row.operation in {
+        "workspace.neural.graph-tensor-contract","workspace.neural.graph-dataset-project","workspace.neural.gnn-model-summary",
+        "workspace.neural.gnn-forward","workspace.neural.gnn-infer",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=nr.get("graphTensorContract") if isinstance(nr.get("graphTensorContract"),dict) else {}
+        if not blob and isinstance(nr.get("graphProjectionArtifact"),dict): blob=nr.get("graphProjectionArtifact")
+        if not blob and isinstance(nr.get("gnnExecutionArtifact"),dict): blob=nr.get("gnnExecutionArtifact")
+        if not blob and isinstance(nr.get("gnnPredictionArtifact"),dict): blob=nr.get("gnnPredictionArtifact")
+        receipt_details.update({
+            "graphNeuralNetworkRuntimeFoundation":True,"gnnArtifactSchema":blob.get("schema"),
+            "gnnArtifactFingerprint":blob.get("artifactFingerprint"),"graphFingerprint":blob.get("graphFingerprint"),
+            "modelSpecFingerprint":blob.get("modelSpecFingerprint"),"task":blob.get("task"),"adapter":blob.get("adapter"),
+            "isObservedEvidence":False,"clientSuppliedGraphRuntimeUrlAllowed":False,
+            "workspaceGnnArtifactId":neural_gnn_artifact.artifact_id if neural_gnn_artifact is not None else None,
+            "workspaceGnnArtifactSha256":neural_gnn_artifact.sha256 if neural_gnn_artifact is not None else None,
+        })
+
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,
         language=language, runtime=RUNTIME_BY_LANGUAGE[language].runtime, operation=row.operation,

@@ -37,7 +37,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.32.0"
+SERVICE_VERSION = "3.33.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -111,6 +111,11 @@ OPERATIONS = {
     "workspace.neural.certification-execute",
     "workspace.neural.certification-verify",
     "workspace.neural.certification-report",
+    "workspace.neural.graph-tensor-contract",
+    "workspace.neural.graph-dataset-project",
+    "workspace.neural.gnn-model-summary",
+    "workspace.neural.gnn-forward",
+    "workspace.neural.gnn-infer",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -3217,6 +3222,306 @@ def remote_worker_execute(envelope: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True, "schema": REMOTE_WORKER_RESPONSE_SCHEMA, "result": result, "receipt": receipt}
 
 
+# v3.33.0 Graph Neural Network Runtime Foundation.
+GRAPH_TENSOR_CONTRACT_SCHEMA = "sc-workspace-neural-graph-tensor-contract/1.0"
+GRAPH_DATASET_PROJECTION_SCHEMA = "sc-workspace-neural-graph-dataset-projection/1.0"
+GNN_MODEL_SPEC_SCHEMA = "sc-workspace-neural-gnn-model-spec/1.0"
+GNN_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-execution-artifact/1.0"
+GNN_PREDICTION_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-prediction-artifact/1.0"
+GNN_ADAPTERS = {"gcn", "graphsage-mean"}
+GNN_ACTIVATIONS = {"identity", "relu", "tanh"}
+GNN_TASKS = {"node-regression", "node-binary-classification", "node-multiclass-classification"}
+MAX_GRAPH_NODES = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GRAPH_NODES", "4096")), 16384))
+MAX_GRAPH_EDGES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GRAPH_EDGES", "32768")), 131072))
+MAX_GNN_OUTPUT_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_OUTPUT_FEATURES", "1024")), 4096))
+
+
+def _graph_components(payload: dict[str, Any]) -> tuple[torch.Tensor, list[list[int]], list[str], bool]:
+    raw_x = payload.get("nodeFeatures")
+    if not isinstance(raw_x, list) or not raw_x or len(raw_x) > MAX_GRAPH_NODES:
+        raise HTTPException(status_code=400, detail="nodeFeatures must be a bounded non-empty row matrix")
+    if not all(isinstance(r, list) and r for r in raw_x):
+        raise HTTPException(status_code=400, detail="nodeFeatures rows must be non-empty arrays")
+    width = len(raw_x[0])
+    if width < 1 or width > MAX_FEATURES or any(len(r) != width for r in raw_x):
+        raise HTTPException(status_code=400, detail="nodeFeatures must be rectangular and within the feature limit")
+    if len(raw_x) * width > MAX_TENSOR_ELEMENTS:
+        raise HTTPException(status_code=400, detail="graph node feature tensor exceeds element limit")
+    try:
+        x = torch.tensor(raw_x, dtype=torch.float32, device=_current_device_name())
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="nodeFeatures must contain finite numeric values") from exc
+    if not torch.isfinite(x).all():
+        raise HTTPException(status_code=400, detail="nodeFeatures must contain finite numeric values")
+    raw_edges = payload.get("edges")
+    if not isinstance(raw_edges, list) or len(raw_edges) > MAX_GRAPH_EDGES:
+        raise HTTPException(status_code=400, detail="edges must be a bounded array of [source,target] pairs")
+    edges: list[list[int]] = []
+    n = len(raw_x)
+    for item in raw_edges:
+        if not isinstance(item, list) or len(item) != 2 or not all(isinstance(v, int) and not isinstance(v, bool) for v in item):
+            raise HTTPException(status_code=400, detail="each edge must be [sourceIndex,targetIndex]")
+        s, d = int(item[0]), int(item[1])
+        if s < 0 or d < 0 or s >= n or d >= n:
+            raise HTTPException(status_code=400, detail="edge index is outside the node range")
+        edges.append([s, d])
+    raw_ids = payload.get("nodeIds")
+    if raw_ids is None:
+        node_ids = [str(i) for i in range(n)]
+    else:
+        if not isinstance(raw_ids, list) or len(raw_ids) != n:
+            raise HTTPException(status_code=400, detail="nodeIds must align one-for-one with nodeFeatures")
+        node_ids = [str(v)[:256] for v in raw_ids]
+        if any(not v for v in node_ids) or len(set(node_ids)) != len(node_ids):
+            raise HTTPException(status_code=400, detail="nodeIds must be non-empty and unique")
+    return x, edges, node_ids, bool(payload.get("directed", False))
+
+
+def _graph_fingerprint(node_features: list, edges: list[list[int]], node_ids: list[str], directed: bool) -> str:
+    return _canonical_sha256({"nodeFeatures": node_features, "edges": edges, "nodeIds": node_ids, "directed": directed})
+
+
+def _graph_tensor_contract(payload: dict[str, Any]) -> dict[str, Any]:
+    x, edges, node_ids, directed = _graph_components(payload)
+    contract = {
+        "schema": GRAPH_TENSOR_CONTRACT_SCHEMA,
+        "kind": "graph-tensor-contract",
+        "nodeCount": int(x.shape[0]),
+        "edgeCount": len(edges),
+        "featureCount": int(x.shape[1]),
+        "directed": directed,
+        "nodeIdsFingerprint": _canonical_sha256(node_ids),
+        "graphFingerprint": _graph_fingerprint(payload["nodeFeatures"], edges, node_ids, directed),
+        "dtype": "float32",
+        "device": _current_device_name(),
+        "externalGraphReadEnabled": False,
+        "arbitraryGraphCodeAllowed": False,
+    }
+    contract["artifactFingerprint"] = _canonical_sha256(contract)
+    return {"graphTensorContract": contract}
+
+
+def _graph_dataset_project(payload: dict[str, Any]) -> dict[str, Any]:
+    ds = payload.get("graphDataset")
+    if not isinstance(ds, dict):
+        raise HTTPException(status_code=400, detail="graphDataset must be an object")
+    nodes, raw_edges = ds.get("nodes"), ds.get("edges")
+    if not isinstance(nodes, list) or not nodes or len(nodes) > MAX_GRAPH_NODES:
+        raise HTTPException(status_code=400, detail="graphDataset.nodes must be a bounded non-empty array")
+    if not isinstance(raw_edges, list) or len(raw_edges) > MAX_GRAPH_EDGES:
+        raise HTTPException(status_code=400, detail="graphDataset.edges must be a bounded array")
+    ids: list[str] = []
+    features: list[list[float]] = []
+    for node in nodes:
+        if not isinstance(node, dict):
+            raise HTTPException(status_code=400, detail="each graph node must be an object")
+        nid, feat = str(node.get("id") or "")[:256], node.get("features")
+        if not nid or not isinstance(feat, list) or not feat:
+            raise HTTPException(status_code=400, detail="each graph node requires id and numeric features")
+        ids.append(nid); features.append(feat)
+    if len(set(ids)) != len(ids):
+        raise HTTPException(status_code=400, detail="graph node ids must be unique")
+    idx = {nid: i for i, nid in enumerate(ids)}
+    edges: list[list[int]] = []
+    for edge in raw_edges:
+        if not isinstance(edge, dict):
+            raise HTTPException(status_code=400, detail="each graph edge must be an object")
+        s, d = str(edge.get("source") or ""), str(edge.get("target") or "")
+        if s not in idx or d not in idx:
+            raise HTTPException(status_code=400, detail="graph edge references an unknown node id")
+        edges.append([idx[s], idx[d]])
+    normalized = {"nodeFeatures": features, "edges": edges, "nodeIds": ids, "directed": bool(ds.get("directed", False))}
+    x, edges2, ids2, directed = _graph_components(normalized)
+    projection = {
+        "schema": GRAPH_DATASET_PROJECTION_SCHEMA,
+        "kind": "graph-dataset-projection",
+        "nodeCount": int(x.shape[0]),
+        "edgeCount": len(edges2),
+        "featureCount": int(x.shape[1]),
+        "directed": directed,
+        "nodeIds": ids2,
+        "nodeFeatures": features,
+        "edges": edges2,
+        "sourceFingerprint": str(ds.get("sourceFingerprint") or "")[:128] or None,
+        "graphFingerprint": _graph_fingerprint(features, edges2, ids2, directed),
+        "projectionPolicy": "explicit-source-nodes-and-edges-only",
+        "inferredEdges": False,
+        "inferredFeatures": False,
+        "isObservedEvidence": False,
+    }
+    projection["artifactFingerprint"] = _canonical_sha256(projection)
+    return {"graphProjectionArtifact": projection}
+
+
+def _gnn_validate_model_spec(spec: Any) -> dict[str, Any]:
+    if not isinstance(spec, dict) or spec.get("schema") != GNN_MODEL_SPEC_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"modelSpec.schema must be {GNN_MODEL_SPEC_SCHEMA}")
+    blocked = sorted(k for k in BLOCKED_PAYLOAD_KEYS if k in spec)
+    if blocked:
+        raise HTTPException(status_code=400, detail="GNN modelSpec does not accept code, packages, runtime URLs, credentials, or serialized modules")
+    adapter = str(spec.get("adapter") or "").lower()
+    if adapter not in GNN_ADAPTERS:
+        raise HTTPException(status_code=400, detail="unsupported GNN adapter")
+    inp, out = spec.get("inputFeatures"), spec.get("outputFeatures")
+    if not isinstance(inp, int) or isinstance(inp, bool) or inp < 1 or inp > MAX_FEATURES:
+        raise HTTPException(status_code=400, detail="inputFeatures is outside the allowed range")
+    if not isinstance(out, int) or isinstance(out, bool) or out < 1 or out > MAX_GNN_OUTPUT_FEATURES:
+        raise HTTPException(status_code=400, detail="outputFeatures is outside the allowed range")
+    activation = str(spec.get("activation") or "identity").lower()
+    if activation not in GNN_ACTIVATIONS:
+        raise HTTPException(status_code=400, detail="unsupported GNN activation")
+    rows = inp if adapter == "gcn" else inp * 2
+    weights, bias = spec.get("weights"), spec.get("bias", [0.0] * out)
+    if not isinstance(weights, list) or len(weights) != rows or not all(isinstance(r, list) and len(r) == out for r in weights):
+        raise HTTPException(status_code=400, detail=f"weights must have shape [{rows},{out}] for adapter {adapter}")
+    if not isinstance(bias, list) or len(bias) != out:
+        raise HTTPException(status_code=400, detail=f"bias must contain {out} values")
+    try:
+        w = torch.tensor(weights, dtype=torch.float32, device=_current_device_name())
+        b = torch.tensor(bias, dtype=torch.float32, device=_current_device_name())
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="GNN weights and bias must be numeric") from exc
+    if not torch.isfinite(w).all() or not torch.isfinite(b).all():
+        raise HTTPException(status_code=400, detail="GNN weights and bias must be finite")
+    normalized = {
+        "schema": GNN_MODEL_SPEC_SCHEMA,
+        "adapter": adapter,
+        "inputFeatures": inp,
+        "outputFeatures": out,
+        "activation": activation,
+        "weights": weights,
+        "bias": bias,
+        "addSelfLoops": bool(spec.get("addSelfLoops", True)),
+    }
+    normalized["modelSpecFingerprint"] = _canonical_sha256(normalized)
+    return normalized
+
+
+def _gnn_model_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    spec = _gnn_validate_model_spec(payload.get("modelSpec"))
+    rows = spec["inputFeatures"] if spec["adapter"] == "gcn" else spec["inputFeatures"] * 2
+    return {
+        "kind": "gnn-model-summary",
+        "modelSpec": spec,
+        "parameterCount": rows * spec["outputFeatures"] + spec["outputFeatures"],
+        "trainable": False,
+        "executionContract": "bounded-single-layer-message-passing/1.0",
+        "serializedModuleAccepted": False,
+    }
+
+
+def _gnn_edge_index(edges: list[list[int]], n: int, directed: bool, add_self_loops: bool) -> tuple[torch.Tensor, torch.Tensor]:
+    pairs = [tuple(e) for e in edges]
+    if not directed:
+        pairs += [(d, s) for s, d in pairs if s != d]
+    if add_self_loops:
+        pairs += [(i, i) for i in range(n)]
+    if not pairs:
+        pairs = [(i, i) for i in range(n)]
+    src = torch.tensor([p[0] for p in pairs], dtype=torch.long, device=_current_device_name())
+    dst = torch.tensor([p[1] for p in pairs], dtype=torch.long, device=_current_device_name())
+    return src, dst
+
+
+def _gnn_activate(y: torch.Tensor, name: str) -> torch.Tensor:
+    if name == "relu": return torch.relu(y)
+    if name == "tanh": return torch.tanh(y)
+    return y
+
+
+def _gnn_compute(payload: dict[str, Any]) -> tuple[torch.Tensor, dict[str, Any], str, list[str], int, int, bool]:
+    x, edges, node_ids, directed = _graph_components(payload)
+    spec = _gnn_validate_model_spec(payload.get("modelSpec"))
+    if int(x.shape[1]) != spec["inputFeatures"]:
+        raise HTTPException(status_code=400, detail="model inputFeatures does not match graph node feature width")
+    n = int(x.shape[0])
+    src, dst = _gnn_edge_index(edges, n, directed, spec["addSelfLoops"])
+    w = torch.tensor(spec["weights"], dtype=torch.float32, device=_current_device_name())
+    b = torch.tensor(spec["bias"], dtype=torch.float32, device=_current_device_name())
+    if spec["adapter"] == "gcn":
+        degree = torch.zeros(n, dtype=torch.float32, device=_current_device_name())
+        degree.index_add_(0, dst, torch.ones(dst.numel(), dtype=torch.float32, device=_current_device_name()))
+        degree = torch.clamp(degree, min=1.0)
+        coeff = torch.rsqrt(degree[src] * degree[dst])
+        agg = torch.zeros_like(x)
+        agg.index_add_(0, dst, x[src] * coeff.unsqueeze(1))
+        y = agg @ w + b
+    else:
+        agg = torch.zeros_like(x)
+        counts = torch.zeros(n, dtype=torch.float32, device=_current_device_name())
+        agg.index_add_(0, dst, x[src])
+        counts.index_add_(0, dst, torch.ones(dst.numel(), dtype=torch.float32, device=_current_device_name()))
+        agg = agg / torch.clamp(counts, min=1.0).unsqueeze(1)
+        y = torch.cat([x, agg], dim=1) @ w + b
+    y = _gnn_activate(y, spec["activation"])
+    return y, spec, _graph_fingerprint(payload["nodeFeatures"], edges, node_ids, directed), node_ids, len(edges), int(x.shape[1]), directed
+
+
+def _gnn_forward(payload: dict[str, Any]) -> dict[str, Any]:
+    y, spec, graph_fp, node_ids, edge_count, feature_count, directed = _gnn_compute(payload)
+    values = y.detach().cpu().tolist()
+    artifact = {
+        "schema": GNN_EXECUTION_ARTIFACT_SCHEMA,
+        "kind": "gnn-forward-execution",
+        "adapter": spec["adapter"],
+        "modelSpecFingerprint": spec["modelSpecFingerprint"],
+        "graphFingerprint": graph_fp,
+        "nodeCount": len(node_ids),
+        "edgeCount": edge_count,
+        "inputFeatures": feature_count,
+        "outputFeatures": spec["outputFeatures"],
+        "directed": directed,
+        "nodeIdsFingerprint": _canonical_sha256(node_ids),
+        "outputFingerprint": _canonical_sha256(values),
+        "device": _current_device_name(),
+        "seed": _seed(payload),
+        "messagePassingLayers": 1,
+        "arbitraryCodeExecution": False,
+        "isObservedEvidence": False,
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    return {"kind": "gnn-forward", "nodeIds": node_ids, "nodeEmbeddings": values, "gnnExecutionArtifact": artifact}
+
+
+def _gnn_infer(payload: dict[str, Any]) -> dict[str, Any]:
+    task = str(payload.get("task") or "").lower()
+    if task not in GNN_TASKS:
+        raise HTTPException(status_code=400, detail="unsupported GNN inference task")
+    y, spec, graph_fp, node_ids, edge_count, _feature_count, directed = _gnn_compute(payload)
+    if task == "node-binary-classification":
+        if spec["outputFeatures"] != 1:
+            raise HTTPException(status_code=400, detail="binary GNN inference requires outputFeatures=1")
+        probs = torch.sigmoid(y[:, 0]).detach().cpu().tolist()
+        predictions = [{"nodeId": node_ids[i], "probability": float(probs[i]), "label": int(probs[i] >= 0.5)} for i in range(len(node_ids))]
+    elif task == "node-multiclass-classification":
+        if spec["outputFeatures"] < 2:
+            raise HTTPException(status_code=400, detail="multiclass GNN inference requires outputFeatures>=2")
+        probs_t = torch.softmax(y, dim=1)
+        probs = probs_t.detach().cpu().tolist()
+        predictions = [{"nodeId": node_ids[i], "probabilities": probs[i], "label": int(torch.argmax(probs_t[i]).item())} for i in range(len(node_ids))]
+    else:
+        raw = y.detach().cpu().tolist()
+        predictions = [{"nodeId": node_ids[i], "values": raw[i]} for i in range(len(node_ids))]
+    artifact = {
+        "schema": GNN_PREDICTION_ARTIFACT_SCHEMA,
+        "kind": "gnn-node-prediction",
+        "task": task,
+        "adapter": spec["adapter"],
+        "modelSpecFingerprint": spec["modelSpecFingerprint"],
+        "graphFingerprint": graph_fp,
+        "predictionFingerprint": _canonical_sha256(predictions),
+        "nodeCount": len(node_ids),
+        "edgeCount": edge_count,
+        "directed": directed,
+        "device": _current_device_name(),
+        "seed": _seed(payload),
+        "targetsAccepted": False,
+        "isObservedEvidence": False,
+        "predictionPolicy": "model-derived-node-output-not-source-evidence",
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    return {"kind": "gnn-inference", "task": task, "predictions": predictions, "gnnPredictionArtifact": artifact}
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -3262,6 +3567,16 @@ def health() -> dict[str, Any]:
         "clientSuppliedRemoteWorkerUrlsAllowed": False,
         "deviceRequestModes": ["cpu", "auto", "accelerator", "cuda:N"],
         "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
+        "graphNeuralNetworkRuntimeFoundation": True,
+        "graphTensorContractSchema": GRAPH_TENSOR_CONTRACT_SCHEMA,
+        "graphDatasetProjectionSchema": GRAPH_DATASET_PROJECTION_SCHEMA,
+        "gnnModelSpecSchema": GNN_MODEL_SPEC_SCHEMA,
+        "gnnExecutionArtifactSchema": GNN_EXECUTION_ARTIFACT_SCHEMA,
+        "gnnPredictionArtifactSchema": GNN_PREDICTION_ARTIFACT_SCHEMA,
+        "gnnAdapters": sorted(GNN_ADAPTERS),
+        "gnnOperations": ["graph-tensor-contract", "graph-dataset-project", "gnn-model-summary", "gnn-forward", "gnn-infer"],
+        "gnnTrainingEnabled": False,
+        "gnnExternalGraphReadEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -3394,7 +3709,17 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.tensor-summary":
+    if operation == "workspace.neural.graph-tensor-contract":
+        result = _graph_tensor_contract(payload)
+    elif operation == "workspace.neural.graph-dataset-project":
+        result = _graph_dataset_project(payload)
+    elif operation == "workspace.neural.gnn-model-summary":
+        result = _gnn_model_summary(payload)
+    elif operation == "workspace.neural.gnn-forward":
+        result = _gnn_forward(payload)
+    elif operation == "workspace.neural.gnn-infer":
+        result = _gnn_infer(payload)
+    elif operation == "workspace.neural.tensor-summary":
         result = _tensor_summary(payload)
     elif operation == "workspace.neural.model-summary":
         result = _model_summary(payload)
@@ -3569,5 +3894,9 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "maxInferenceRows": MAX_INFERENCE_ROWS,
         "maxPredictionOutputs": MAX_PREDICTION_OUTPUTS,
         "acceleratorExecutionEnabled": bool(ACCELERATOR_ENABLED),
+        "graphNeuralNetworkRuntimeFoundation": True,
+        "gnnModelSpecSchema": GNN_MODEL_SPEC_SCHEMA,
+        "gnnTrainingEnabled": False,
+        "gnnExternalGraphReadEnabled": False,
         "result": result,
     }
