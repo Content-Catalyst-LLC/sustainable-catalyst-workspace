@@ -77,7 +77,10 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.package-inspect", "workspace.neural.package-infer",
         "workspace.neural.device-inventory", "workspace.neural.device-plan",
         "workspace.neural.device-verify", "workspace.neural.accelerator-smoke",
-    ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, and explicit device orchestration; CPU is the safe default and accelerator execution requires operator policy plus an exposed allowed device."),
+        "workspace.neural.trial-plan", "workspace.neural.trial-execute",
+        "workspace.neural.batch-execute", "workspace.neural.hyperparameter-grid",
+        "workspace.neural.hyperparameter-random",
+    ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -535,6 +538,47 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "predictionArtifactFingerprint":prediction_blob.get("artifactFingerprint"),
             }
 
+    neural_trial_search_artifact = None
+    neural_trial_search_ops = {
+        "workspace.neural.trial-execute", "workspace.neural.batch-execute",
+        "workspace.neural.hyperparameter-grid", "workspace.neural.hyperparameter-random",
+    }
+    if language == "neural" and row.operation in neural_trial_search_ops and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        neural_result=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob = neural_result.get("trialArtifact") if isinstance(neural_result.get("trialArtifact"),dict) else None
+        if blob is None and isinstance(neural_result.get("batchArtifact"),dict): blob=neural_result.get("batchArtifact")
+        if blob is None and isinstance(neural_result.get("searchArtifact"),dict): blob=neural_result.get("searchArtifact")
+        if blob:
+            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            if blob.get("schema")=="sc-workspace-neural-trial-artifact/1.0":
+                media="application/vnd.sc.workspace.neural-trial+json"; prefix="neural-trial"; role="trial"
+            elif blob.get("schema")=="sc-workspace-neural-batch-artifact/1.0":
+                media="application/vnd.sc.workspace.neural-batch+json"; prefix="neural-batch"; role="batch"
+            else:
+                media="application/vnd.sc.workspace.neural-hyperparameter-search+json"; prefix="neural-search"; role="search"
+            aid=f"{prefix}-{row.job_id}"
+            existing_exp=get_artifact(db,row.user_key,aid)
+            req=ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
+                "filename":f"{prefix}-{row.job_id}.json","mediaType":media,
+                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
+                "expectedRevision":existing_exp.revision if existing_exp is not None else 0,
+                "metadata":{
+                    "kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
+                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
+                    "trialId":blob.get("trialId"),"trialCount":blob.get("trialCount"),
+                    "bestTrialId":blob.get("bestTrialId"),"bestTrialArtifactFingerprint":blob.get("bestTrialArtifactFingerprint"),
+                    "searchKind":blob.get("searchKind"),"role":role,
+                },
+            })
+            neural_trial_search_artifact=store_artifact(db,row.user_key,req)
+            neural_result["workspaceTrialSearchArtifact"]={
+                "artifactId":neural_trial_search_artifact.artifact_id,"mediaType":neural_trial_search_artifact.media_type,
+                "sha256":neural_trial_search_artifact.sha256,"bytes":neural_trial_search_artifact.bytes,
+                "artifactFingerprint":blob.get("artifactFingerprint"),
+            }
+
     result_doc={"schema":"sc-workspace-polyglot-result/1.0","language":language,"operation":row.operation,"result":result}
     raw=json.dumps(result_doc,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
     if len(raw)>get_settings().compute_max_result_bytes:
@@ -603,6 +647,14 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedNeuralPrediction":True,"isObservedEvidence":False},
             })
             store_run_output(db,row.user_key,run_id,prediction_output)
+        if neural_trial_search_artifact is not None:
+            trial_output = ExecutionRunOutputRequest.model_validate({
+                "schema":"sc-workspace-execution-run-output/1.0", "outputId":"neural-trial-search",
+                "artifactId":neural_trial_search_artifact.artifact_id, "role":"analysis", "label":"Governed neural trial / batch / hyperparameter artifact",
+                "mediaType":neural_trial_search_artifact.media_type, "sha256":neural_trial_search_artifact.sha256, "bytes":neural_trial_search_artifact.bytes,
+                "metadata":{"language":"neural","operation":row.operation,"governedNeuralTrialSearch":True},
+            })
+            store_run_output(db,row.user_key,run_id,trial_output)
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
     if language == "neural" and isinstance(result, dict):
@@ -736,6 +788,27 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "sourceModelPackageFingerprint":prediction_blob.get("sourceModelPackageFingerprint"),
             "sourceModelPackageId":prediction_blob.get("sourceModelPackageId"),
             "packagedInference":row.operation=="workspace.neural.package-infer",
+        })
+    if language == "neural" and row.operation in {
+        "workspace.neural.trial-plan", "workspace.neural.trial-execute", "workspace.neural.batch-execute",
+        "workspace.neural.hyperparameter-grid", "workspace.neural.hyperparameter-random",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=nr.get("trialArtifact") if isinstance(nr.get("trialArtifact"),dict) else {}
+        if not blob and isinstance(nr.get("batchArtifact"),dict): blob=nr.get("batchArtifact")
+        if not blob and isinstance(nr.get("searchArtifact"),dict): blob=nr.get("searchArtifact")
+        plan=nr.get("trialPlan") if isinstance(nr.get("trialPlan"),dict) else {}
+        receipt_details.update({
+            "neuralBatchTrialHyperparameterExecution":True,
+            "trialPlanSchema":plan.get("schema"),"trialPlanFingerprint":plan.get("planFingerprint"),
+            "trialArtifactSchema":blob.get("schema"),"trialArtifactFingerprint":blob.get("artifactFingerprint"),
+            "trialId":blob.get("trialId"),"trialCount":blob.get("trialCount"),
+            "bestTrialId":blob.get("bestTrialId"),"bestTrialArtifactFingerprint":blob.get("bestTrialArtifactFingerprint"),
+            "bestObjectiveValue":blob.get("bestObjectiveValue"),"objective":blob.get("objective") or plan.get("objective"),
+            "searchKind":blob.get("searchKind"),"searchSpaceFingerprint":blob.get("searchSpaceFingerprint"),
+            "workspaceTrialSearchArtifactId":neural_trial_search_artifact.artifact_id if neural_trial_search_artifact is not None else None,
+            "workspaceTrialSearchArtifactSha256":neural_trial_search_artifact.sha256 if neural_trial_search_artifact is not None else None,
         })
     receipt=PolyglotExecutionReceipt(
         receipt_id=f"pgr_{uuid4().hex}", user_key=row.user_key, job_id=row.job_id, execution_run_id=run_id,

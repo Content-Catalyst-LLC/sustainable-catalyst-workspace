@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.29.0"
+SERVICE_VERSION = "3.30.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -94,6 +94,11 @@ OPERATIONS = {
     "workspace.neural.device-plan",
     "workspace.neural.device-verify",
     "workspace.neural.accelerator-smoke",
+    "workspace.neural.trial-plan",
+    "workspace.neural.trial-execute",
+    "workspace.neural.batch-execute",
+    "workspace.neural.hyperparameter-grid",
+    "workspace.neural.hyperparameter-random",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -119,6 +124,21 @@ MAX_TRAINING_SECONDS = max(1.0, min(float(os.getenv("SC_WORKSPACE_NEURAL_MAX_TRA
 MAX_HIDDEN_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_HIDDEN_LAYERS", "8")), MAX_LAYERS))
 MAX_HIDDEN_UNITS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_HIDDEN_UNITS", "1024")), MAX_FEATURES))
 TRAIN_THREADS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_TRAIN_THREADS", "2")), 8))
+# v3.30 bounded trial/search orchestration. These limits are intentionally independent
+# of the per-training limits so a search cannot multiply a safe single job into an
+# unbounded workload.
+NEURAL_TRIAL_SCHEMA = "sc-workspace-neural-trial-artifact/1.0"
+NEURAL_BATCH_SCHEMA = "sc-workspace-neural-batch-artifact/1.0"
+NEURAL_SEARCH_SCHEMA = "sc-workspace-neural-hyperparameter-search-artifact/1.0"
+NEURAL_TRIAL_PLAN_SCHEMA = "sc-workspace-neural-trial-plan/1.0"
+MAX_NEURAL_TRIALS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_TRIALS", "16")), 64))
+MAX_NEURAL_BATCH_TRIALS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH_TRIALS", "12")), MAX_NEURAL_TRIALS))
+MAX_NEURAL_SEARCH_VALUES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEARCH_VALUES", "8")), 32))
+MAX_NEURAL_SEARCH_EPOCHS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEARCH_EPOCHS", "240")), 2000))
+ALLOWED_HYPERPARAMETER_PATHS = {
+    "optimizer.name", "optimizer.learningRate", "optimizer.weightDecay", "batchSize", "epochs"
+}
+ALLOWED_TRIAL_OBJECTIVE_METRICS = {"loss", "accuracy", "mae", "rmse"}
 torch.set_num_threads(TRAIN_THREADS)
 _OPTIMIZER_INIT_LOCK = threading.Lock()
 
@@ -1307,6 +1327,303 @@ def _train(payload: dict[str, Any], *, expected_model_type: str, resume: bool = 
     }
 
 
+# ---- v3.30 neural batch, trial, and hyperparameter execution ----
+def _copy_json(value: Any) -> Any:
+    return json.loads(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str))
+
+
+def _trial_objective(payload: dict[str, Any], training_spec: dict[str, Any]) -> dict[str, Any]:
+    raw = payload.get("objective") or {}
+    if not isinstance(raw, dict):
+        raise HTTPException(status_code=400, detail="objective must be an object")
+    dataset = str(raw.get("dataset") or ("validation" if training_spec.get("validationEnabled") else "training")).strip().lower()
+    if dataset not in {"training", "validation"}:
+        raise HTTPException(status_code=400, detail="objective.dataset must be training or validation")
+    if dataset == "validation" and not training_spec.get("validationEnabled"):
+        raise HTTPException(status_code=400, detail="validation objective requires validationFeatures and validationTargets")
+    default_metric = "accuracy" if training_spec.get("task") in {"binary-classification", "multiclass-classification"} else "loss"
+    metric = str(raw.get("metric") or default_metric).strip().lower()
+    if metric not in ALLOWED_TRIAL_OBJECTIVE_METRICS:
+        raise HTTPException(status_code=400, detail="objective.metric is not registered")
+    default_direction = "maximize" if metric == "accuracy" else "minimize"
+    direction = str(raw.get("direction") or default_direction).strip().lower()
+    if direction not in {"minimize", "maximize"}:
+        raise HTTPException(status_code=400, detail="objective.direction must be minimize or maximize")
+    if metric == "accuracy" and training_spec.get("task") == "regression":
+        raise HTTPException(status_code=400, detail="accuracy is not available for regression trials")
+    if metric in {"mae", "rmse"} and training_spec.get("task") != "regression":
+        raise HTTPException(status_code=400, detail=f"{metric} is only available for regression trials")
+    return {"dataset": dataset, "metric": metric, "direction": direction}
+
+
+def _apply_hyperparameters(base_spec: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(params, dict):
+        raise HTTPException(status_code=400, detail="trial hyperparameters must be an object")
+    unknown = sorted(set(params) - ALLOWED_HYPERPARAMETER_PATHS)
+    if unknown:
+        raise HTTPException(status_code=400, detail="unsupported hyperparameter path(s): " + ", ".join(unknown))
+    spec = _copy_json(base_spec)
+    spec.setdefault("optimizer", {})
+    for path, value in params.items():
+        if path.startswith("optimizer."):
+            spec["optimizer"][path.split(".", 1)[1]] = value
+        else:
+            spec[path] = value
+    return spec
+
+
+def _trial_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    base = payload.get("trainingSpec")
+    params = payload.get("hyperparameters") or {}
+    if not isinstance(base, dict):
+        raise HTTPException(status_code=400, detail="trainingSpec must be supplied for a neural trial")
+    trial_payload = dict(payload)
+    trial_payload["trainingSpec"] = _apply_hyperparameters(base, params)
+    spec = _normalized_training_spec(trial_payload)
+    obj = _trial_objective(trial_payload, spec)
+    parameter_count = _parameter_count_for_training(spec)
+    if parameter_count > MAX_TRAINING_PARAMETERS:
+        raise HTTPException(status_code=413, detail="trial parameter count exceeds the bounded training limit")
+    plan = {
+        "schema": NEURAL_TRIAL_PLAN_SCHEMA,
+        "trainingSpec": spec,
+        "trainingSpecFingerprint": _canonical_sha256(spec),
+        "hyperparameters": _copy_json(params),
+        "hyperparametersFingerprint": _canonical_sha256(params),
+        "objective": obj,
+        "seed": int(payload.get("seed", 42)),
+        "device": _current_device_name(),
+        "devicePlanFingerprint": (_resolve_device_plan(payload)).get("planFingerprint"),
+        "parameterCount": parameter_count,
+        "bounded": True,
+        "arbitraryCodeExecution": False,
+    }
+    plan["planFingerprint"] = _canonical_sha256(plan)
+    return {"kind": "neural-trial-plan", "trialPlan": plan, "planFingerprint": plan["planFingerprint"]}
+
+
+def _objective_value(training_result: dict[str, Any], objective: dict[str, Any]) -> float:
+    run = training_result.get("trainingRun") if isinstance(training_result.get("trainingRun"), dict) else {}
+    metrics = run.get("validationMetrics") if objective["dataset"] == "validation" else run.get("trainingMetrics")
+    if not isinstance(metrics, dict) or objective["metric"] not in metrics:
+        raise HTTPException(status_code=422, detail="requested trial objective metric was not produced")
+    value = float(metrics[objective["metric"]])
+    if not math.isfinite(value):
+        raise HTTPException(status_code=422, detail="trial objective produced a non-finite value")
+    return value
+
+
+def _execute_trial(payload: dict[str, Any], *, trial_index: int = 0, inherited_hyperparameters: dict[str, Any] | None = None, inherited_seed: int | None = None) -> dict[str, Any]:
+    params = inherited_hyperparameters if inherited_hyperparameters is not None else (payload.get("hyperparameters") or {})
+    base = payload.get("trainingSpec")
+    if not isinstance(base, dict):
+        raise HTTPException(status_code=400, detail="trainingSpec must be supplied for trial execution")
+    trial_payload = dict(payload)
+    trial_payload.pop("hyperparameters", None)
+    trial_payload.pop("objective", None)
+    trial_payload["trainingSpec"] = _apply_hyperparameters(base, params)
+    seed_value = int(inherited_seed if inherited_seed is not None else payload.get("seed", 42))
+    trial_payload["seed"] = seed_value
+    spec = _normalized_training_spec(trial_payload)
+    objective = _trial_objective(payload, spec)
+    model_type = str(spec["modelType"])
+    result = _train(trial_payload, expected_model_type=model_type, resume=False)
+    objective_value = _objective_value(result, objective)
+    training_run_for_artifact = _copy_json(result.get("trainingRun") or {})
+    training_run_for_artifact.pop("elapsedSeconds", None)
+    artifact = {
+        "schema": NEURAL_TRIAL_SCHEMA,
+        "kind": "neural-trial",
+        "trialIndex": int(trial_index),
+        "trialId": None,
+        "seed": seed_value,
+        "hyperparameters": _copy_json(params),
+        "hyperparametersFingerprint": _canonical_sha256(params),
+        "objective": objective,
+        "objectiveValue": objective_value,
+        "trainingSpecFingerprint": result.get("trainingSpecFingerprint"),
+        "trainingDatasetFingerprint": result.get("trainingDatasetFingerprint"),
+        "validationDatasetFingerprint": result.get("validationDatasetFingerprint"),
+        "trainedModelSpecFingerprint": result.get("trainedModelSpecFingerprint"),
+        "checkpointArtifactFingerprint": result.get("checkpointArtifactFingerprint"),
+        "device": _current_device_name(),
+        "trainingRun": training_run_for_artifact,
+        "trainedModelSpec": result.get("trainedModelSpec"),
+        "checkpointArtifact": result.get("checkpointArtifact"),
+        "bounded": True,
+        "arbitraryCodeExecution": False,
+    }
+    base_for_fp = {k: v for k, v in artifact.items() if k not in {"trialId"}}
+    fp = _canonical_sha256(base_for_fp)
+    artifact["artifactFingerprint"] = fp
+    artifact["trialId"] = "ntr_" + fp[:24]
+    return {"kind": "neural-trial-result", "trialArtifact": artifact, "trialArtifactFingerprint": fp, "objectiveValue": objective_value}
+
+
+def _validate_trial_artifact(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema") != NEURAL_TRIAL_SCHEMA or value.get("kind") != "neural-trial":
+        raise HTTPException(status_code=400, detail="trialArtifact must use the governed neural trial schema")
+    fp = str(value.get("artifactFingerprint") or "")
+    base = {k: v for k, v in value.items() if k not in {"artifactFingerprint", "trialId"}}
+    if not fp or not hmac.compare_digest(fp, _canonical_sha256(base)):
+        raise HTTPException(status_code=400, detail="trialArtifact fingerprint verification failed")
+    if value.get("trialId") != "ntr_" + fp[:24]:
+        raise HTTPException(status_code=400, detail="trialArtifact identifier does not match its fingerprint")
+    return value
+
+
+def _rank_trials(trials: list[dict[str, Any]], objective: dict[str, Any]) -> list[dict[str, Any]]:
+    reverse = objective["direction"] == "maximize"
+    return sorted(trials, key=lambda t: (float(t["objectiveValue"]), str(t["trialId"])), reverse=reverse)
+
+
+def _batch_from_params(payload: dict[str, Any], parameter_sets: list[dict[str, Any]], *, kind: str, search_space_fingerprint: str | None = None) -> dict[str, Any]:
+    if not parameter_sets or len(parameter_sets) > MAX_NEURAL_BATCH_TRIALS:
+        raise HTTPException(status_code=413, detail="trial batch size is outside the bounded range")
+    base_seed = int(payload.get("seed", 42))
+    # Validate all specs and total epoch budget before executing any training.
+    total_epochs = 0
+    normalized_specs: list[dict[str, Any]] = []
+    for params in parameter_sets:
+        tp = dict(payload); tp["trainingSpec"] = _apply_hyperparameters(payload.get("trainingSpec"), params)
+        spec = _normalized_training_spec(tp)
+        total_epochs += int(spec["epochs"])
+        normalized_specs.append(spec)
+    if total_epochs > MAX_NEURAL_SEARCH_EPOCHS:
+        raise HTTPException(status_code=413, detail="trial batch total epoch budget exceeds the bounded limit")
+    objective = _trial_objective(payload, normalized_specs[0])
+    trials: list[dict[str, Any]] = []
+    for index, params in enumerate(parameter_sets):
+        res = _execute_trial(payload, trial_index=index, inherited_hyperparameters=params, inherited_seed=base_seed + index)
+        trials.append(res["trialArtifact"])
+    ranked = _rank_trials(trials, objective)
+    best = ranked[0]
+    artifact = {
+        "schema": NEURAL_BATCH_SCHEMA if kind == "batch" else NEURAL_SEARCH_SCHEMA,
+        "kind": "neural-trial-batch" if kind == "batch" else "neural-hyperparameter-search",
+        "searchKind": None if kind == "batch" else kind,
+        "trialCount": len(trials),
+        "totalEpochBudget": total_epochs,
+        "baseSeed": base_seed,
+        "objective": objective,
+        "trialArtifactFingerprints": [t["artifactFingerprint"] for t in trials],
+        "trials": [{
+            "trialId": t["trialId"], "trialIndex": t["trialIndex"], "seed": t["seed"],
+            "hyperparameters": t["hyperparameters"], "hyperparametersFingerprint": t["hyperparametersFingerprint"],
+            "objectiveValue": t["objectiveValue"], "trainingSpecFingerprint": t["trainingSpecFingerprint"],
+            "trainingDatasetFingerprint": t["trainingDatasetFingerprint"],
+            "validationDatasetFingerprint": t.get("validationDatasetFingerprint"),
+            "trainedModelSpecFingerprint": t["trainedModelSpecFingerprint"],
+            "checkpointArtifactFingerprint": t["checkpointArtifactFingerprint"],
+            "artifactFingerprint": t["artifactFingerprint"], "device": t["device"],
+            "trainingMetrics": ((t.get("trainingRun") or {}).get("trainingMetrics")),
+            "validationMetrics": ((t.get("trainingRun") or {}).get("validationMetrics")),
+        } for t in trials],
+        "ranking": [{"rank": i + 1, "trialId": t["trialId"], "objectiveValue": t["objectiveValue"], "hyperparameters": t["hyperparameters"]} for i, t in enumerate(ranked)],
+        "bestTrialId": best["trialId"],
+        "bestTrialArtifactFingerprint": best["artifactFingerprint"],
+        "bestObjectiveValue": best["objectiveValue"],
+        "searchSpaceFingerprint": search_space_fingerprint,
+        "device": _current_device_name(),
+        "bounded": True,
+        "arbitraryCodeExecution": False,
+    }
+    fp = _canonical_sha256(artifact)
+    artifact["artifactFingerprint"] = fp
+    artifact["artifactId"] = ("ntb_" if kind == "batch" else "nhs_") + fp[:24]
+    return {"kind": "neural-batch-result" if kind == "batch" else "neural-hyperparameter-search-result", "batchArtifact" if kind == "batch" else "searchArtifact": artifact, "artifactFingerprint": fp, "bestTrial": best}
+
+
+def _batch_execute(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = payload.get("trials")
+    if not isinstance(raw, list):
+        raise HTTPException(status_code=400, detail="trials must be an array of hyperparameter objects")
+    params = []
+    for i, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail=f"trials[{i}] must be an object")
+        params.append(item)
+    return _batch_from_params(payload, params, kind="batch")
+
+
+def _grid_parameter_sets(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    grid = payload.get("parameterGrid")
+    if not isinstance(grid, dict) or not grid:
+        raise HTTPException(status_code=400, detail="parameterGrid must be a non-empty object")
+    unknown = sorted(set(grid) - ALLOWED_HYPERPARAMETER_PATHS)
+    if unknown:
+        raise HTTPException(status_code=400, detail="unsupported hyperparameter path(s): " + ", ".join(unknown))
+    keys = sorted(grid)
+    values: list[list[Any]] = []
+    combinations = 1
+    for key in keys:
+        vals = grid[key]
+        if not isinstance(vals, list) or not vals or len(vals) > MAX_NEURAL_SEARCH_VALUES:
+            raise HTTPException(status_code=413, detail=f"parameterGrid.{key} value count is outside the bounded range")
+        combinations *= len(vals)
+        if combinations > MAX_NEURAL_BATCH_TRIALS:
+            raise HTTPException(status_code=413, detail="grid search expands beyond the bounded trial limit")
+        values.append(vals)
+    out: list[dict[str, Any]] = []
+    def build(i: int, row: dict[str, Any]) -> None:
+        if i == len(keys): out.append(dict(row)); return
+        for v in values[i]: row[keys[i]] = v; build(i + 1, row)
+    build(0, {})
+    return out, _canonical_sha256(grid)
+
+
+def _hyperparameter_grid(payload: dict[str, Any]) -> dict[str, Any]:
+    params, fp = _grid_parameter_sets(payload)
+    return _batch_from_params(payload, params, kind="grid", search_space_fingerprint=fp)
+
+
+def _random_parameter_sets(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], str]:
+    space = payload.get("searchSpace")
+    if not isinstance(space, dict) or not space:
+        raise HTTPException(status_code=400, detail="searchSpace must be a non-empty object")
+    unknown = sorted(set(space) - ALLOWED_HYPERPARAMETER_PATHS)
+    if unknown:
+        raise HTTPException(status_code=400, detail="unsupported hyperparameter path(s): " + ", ".join(unknown))
+    trials = _positive_int(payload.get("trialCount", min(8, MAX_NEURAL_BATCH_TRIALS)), name="trialCount", minimum=1, maximum=MAX_NEURAL_BATCH_TRIALS)
+    rng = np.random.default_rng(int(payload.get("seed", 42)))
+    out: list[dict[str, Any]] = []
+    for _ in range(trials):
+        row: dict[str, Any] = {}
+        for key in sorted(space):
+            spec = space[key]
+            if not isinstance(spec, dict):
+                raise HTTPException(status_code=400, detail=f"searchSpace.{key} must be an object")
+            kind = str(spec.get("type") or "choice").strip().lower()
+            if kind == "choice":
+                vals = spec.get("values")
+                if not isinstance(vals, list) or not vals or len(vals) > MAX_NEURAL_SEARCH_VALUES:
+                    raise HTTPException(status_code=413, detail=f"searchSpace.{key}.values count is outside the bounded range")
+                row[key] = _copy_json(vals[int(rng.integers(0, len(vals)))])
+            elif kind == "uniform":
+                low = _finite_float(spec.get("low"), name=f"searchSpace.{key}.low")
+                high = _finite_float(spec.get("high"), name=f"searchSpace.{key}.high")
+                if not high > low: raise HTTPException(status_code=400, detail=f"searchSpace.{key} high must exceed low")
+                row[key] = float(rng.uniform(low, high))
+            elif kind == "loguniform":
+                low = _finite_float(spec.get("low"), name=f"searchSpace.{key}.low", minimum=1e-12)
+                high = _finite_float(spec.get("high"), name=f"searchSpace.{key}.high", minimum=1e-12)
+                if not high > low: raise HTTPException(status_code=400, detail=f"searchSpace.{key} high must exceed low")
+                row[key] = float(math.exp(rng.uniform(math.log(low), math.log(high))))
+            elif kind == "integer":
+                low = _positive_int(spec.get("low"), name=f"searchSpace.{key}.low", minimum=1, maximum=MAX_TRAINING_EPOCHS if key=="epochs" else MAX_BATCH)
+                high = _positive_int(spec.get("high"), name=f"searchSpace.{key}.high", minimum=low, maximum=MAX_TRAINING_EPOCHS if key=="epochs" else MAX_BATCH)
+                row[key] = int(rng.integers(low, high + 1))
+            else:
+                raise HTTPException(status_code=400, detail=f"searchSpace.{key}.type is not registered")
+        out.append(row)
+    return out, _canonical_sha256(space)
+
+
+def _hyperparameter_random(payload: dict[str, Any]) -> dict[str, Any]:
+    params, fp = _random_parameter_sets(payload)
+    return _batch_from_params(payload, params, kind="random", search_space_fingerprint=fp)
+
+
 EVALUATION_ARTIFACT_SCHEMA = "sc-workspace-neural-evaluation-artifact/1.0"
 CALIBRATION_ARTIFACT_SCHEMA = "sc-workspace-neural-calibration-artifact/1.0"
 UNCERTAINTY_ARTIFACT_SCHEMA = "sc-workspace-neural-uncertainty-artifact/1.0"
@@ -2410,6 +2727,12 @@ def health() -> dict[str, Any]:
         "checkpointStoragePolicy": "workspace-artifact-store-via-job-result",
         "maxCheckpointCompressedBytes": MAX_CHECKPOINT_COMPRESSED_BYTES,
         "maxCheckpointJsonBytes": MAX_CHECKPOINT_JSON_BYTES,
+        "batchTrialHyperparameterExecutionEnabled": True,
+        "trialArtifactSchema": NEURAL_TRIAL_SCHEMA,
+        "batchArtifactSchema": NEURAL_BATCH_SCHEMA,
+        "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
+        "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
+        "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,
@@ -2447,6 +2770,15 @@ def health() -> dict[str, Any]:
         "modelPackageOperations": ["package-create", "package-verify", "package-inspect", "package-infer"],
         "acceleratorDeviceOrchestrationEnabled": True,
         "deviceOperations": ["device-inventory", "device-plan", "device-verify", "accelerator-smoke"],
+        "batchTrialHyperparameterExecutionEnabled": True,
+        "trialArtifactSchema": NEURAL_TRIAL_SCHEMA,
+        "batchArtifactSchema": NEURAL_BATCH_SCHEMA,
+        "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
+        "trialPlanSchema": NEURAL_TRIAL_PLAN_SCHEMA,
+        "batchTrialOperations": ["trial-plan", "trial-execute", "batch-execute", "hyperparameter-grid", "hyperparameter-random"],
+        "maxNeuralTrials": MAX_NEURAL_TRIALS,
+        "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
+        "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
         "modelPackageDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
         "modelPackageArbitraryCodeAllowed": False,
         "modelPackageSerializedPyTorchAllowed": False,
@@ -2575,8 +2907,18 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _device_plan(payload)
     elif operation == "workspace.neural.device-verify":
         result = _device_verify(payload)
-    else:
+    elif operation == "workspace.neural.accelerator-smoke":
         result = _accelerator_smoke(payload)
+    elif operation == "workspace.neural.trial-plan":
+        result = _trial_plan(payload)
+    elif operation == "workspace.neural.trial-execute":
+        result = _execute_trial(payload)
+    elif operation == "workspace.neural.batch-execute":
+        result = _batch_execute(payload)
+    elif operation == "workspace.neural.hyperparameter-grid":
+        result = _hyperparameter_grid(payload)
+    else:
+        result = _hyperparameter_random(payload)
     selected_device = _current_device_name()
     _CURRENT_DEVICE.reset(device_token)
     return {
@@ -2608,6 +2950,12 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "checkpointStoragePolicy": "workspace-artifact-store-via-job-result",
         "maxCheckpointCompressedBytes": MAX_CHECKPOINT_COMPRESSED_BYTES,
         "maxCheckpointJsonBytes": MAX_CHECKPOINT_JSON_BYTES,
+        "batchTrialHyperparameterExecutionEnabled": True,
+        "trialArtifactSchema": NEURAL_TRIAL_SCHEMA,
+        "batchArtifactSchema": NEURAL_BATCH_SCHEMA,
+        "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
+        "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
+        "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,

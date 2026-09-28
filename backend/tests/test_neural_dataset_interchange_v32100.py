@@ -13,7 +13,7 @@ def post(client,op,payload): return client.post("/v1/execute",json=env(op,payloa
 def test_health_declares_v321_interchange(monkeypatch):
     m=load(monkeypatch)
     with TestClient(m.app) as c: body=c.get('/health').json()
-    assert body['version'] in {'3.28.0','3.29.0'}; assert len(body['operations'])>=8
+    assert body['version'] in {'3.28.0','3.29.0','3.30.0'}; assert len(body['operations'])>=8
     assert body['tensorDatasetTransformationInterchange'] is True
     assert body['transformationLineage'] is True
     assert body['externalDatasetReadEnabled'] is False
@@ -42,4 +42,4 @@ def test_polyglot_preserves_interchange_operations_with_training_extension():
 def test_client_contract_version_and_count():
     from app.client_contracts import TYPED_ENDPOINTS,profile
     from app.main import app
-    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0','3.30.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]

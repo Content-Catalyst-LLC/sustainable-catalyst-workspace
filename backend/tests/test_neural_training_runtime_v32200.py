@@ -22,7 +22,7 @@ def linear_spec(epochs=8):
 
 def test_health_enables_bounded_training_but_not_checkpoints(monkeypatch):
     _,c=load_runtime(monkeypatch); body=c.get('/health').json()
-    assert body['version'] in {'3.28.0','3.29.0'}; assert len(body['operations'])>=11
+    assert body['version'] in {'3.28.0','3.29.0','3.30.0'}; assert len(body['operations'])>=11
     assert body['trainingEnabled'] is True
     assert body['checkpointPersistenceEnabled'] is True and body['resumeTrainingEnabled'] is True
     assert body['acceleratorExecutionEnabled'] is False and body['devicePolicy'] in {'cpu-only-evaluation-calibration-uncertainty','cpu-only-neural-explainability','cpu-only-embedding-representation','cpu-only-inference-prediction-provenance','cpu-only-reproducible-model-packages','governed-explicit-device-orchestration'}
