@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.25.0"
+SERVICE_VERSION = "3.26.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -42,7 +42,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.25.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.26.0 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -68,6 +68,10 @@ OPERATIONS = {
     "workspace.neural.explain-integrated-gradients",
     "workspace.neural.explain-occlusion",
     "workspace.neural.explain-global-sensitivity",
+    "workspace.neural.embedding-generate",
+    "workspace.neural.representation-summary",
+    "workspace.neural.embedding-similarity",
+    "workspace.neural.embedding-neighbors",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -1578,6 +1582,227 @@ def _explain_global_sensitivity(payload: dict[str, Any]) -> dict[str, Any]:
     return {"kind":"neural-explainability-result","task":task,"method":"global-gradient-sensitivity","sensitivity":sensitivity,"explainabilityArtifact":artifact,"modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"explanationDatasetFingerprint":dataset_fp}
 
 
+EMBEDDING_ARTIFACT_SCHEMA = "sc-workspace-neural-embedding-artifact/1.0"
+REPRESENTATION_ANALYSIS_ARTIFACT_SCHEMA = "sc-workspace-neural-representation-analysis-artifact/1.0"
+MAX_EMBEDDING_ROWS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_EMBEDDING_ROWS", "512")), 4096))
+MAX_EMBEDDING_DIMENSIONS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_EMBEDDING_DIMENSIONS", "512")), 4096))
+MAX_SIMILARITY_PAIRS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SIMILARITY_PAIRS", "4096")), 20000))
+MAX_NEIGHBOR_QUERIES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_NEIGHBOR_QUERIES", "128")), 1024))
+MAX_NEIGHBORS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_NEIGHBORS", "50")), 256))
+ALLOWED_EMBEDDING_NORMALIZATION = {"none", "l2"}
+ALLOWED_EMBEDDING_METRICS = {"cosine", "euclidean", "dot"}
+
+
+def _row_ids(payload: dict[str, Any], rows: int) -> list[str]:
+    raw = payload.get("rowIds")
+    if raw is None:
+        return [str(i) for i in range(rows)]
+    if not isinstance(raw, list) or len(raw) != rows:
+        raise HTTPException(status_code=400, detail="rowIds must contain one value per embedding row")
+    out=[]
+    for value in raw:
+        if not isinstance(value, (str, int)):
+            raise HTTPException(status_code=400, detail="rowIds must contain only strings or integers")
+        v=str(value).strip()
+        if not v or len(v)>160:
+            raise HTTPException(status_code=400, detail="rowIds values must be non-empty and bounded")
+        out.append(v)
+    if len(set(out)) != len(out):
+        raise HTTPException(status_code=400, detail="rowIds must be unique")
+    return out
+
+
+def _representation_tensor(spec: dict[str, Any], summary: dict[str, Any], features: torch.Tensor, selector: str, layer_index: int | None) -> tuple[torch.Tensor, dict[str, Any]]:
+    selector = str(selector or "").strip().lower()
+    if not selector:
+        selector = "penultimate" if summary["modelType"] == "mlp" and int(summary["layerCount"]) > 1 else "output"
+    if selector == "input":
+        return features, {"kind":"input","layerIndex":None,"activation":"identity"}
+    if summary["modelType"] == "linear":
+        if selector != "output":
+            raise HTTPException(status_code=400, detail="linear models support input or output representation only")
+        weights,bias,activation,_=_linear_spec(spec,layer_name="modelSpec")
+        out=_activation(F.linear(features,weights,bias),activation)
+        return out,{"kind":"output","layerIndex":0,"activation":activation}
+    layers=spec.get("layers") or []
+    outputs=[]
+    x=features
+    for index,layer in enumerate(layers):
+        weights,bias,activation,_=_linear_spec(layer,layer_name=f"modelSpec.layers[{index}]")
+        x=_activation(F.linear(x,weights,bias),activation)
+        outputs.append((x,activation))
+    if selector == "output":
+        idx=len(outputs)-1
+    elif selector == "penultimate":
+        if len(outputs)<2:
+            raise HTTPException(status_code=400, detail="penultimate representation requires an MLP with at least two layers")
+        idx=len(outputs)-2
+    elif selector == "hidden":
+        if isinstance(layer_index,bool) or not isinstance(layer_index,int):
+            raise HTTPException(status_code=400, detail="hidden representation requires integer layerIndex")
+        if layer_index < 0 or layer_index >= len(outputs)-1:
+            raise HTTPException(status_code=400, detail="hidden layerIndex must address a non-output MLP layer")
+        idx=layer_index
+    else:
+        raise HTTPException(status_code=400, detail="representation must be input, output, penultimate, or hidden")
+    tensor,activation=outputs[idx]
+    return tensor,{"kind":selector,"layerIndex":idx,"activation":activation}
+
+
+def _embedding_context(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], torch.Tensor, str, str | None, str, list[str]]:
+    summary,model_fp,checkpoint_fp=_analysis_source(payload)
+    spec=payload.get("modelSpec")
+    features=_tensor(payload.get("features"),name="features",dtype_name="float32",ndim=2)
+    rows,width=int(features.shape[0]),int(features.shape[1])
+    if rows<1 or rows>MAX_EMBEDDING_ROWS:
+        raise HTTPException(status_code=413, detail="embedding row count is outside the bounded range")
+    if width != int(summary["inputFeatures"]):
+        raise HTTPException(status_code=400, detail="features width does not match model specification")
+    ids=_row_ids(payload,rows)
+    dataset_fp=_canonical_sha256({"features":payload.get("features"),"rowIds":ids})
+    return spec,summary,features,model_fp,checkpoint_fp,dataset_fp,ids
+
+
+def _embedding_generate(payload: dict[str, Any]) -> dict[str, Any]:
+    spec,summary,features,model_fp,checkpoint_fp,dataset_fp,ids=_embedding_context(payload)
+    selector=str(payload.get("representation") or "")
+    layer_index=payload.get("layerIndex")
+    representation,selector_doc=_representation_tensor(spec,summary,features,selector,layer_index)
+    if representation.ndim != 2:
+        raise HTTPException(status_code=400, detail="selected representation must be rank 2")
+    rows,dims=int(representation.shape[0]),int(representation.shape[1])
+    if dims<1 or dims>MAX_EMBEDDING_DIMENSIONS:
+        raise HTTPException(status_code=413, detail="embedding dimension is outside the bounded range")
+    mode=str(payload.get("normalization") or "none").strip().lower()
+    if mode not in ALLOWED_EMBEDDING_NORMALIZATION:
+        raise HTTPException(status_code=400, detail="normalization must be none or l2")
+    source_norms=torch.linalg.vector_norm(representation,ord=2,dim=1)
+    vectors=representation
+    if mode=="l2":
+        denom=torch.where(source_norms>1e-12,source_norms,torch.ones_like(source_norms)).reshape(-1,1)
+        vectors=representation/denom
+    norms=torch.linalg.vector_norm(vectors,ord=2,dim=1)
+    artifact=_artifact(EMBEDDING_ARTIFACT_SCHEMA,"neural-embedding",{
+        "operation":"workspace.neural.embedding-generate","modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,
+        "representationDatasetFingerprint":dataset_fp,"representation":selector_doc,
+        "normalization":mode,"rows":rows,"dimensions":dims,"rowIds":ids,
+        "sourceVectorNorms":[float(v) for v in source_norms.tolist()],
+        "vectorNorms":[float(v) for v in norms.tolist()],
+        "vectors":[[float(v) for v in row] for row in vectors.tolist()],
+    })
+    return {"kind":"neural-embedding-result","embeddingArtifact":artifact,
+            "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,
+            "representationDatasetFingerprint":dataset_fp,"representation":selector_doc,
+            "normalization":mode,"rows":rows,"dimensions":dims,"rowIds":ids,
+            "vectors":artifact["vectors"]}
+
+
+def _validate_embedding_artifact(value: Any) -> tuple[dict[str, Any], torch.Tensor]:
+    if not isinstance(value,dict) or value.get("schema")!=EMBEDDING_ARTIFACT_SCHEMA or value.get("kind")!="neural-embedding":
+        raise HTTPException(status_code=400, detail="embeddingArtifact must use the governed neural embedding schema")
+    supplied=str(value.get("artifactFingerprint") or "")
+    base={k:v for k,v in value.items() if k not in {"artifactFingerprint","artifactId"}}
+    if len(supplied)!=64 or not hmac.compare_digest(supplied,_canonical_sha256(base)):
+        raise HTTPException(status_code=400, detail="embeddingArtifact fingerprint verification failed")
+    vectors=_tensor(value.get("vectors"),name="embeddingArtifact.vectors",dtype_name="float32",ndim=2)
+    rows,dims=int(vectors.shape[0]),int(vectors.shape[1])
+    if rows<1 or rows>MAX_EMBEDDING_ROWS or dims<1 or dims>MAX_EMBEDDING_DIMENSIONS:
+        raise HTTPException(status_code=413, detail="embeddingArtifact dimensions exceed bounded representation limits")
+    if value.get("rows")!=rows or value.get("dimensions")!=dims:
+        raise HTTPException(status_code=400, detail="embeddingArtifact shape metadata does not match vectors")
+    ids=value.get("rowIds")
+    if not isinstance(ids,list) or len(ids)!=rows or any(not isinstance(x,str) or not x for x in ids):
+        raise HTTPException(status_code=400, detail="embeddingArtifact rowIds are invalid")
+    return value,vectors
+
+
+def _representation_artifact(operation: str, analysis_type: str, source: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    return _artifact(REPRESENTATION_ANALYSIS_ARTIFACT_SCHEMA,"neural-representation-analysis",{
+        "operation":operation,"analysisType":analysis_type,
+        "sourceEmbeddingArtifactFingerprint":source.get("artifactFingerprint"),
+        "modelSpecFingerprint":source.get("modelSpecFingerprint"),
+        "checkpointFingerprint":source.get("checkpointFingerprint"),
+        "representationDatasetFingerprint":source.get("representationDatasetFingerprint"),
+        "representation":source.get("representation"),"normalization":source.get("normalization"),
+        "rows":source.get("rows"),"dimensions":source.get("dimensions"),**body,
+    })
+
+
+def _representation_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    source,vectors=_validate_embedding_artifact(payload.get("embeddingArtifact"))
+    norms=torch.linalg.vector_norm(vectors,ord=2,dim=1)
+    mean=torch.mean(vectors,dim=0); std=torch.std(vectors,dim=0,unbiased=False)
+    minv=torch.min(vectors,dim=0).values; maxv=torch.max(vectors,dim=0).values
+    body={"centroid":[float(v) for v in mean.tolist()],"dimensionStd":[float(v) for v in std.tolist()],
+          "dimensionMin":[float(v) for v in minv.tolist()],"dimensionMax":[float(v) for v in maxv.tolist()],
+          "normSummary":{"min":float(norms.min().item()),"max":float(norms.max().item()),"mean":float(norms.mean().item()),"std":float(norms.std(unbiased=False).item())}}
+    art=_representation_artifact("workspace.neural.representation-summary","summary",source,body)
+    return {"kind":"neural-representation-analysis-result","analysisType":"summary","summary":body,"representationArtifact":art,
+            "sourceEmbeddingArtifactFingerprint":source["artifactFingerprint"]}
+
+
+def _metric_value(a: torch.Tensor,b: torch.Tensor,metric: str) -> float:
+    if metric=="cosine": return float(F.cosine_similarity(a.reshape(1,-1),b.reshape(1,-1),dim=1,eps=1e-12).item())
+    if metric=="euclidean": return float(torch.linalg.vector_norm(a-b,ord=2).item())
+    return float(torch.dot(a,b).item())
+
+
+def _embedding_similarity(payload: dict[str, Any]) -> dict[str, Any]:
+    source,vectors=_validate_embedding_artifact(payload.get("embeddingArtifact"))
+    metric=str(payload.get("metric") or "cosine").strip().lower()
+    if metric not in ALLOWED_EMBEDDING_METRICS: raise HTTPException(status_code=400,detail="embedding metric is not registered")
+    rows=int(vectors.shape[0]); raw_pairs=payload.get("pairs")
+    if raw_pairs is None:
+        if rows>32: raise HTTPException(status_code=400,detail="pairs are required when an embedding artifact has more than 32 rows")
+        raw_pairs=[[i,j] for i in range(rows) for j in range(i+1,rows)]
+    if not isinstance(raw_pairs,list) or len(raw_pairs)>MAX_SIMILARITY_PAIRS:
+        raise HTTPException(status_code=413,detail="similarity pair count exceeds the bounded limit")
+    out=[]; ids=source["rowIds"]
+    for pair in raw_pairs:
+        if not isinstance(pair,list) or len(pair)!=2 or any(isinstance(x,bool) or not isinstance(x,int) for x in pair):
+            raise HTTPException(status_code=400,detail="pairs must contain [leftIndex,rightIndex] integers")
+        i,j=pair
+        if i<0 or j<0 or i>=rows or j>=rows: raise HTTPException(status_code=400,detail="similarity pair index is out of range")
+        value=_metric_value(vectors[i],vectors[j],metric)
+        rec={"leftIndex":i,"rightIndex":j,"leftRowId":ids[i],"rightRowId":ids[j],"value":value}
+        rec["distance" if metric=="euclidean" else "similarity"]=value
+        out.append(rec)
+    art=_representation_artifact("workspace.neural.embedding-similarity","pairwise-similarity",source,{"metric":metric,"pairCount":len(out),"pairs":out})
+    return {"kind":"neural-representation-analysis-result","analysisType":"pairwise-similarity","metric":metric,"pairs":out,"representationArtifact":art,
+            "sourceEmbeddingArtifactFingerprint":source["artifactFingerprint"]}
+
+
+def _embedding_neighbors(payload: dict[str, Any]) -> dict[str, Any]:
+    source,vectors=_validate_embedding_artifact(payload.get("embeddingArtifact"))
+    metric=str(payload.get("metric") or "cosine").strip().lower()
+    if metric not in ALLOWED_EMBEDDING_METRICS: raise HTTPException(status_code=400,detail="embedding metric is not registered")
+    rows=int(vectors.shape[0])
+    queries=payload.get("queryIndices")
+    if not isinstance(queries,list) or not queries or len(queries)>MAX_NEIGHBOR_QUERIES or any(isinstance(x,bool) or not isinstance(x,int) for x in queries):
+        raise HTTPException(status_code=400,detail="queryIndices must be a non-empty bounded integer array")
+    if len(set(queries))!=len(queries): raise HTTPException(status_code=400,detail="queryIndices must be unique")
+    if any(x<0 or x>=rows for x in queries): raise HTTPException(status_code=400,detail="query index is out of range")
+    k=payload.get("k",min(5,max(1,rows-1)))
+    if isinstance(k,bool) or not isinstance(k,int) or k<1 or k>MAX_NEIGHBORS or k>=rows:
+        raise HTTPException(status_code=400,detail="k is outside the bounded neighbor range or must be smaller than row count")
+    ids=source["rowIds"]; groups=[]
+    for qi in queries:
+        scored=[]
+        for j in range(rows):
+            if j==qi: continue
+            value=_metric_value(vectors[qi],vectors[j],metric)
+            scored.append((value,j))
+        scored.sort(key=lambda x:x[0],reverse=(metric!="euclidean"))
+        neighbors=[]
+        for value,j in scored[:k]:
+            rec={"index":j,"rowId":ids[j],"value":value}; rec["distance" if metric=="euclidean" else "similarity"]=value; neighbors.append(rec)
+        groups.append({"queryIndex":qi,"queryRowId":ids[qi],"neighbors":neighbors})
+    art=_representation_artifact("workspace.neural.embedding-neighbors","nearest-neighbors",source,{"metric":metric,"k":k,"queryCount":len(groups),"queries":groups})
+    return {"kind":"neural-representation-analysis-result","analysisType":"nearest-neighbors","metric":metric,"k":k,"queries":groups,"representationArtifact":art,
+            "sourceEmbeddingArtifactFingerprint":source["artifactFingerprint"]}
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -1595,7 +1820,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-neural-explainability",
+        "devicePolicy": "cpu-only-embedding-representation",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -1634,6 +1859,17 @@ def health() -> dict[str, Any]:
         "maxExplainabilityRows": MAX_EXPLAINABILITY_ROWS,
         "maxExplainabilityFeatures": MAX_EXPLAINABILITY_FEATURES,
         "maxIntegratedGradientSteps": MAX_INTEGRATED_GRADIENT_STEPS,
+        "embeddingRepresentationRuntimeEnabled": True,
+        "embeddingArtifactSchema": EMBEDDING_ARTIFACT_SCHEMA,
+        "representationAnalysisArtifactSchema": REPRESENTATION_ANALYSIS_ARTIFACT_SCHEMA,
+        "embeddingOperations": ["embedding-generate", "representation-summary", "embedding-similarity", "embedding-neighbors"],
+        "embeddingNormalizations": sorted(ALLOWED_EMBEDDING_NORMALIZATION),
+        "embeddingMetrics": sorted(ALLOWED_EMBEDDING_METRICS),
+        "maxEmbeddingRows": MAX_EMBEDDING_ROWS,
+        "maxEmbeddingDimensions": MAX_EMBEDDING_DIMENSIONS,
+        "maxSimilarityPairs": MAX_SIMILARITY_PAIRS,
+        "maxNeighborQueries": MAX_NEIGHBOR_QUERIES,
+        "maxNeighbors": MAX_NEIGHBORS,
         "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
@@ -1725,8 +1961,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _explain_integrated_gradients(payload)
     elif operation == "workspace.neural.explain-occlusion":
         result = _explain_occlusion(payload)
-    else:
+    elif operation == "workspace.neural.explain-global-sensitivity":
         result = _explain_global_sensitivity(payload)
+    elif operation == "workspace.neural.embedding-generate":
+        result = _embedding_generate(payload)
+    elif operation == "workspace.neural.representation-summary":
+        result = _representation_summary(payload)
+    elif operation == "workspace.neural.embedding-similarity":
+        result = _embedding_similarity(payload)
+    else:
+        result = _embedding_neighbors(payload)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -1767,6 +2011,17 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "maxExplainabilityRows": MAX_EXPLAINABILITY_ROWS,
         "maxExplainabilityFeatures": MAX_EXPLAINABILITY_FEATURES,
         "maxIntegratedGradientSteps": MAX_INTEGRATED_GRADIENT_STEPS,
+        "embeddingRepresentationRuntimeEnabled": True,
+        "embeddingArtifactSchema": EMBEDDING_ARTIFACT_SCHEMA,
+        "representationAnalysisArtifactSchema": REPRESENTATION_ANALYSIS_ARTIFACT_SCHEMA,
+        "embeddingOperations": ["embedding-generate", "representation-summary", "embedding-similarity", "embedding-neighbors"],
+        "embeddingNormalizations": sorted(ALLOWED_EMBEDDING_NORMALIZATION),
+        "embeddingMetrics": sorted(ALLOWED_EMBEDDING_METRICS),
+        "maxEmbeddingRows": MAX_EMBEDDING_ROWS,
+        "maxEmbeddingDimensions": MAX_EMBEDDING_DIMENSIONS,
+        "maxSimilarityPairs": MAX_SIMILARITY_PAIRS,
+        "maxNeighborQueries": MAX_NEIGHBOR_QUERIES,
+        "maxNeighbors": MAX_NEIGHBORS,
         "acceleratorExecutionEnabled": False,
         "result": result,
     }

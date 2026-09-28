@@ -24,7 +24,7 @@ def load_runtime(monkeypatch):
 def env(operation: str, payload: dict):
     return {
         "schema": "sc-workspace-polyglot-execution-envelope/1.0",
-        "workspaceVersion": "3.25.0",
+        "workspaceVersion": "3.26.0",
         "jobId": "job-v323-checkpoint",
         "language": "neural",
         "operation": operation,
@@ -67,7 +67,7 @@ def dataset(training_spec: dict):
 def test_health_enables_portable_checkpoint_resume(monkeypatch):
     _, client = load_runtime(monkeypatch)
     body = client.get("/health").json()
-    assert body["version"] == "3.25.0"
+    assert body["version"] == "3.26.0"
     assert len(body["operations"]) >= 14
     assert body["checkpointPersistenceEnabled"] is True
     assert body["resumeTrainingEnabled"] is True
@@ -191,6 +191,6 @@ def test_polyglot_registry_and_workspace_contract_expose_v323_checkpoint_lineage
     assert "workspace.neural.resume-linear" in neural.operations
     assert "workspace.neural.resume-mlp" in neural.operations
     contract = profile(app.openapi())
-    assert contract["workspaceVersion"] == "3.25.0"
+    assert contract["workspaceVersion"] == "3.26.0"
     assert contract["typedEndpointCount"] == 291
     assert contract["missingOpenApiOperations"] == []

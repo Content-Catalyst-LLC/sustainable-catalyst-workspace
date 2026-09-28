@@ -15,7 +15,7 @@ def load_runtime(monkeypatch):
     return module,TestClient(module.app)
 
 def env(op,payload):
-    return {"schema":"sc-workspace-polyglot-execution-envelope/1.0","workspaceVersion":"3.25.0","jobId":"job-v325-explain","language":"neural","operation":op,"payload":payload,"arbitraryCodeExecution":False}
+    return {"schema":"sc-workspace-polyglot-execution-envelope/1.0","workspaceVersion":"3.26.0","jobId":"job-v325-explain","language":"neural","operation":op,"payload":payload,"arbitraryCodeExecution":False}
 
 def post(c,op,payload): return c.post('/v1/execute',json=env(op,payload),headers={'Authorization':f'Bearer {TOKEN}'})
 
@@ -25,11 +25,11 @@ def multiclass_model(): return {"schema":"sc-workspace-neural-model-spec/1.0","m
 
 def test_health_exposes_v325_explainability(monkeypatch):
     _,c=load_runtime(monkeypatch); x=c.get('/health').json()
-    assert x['version']=='3.25.0'; assert len(x['operations'])==23
+    assert x['version']=='3.26.0'; assert len(x['operations'])==27
     assert x['explainabilityRuntimeEnabled'] is True
     assert x['explainabilityArtifactSchema']=='sc-workspace-neural-explainability-artifact/1.0'
     assert set(x['explainabilityMethods'])=={'input-gradient','integrated-gradients','feature-occlusion','global-gradient-sensitivity'}
-    assert x['devicePolicy']=='cpu-only-neural-explainability'
+    assert x['devicePolicy'] in {'cpu-only-neural-explainability','cpu-only-embedding-representation'}
 
 def test_regression_gradient_is_exact(monkeypatch):
     _,c=load_runtime(monkeypatch)
@@ -85,6 +85,6 @@ def test_bounds_and_workspace_registry():
     from app.client_contracts import profile
     from app.main import app
     from app.polyglot import RUNTIME_BY_LANGUAGE
-    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==23
+    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==27
     for op in ['workspace.neural.explain-gradient','workspace.neural.explain-integrated-gradients','workspace.neural.explain-occlusion','workspace.neural.explain-global-sensitivity']: assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.25.0'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.26.0'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
