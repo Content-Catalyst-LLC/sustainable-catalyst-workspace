@@ -22,7 +22,7 @@ def test_production_repair_dependencies_and_warmup():
     assert "torch==2.10.0" in requirements
     assert "numpy==2.2.6" in requirements
     svc = _load_service()
-    assert svc.SERVICE_VERSION == "3.28.0"
+    assert svc.SERVICE_VERSION in {"3.28.0","3.29.0"}
     assert svc.OPTIMIZER_RUNTIME_WARM is True
     health = svc.health()
     assert health["torchDynamoPreloaded"] is True

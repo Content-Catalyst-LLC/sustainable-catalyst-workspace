@@ -1,0 +1,8 @@
+# Optional v3.29 accelerator exposure. Do not apply on CPU-only hosts.
+services:
+  sc-workspace-neural-runtime:
+    gpus: all
+    environment:
+      SC_WORKSPACE_NEURAL_ACCELERATOR_ENABLED: "true"
+      SC_WORKSPACE_NEURAL_ALLOWED_DEVICES: ${SC_WORKSPACE_NEURAL_ALLOWED_DEVICES:-cpu,cuda:0}
+      SC_WORKSPACE_NEURAL_MAX_ACCELERATOR_DEVICES: ${SC_WORKSPACE_NEURAL_MAX_ACCELERATOR_DEVICES:-1}

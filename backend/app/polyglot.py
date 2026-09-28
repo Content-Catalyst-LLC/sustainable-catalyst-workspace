@@ -75,7 +75,9 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.infer-multiclass", "workspace.neural.prediction-inspect",
         "workspace.neural.package-create", "workspace.neural.package-verify",
         "workspace.neural.package-inspect", "workspace.neural.package-infer",
-    ), "Hardened PyTorch neural runtime for bounded declarative training/checkpoint lineage, evaluation/calibration/uncertainty, explainability, governed embeddings, prediction provenance, and reproducible neural model packages; arbitrary code, raw serialized model loading, dynamic hooks, and accelerator execution remain disabled in v3.28.0."),
+        "workspace.neural.device-inventory", "workspace.neural.device-plan",
+        "workspace.neural.device-verify", "workspace.neural.accelerator-smoke",
+    ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, and explicit device orchestration; CPU is the safe default and accelerator execution requires operator policy plus an exposed allowed device."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -603,6 +605,18 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             store_run_output(db,row.user_key,run_id,prediction_output)
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
+    if language == "neural" and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        device_plan=remote_body.get("devicePlan") if isinstance(remote_body.get("devicePlan"),dict) else {}
+        receipt_details.update({
+            "neuralDeviceOrchestration":True,
+            "selectedDevice":remote_body.get("device"),
+            "devicePlanSchema":device_plan.get("schema"),
+            "devicePlanFingerprint":device_plan.get("planFingerprint"),
+            "deviceRequestedPreference":device_plan.get("requestedPreference"),
+            "deviceAcceleratorSelected":device_plan.get("acceleratorSelected"),
+            "deviceFallbackReason":device_plan.get("fallbackReason"),
+        })
     if language == "neural" and row.operation in {"workspace.neural.train-linear","workspace.neural.train-mlp","workspace.neural.resume-linear","workspace.neural.resume-mlp"}:
         remote_body = result.get("remote") if isinstance(result, dict) and isinstance(result.get("remote"), dict) else {}
         neural_result = remote_body.get("result") if isinstance(remote_body.get("result"), dict) else {}

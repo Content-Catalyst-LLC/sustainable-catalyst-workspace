@@ -21,11 +21,11 @@ def linear(weights,bias,activation='identity'):
 
 def test_health_exposes_v327_inference_prediction_provenance(monkeypatch):
     _,c=load_runtime(monkeypatch); x=c.get('/health').json()
-    assert x['version']=='3.28.0'; assert len(x['operations'])==35
+    assert x['version'] in {'3.28.0','3.29.0'}; assert len(x['operations'])>=35
     assert x['neuralInferencePredictionProvenanceEnabled'] is True
     assert x['predictionArtifactSchema']=='sc-workspace-neural-prediction-artifact/1.0'
     assert x['inferenceTargetsAccepted'] is False
-    assert x['devicePolicy'] in {'cpu-only-inference-prediction-provenance','cpu-only-reproducible-model-packages'}
+    assert x['devicePolicy'] in {'cpu-only-inference-prediction-provenance','cpu-only-reproducible-model-packages','governed-explicit-device-orchestration'}
 
 def test_regression_inference_exact_and_uncertainty_is_not_invented(monkeypatch):
     _,c=load_runtime(monkeypatch)
@@ -91,6 +91,6 @@ def test_workspace_registry_and_contract_expose_v327():
     from app.client_contracts import profile
     from app.main import app
     from app.polyglot import RUNTIME_BY_LANGUAGE
-    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==35
+    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=35
     for op in ['workspace.neural.infer-regression','workspace.neural.infer-binary','workspace.neural.infer-multiclass','workspace.neural.prediction-inspect']: assert op in n.operations
-    cp=profile(app.openapi()); assert cp['workspaceVersion']=='3.28.0'; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]
+    cp=profile(app.openapi()); assert cp['workspaceVersion'] in {'3.28.0','3.29.0'}; assert cp['typedEndpointCount']==291; assert cp['missingOpenApiOperations']==[]

@@ -10,6 +10,7 @@ import threading
 import time
 import zlib
 from typing import Any
+from contextvars import ContextVar
 
 # The runtime deliberately executes as numeric UID 65532 with a read-only root FS.
 # PyTorch 2.10 Dynamo/Inductor may otherwise call getpass.getuser() while deriving
@@ -32,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.28.0"
+SERVICE_VERSION = "3.29.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -42,7 +43,16 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.28.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # safe process default; requests resolve through governed device orchestration.
+DEVICE_PLAN_SCHEMA = "sc-workspace-neural-device-plan/1.0"
+DEVICE_INVENTORY_SCHEMA = "sc-workspace-neural-device-inventory/1.0"
+ACCELERATOR_ENABLED = os.getenv("SC_WORKSPACE_NEURAL_ACCELERATOR_ENABLED", "false").strip().lower() in {"1","true","yes","on"}
+MAX_ACCELERATOR_DEVICES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_ACCELERATOR_DEVICES", "1")), 8))
+_ALLOWED_DEVICES_RAW = os.getenv("SC_WORKSPACE_NEURAL_ALLOWED_DEVICES", "cpu,cuda:0" if ACCELERATOR_ENABLED else "cpu")
+ALLOWED_DEVICES = tuple(dict.fromkeys(x.strip().lower() for x in _ALLOWED_DEVICES_RAW.split(",") if x.strip())) or ("cpu",)
+if "cpu" not in ALLOWED_DEVICES:
+    ALLOWED_DEVICES = ("cpu",) + ALLOWED_DEVICES
+_CURRENT_DEVICE: ContextVar[str] = ContextVar("sc_workspace_neural_device", default="cpu")
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -80,6 +90,10 @@ OPERATIONS = {
     "workspace.neural.package-verify",
     "workspace.neural.package-inspect",
     "workspace.neural.package-infer",
+    "workspace.neural.device-inventory",
+    "workspace.neural.device-plan",
+    "workspace.neural.device-verify",
+    "workspace.neural.accelerator-smoke",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -146,6 +160,151 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _current_device_name() -> str:
+    return _CURRENT_DEVICE.get()
+
+
+def _device_inventory_body() -> dict[str, Any]:
+    devices: list[dict[str, Any]] = [{
+        "device": "cpu", "deviceClass": "cpu", "available": True, "policyAllowed": True,
+        "accelerator": False, "name": "CPU", "index": None,
+    }]
+    cuda_available = bool(torch.cuda.is_available())
+    cuda_count = int(torch.cuda.device_count()) if cuda_available else 0
+    for index in range(min(cuda_count, MAX_ACCELERATOR_DEVICES)):
+        dev = f"cuda:{index}"
+        props = torch.cuda.get_device_properties(index)
+        devices.append({
+            "device": dev, "deviceClass": "cuda", "available": True,
+            "policyAllowed": bool(ACCELERATOR_ENABLED and dev in ALLOWED_DEVICES),
+            "accelerator": True, "name": str(props.name), "index": index,
+            "totalMemoryBytes": int(props.total_memory),
+            "computeCapability": f"{int(props.major)}.{int(props.minor)}",
+        })
+    body = {
+        "schema": DEVICE_INVENTORY_SCHEMA,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "engine": ENGINE,
+        "engineVersion": torch.__version__,
+        "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
+        "allowedDevices": list(ALLOWED_DEVICES),
+        "maxAcceleratorDevices": MAX_ACCELERATOR_DEVICES,
+        "cudaRuntimeAvailable": cuda_available,
+        "cudaDeviceCount": cuda_count,
+        "devices": devices,
+    }
+    body["inventoryFingerprint"] = _canonical_sha256(body)
+    return body
+
+
+def _parse_device_request(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = payload.get("deviceRequest", "cpu")
+    if isinstance(raw, str):
+        preference = raw.strip().lower() or "cpu"
+        strict = preference not in {"auto"}
+        allow_fallback = preference == "auto"
+    elif isinstance(raw, dict):
+        preference = str(raw.get("preference") or raw.get("device") or "cpu").strip().lower()
+        strict = bool(raw.get("strict", preference not in {"auto"}))
+        allow_fallback = bool(raw.get("allowFallback", preference == "auto"))
+    else:
+        raise HTTPException(status_code=400, detail="deviceRequest must be a string or object")
+    if preference not in {"cpu", "auto", "accelerator"} and not preference.startswith("cuda:"):
+        raise HTTPException(status_code=400, detail="deviceRequest preference is not registered")
+    return {"preference": preference, "strict": strict, "allowFallback": allow_fallback}
+
+
+def _resolve_device_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    req = _parse_device_request(payload)
+    inv = _device_inventory_body()
+    by_name = {d["device"]: d for d in inv["devices"]}
+    accel = [d for d in inv["devices"] if d.get("accelerator") and d.get("available") and d.get("policyAllowed")]
+    pref = req["preference"]
+    selected = "cpu"
+    fallback_reason = None
+    if pref == "cpu":
+        selected = "cpu"
+    elif pref in {"auto", "accelerator"}:
+        if accel:
+            selected = accel[0]["device"]
+        elif pref == "auto" or req["allowFallback"]:
+            selected = "cpu"
+            fallback_reason = "no-policy-allowed-accelerator-available"
+        else:
+            raise HTTPException(status_code=409, detail="requested accelerator is unavailable or disallowed by runtime policy")
+    else:
+        candidate = by_name.get(pref)
+        if candidate and candidate.get("available") and candidate.get("policyAllowed"):
+            selected = pref
+        elif req["allowFallback"] and not req["strict"]:
+            selected = "cpu"
+            fallback_reason = "requested-device-unavailable-or-disallowed"
+        else:
+            raise HTTPException(status_code=409, detail="requested device is unavailable or disallowed by runtime policy")
+    plan = {
+        "schema": DEVICE_PLAN_SCHEMA,
+        "requestedPreference": pref,
+        "strict": req["strict"],
+        "allowFallback": req["allowFallback"],
+        "selectedDevice": selected,
+        "selectedDeviceClass": "cuda" if selected.startswith("cuda:") else "cpu",
+        "acceleratorSelected": selected.startswith("cuda:"),
+        "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
+        "fallbackReason": fallback_reason,
+        "inventoryFingerprint": inv["inventoryFingerprint"],
+        "reproducibility": {
+            "deterministicAlgorithmsRequested": True,
+            "deviceSelectionExplicit": True,
+            "crossDeviceBitwiseIdentityGuaranteed": False,
+        },
+    }
+    plan["planFingerprint"] = _canonical_sha256(plan)
+    return plan
+
+
+def _validate_device_plan(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema") != DEVICE_PLAN_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"devicePlan must use {DEVICE_PLAN_SCHEMA}")
+    supplied = str(value.get("planFingerprint") or "")
+    base = {k:v for k,v in value.items() if k != "planFingerprint"}
+    if not supplied or not hmac.compare_digest(supplied, _canonical_sha256(base)):
+        raise HTTPException(status_code=400, detail="devicePlan fingerprint verification failed")
+    selected = str(value.get("selectedDevice") or "")
+    inv = _device_inventory_body(); current = {d["device"]: d for d in inv["devices"]}
+    d = current.get(selected)
+    if not d or not d.get("available") or not d.get("policyAllowed"):
+        raise HTTPException(status_code=409, detail="devicePlan selected device is no longer available under current policy")
+    return value
+
+
+def _device_inventory(payload: dict[str, Any]) -> dict[str, Any]:
+    inv = _device_inventory_body()
+    return {"kind":"neural-device-inventory","deviceInventory":inv,"inventoryFingerprint":inv["inventoryFingerprint"]}
+
+
+def _device_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    plan = _resolve_device_plan(payload)
+    return {"kind":"neural-device-plan","devicePlan":plan,"planFingerprint":plan["planFingerprint"]}
+
+
+def _device_verify(payload: dict[str, Any]) -> dict[str, Any]:
+    plan = _validate_device_plan(payload.get("devicePlan"))
+    return {"kind":"neural-device-verification","valid":True,"selectedDevice":plan["selectedDevice"],"planFingerprint":plan["planFingerprint"]}
+
+
+def _accelerator_smoke(payload: dict[str, Any]) -> dict[str, Any]:
+    dev = _current_device_name()
+    a = _tensor(payload.get("left", [[1.0,2.0],[3.0,4.0]]), name="left", dtype_name="float32", ndim=2)
+    b = _tensor(payload.get("right", [[1.0,0.0],[0.0,1.0]]), name="right", dtype_name="float32", ndim=2)
+    if a.shape[1] != b.shape[0] or a.numel() > 4096 or b.numel() > 4096:
+        raise HTTPException(status_code=400, detail="accelerator smoke matrices are incompatible or exceed bounded size")
+    out = a @ b
+    if dev.startswith("cuda:"):
+        torch.cuda.synchronize(torch.device(dev))
+    return {"kind":"neural-accelerator-smoke","selectedDevice":dev,"acceleratorUsed":dev.startswith("cuda:"),"output":_tensor_json(out),"outputFingerprint":_canonical_sha256(_tensor_json(out))}
+
+
 def _seed(payload: dict[str, Any]) -> int:
     raw = payload.get("seed", 42)
     try:
@@ -176,7 +335,7 @@ def _tensor(value: Any, *, name: str, dtype_name: str = "float32", ndim: int | N
     if _nested_element_count(value) > MAX_TENSOR_ELEMENTS:
         raise HTTPException(status_code=413, detail=f"{name} exceeds the bounded tensor element limit")
     try:
-        out = torch.tensor(value, dtype=ALLOWED_DTYPES[dtype_name], device=DEVICE)
+        out = torch.tensor(value, dtype=ALLOWED_DTYPES[dtype_name], device=_current_device_name())
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"{name} is not a rectangular numeric tensor") from exc
     if ndim is not None and out.ndim != ndim:
@@ -387,7 +546,7 @@ def _tensor_contract(payload: dict[str, Any]) -> dict[str, Any]:
         "rank": int(tensor.ndim),
         "elementCount": int(tensor.numel()),
         "dtype": str(tensor.dtype).replace("torch.", ""),
-        "device": DEVICE,
+        "device": _current_device_name(),
         "contiguous": bool(tensor.is_contiguous()),
     }
     return {
@@ -645,7 +804,7 @@ def _normalized_training_spec(payload: dict[str, Any], *, expected_model_type: s
         "batchSize": batch_size,
         "shuffle": shuffle,
         "validationEnabled": validation_enabled,
-        "device": DEVICE,
+        "device": _current_device_name(),
     }
     return normalized
 
@@ -676,7 +835,7 @@ def _training_plan(payload: dict[str, Any]) -> dict[str, Any]:
         "checkpointStateSchema": CHECKPOINT_STATE_SCHEMA,
         "checkpointFormat": CHECKPOINT_FORMAT,
         "checkpointResumePolicy": CHECKPOINT_RESUME_POLICY,
-        "acceleratorExecutionEnabled": False,
+        "acceleratorExecutionEnabled": bool(ACCELERATOR_ENABLED),
         "arbitraryCodeExecution": False,
     }
     return {
@@ -703,7 +862,7 @@ def _build_training_model(spec: dict[str, Any]) -> torch.nn.Module:
         layers.append(_activation_module(str(hidden["activation"])))
         current = units
     layers.append(torch.nn.Linear(current, int(spec["outputFeatures"])))
-    return torch.nn.Sequential(*layers).to(DEVICE)
+    return torch.nn.Sequential(*layers).to(_current_device_name())
 
 
 def _training_tensors(payload: dict[str, Any], spec: dict[str, Any], *, validation: bool = False) -> tuple[torch.Tensor, torch.Tensor]:
@@ -1129,7 +1288,7 @@ def _train(payload: dict[str, Any], *, expected_model_type: str, resume: bool = 
         "resumed": resume,
         "resumedFromCheckpointFingerprint": checkpoint_in.get("artifactFingerprint") if checkpoint_in else None,
         "lineageDepth": checkpoint_out["lineageDepth"],
-        "device": DEVICE, "threadLimit": TRAIN_THREADS,
+        "device": _current_device_name(), "threadLimit": TRAIN_THREADS,
     }
     dataset_fp = _canonical_sha256({"features": payload.get("features"), "targets": payload.get("targets")})
     return {
@@ -2009,8 +2168,10 @@ def _package_runtime_contract() -> dict[str, Any]:
         "engineVersion": torch.__version__,
         "numpyVersion": np.__version__,
         "requiredDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
-        "devicePolicy": "cpu-only-reproducible-model-packages",
+        "devicePolicy": "governed-explicit-device-orchestration",
         "acceleratorRequired": False,
+        "supportedDeviceClasses": ["cpu", "cuda"],
+        "deviceSelectionMustBeExplicit": True,
         "arbitraryCodeRequired": False,
         "serializedModelRequired": False,
         "declarativeModelSpecRequired": True,
@@ -2217,14 +2378,19 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-reproducible-model-packages",
+        "devicePolicy": "governed-explicit-device-orchestration",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
         "batchPlanSchema": "sc-workspace-neural-batch-plan/1.0",
         "transformationLineage": True,
         "externalDatasetReadEnabled": False,
-        "availableDevices": ["cpu"],
+        "availableDevices": [d["device"] for d in _device_inventory_body()["devices"] if d.get("available") and d.get("policyAllowed")],
+        "deviceInventorySchema": DEVICE_INVENTORY_SCHEMA,
+        "devicePlanSchema": DEVICE_PLAN_SCHEMA,
+        "deviceOrchestrationEnabled": True,
+        "deviceRequestModes": ["cpu", "auto", "accelerator", "cuda:N"],
+        "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -2279,10 +2445,12 @@ def health() -> dict[str, Any]:
         "modelPackageFormat": MODEL_PACKAGE_FORMAT,
         "modelPackageRuntimeContractSchema": MODEL_PACKAGE_RUNTIME_CONTRACT_SCHEMA,
         "modelPackageOperations": ["package-create", "package-verify", "package-inspect", "package-infer"],
+        "acceleratorDeviceOrchestrationEnabled": True,
+        "deviceOperations": ["device-inventory", "device-plan", "device-verify", "accelerator-smoke"],
         "modelPackageDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
         "modelPackageArbitraryCodeAllowed": False,
         "modelPackageSerializedPyTorchAllowed": False,
-        "acceleratorExecutionEnabled": False,
+        "acceleratorExecutionEnabled": bool(ACCELERATOR_ENABLED),
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
         "clientSuppliedRuntimeUrlsAllowed": False,
@@ -2328,6 +2496,8 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         if isinstance(candidate, dict) and isinstance(candidate.get("seed"), int):
             payload = dict(payload)
             payload["seed"] = candidate["seed"]
+    device_plan = _resolve_device_plan(payload)
+    device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
     if operation == "workspace.neural.tensor-summary":
         result = _tensor_summary(payload)
@@ -2397,8 +2567,18 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _model_package_verify(payload)
     elif operation == "workspace.neural.package-inspect":
         result = _model_package_inspect(payload)
-    else:
+    elif operation == "workspace.neural.package-infer":
         result = _model_package_infer(payload)
+    elif operation == "workspace.neural.device-inventory":
+        result = _device_inventory(payload)
+    elif operation == "workspace.neural.device-plan":
+        result = _device_plan(payload)
+    elif operation == "workspace.neural.device-verify":
+        result = _device_verify(payload)
+    else:
+        result = _accelerator_smoke(payload)
+    selected_device = _current_device_name()
+    _CURRENT_DEVICE.reset(device_token)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -2406,7 +2586,8 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "runtimeVersion": SERVICE_VERSION,
         "engine": ENGINE,
         "engineVersion": torch.__version__,
-        "device": DEVICE,
+        "device": selected_device,
+        "devicePlan": device_plan,
         "seed": seed,
         "operation": operation,
         "boundedOperationsOnly": True,
@@ -2456,6 +2637,6 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "inferenceTargetsAccepted": False,
         "maxInferenceRows": MAX_INFERENCE_ROWS,
         "maxPredictionOutputs": MAX_PREDICTION_OUTPUTS,
-        "acceleratorExecutionEnabled": False,
+        "acceleratorExecutionEnabled": bool(ACCELERATOR_ENABLED),
         "result": result,
     }

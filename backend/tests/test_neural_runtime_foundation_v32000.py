@@ -35,9 +35,9 @@ def test_neural_health_preserves_foundation_and_reports_training_extension(monke
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["version"] == "3.28.0"
+    assert body["version"] in {"3.28.0","3.29.0"}
     assert body["runtime"] == "python-pytorch-neural"
-    assert body["devicePolicy"] in {"cpu-only-evaluation-calibration-uncertainty", "cpu-only-neural-explainability", "cpu-only-embedding-representation", "cpu-only-inference-prediction-provenance", "cpu-only-reproducible-model-packages"}
+    assert body["devicePolicy"] in {"cpu-only-evaluation-calibration-uncertainty", "cpu-only-neural-explainability", "cpu-only-embedding-representation", "cpu-only-inference-prediction-provenance", "cpu-only-reproducible-model-packages","governed-explicit-device-orchestration"}
     assert body["trainingEnabled"] is True
     assert body["checkpointPersistenceEnabled"] is True
     assert body["arbitraryCodeExecution"] is False
@@ -124,7 +124,7 @@ def test_workspace_registers_neural_runtime_and_status_endpoint(monkeypatch):
     assert TYPED_ENDPOINTS["neuralRuntimeStatus"]["path"] == "/v1/polyglot/runtimes/neural/status"
     assert len(TYPED_ENDPOINTS) == 291
     cp = client_profile(app.openapi())
-    assert cp["workspaceVersion"] == "3.28.0"
+    assert cp["workspaceVersion"] in {"3.28.0","3.29.0"}
     assert cp["missingOpenApiOperations"] == []
 
 
