@@ -1,0 +1,53 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.25.0",
+  "release": "Neural Explainability Compute Runtime",
+  "baseline": "3.24.0",
+  "wordpressVersion": "3.25.0",
+  "backendVersion": "3.25.0",
+  "migration": null,
+  "databaseMigrationRequired": false,
+  "backendMutationRequired": true,
+  "neuralRuntime": {
+    "runtime": "python-pytorch-neural",
+    "operations": 23,
+    "trainingEnabled": true,
+    "checkpointPersistenceEnabled": true,
+    "resumeTrainingEnabled": true,
+    "evaluationCalibrationUncertaintyEnabled": true,
+    "explainabilityRuntimeEnabled": true,
+    "explainabilityOperations": [
+      "workspace.neural.explain-gradient",
+      "workspace.neural.explain-integrated-gradients",
+      "workspace.neural.explain-occlusion",
+      "workspace.neural.explain-global-sensitivity"
+    ],
+    "explainabilityMethods": [
+      "input-gradient",
+      "integrated-gradients",
+      "feature-occlusion",
+      "global-gradient-sensitivity"
+    ],
+    "explainabilityArtifactSchema": "sc-workspace-neural-explainability-artifact/1.0",
+    "checkpointModelBindingRequiredWhenCheckpointSupplied": true,
+    "dynamicHooksAllowed": false,
+    "arbitraryCodeAllowed": false,
+    "acceleratorExecutionEnabled": false,
+    "devicePolicy": "cpu-only-neural-explainability",
+    "runtimeUid": "65532:65532",
+    "runtimeIdentity": "scworkspace",
+    "maxExplainabilityRows": 128,
+    "maxExplainabilityFeatures": 256,
+    "maxIntegratedGradientSteps": 64
+  },
+  "workspaceArtifactLineage": {
+    "explainabilityMediaType": "application/vnd.sc.workspace.neural-explainability+json",
+    "separateExplainabilityArtifactStored": true,
+    "executionRunAnalysisOutputSupported": true,
+    "polyglotReceiptExplainabilityMetadata": true
+  },
+  "stablePackageAssetCoherencePreserved": true,
+  "browserLocalProjectsModified": false,
+  "rollbackBaseline": "3.24.0"
+}

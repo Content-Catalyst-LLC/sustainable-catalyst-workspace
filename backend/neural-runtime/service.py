@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.24.0"
+SERVICE_VERSION = "3.25.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -42,7 +42,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.24.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.25.0 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -64,6 +64,10 @@ OPERATIONS = {
     "workspace.neural.evaluate-multiclass",
     "workspace.neural.calibration-report",
     "workspace.neural.uncertainty-summary",
+    "workspace.neural.explain-gradient",
+    "workspace.neural.explain-integrated-gradients",
+    "workspace.neural.explain-occlusion",
+    "workspace.neural.explain-global-sensitivity",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -1139,6 +1143,13 @@ MAX_EVALUATION_ROWS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_EVALUATI
 MAX_CALIBRATION_BINS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_CALIBRATION_BINS", "20")), 50))
 DEFAULT_CALIBRATION_BINS = 10
 
+EXPLAINABILITY_ARTIFACT_SCHEMA = "sc-workspace-neural-explainability-artifact/1.0"
+MAX_EXPLAINABILITY_ROWS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_EXPLAINABILITY_ROWS", "128")), 1024))
+MAX_EXPLAINABILITY_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_EXPLAINABILITY_FEATURES", "256")), 4096))
+MAX_INTEGRATED_GRADIENT_STEPS = max(8, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_IG_STEPS", "64")), 256))
+DEFAULT_INTEGRATED_GRADIENT_STEPS = 32
+
+
 
 def _analysis_source(payload: dict[str, Any]) -> tuple[dict[str, Any], str, str | None]:
     spec = payload.get("modelSpec")
@@ -1374,6 +1385,199 @@ def _uncertainty_summary(payload: dict[str, Any]) -> dict[str, Any]:
             "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"evaluationDatasetFingerprint":dataset_fp}
 
 
+def _explain_forward(spec: dict[str, Any], summary: dict[str, Any], features: torch.Tensor) -> torch.Tensor:
+    """Differentiable raw model output for bounded explainability methods."""
+    if summary["modelType"] == "linear":
+        weights, bias, activation, _ = _linear_spec(spec, layer_name="modelSpec")
+        raw = F.linear(features, weights, bias)
+        if activation not in {"identity", "sigmoid", "softmax"}:
+            raw = _activation(raw, activation)
+        return raw
+    x = features
+    for index, layer in enumerate(spec["layers"]):
+        weights, bias, activation, _ = _linear_spec(layer, layer_name=f"modelSpec.layers[{index}]")
+        raw = F.linear(x, weights, bias)
+        x = raw if index == len(spec["layers"]) - 1 else _activation(raw, activation)
+    return x
+
+
+def _explainability_context(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], torch.Tensor, str, str | None, str, list[str]]:
+    summary, model_fp, checkpoint_fp = _analysis_source(payload)
+    features = _tensor(payload.get("features"), name="features", dtype_name="float32", ndim=2)
+    rows, width = int(features.shape[0]), int(features.shape[1])
+    if rows < 1 or rows > MAX_EXPLAINABILITY_ROWS:
+        raise HTTPException(status_code=413, detail="explainability row count is outside the bounded range")
+    if width != int(summary["inputFeatures"]):
+        raise HTTPException(status_code=400, detail="features width does not match model specification")
+    if width > MAX_EXPLAINABILITY_FEATURES:
+        raise HTTPException(status_code=413, detail="explainability feature count exceeds the bounded limit")
+    names = payload.get("featureNames")
+    if names is None:
+        names = [f"feature_{i}" for i in range(width)]
+    if not isinstance(names, list) or len(names) != width or any(not isinstance(x, str) or not x.strip() for x in names):
+        raise HTTPException(status_code=400, detail="featureNames must contain one non-empty string per input feature")
+    names = [x.strip()[:160] for x in names]
+    dataset_fp = _canonical_sha256({"features": payload.get("features"), "featureNames": names})
+    return payload.get("modelSpec"), summary, features, model_fp, checkpoint_fp, dataset_fp, names
+
+
+def _score_for_explanation(raw: torch.Tensor, task: str, target_index: int | None = None, fixed_targets: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor, str]:
+    if raw.ndim != 2:
+        raise HTTPException(status_code=400, detail="model output must be rank 2 for explainability")
+    rows, outputs = int(raw.shape[0]), int(raw.shape[1])
+    if task == "regression":
+        idx = 0 if target_index is None else int(target_index)
+        if idx < 0 or idx >= outputs:
+            raise HTTPException(status_code=400, detail="targetIndex is outside regression output range")
+        targets = torch.full((rows,), idx, dtype=torch.long)
+        return raw[:, idx], targets, "raw-output"
+    if task == "binary-classification":
+        if outputs != 1:
+            raise HTTPException(status_code=400, detail="binary explainability requires one model output")
+        targets = torch.ones(rows, dtype=torch.long)
+        return torch.sigmoid(raw[:, 0]), targets, "positive-class-probability"
+    if task == "multiclass-classification":
+        if outputs < 2:
+            raise HTTPException(status_code=400, detail="multiclass explainability requires at least two model outputs")
+        probs = torch.softmax(raw, dim=1)
+        if fixed_targets is not None:
+            targets = fixed_targets.to(dtype=torch.long)
+        elif target_index is None:
+            targets = torch.argmax(probs.detach(), dim=1)
+        else:
+            idx = int(target_index)
+            if idx < 0 or idx >= outputs:
+                raise HTTPException(status_code=400, detail="targetIndex is outside multiclass output range")
+            targets = torch.full((rows,), idx, dtype=torch.long)
+        score = probs.gather(1, targets.reshape(-1,1)).reshape(-1)
+        return score, targets, "selected-class-probability"
+    raise HTTPException(status_code=400, detail="explainability task is not registered")
+
+
+def _explain_task(payload: dict[str, Any]) -> str:
+    task = str(payload.get("task") or "").strip()
+    if task not in {"regression", "binary-classification", "multiclass-classification"}:
+        raise HTTPException(status_code=400, detail="task must be regression, binary-classification, or multiclass-classification")
+    return task
+
+
+def _target_index(payload: dict[str, Any]) -> int | None:
+    value = payload.get("targetIndex")
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise HTTPException(status_code=400, detail="targetIndex must be an integer")
+    return value
+
+
+def _baseline_tensor(payload: dict[str, Any], features: torch.Tensor) -> torch.Tensor:
+    baseline = payload.get("baseline")
+    if baseline is None:
+        return torch.zeros_like(features)
+    b = _tensor(baseline, name="baseline", dtype_name="float32")
+    if b.ndim == 1:
+        if int(b.shape[0]) != int(features.shape[1]):
+            raise HTTPException(status_code=400, detail="baseline vector width must match features")
+        return b.reshape(1,-1).repeat(int(features.shape[0]),1)
+    if b.ndim == 2 and list(b.shape) == list(features.shape):
+        return b
+    raise HTTPException(status_code=400, detail="baseline must be a feature vector or match the feature matrix")
+
+
+def _feature_summary(attributions: torch.Tensor, names: list[str]) -> list[dict[str, Any]]:
+    abs_attr = torch.abs(attributions)
+    mean_abs = torch.mean(abs_attr, dim=0)
+    signed = torch.mean(attributions, dim=0)
+    order = torch.argsort(mean_abs, descending=True).tolist()
+    return [{"featureIndex":int(i),"featureName":names[i],"meanAbsoluteAttribution":float(mean_abs[i].item()),"meanSignedAttribution":float(signed[i].item())} for i in order]
+
+
+def _explain_artifact(operation: str, method: str, task: str, summary: dict[str, Any], model_fp: str, checkpoint_fp: str | None, dataset_fp: str, names: list[str], target_mode: str, targets: torch.Tensor, parameters: dict[str, Any], attributions: torch.Tensor, extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    body = {
+        "task":task,"operation":operation,"method":method,"modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,
+        "explanationDatasetFingerprint":dataset_fp,"rows":int(attributions.shape[0]),"features":int(attributions.shape[1]),
+        "featureNames":names,"targetSelection":{"mode":target_mode,"selectedTargets":[int(x) for x in targets.tolist()]},
+        "parameters":parameters,"featureSummary":_feature_summary(attributions,names),
+        "attributions":[[float(v) for v in row] for row in attributions.tolist()],
+    }
+    if extra: body.update(extra)
+    return _artifact(EXPLAINABILITY_ARTIFACT_SCHEMA,"neural-explainability",body)
+
+
+def _explain_gradient(payload: dict[str, Any]) -> dict[str, Any]:
+    spec, summary, features, model_fp, checkpoint_fp, dataset_fp, names = _explainability_context(payload)
+    task = _explain_task(payload); target_index = _target_index(payload)
+    x = features.detach().clone().requires_grad_(True)
+    raw = _explain_forward(spec, summary, x)
+    score, targets, target_mode = _score_for_explanation(raw, task, target_index)
+    grad = torch.autograd.grad(score.sum(), x, create_graph=False, retain_graph=False)[0].detach()
+    artifact = _explain_artifact("workspace.neural.explain-gradient","input-gradient",task,summary,model_fp,checkpoint_fp,dataset_fp,names,target_mode,targets,{"absoluteSummary":True},grad)
+    return {"kind":"neural-explainability-result","task":task,"method":"input-gradient","attributions":artifact["attributions"],"featureSummary":artifact["featureSummary"],"explainabilityArtifact":artifact,"modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"explanationDatasetFingerprint":dataset_fp}
+
+
+def _explain_integrated_gradients(payload: dict[str, Any]) -> dict[str, Any]:
+    spec, summary, features, model_fp, checkpoint_fp, dataset_fp, names = _explainability_context(payload)
+    task = _explain_task(payload); target_index = _target_index(payload)
+    steps = payload.get("steps", DEFAULT_INTEGRATED_GRADIENT_STEPS)
+    if isinstance(steps,bool) or not isinstance(steps,int) or steps < 8 or steps > MAX_INTEGRATED_GRADIENT_STEPS:
+        raise HTTPException(status_code=400, detail="steps is outside the bounded integrated-gradients range")
+    baseline = _baseline_tensor(payload, features)
+    with torch.no_grad():
+        raw0 = _explain_forward(spec, summary, features)
+        score0, fixed_targets, target_mode = _score_for_explanation(raw0, task, target_index)
+        base_raw = _explain_forward(spec, summary, baseline)
+        base_score, _, _ = _score_for_explanation(base_raw, task, target_index, fixed_targets=fixed_targets)
+    total_grad = torch.zeros_like(features)
+    for step in range(1, steps + 1):
+        alpha = float(step) / float(steps)
+        x = (baseline + alpha * (features - baseline)).detach().requires_grad_(True)
+        raw = _explain_forward(spec, summary, x)
+        score, _, _ = _score_for_explanation(raw, task, target_index, fixed_targets=fixed_targets)
+        total_grad += torch.autograd.grad(score.sum(), x, create_graph=False, retain_graph=False)[0].detach()
+    attr = (features - baseline) * (total_grad / float(steps))
+    completeness = score0 - base_score - torch.sum(attr, dim=1)
+    artifact = _explain_artifact("workspace.neural.explain-integrated-gradients","integrated-gradients",task,summary,model_fp,checkpoint_fp,dataset_fp,names,target_mode,fixed_targets,{"steps":steps,"baseline":"user-supplied" if payload.get("baseline") is not None else "zeros"},attr,{"completenessDelta":[float(v) for v in completeness.tolist()],"meanAbsoluteCompletenessDelta":float(torch.mean(torch.abs(completeness)).item())})
+    return {"kind":"neural-explainability-result","task":task,"method":"integrated-gradients","attributions":artifact["attributions"],"featureSummary":artifact["featureSummary"],"completenessDelta":artifact["completenessDelta"],"explainabilityArtifact":artifact,"modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"explanationDatasetFingerprint":dataset_fp}
+
+
+def _explain_occlusion(payload: dict[str, Any]) -> dict[str, Any]:
+    spec, summary, features, model_fp, checkpoint_fp, dataset_fp, names = _explainability_context(payload)
+    task = _explain_task(payload); target_index = _target_index(payload)
+    baseline = _baseline_tensor(payload, features)
+    with torch.no_grad():
+        raw = _explain_forward(spec, summary, features)
+        score, fixed_targets, target_mode = _score_for_explanation(raw, task, target_index)
+        attr = torch.zeros_like(features)
+        for col in range(int(features.shape[1])):
+            occluded = features.clone(); occluded[:,col] = baseline[:,col]
+            occ_raw = _explain_forward(spec, summary, occluded)
+            occ_score, _, _ = _score_for_explanation(occ_raw, task, target_index, fixed_targets=fixed_targets)
+            attr[:,col] = score - occ_score
+    artifact = _explain_artifact("workspace.neural.explain-occlusion","feature-occlusion",task,summary,model_fp,checkpoint_fp,dataset_fp,names,target_mode,fixed_targets,{"baseline":"user-supplied" if payload.get("baseline") is not None else "zeros"},attr)
+    return {"kind":"neural-explainability-result","task":task,"method":"feature-occlusion","attributions":artifact["attributions"],"featureSummary":artifact["featureSummary"],"explainabilityArtifact":artifact,"modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"explanationDatasetFingerprint":dataset_fp}
+
+
+def _explain_global_sensitivity(payload: dict[str, Any]) -> dict[str, Any]:
+    spec, summary, features, model_fp, checkpoint_fp, dataset_fp, names = _explainability_context(payload)
+    task = _explain_task(payload); target_index = _target_index(payload)
+    x = features.detach().clone().requires_grad_(True)
+    raw = _explain_forward(spec, summary, x)
+    score, targets, target_mode = _score_for_explanation(raw, task, target_index)
+    grad = torch.autograd.grad(score.sum(), x, create_graph=False, retain_graph=False)[0].detach()
+    abs_grad = torch.abs(grad); mean_abs = torch.mean(abs_grad,dim=0); rms = torch.sqrt(torch.mean(grad*grad,dim=0)); max_abs=torch.max(abs_grad,dim=0).values
+    order=torch.argsort(mean_abs,descending=True).tolist()
+    sensitivity=[{"featureIndex":int(i),"featureName":names[i],"meanAbsoluteGradient":float(mean_abs[i].item()),"rmsGradient":float(rms[i].item()),"maxAbsoluteGradient":float(max_abs[i].item())} for i in order]
+    artifact = _artifact(EXPLAINABILITY_ARTIFACT_SCHEMA,"neural-explainability",{
+        "task":task,"operation":"workspace.neural.explain-global-sensitivity","method":"global-gradient-sensitivity","modelType":summary["modelType"],
+        "modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"explanationDatasetFingerprint":dataset_fp,
+        "rows":int(features.shape[0]),"features":int(features.shape[1]),"featureNames":names,
+        "targetSelection":{"mode":target_mode,"selectedTargets":[int(x) for x in targets.tolist()]},
+        "parameters":{"aggregation":"mean-absolute/rms/max-absolute-gradient"},"sensitivity":sensitivity,
+    })
+    return {"kind":"neural-explainability-result","task":task,"method":"global-gradient-sensitivity","sensitivity":sensitivity,"explainabilityArtifact":artifact,"modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp,"explanationDatasetFingerprint":dataset_fp}
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -1391,7 +1595,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-evaluation-calibration-uncertainty",
+        "devicePolicy": "cpu-only-neural-explainability",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -1424,6 +1628,12 @@ def health() -> dict[str, Any]:
         "uncertaintyArtifactSchema": UNCERTAINTY_ARTIFACT_SCHEMA,
         "maxEvaluationRows": MAX_EVALUATION_ROWS,
         "maxCalibrationBins": MAX_CALIBRATION_BINS,
+        "explainabilityRuntimeEnabled": True,
+        "explainabilityArtifactSchema": EXPLAINABILITY_ARTIFACT_SCHEMA,
+        "explainabilityMethods": ["input-gradient", "integrated-gradients", "feature-occlusion", "global-gradient-sensitivity"],
+        "maxExplainabilityRows": MAX_EXPLAINABILITY_ROWS,
+        "maxExplainabilityFeatures": MAX_EXPLAINABILITY_FEATURES,
+        "maxIntegratedGradientSteps": MAX_INTEGRATED_GRADIENT_STEPS,
         "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
@@ -1507,8 +1717,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _evaluate_multiclass(payload)
     elif operation == "workspace.neural.calibration-report":
         result = _calibration_report(payload)
-    else:
+    elif operation == "workspace.neural.uncertainty-summary":
         result = _uncertainty_summary(payload)
+    elif operation == "workspace.neural.explain-gradient":
+        result = _explain_gradient(payload)
+    elif operation == "workspace.neural.explain-integrated-gradients":
+        result = _explain_integrated_gradients(payload)
+    elif operation == "workspace.neural.explain-occlusion":
+        result = _explain_occlusion(payload)
+    else:
+        result = _explain_global_sensitivity(payload)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
@@ -1543,6 +1761,12 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "uncertaintyArtifactSchema": UNCERTAINTY_ARTIFACT_SCHEMA,
         "maxEvaluationRows": MAX_EVALUATION_ROWS,
         "maxCalibrationBins": MAX_CALIBRATION_BINS,
+        "explainabilityRuntimeEnabled": True,
+        "explainabilityArtifactSchema": EXPLAINABILITY_ARTIFACT_SCHEMA,
+        "explainabilityMethods": ["input-gradient", "integrated-gradients", "feature-occlusion", "global-gradient-sensitivity"],
+        "maxExplainabilityRows": MAX_EXPLAINABILITY_ROWS,
+        "maxExplainabilityFeatures": MAX_EXPLAINABILITY_FEATURES,
+        "maxIntegratedGradientSteps": MAX_INTEGRATED_GRADIENT_STEPS,
         "acceleratorExecutionEnabled": False,
         "result": result,
     }

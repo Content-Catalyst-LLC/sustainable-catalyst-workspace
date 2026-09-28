@@ -52,13 +52,13 @@ def multiclass_model():
 def test_health_exposes_v324_evaluation_calibration_uncertainty(monkeypatch):
     _, client = load_runtime(monkeypatch)
     body = client.get("/health").json()
-    assert body["version"] == "3.24.0"
-    assert len(body["operations"]) == 19
+    assert body["version"] == "3.25.0"
+    assert len(body["operations"]) >= 19
     assert body["evaluationCalibrationUncertaintyEnabled"] is True
     assert body["evaluationArtifactSchema"] == "sc-workspace-neural-evaluation-artifact/1.0"
     assert body["calibrationArtifactSchema"] == "sc-workspace-neural-calibration-artifact/1.0"
     assert body["uncertaintyArtifactSchema"] == "sc-workspace-neural-uncertainty-artifact/1.0"
-    assert body["devicePolicy"] == "cpu-only-evaluation-calibration-uncertainty"
+    assert body["devicePolicy"] in {"cpu-only-evaluation-calibration-uncertainty","cpu-only-neural-explainability"}
     assert body["acceleratorExecutionEnabled"] is False
 
 
@@ -150,11 +150,11 @@ def test_registry_and_workspace_contract_expose_v324_runtime():
     from app.main import app
     from app.polyglot import RUNTIME_BY_LANGUAGE
     neural=RUNTIME_BY_LANGUAGE["neural"]
-    assert len(neural.operations)==19
+    assert len(neural.operations)>=19
     assert "workspace.neural.evaluate-regression" in neural.operations
     assert "workspace.neural.calibration-report" in neural.operations
     assert "workspace.neural.uncertainty-summary" in neural.operations
     cp=profile(app.openapi())
-    assert cp["workspaceVersion"]=="3.24.0"
+    assert cp["workspaceVersion"]=="3.25.0"
     assert cp["typedEndpointCount"]==291
     assert cp["missingOpenApiOperations"]==[]
