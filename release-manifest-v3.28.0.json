@@ -1,0 +1,42 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.28.0",
+  "title": "Reproducible Neural Model Packages",
+  "baseline": "3.27.0",
+  "databaseMigration": false,
+  "neuralRuntime": {
+    "runtime": "python-pytorch-neural",
+    "operationCount": 35,
+    "newOperations": [
+      "workspace.neural.package-create",
+      "workspace.neural.package-verify",
+      "workspace.neural.package-inspect",
+      "workspace.neural.package-infer"
+    ],
+    "modelPackageSchema": "sc-workspace-neural-model-package/1.0",
+    "modelPackageManifestSchema": "sc-workspace-neural-model-package-manifest/1.0",
+    "modelPackageFormat": "sc-workspace-neural-reproducible-model-package/1.0",
+    "dependencyPins": {
+      "torch": "2.10.0",
+      "numpy": "2.2.6"
+    }
+  },
+  "validation": {
+    "focusedNeuralPassed": 73,
+    "focusedNeuralFailed": 0,
+    "fullBackendPassed": 287,
+    "historicalBackendFailed": 46,
+    "typedEndpoints": 291
+  },
+  "security": {
+    "cpuOnly": true,
+    "uidGid": "65532:65532",
+    "readOnlyRootFilesystem": true,
+    "capDropAll": true,
+    "noNewPrivileges": true,
+    "arbitraryCode": false,
+    "serializedPyTorchModels": false
+  },
+  "releasePayloadFiles": 38
+}

@@ -32,7 +32,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.27.0"
+SERVICE_VERSION = "3.28.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -42,7 +42,7 @@ MAX_BATCH = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH", "4096")), 
 MAX_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_FEATURES", "4096")), 16384))
 MAX_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_LAYERS", "16")), 64))
 MAX_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PARAMETERS", "5000000")), 20_000_000))
-DEVICE = "cpu"  # v3.27.0 remains CPU-only; accelerator orchestration is a later milestone.
+DEVICE = "cpu"  # v3.28.0 remains CPU-only; accelerator orchestration is a later milestone.
 
 OPERATIONS = {
     "workspace.neural.tensor-summary",
@@ -76,6 +76,10 @@ OPERATIONS = {
     "workspace.neural.infer-binary",
     "workspace.neural.infer-multiclass",
     "workspace.neural.prediction-inspect",
+    "workspace.neural.package-create",
+    "workspace.neural.package-verify",
+    "workspace.neural.package-inspect",
+    "workspace.neural.package-infer",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -1967,6 +1971,235 @@ def _prediction_inspect(payload: dict[str, Any]) -> dict[str, Any]:
     }
     return {"kind":"neural-prediction-inspection","summary":summary,"predictionArtifactFingerprint":art.get("artifactFingerprint")}
 
+
+MODEL_PACKAGE_SCHEMA = "sc-workspace-neural-model-package/1.0"
+MODEL_PACKAGE_MANIFEST_SCHEMA = "sc-workspace-neural-model-package-manifest/1.0"
+MODEL_PACKAGE_FORMAT = "sc-workspace-neural-reproducible-model-package/1.0"
+MODEL_PACKAGE_RUNTIME_CONTRACT_SCHEMA = "sc-workspace-neural-runtime-contract/1.0"
+MODEL_PACKAGE_DEPENDENCY_PINS = {"torch": "2.10.0", "numpy": "2.2.6"}
+MAX_MODEL_PACKAGE_FEATURE_NAMES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_PACKAGE_FEATURE_NAMES", "4096")), 16384))
+ALLOWED_MODEL_PACKAGE_TASKS = {"regression", "binary-classification", "multiclass-classification"}
+
+
+def _package_feature_names(payload: dict[str, Any], expected: int) -> list[str]:
+    raw = payload.get("featureNames")
+    if raw is None:
+        return [f"feature_{i}" for i in range(expected)]
+    if not isinstance(raw, list) or len(raw) != expected or len(raw) > MAX_MODEL_PACKAGE_FEATURE_NAMES:
+        raise HTTPException(status_code=400, detail="featureNames must match the model input width and remain bounded")
+    out=[]
+    for value in raw:
+        if not isinstance(value,str):
+            raise HTTPException(status_code=400, detail="featureNames must contain strings")
+        value=value.strip()
+        if not value or len(value)>160:
+            raise HTTPException(status_code=400, detail="featureNames values must be non-empty and bounded")
+        out.append(value)
+    if len(set(out)) != len(out):
+        raise HTTPException(status_code=400, detail="featureNames must be unique")
+    return out
+
+
+def _package_runtime_contract() -> dict[str, Any]:
+    return {
+        "schema": MODEL_PACKAGE_RUNTIME_CONTRACT_SCHEMA,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "engine": ENGINE,
+        "engineVersion": torch.__version__,
+        "numpyVersion": np.__version__,
+        "requiredDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
+        "devicePolicy": "cpu-only-reproducible-model-packages",
+        "acceleratorRequired": False,
+        "arbitraryCodeRequired": False,
+        "serializedModelRequired": False,
+        "declarativeModelSpecRequired": True,
+    }
+
+
+def _model_package_body_for_fingerprint(package: dict[str, Any]) -> dict[str, Any]:
+    return {k:v for k,v in package.items() if k not in {"artifactFingerprint","packageId"}}
+
+
+def _validate_model_package(value: Any) -> dict[str, Any]:
+    if not isinstance(value,dict) or value.get("schema") != MODEL_PACKAGE_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"modelPackage must use {MODEL_PACKAGE_SCHEMA}")
+    pkg=dict(value)
+    if pkg.get("format") != MODEL_PACKAGE_FORMAT or pkg.get("kind") != "neural-model-package":
+        raise HTTPException(status_code=400, detail="model package format is unsupported")
+    supplied=str(pkg.get("artifactFingerprint") or "")
+    expected=_canonical_sha256(_model_package_body_for_fingerprint(pkg))
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=400, detail="model package fingerprint verification failed")
+    if pkg.get("packageId") != "nmp_"+expected[:24]:
+        raise HTTPException(status_code=400, detail="model package id does not match its fingerprint")
+    spec=pkg.get("modelSpec")
+    summary=_validate_model_spec(spec)
+    model_fp=_canonical_sha256(spec)
+    if pkg.get("modelSpecFingerprint") != model_fp:
+        raise HTTPException(status_code=400, detail="model package model fingerprint mismatch")
+    contract=pkg.get("runtimeContract")
+    if not isinstance(contract,dict) or contract.get("schema") != MODEL_PACKAGE_RUNTIME_CONTRACT_SCHEMA:
+        raise HTTPException(status_code=400, detail="model package runtime contract is missing")
+    if contract.get("runtime") != RUNTIME or contract.get("requiredDependencyPins") != MODEL_PACKAGE_DEPENDENCY_PINS:
+        raise HTTPException(status_code=400, detail="model package runtime/dependency contract is incompatible")
+    if contract.get("arbitraryCodeRequired") is not False or contract.get("serializedModelRequired") is not False:
+        raise HTTPException(status_code=400, detail="model package requests an unsafe execution contract")
+    manifest=pkg.get("manifest")
+    if not isinstance(manifest,dict) or manifest.get("schema") != MODEL_PACKAGE_MANIFEST_SCHEMA:
+        raise HTTPException(status_code=400, detail="model package manifest is missing")
+    inf=pkg.get("inferenceContract")
+    if not isinstance(inf,dict) or inf.get("task") not in ALLOWED_MODEL_PACKAGE_TASKS:
+        raise HTTPException(status_code=400, detail="model package inference contract is invalid")
+    if int(inf.get("inputFeatures") or -1) != int(summary["inputFeatures"]) or int(inf.get("outputFeatures") or -1) != int(summary["outputFeatures"]):
+        raise HTTPException(status_code=400, detail="model package inference shape contract is invalid")
+    names=inf.get("featureNames")
+    if not isinstance(names,list) or len(names) != int(summary["inputFeatures"]) or len(set(names)) != len(names):
+        raise HTTPException(status_code=400, detail="model package feature contract is invalid")
+    checkpoint=pkg.get("checkpointArtifact")
+    if checkpoint is not None:
+        checkpoint,_=_validate_checkpoint_artifact(checkpoint,decode_state=False)
+        if checkpoint.get("trainedModelSpecFingerprint") != model_fp or pkg.get("checkpointFingerprint") != checkpoint.get("artifactFingerprint"):
+            raise HTTPException(status_code=400, detail="model package checkpoint lineage does not match model")
+    elif pkg.get("checkpointFingerprint") is not None:
+        raise HTTPException(status_code=400, detail="model package checkpoint fingerprint is orphaned")
+    task=inf["task"]
+    outputs=int(summary["outputFeatures"])
+    if task=="binary-classification" and outputs!=1:
+        raise HTTPException(status_code=400, detail="binary package requires one model output")
+    if task=="multiclass-classification" and outputs<2:
+        raise HTTPException(status_code=400, detail="multiclass package requires at least two model outputs")
+    return pkg
+
+
+def _model_package_create(payload: dict[str, Any]) -> dict[str, Any]:
+    spec=payload.get("modelSpec")
+    summary=_validate_model_spec(spec)
+    model_fp=_canonical_sha256(spec)
+    task=str(payload.get("task") or "").strip()
+    if task not in ALLOWED_MODEL_PACKAGE_TASKS:
+        raise HTTPException(status_code=400, detail="task is not supported for reproducible model packages")
+    outputs=int(summary["outputFeatures"])
+    if task=="binary-classification" and outputs!=1:
+        raise HTTPException(status_code=400, detail="binary package requires one model output")
+    if task=="multiclass-classification" and outputs<2:
+        raise HTTPException(status_code=400, detail="multiclass package requires at least two model outputs")
+    names=_package_feature_names(payload,int(summary["inputFeatures"]))
+    threshold=None
+    if task=="binary-classification":
+        threshold=float(payload.get("threshold",DEFAULT_BINARY_THRESHOLD))
+        if not (0.0 < threshold < 1.0):
+            raise HTTPException(status_code=400, detail="binary threshold must be between 0 and 1")
+    checkpoint=payload.get("checkpointArtifact")
+    checkpoint_fp=None
+    provenance={"trainingSpecFingerprint":None,"trainingDatasetFingerprint":None,"checkpointLineageDepth":None}
+    if checkpoint is not None:
+        checkpoint,_=_validate_checkpoint_artifact(checkpoint,decode_state=False)
+        if checkpoint.get("trainedModelSpecFingerprint") != model_fp:
+            raise HTTPException(status_code=400, detail="checkpoint trained model does not match package modelSpec")
+        checkpoint_fp=checkpoint.get("artifactFingerprint")
+        provenance={
+            "trainingSpecFingerprint":checkpoint.get("trainingSpecFingerprint"),
+            "trainingDatasetFingerprint":checkpoint.get("trainingDatasetFingerprint"),
+            "checkpointLineageDepth":checkpoint.get("lineageDepth"),
+        }
+    inference_contract={
+        "task":task,
+        "inputFeatures":int(summary["inputFeatures"]),
+        "outputFeatures":outputs,
+        "featureNames":names,
+        "rowIdPolicy":"caller-supplied-or-stable-zero-based",
+        "targetsAccepted":False,
+        "decisionRule":"threshold" if task=="binary-classification" else ("argmax" if task=="multiclass-classification" else None),
+        "threshold":threshold,
+        "calibrationStatus":"not-assessed" if task!="regression" else "not-applicable",
+    }
+    runtime_contract=_package_runtime_contract()
+    manifest={
+        "schema":MODEL_PACKAGE_MANIFEST_SCHEMA,
+        "packageFormat":MODEL_PACKAGE_FORMAT,
+        "portable":True,
+        "selfContainedInference":True,
+        "containsDeclarativeModelSpec":True,
+        "containsCheckpoint":checkpoint is not None,
+        "containsArbitraryCode":False,
+        "containsSerializedPyTorchModel":False,
+        "requiredFiles":[],
+        "runtimeContractFingerprint":_canonical_sha256(runtime_contract),
+        "inferenceContractFingerprint":_canonical_sha256(inference_contract),
+    }
+    pkg={
+        "schema":MODEL_PACKAGE_SCHEMA,"kind":"neural-model-package","format":MODEL_PACKAGE_FORMAT,
+        "portable":True,"selfContainedInference":True,
+        "modelType":summary["modelType"],"task":task,"modelSpec":spec,"modelSpecFingerprint":model_fp,
+        "checkpointArtifact":checkpoint,"checkpointFingerprint":checkpoint_fp,
+        "runtimeContract":runtime_contract,"inferenceContract":inference_contract,"manifest":manifest,
+        "provenance":provenance,
+        "evidenceBoundary":{"isObservedEvidence":False,"isPrediction":False,"isEvaluation":False,"packageDefinesExecutableModel":True},
+    }
+    fp=_canonical_sha256(pkg); pkg["artifactFingerprint"]=fp; pkg["packageId"]="nmp_"+fp[:24]
+    return {"kind":"neural-model-package-result","modelPackage":pkg,"modelPackageFingerprint":fp,"packageId":pkg["packageId"],"modelSpecFingerprint":model_fp,"checkpointFingerprint":checkpoint_fp}
+
+
+def _model_package_verify(payload: dict[str, Any]) -> dict[str, Any]:
+    pkg=_validate_model_package(payload.get("modelPackage"))
+    contract=pkg["runtimeContract"]
+    compatible=contract.get("runtime")==RUNTIME and contract.get("requiredDependencyPins")==MODEL_PACKAGE_DEPENDENCY_PINS
+    return {
+        "kind":"neural-model-package-verification","valid":True,"compatible":compatible,
+        "packageId":pkg["packageId"],"modelPackageFingerprint":pkg["artifactFingerprint"],
+        "modelSpecFingerprint":pkg["modelSpecFingerprint"],"checkpointFingerprint":pkg.get("checkpointFingerprint"),
+        "runtimeContractFingerprint":pkg["manifest"]["runtimeContractFingerprint"],
+        "inferenceContractFingerprint":pkg["manifest"]["inferenceContractFingerprint"],
+        "requiredDependencyPins":dict(MODEL_PACKAGE_DEPENDENCY_PINS),
+    }
+
+
+def _model_package_inspect(payload: dict[str, Any]) -> dict[str, Any]:
+    pkg=_validate_model_package(payload.get("modelPackage"))
+    inf=pkg["inferenceContract"]
+    return {
+        "kind":"neural-model-package-inspection","packageId":pkg["packageId"],
+        "modelPackageFingerprint":pkg["artifactFingerprint"],"modelType":pkg["modelType"],"task":pkg["task"],
+        "modelSpecFingerprint":pkg["modelSpecFingerprint"],"checkpointFingerprint":pkg.get("checkpointFingerprint"),
+        "inputFeatures":inf["inputFeatures"],"outputFeatures":inf["outputFeatures"],"featureNames":inf["featureNames"],
+        "portable":pkg["portable"],"selfContainedInference":pkg["selfContainedInference"],
+        "runtimeContract":pkg["runtimeContract"],"manifest":pkg["manifest"],"provenance":pkg["provenance"],
+    }
+
+
+def _model_package_infer(payload: dict[str, Any]) -> dict[str, Any]:
+    if "targets" in payload:
+        raise HTTPException(status_code=400, detail="packaged inference does not accept targets; use evaluation operations for observed outcomes")
+    pkg=_validate_model_package(payload.get("modelPackage"))
+    inf=pkg["inferenceContract"]
+    req={"modelSpec":pkg["modelSpec"],"features":payload.get("features")}
+    if pkg.get("checkpointArtifact") is not None:
+        req["checkpointArtifact"]=pkg["checkpointArtifact"]
+    if "rowIds" in payload:
+        req["rowIds"]=payload.get("rowIds")
+    if inf["task"]=="binary-classification":
+        req["threshold"]=inf.get("threshold",DEFAULT_BINARY_THRESHOLD)
+        result=_infer_binary(req)
+    elif inf["task"]=="multiclass-classification":
+        result=_infer_multiclass(req)
+    else:
+        result=_infer_regression(req)
+    art=result.get("predictionArtifact")
+    if not isinstance(art,dict):
+        raise HTTPException(status_code=500,detail="packaged inference did not produce a prediction artifact")
+    art={k:v for k,v in art.items() if k not in {"artifactFingerprint","artifactId"}}
+    art["sourceModelPackageFingerprint"]=pkg["artifactFingerprint"]
+    art["sourceModelPackageId"]=pkg["packageId"]
+    art["sourceRuntimeContractFingerprint"]=pkg["manifest"]["runtimeContractFingerprint"]
+    fp=_canonical_sha256(art); art["artifactFingerprint"]=fp; art["artifactId"]="nea_"+fp[:24]
+    result["predictionArtifact"]=art
+    result["sourceModelPackageFingerprint"]=pkg["artifactFingerprint"]
+    result["sourceModelPackageId"]=pkg["packageId"]
+    result["packageVerified"]=True
+    result["kind"]="neural-packaged-inference-result"
+    return result
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -1984,7 +2217,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "cpu-only-inference-prediction-provenance",
+        "devicePolicy": "cpu-only-reproducible-model-packages",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -2040,6 +2273,15 @@ def health() -> dict[str, Any]:
         "inferenceTargetsAccepted": False,
         "maxInferenceRows": MAX_INFERENCE_ROWS,
         "maxPredictionOutputs": MAX_PREDICTION_OUTPUTS,
+        "reproducibleModelPackagesEnabled": True,
+        "modelPackageSchema": MODEL_PACKAGE_SCHEMA,
+        "modelPackageManifestSchema": MODEL_PACKAGE_MANIFEST_SCHEMA,
+        "modelPackageFormat": MODEL_PACKAGE_FORMAT,
+        "modelPackageRuntimeContractSchema": MODEL_PACKAGE_RUNTIME_CONTRACT_SCHEMA,
+        "modelPackageOperations": ["package-create", "package-verify", "package-inspect", "package-infer"],
+        "modelPackageDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
+        "modelPackageArbitraryCodeAllowed": False,
+        "modelPackageSerializedPyTorchAllowed": False,
         "acceleratorExecutionEnabled": False,
         "clientSuppliedCodeAllowed": False,
         "clientSuppliedPackagesAllowed": False,
@@ -2147,8 +2389,16 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _infer_binary(payload)
     elif operation == "workspace.neural.infer-multiclass":
         result = _infer_multiclass(payload)
-    else:
+    elif operation == "workspace.neural.prediction-inspect":
         result = _prediction_inspect(payload)
+    elif operation == "workspace.neural.package-create":
+        result = _model_package_create(payload)
+    elif operation == "workspace.neural.package-verify":
+        result = _model_package_verify(payload)
+    elif operation == "workspace.neural.package-inspect":
+        result = _model_package_inspect(payload)
+    else:
+        result = _model_package_infer(payload)
     return {
         "ok": True,
         "schema": "sc-workspace-neural-runtime-result/1.0",
