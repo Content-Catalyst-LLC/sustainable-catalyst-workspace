@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.38.0"
+SERVICE_VERSION = "3.39.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -148,6 +148,14 @@ OPERATIONS = {
     "workspace.neural.multimodal-forward",
     "workspace.neural.multimodal-infer",
     "workspace.neural.multimodal-similarity",
+    "workspace.neural.neural-symbolic-symbol-contract",
+    "workspace.neural.neural-symbolic-context-project",
+    "workspace.neural.neural-symbolic-bind",
+    "workspace.neural.neural-symbolic-rule-contract",
+    "workspace.neural.neural-symbolic-constraint-evaluate",
+    "workspace.neural.neural-symbolic-relation-score",
+    "workspace.neural.neural-symbolic-infer",
+    "workspace.neural.neural-symbolic-explain",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -156,6 +164,7 @@ BLOCKED_PAYLOAD_KEYS = {
     "modulePath", "classPath", "importPath", "checkpointPath", "weightsPath",
     "sequenceUrl", "sequencePath", "dataUrl", "dataPath", "filePath",
     "imageUrl", "imagePath", "modalityUrl", "modalityPath", "encoderUrl", "encoderPath",
+    "symbolResolverUrl", "ruleEngineUrl", "ontologyUrl", "knowledgeBaseUrl", "externalSymbolPath",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -4106,6 +4115,193 @@ def _multimodal_similarity(payload: dict[str, Any]) -> dict[str, Any]:
     artifact["artifactFingerprint"]=_canonical_sha256(artifact)
     return {"kind":"multimodal-similarity","metric":metric,"value":value,"multimodalSimilarityArtifact":artifact}
 
+
+
+# v3.39 Neural-Symbolic Research Intelligence Runtime
+NEURAL_SYMBOLIC_SYMBOL_CONTRACT_SCHEMA = "sc-workspace-neural-symbolic-symbol-contract/1.0"
+NEURAL_SYMBOLIC_CONTEXT_SCHEMA = "sc-workspace-neural-symbolic-context-projection/1.0"
+NEURAL_SYMBOLIC_BINDING_SCHEMA = "sc-workspace-neural-symbolic-binding-artifact/1.0"
+NEURAL_SYMBOLIC_RULESET_SCHEMA = "sc-workspace-neural-symbolic-rule-set/1.0"
+NEURAL_SYMBOLIC_CONSTRAINT_SCHEMA = "sc-workspace-neural-symbolic-constraint-evaluation/1.0"
+NEURAL_SYMBOLIC_RELATION_SCHEMA = "sc-workspace-neural-symbolic-relation-score/1.0"
+NEURAL_SYMBOLIC_INFERENCE_SCHEMA = "sc-workspace-neural-symbolic-inference-artifact/1.0"
+NEURAL_SYMBOLIC_EXPLANATION_SCHEMA = "sc-workspace-neural-symbolic-explanation-artifact/1.0"
+NEURAL_SYMBOLIC_SYMBOL_TYPES = {"concept","claim-ref","evidence-ref","finding-ref","hypothesis-ref","entity-ref","observation-ref","custom"}
+NEURAL_SYMBOLIC_RULE_OPERATORS = {"implies","requires","excludes","at-least-one","all-or-none"}
+NEURAL_SYMBOLIC_RELATION_METRICS = {"cosine","euclidean","dot"}
+MAX_NEURAL_SYMBOLIC_SYMBOLS = max(1,min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SYMBOLS","512")),4096))
+MAX_NEURAL_SYMBOLIC_RULES = max(1,min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SYMBOLIC_RULES","512")),4096))
+MAX_NEURAL_SYMBOLIC_INFERENCE_STEPS = max(1,min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SYMBOLIC_INFERENCE_STEPS","32")),128))
+MAX_NEURAL_SYMBOLIC_EMBEDDING_DIMENSIONS = max(1,min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SYMBOLIC_EMBEDDING_DIMENSIONS","2048")),MAX_FEATURES))
+
+
+def _ns_clean_id(value: Any, field: str="symbolId") -> str:
+    if not isinstance(value,str) or not value.strip() or len(value.strip())>256:
+        raise HTTPException(status_code=400,detail=f"{field} must be a bounded non-empty string")
+    return value.strip()
+
+
+def _ns_symbol_contract(payload: dict[str,Any]) -> dict[str,Any]:
+    raw=payload.get("symbol") if isinstance(payload.get("symbol"),dict) else payload
+    sid=_ns_clean_id(raw.get("symbolId"))
+    st=str(raw.get("symbolType") or "custom").strip().lower()
+    if st not in NEURAL_SYMBOLIC_SYMBOL_TYPES:
+        raise HTTPException(status_code=400,detail="unsupported neural-symbolic symbolType")
+    label=raw.get("label")
+    if label is not None and (not isinstance(label,str) or len(label)>512):
+        raise HTTPException(status_code=400,detail="symbol label must be a bounded string when supplied")
+    source_ref=raw.get("sourceRef")
+    if source_ref is not None and (not isinstance(source_ref,str) or len(source_ref)>512):
+        raise HTTPException(status_code=400,detail="sourceRef must be a bounded string when supplied")
+    attrs=raw.get("attributes") or {}
+    if not isinstance(attrs,dict) or len(attrs)>64:
+        raise HTTPException(status_code=400,detail="symbol attributes must be a bounded object")
+    body={"schema":NEURAL_SYMBOLIC_SYMBOL_CONTRACT_SCHEMA,"kind":"neural-symbolic-symbol-contract","symbolId":sid,"symbolType":st,"label":label,"sourceRef":source_ref,"attributes":attrs,"semanticAuthority":"external-governed-research-object-reference","truthValueAssigned":False,"isObservedEvidence":False}
+    body["symbolFingerprint"]=_canonical_sha256({k:v for k,v in body.items() if k!="schema"})
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-symbol-contract","neuralSymbolicSymbolArtifact":body}
+
+
+def _ns_context_project(payload: dict[str,Any]) -> dict[str,Any]:
+    symbols=payload.get("symbols")
+    if not isinstance(symbols,list) or not symbols or len(symbols)>MAX_NEURAL_SYMBOLIC_SYMBOLS:
+        raise HTTPException(status_code=400,detail="symbols must be a bounded non-empty array")
+    projected=[]; seen=set()
+    for raw in symbols:
+        if not isinstance(raw,dict): raise HTTPException(status_code=400,detail="each symbol must be an object")
+        c=_ns_symbol_contract({"symbol":raw})["neuralSymbolicSymbolArtifact"]
+        if c["symbolId"] in seen: raise HTTPException(status_code=400,detail="duplicate symbolId")
+        seen.add(c["symbolId"]); projected.append({"symbolId":c["symbolId"],"symbolType":c["symbolType"],"symbolFingerprint":c["symbolFingerprint"],"sourceRef":c.get("sourceRef")})
+    body={"schema":NEURAL_SYMBOLIC_CONTEXT_SCHEMA,"kind":"neural-symbolic-context-projection","symbolCount":len(projected),"symbolIds":[x["symbolId"] for x in projected],"symbolsFingerprint":_canonical_sha256(projected),"semanticAuthority":"references-only-no-truth-adjudication","externalKnowledgeBaseRead":False,"isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-context-project","symbols":projected,"neuralSymbolicContextArtifact":body}
+
+
+def _ns_embedding(raw: Any, field: str) -> list[float]:
+    if not isinstance(raw,list) or not raw or len(raw)>MAX_NEURAL_SYMBOLIC_EMBEDDING_DIMENSIONS:
+        raise HTTPException(status_code=400,detail=f"{field} must be a bounded non-empty numeric vector")
+    try: vals=[float(x) for x in raw]
+    except Exception as exc: raise HTTPException(status_code=400,detail=f"{field} must be numeric") from exc
+    if any(not math.isfinite(x) for x in vals): raise HTTPException(status_code=400,detail=f"{field} must contain finite values")
+    return vals
+
+
+def _ns_bind(payload: dict[str,Any]) -> dict[str,Any]:
+    symbol=_ns_symbol_contract({"symbol":payload.get("symbol") or {}})["neuralSymbolicSymbolArtifact"]
+    emb=_ns_embedding(payload.get("embedding"),"embedding")
+    representation_ref=payload.get("representationRef")
+    if representation_ref is not None and (not isinstance(representation_ref,str) or len(representation_ref)>512):
+        raise HTTPException(status_code=400,detail="representationRef must be a bounded string when supplied")
+    body={"schema":NEURAL_SYMBOLIC_BINDING_SCHEMA,"kind":"neural-symbolic-binding","symbolId":symbol["symbolId"],"symbolFingerprint":symbol["symbolFingerprint"],"embeddingDimensions":len(emb),"embeddingFingerprint":_canonical_sha256(emb),"representationRef":representation_ref,"bindingPolicy":"operator-supplied-symbol-to-model-representation","semanticEquivalenceAsserted":False,"truthValueAssigned":False,"isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-bind","embedding":emb,"neuralSymbolicBindingArtifact":body}
+
+
+def _ns_normalize_rule(raw: Any) -> dict[str,Any]:
+    if not isinstance(raw,dict): raise HTTPException(status_code=400,detail="each neural-symbolic rule must be an object")
+    rid=_ns_clean_id(raw.get("ruleId"),"ruleId"); op=str(raw.get("operator") or "").strip().lower()
+    if op not in NEURAL_SYMBOLIC_RULE_OPERATORS: raise HTTPException(status_code=400,detail="unsupported neural-symbolic rule operator")
+    out={"ruleId":rid,"operator":op}
+    if op in {"implies","requires","excludes"}:
+        out["leftSymbolId"]=_ns_clean_id(raw.get("leftSymbolId"),"leftSymbolId"); out["rightSymbolId"]=_ns_clean_id(raw.get("rightSymbolId"),"rightSymbolId")
+        if out["leftSymbolId"]==out["rightSymbolId"] and op=="excludes": raise HTTPException(status_code=400,detail="excludes rule cannot target the same symbol")
+    else:
+        ids=raw.get("symbolIds")
+        if not isinstance(ids,list) or len(ids)<2 or len(ids)>64: raise HTTPException(status_code=400,detail=f"{op} rule requires 2-64 symbolIds")
+        out["symbolIds"]=[_ns_clean_id(x,"symbolId") for x in ids]
+        if len(set(out["symbolIds"]))!=len(out["symbolIds"]): raise HTTPException(status_code=400,detail="rule symbolIds must be unique")
+    out["ruleFingerprint"]=_canonical_sha256(out)
+    return out
+
+
+def _ns_rule_contract(payload: dict[str,Any]) -> dict[str,Any]:
+    rules=payload.get("rules")
+    if not isinstance(rules,list) or not rules or len(rules)>MAX_NEURAL_SYMBOLIC_RULES:
+        raise HTTPException(status_code=400,detail="rules must be a bounded non-empty array")
+    normalized=[_ns_normalize_rule(x) for x in rules]
+    ids=[r["ruleId"] for r in normalized]
+    if len(set(ids))!=len(ids): raise HTTPException(status_code=400,detail="duplicate ruleId")
+    body={"schema":NEURAL_SYMBOLIC_RULESET_SCHEMA,"kind":"neural-symbolic-rule-set","ruleCount":len(normalized),"operators":sorted(set(r["operator"] for r in normalized)),"rulesFingerprint":_canonical_sha256(normalized),"executionPolicy":"bounded-declarative-no-eval","truthValueAssigned":False,"isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-rule-contract","rules":normalized,"neuralSymbolicRuleSetArtifact":body}
+
+
+def _ns_constraint_evaluate(payload: dict[str,Any]) -> dict[str,Any]:
+    rules=_ns_rule_contract({"rules":payload.get("rules")})["rules"]
+    active_raw=payload.get("activeSymbolIds") or []
+    if not isinstance(active_raw,list) or len(active_raw)>MAX_NEURAL_SYMBOLIC_SYMBOLS: raise HTTPException(status_code=400,detail="activeSymbolIds must be a bounded array")
+    active=set(_ns_clean_id(x,"activeSymbolId") for x in active_raw)
+    evaluations=[]
+    for r in rules:
+        op=r["operator"]; ok=True; detail="satisfied"
+        if op=="requires":
+            ok=not (r["leftSymbolId"] in active and r["rightSymbolId"] not in active); detail="required symbol absent" if not ok else "satisfied"
+        elif op=="excludes":
+            ok=not (r["leftSymbolId"] in active and r["rightSymbolId"] in active); detail="mutually excluded symbols active" if not ok else "satisfied"
+        elif op=="implies":
+            ok=not (r["leftSymbolId"] in active and r["rightSymbolId"] not in active); detail="implication not closed" if not ok else "satisfied"
+        elif op=="at-least-one":
+            ok=any(x in active for x in r["symbolIds"]); detail="none of required alternatives active" if not ok else "satisfied"
+        elif op=="all-or-none":
+            n=sum(x in active for x in r["symbolIds"]); ok=n in {0,len(r["symbolIds"])}; detail="partial all-or-none activation" if not ok else "satisfied"
+        evaluations.append({"ruleId":r["ruleId"],"operator":op,"satisfied":ok,"detail":detail})
+    violations=[x for x in evaluations if not x["satisfied"]]
+    body={"schema":NEURAL_SYMBOLIC_CONSTRAINT_SCHEMA,"kind":"neural-symbolic-constraint-evaluation","activeSymbolIds":sorted(active),"ruleCount":len(rules),"satisfiedCount":len(evaluations)-len(violations),"violationCount":len(violations),"validUnderDeclaredRules":len(violations)==0,"evaluations":evaluations,"rulesFingerprint":_canonical_sha256(rules),"truthValueAssigned":False,"isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-constraint-evaluate","evaluations":evaluations,"violations":violations,"neuralSymbolicConstraintArtifact":body}
+
+
+def _ns_relation_score(payload: dict[str,Any]) -> dict[str,Any]:
+    left=_ns_embedding(payload.get("leftEmbedding"),"leftEmbedding"); right=_ns_embedding(payload.get("rightEmbedding"),"rightEmbedding")
+    if len(left)!=len(right): raise HTTPException(status_code=400,detail="relation embeddings must have equal dimensions")
+    metric=str(payload.get("metric") or "cosine").lower()
+    if metric not in NEURAL_SYMBOLIC_RELATION_METRICS: raise HTTPException(status_code=400,detail="unsupported neural-symbolic relation metric")
+    a=torch.tensor(left,dtype=torch.float32); b=torch.tensor(right,dtype=torch.float32)
+    if metric=="cosine": value=float(F.cosine_similarity(a.view(1,-1),b.view(1,-1),dim=1).item())
+    elif metric=="euclidean": value=float(torch.linalg.vector_norm(a-b).item())
+    else: value=float(torch.dot(a,b).item())
+    relation=str(payload.get("relationType") or "unspecified")
+    if len(relation)>128: raise HTTPException(status_code=400,detail="relationType too long")
+    body={"schema":NEURAL_SYMBOLIC_RELATION_SCHEMA,"kind":"neural-symbolic-relation-score","metric":metric,"relationType":relation,"dimensions":len(left),"leftFingerprint":_canonical_sha256(left),"rightFingerprint":_canonical_sha256(right),"value":value,"interpretationPolicy":"representation-relation-score-not-logical-proof-or-truth","isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-relation-score","metric":metric,"value":value,"neuralSymbolicRelationArtifact":body}
+
+
+def _ns_infer(payload: dict[str,Any]) -> dict[str,Any]:
+    rules=_ns_rule_contract({"rules":payload.get("rules")})["rules"]
+    initial_raw=payload.get("activeSymbolIds") or []
+    if not isinstance(initial_raw,list) or len(initial_raw)>MAX_NEURAL_SYMBOLIC_SYMBOLS: raise HTTPException(status_code=400,detail="activeSymbolIds must be a bounded array")
+    active=set(_ns_clean_id(x,"activeSymbolId") for x in initial_raw); initial=set(active); trace=[]
+    for step in range(MAX_NEURAL_SYMBOLIC_INFERENCE_STEPS):
+        additions=[]
+        for r in rules:
+            if r["operator"]=="implies" and r["leftSymbolId"] in active and r["rightSymbolId"] not in active:
+                additions.append((r["rightSymbolId"],r["ruleId"],r["leftSymbolId"]))
+        if not additions: break
+        for sid,rid,left in additions:
+            if sid not in active:
+                active.add(sid); trace.append({"step":step+1,"ruleId":rid,"fromSymbolId":left,"inferredSymbolId":sid})
+        if len(active)>MAX_NEURAL_SYMBOLIC_SYMBOLS: raise HTTPException(status_code=413,detail="neural-symbolic inference exceeded symbol bound")
+    else:
+        raise HTTPException(status_code=413,detail="neural-symbolic inference exceeded step bound")
+    constraints=_ns_constraint_evaluate({"rules":rules,"activeSymbolIds":sorted(active)})
+    body={"schema":NEURAL_SYMBOLIC_INFERENCE_SCHEMA,"kind":"neural-symbolic-inference","initialSymbolIds":sorted(initial),"inferredSymbolIds":sorted(active-initial),"finalSymbolIds":sorted(active),"trace":trace,"inferenceSteps":max([x["step"] for x in trace],default=0),"ruleCount":len(rules),"validUnderDeclaredRules":constraints["neuralSymbolicConstraintArtifact"]["validUnderDeclaredRules"],"violationCount":constraints["neuralSymbolicConstraintArtifact"]["violationCount"],"inferencePolicy":"bounded-forward-chaining-over-operator-declared-rules","truthValueAssigned":False,"isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-infer","inferredSymbolIds":body["inferredSymbolIds"],"finalSymbolIds":body["finalSymbolIds"],"trace":trace,"violations":constraints["violations"],"neuralSymbolicInferenceArtifact":body}
+
+
+def _ns_explain(payload: dict[str,Any]) -> dict[str,Any]:
+    inference=payload.get("inferenceArtifact")
+    if not isinstance(inference,dict) or inference.get("schema")!=NEURAL_SYMBOLIC_INFERENCE_SCHEMA:
+        raise HTTPException(status_code=400,detail="inferenceArtifact schema is invalid")
+    trace=inference.get("trace") or []
+    if not isinstance(trace,list) or len(trace)>MAX_NEURAL_SYMBOLIC_RULES: raise HTTPException(status_code=400,detail="inference trace invalid")
+    reasons=[{"inferredSymbolId":x.get("inferredSymbolId"),"ruleId":x.get("ruleId"),"fromSymbolId":x.get("fromSymbolId"),"step":x.get("step")} for x in trace if isinstance(x,dict)]
+    body={"schema":NEURAL_SYMBOLIC_EXPLANATION_SCHEMA,"kind":"neural-symbolic-explanation","inferenceArtifactFingerprint":inference.get("artifactFingerprint"),"reasonCount":len(reasons),"reasons":reasons,"validUnderDeclaredRules":bool(inference.get("validUnderDeclaredRules")),"explanationPolicy":"deterministic-rule-trace-no-natural-language-truth-claim","truthValueAssigned":False,"isObservedEvidence":False}
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"neural-symbolic-explain","reasons":reasons,"neuralSymbolicExplanationArtifact":body}
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -4200,6 +4396,18 @@ def health() -> dict[str, Any]:
         "multimodalFusionModes": sorted(MULTIMODAL_FUSION_MODES),
         "multimodalTasks": sorted(MULTIMODAL_TASKS),
         "multimodalExternalDataReadEnabled": False,
+        "neuralSymbolicResearchIntelligenceRuntime": True,
+        "neuralSymbolicSymbolContractSchema": NEURAL_SYMBOLIC_SYMBOL_CONTRACT_SCHEMA,
+        "neuralSymbolicContextSchema": NEURAL_SYMBOLIC_CONTEXT_SCHEMA,
+        "neuralSymbolicBindingSchema": NEURAL_SYMBOLIC_BINDING_SCHEMA,
+        "neuralSymbolicRuleSetSchema": NEURAL_SYMBOLIC_RULESET_SCHEMA,
+        "neuralSymbolicConstraintSchema": NEURAL_SYMBOLIC_CONSTRAINT_SCHEMA,
+        "neuralSymbolicRelationSchema": NEURAL_SYMBOLIC_RELATION_SCHEMA,
+        "neuralSymbolicInferenceSchema": NEURAL_SYMBOLIC_INFERENCE_SCHEMA,
+        "neuralSymbolicExplanationSchema": NEURAL_SYMBOLIC_EXPLANATION_SCHEMA,
+        "neuralSymbolicRuleOperators": sorted(NEURAL_SYMBOLIC_RULE_OPERATORS),
+        "neuralSymbolicTruthAdjudicationEnabled": False,
+        "neuralSymbolicExternalKnowledgeBaseReadEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -4323,7 +4531,23 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.multimodal-sample-contract":
+    if operation == "workspace.neural.neural-symbolic-symbol-contract":
+        result = _ns_symbol_contract(payload)
+    elif operation == "workspace.neural.neural-symbolic-context-project":
+        result = _ns_context_project(payload)
+    elif operation == "workspace.neural.neural-symbolic-bind":
+        result = _ns_bind(payload)
+    elif operation == "workspace.neural.neural-symbolic-rule-contract":
+        result = _ns_rule_contract(payload)
+    elif operation == "workspace.neural.neural-symbolic-constraint-evaluate":
+        result = _ns_constraint_evaluate(payload)
+    elif operation == "workspace.neural.neural-symbolic-relation-score":
+        result = _ns_relation_score(payload)
+    elif operation == "workspace.neural.neural-symbolic-infer":
+        result = _ns_infer(payload)
+    elif operation == "workspace.neural.neural-symbolic-explain":
+        result = _ns_explain(payload)
+    elif operation == "workspace.neural.multimodal-sample-contract":
         result = _multimodal_sample_contract(payload)
     elif operation == "workspace.neural.multimodal-dataset-project":
         result = _multimodal_dataset_project(payload)

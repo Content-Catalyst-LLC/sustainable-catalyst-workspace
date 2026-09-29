@@ -1,0 +1,21 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.39.0",
+  "title": "Neural-Symbolic Research Intelligence Runtime",
+  "baseline": "3.38.0",
+  "databaseMigration": false,
+  "neuralRuntimeOperations": 101,
+  "newOperations": [
+    "workspace.neural.neural-symbolic-symbol-contract",
+    "workspace.neural.neural-symbolic-context-project",
+    "workspace.neural.neural-symbolic-bind",
+    "workspace.neural.neural-symbolic-rule-contract",
+    "workspace.neural.neural-symbolic-constraint-evaluate",
+    "workspace.neural.neural-symbolic-relation-score",
+    "workspace.neural.neural-symbolic-infer",
+    "workspace.neural.neural-symbolic-explain"
+  ],
+  "truthAdjudicationEnabled": false,
+  "externalKnowledgeBaseReadEnabled": false
+}
