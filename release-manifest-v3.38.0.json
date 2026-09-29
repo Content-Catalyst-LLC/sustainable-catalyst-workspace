@@ -1,0 +1,48 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "3.38.0",
+  "title": "Workspace v3.38.0 \u2014 Multimodal Neural Runtime",
+  "rollbackBaseline": "3.37.0",
+  "databaseMigration": false,
+  "neuralOperationCount": 93,
+  "newOperations": [
+    "workspace.neural.multimodal-sample-contract",
+    "workspace.neural.multimodal-dataset-project",
+    "workspace.neural.multimodal-model-summary",
+    "workspace.neural.multimodal-embedding-fuse",
+    "workspace.neural.multimodal-representation-extract",
+    "workspace.neural.multimodal-forward",
+    "workspace.neural.multimodal-infer",
+    "workspace.neural.multimodal-similarity"
+  ],
+  "schemas": [
+    "sc-workspace-neural-multimodal-sample-contract/1.0",
+    "sc-workspace-neural-multimodal-dataset-projection/1.0",
+    "sc-workspace-neural-multimodal-model-spec/1.0",
+    "sc-workspace-neural-multimodal-fusion-artifact/1.0",
+    "sc-workspace-neural-multimodal-representation-artifact/1.0",
+    "sc-workspace-neural-multimodal-execution-artifact/1.0",
+    "sc-workspace-neural-multimodal-prediction-artifact/1.0",
+    "sc-workspace-neural-multimodal-similarity-artifact/1.0"
+  ],
+  "capabilities": [
+    "paired vision+sequence sample contracts",
+    "bounded multimodal dataset projection",
+    "declarative vision and sequence encoder composition",
+    "concat and weighted-mean fusion",
+    "multimodal forward/inference",
+    "separate and fused representation extraction",
+    "bounded representation similarity",
+    "governed Workspace artifact and receipt lineage"
+  ],
+  "security": {
+    "arbitraryCode": false,
+    "externalPackages": false,
+    "serializedTorchModules": false,
+    "clientSuppliedRuntimeUrls": false,
+    "externalModalityRead": false,
+    "modelOutputsAreObservedEvidence": false
+  },
+  "typedEndpointCountExpected": 291
+}

@@ -121,6 +121,14 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.sequence-infer",
         "workspace.neural.sequence-embedding-extract",
         "workspace.neural.sequence-forecast",
+        "workspace.neural.multimodal-sample-contract",
+        "workspace.neural.multimodal-dataset-project",
+        "workspace.neural.multimodal-model-summary",
+        "workspace.neural.multimodal-embedding-fuse",
+        "workspace.neural.multimodal-representation-extract",
+        "workspace.neural.multimodal-forward",
+        "workspace.neural.multimodal-infer",
+        "workspace.neural.multimodal-similarity",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -713,6 +721,41 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             neural_sequence_artifact=store_artifact(db,row.user_key,req)
             nr["workspaceSequenceArtifact"]={"artifactId":neural_sequence_artifact.artifact_id,"mediaType":neural_sequence_artifact.media_type,"sha256":neural_sequence_artifact.sha256,"bytes":neural_sequence_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
+
+    neural_multimodal_artifact = None
+    neural_multimodal_ops = {
+        "workspace.neural.multimodal-sample-contract",
+        "workspace.neural.multimodal-dataset-project",
+        "workspace.neural.multimodal-embedding-fuse",
+        "workspace.neural.multimodal-representation-extract",
+        "workspace.neural.multimodal-forward",
+        "workspace.neural.multimodal-infer",
+        "workspace.neural.multimodal-similarity",
+    }
+    if language == "neural" and row.operation in neural_multimodal_ops and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=None
+        for key in ("multimodalSampleContractArtifact","multimodalDatasetProjectionArtifact","multimodalFusionArtifact","multimodalRepresentationArtifact","multimodalExecutionArtifact","multimodalPredictionArtifact","multimodalSimilarityArtifact"):
+            if isinstance(nr.get(key),dict): blob=nr.get(key); break
+        if blob:
+            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            schema=blob.get("schema")
+            mapping={
+                "sc-workspace-neural-multimodal-sample-contract/1.0":("application/vnd.sc.workspace.neural-multimodal-sample+json","neural-multimodal-sample","contract"),
+                "sc-workspace-neural-multimodal-dataset-projection/1.0":("application/vnd.sc.workspace.neural-multimodal-dataset+json","neural-multimodal-dataset","dataset-projection"),
+                "sc-workspace-neural-multimodal-fusion-artifact/1.0":("application/vnd.sc.workspace.neural-multimodal-fusion+json","neural-multimodal-fusion","representation"),
+                "sc-workspace-neural-multimodal-representation-artifact/1.0":("application/vnd.sc.workspace.neural-multimodal-representation+json","neural-multimodal-representation","representation"),
+                "sc-workspace-neural-multimodal-execution-artifact/1.0":("application/vnd.sc.workspace.neural-multimodal-execution+json","neural-multimodal-execution","execution"),
+                "sc-workspace-neural-multimodal-prediction-artifact/1.0":("application/vnd.sc.workspace.neural-multimodal-prediction+json","neural-multimodal-prediction","prediction"),
+                "sc-workspace-neural-multimodal-similarity-artifact/1.0":("application/vnd.sc.workspace.neural-multimodal-similarity+json","neural-multimodal-similarity","analysis"),
+            }
+            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-multimodal+json","neural-multimodal","analysis"))
+            aid=f"{prefix}-{row.job_id}"; existing=get_artifact(db,row.user_key,aid)
+            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,"filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),"expectedRevision":existing.revision if existing is not None else 0,"metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,"runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),"imageTensorFingerprint":blob.get("imageTensorFingerprint"),"sequenceTensorFingerprint":blob.get("sequenceTensorFingerprint"),"role":role,"isObservedEvidence":False}})
+            neural_multimodal_artifact=store_artifact(db,row.user_key,req)
+            nr["workspaceMultimodalArtifact"]={"artifactId":neural_multimodal_artifact.artifact_id,"mediaType":neural_multimodal_artifact.media_type,"sha256":neural_multimodal_artifact.sha256,"bytes":neural_multimodal_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
+
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -857,6 +900,14 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedSequenceArtifact":True,"isObservedEvidence":False},
             })
             store_run_output(db,row.user_key,run_id,sequence_output)
+        if neural_multimodal_artifact is not None:
+            multimodal_output = ExecutionRunOutputRequest.model_validate({
+                "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-multimodal-artifact",
+                "artifactId":neural_multimodal_artifact.artifact_id,"role":"analysis","label":"Governed multimodal neural artifact",
+                "mediaType":neural_multimodal_artifact.media_type,"sha256":neural_multimodal_artifact.sha256,"bytes":neural_multimodal_artifact.bytes,
+                "metadata":{"language":"neural","operation":row.operation,"governedMultimodalArtifact":True,"isObservedEvidence":False},
+            })
+            store_run_output(db,row.user_key,run_id,multimodal_output)
 
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
@@ -1091,6 +1142,26 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "isObservedEvidence":False,"externalSequenceReadEnabled":False,
             "workspaceSequenceArtifactId":neural_sequence_artifact.artifact_id if neural_sequence_artifact is not None else None,
             "workspaceSequenceArtifactSha256":neural_sequence_artifact.sha256 if neural_sequence_artifact is not None else None,
+        })
+
+
+    if language == "neural" and row.operation in {
+        "workspace.neural.multimodal-sample-contract","workspace.neural.multimodal-dataset-project","workspace.neural.multimodal-model-summary",
+        "workspace.neural.multimodal-embedding-fuse","workspace.neural.multimodal-representation-extract","workspace.neural.multimodal-forward",
+        "workspace.neural.multimodal-infer","workspace.neural.multimodal-similarity",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob={}
+        for key in ("multimodalSampleContractArtifact","multimodalDatasetProjectionArtifact","multimodalFusionArtifact","multimodalRepresentationArtifact","multimodalExecutionArtifact","multimodalPredictionArtifact","multimodalSimilarityArtifact"):
+            if isinstance(nr.get(key),dict): blob=nr.get(key); break
+        receipt_details.update({
+            "multimodalNeuralRuntime":True,"multimodalArtifactSchema":blob.get("schema"),
+            "multimodalArtifactFingerprint":blob.get("artifactFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),
+            "imageTensorFingerprint":blob.get("imageTensorFingerprint"),"sequenceTensorFingerprint":blob.get("sequenceTensorFingerprint"),
+            "isObservedEvidence":False,"externalMultimodalReadEnabled":False,
+            "workspaceMultimodalArtifactId":neural_multimodal_artifact.artifact_id if neural_multimodal_artifact is not None else None,
+            "workspaceMultimodalArtifactSha256":neural_multimodal_artifact.sha256 if neural_multimodal_artifact is not None else None,
         })
 
     receipt=PolyglotExecutionReceipt(

@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.37.0"
+SERVICE_VERSION = "3.38.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -140,6 +140,14 @@ OPERATIONS = {
     "workspace.neural.sequence-infer",
     "workspace.neural.sequence-embedding-extract",
     "workspace.neural.sequence-forecast",
+    "workspace.neural.multimodal-sample-contract",
+    "workspace.neural.multimodal-dataset-project",
+    "workspace.neural.multimodal-model-summary",
+    "workspace.neural.multimodal-embedding-fuse",
+    "workspace.neural.multimodal-representation-extract",
+    "workspace.neural.multimodal-forward",
+    "workspace.neural.multimodal-infer",
+    "workspace.neural.multimodal-similarity",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -147,6 +155,7 @@ BLOCKED_PAYLOAD_KEYS = {
     "pickleBase64", "joblibBase64", "torchModuleBase64", "stateDictBase64", "torchScriptBase64",
     "modulePath", "classPath", "importPath", "checkpointPath", "weightsPath",
     "sequenceUrl", "sequencePath", "dataUrl", "dataPath", "filePath",
+    "imageUrl", "imagePath", "modalityUrl", "modalityPath", "encoderUrl", "encoderPath",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -3898,6 +3907,205 @@ def _sequence_forecast(payload: dict[str, Any]) -> dict[str, Any]:
     artifact["artifactFingerprint"]=_canonical_sha256(artifact)
     return {"kind":"sequence-forecast","forecast":values,"sequenceForecastArtifact":artifact}
 
+
+# v3.38 Multimodal Neural Runtime
+MULTIMODAL_SAMPLE_CONTRACT_SCHEMA = "sc-workspace-neural-multimodal-sample-contract/1.0"
+MULTIMODAL_DATASET_PROJECTION_SCHEMA = "sc-workspace-neural-multimodal-dataset-projection/1.0"
+MULTIMODAL_MODEL_SPEC_SCHEMA = "sc-workspace-neural-multimodal-model-spec/1.0"
+MULTIMODAL_FUSION_ARTIFACT_SCHEMA = "sc-workspace-neural-multimodal-fusion-artifact/1.0"
+MULTIMODAL_REPRESENTATION_ARTIFACT_SCHEMA = "sc-workspace-neural-multimodal-representation-artifact/1.0"
+MULTIMODAL_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-multimodal-execution-artifact/1.0"
+MULTIMODAL_PREDICTION_ARTIFACT_SCHEMA = "sc-workspace-neural-multimodal-prediction-artifact/1.0"
+MULTIMODAL_SIMILARITY_ARTIFACT_SCHEMA = "sc-workspace-neural-multimodal-similarity-artifact/1.0"
+MULTIMODAL_FUSION_MODES = {"concat", "weighted-mean"}
+MULTIMODAL_TASKS = {"regression", "binary-classification", "multiclass-classification"}
+MULTIMODAL_SIMILARITY_METRICS = {"cosine", "euclidean", "dot"}
+MAX_MULTIMODAL_SAMPLES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_MULTIMODAL_SAMPLES", "256")), 2048))
+MAX_MULTIMODAL_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_MULTIMODAL_FEATURES", "1024")), 4096))
+MAX_MULTIMODAL_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_MULTIMODAL_PARAMETERS", "750000")), MAX_PARAMETERS))
+
+
+def _multimodal_sample_contract(payload: dict[str, Any]) -> dict[str, Any]:
+    image, band_names = _vision_image(payload)
+    sequence, feature_names, timestamps = _sequence_tensor(payload)
+    spatial = _vision_spatial_context(payload)
+    alignment = str(payload.get("alignmentPolicy") or "operator-declared").strip().lower()
+    if alignment not in {"operator-declared", "paired-sample", "same-observation-window"}:
+        raise HTTPException(status_code=400, detail="unsupported multimodal alignmentPolicy")
+    sample_id = payload.get("sampleId")
+    if sample_id is not None and (not isinstance(sample_id, str) or not sample_id.strip() or len(sample_id) > 256):
+        raise HTTPException(status_code=400, detail="sampleId must be a bounded non-empty string when supplied")
+    image_fp = _canonical_sha256(_tensor_json(image))
+    sequence_fp = _canonical_sha256(_tensor_json(sequence))
+    body = {
+        "schema": MULTIMODAL_SAMPLE_CONTRACT_SCHEMA,
+        "kind": "multimodal-sample-contract",
+        "modalities": ["vision", "sequence"],
+        "sampleId": sample_id.strip() if isinstance(sample_id, str) else None,
+        "alignmentPolicy": alignment,
+        "alignmentDeclaredByOperator": True,
+        "imageTensorFingerprint": image_fp,
+        "sequenceTensorFingerprint": sequence_fp,
+        "spatialContextFingerprint": spatial["fingerprint"],
+        "imageShape": list(map(int, image.shape)),
+        "sequenceShape": list(map(int, sequence.shape)),
+        "bandNames": band_names,
+        "featureNames": feature_names,
+        "timestampsPresent": bool(timestamps),
+        "externalModalityRead": False,
+        "isObservedEvidence": False,
+    }
+    body["sampleFingerprint"] = _canonical_sha256({"image": image_fp, "sequence": sequence_fp, "alignment": alignment, "sampleId": body["sampleId"]})
+    body["artifactFingerprint"] = _canonical_sha256(body)
+    return {"kind": "multimodal-sample-contract", "multimodalSampleContractArtifact": body}
+
+
+def _multimodal_dataset_project(payload: dict[str, Any]) -> dict[str, Any]:
+    samples = payload.get("samples")
+    if not isinstance(samples, list) or not samples or len(samples) > MAX_MULTIMODAL_SAMPLES:
+        raise HTTPException(status_code=400, detail="samples must be a bounded non-empty array")
+    projected=[]
+    for idx, sample in enumerate(samples):
+        if not isinstance(sample, dict):
+            raise HTTPException(status_code=400, detail="each multimodal sample must be an object")
+        c=_multimodal_sample_contract(sample)["multimodalSampleContractArtifact"]
+        projected.append({"sampleIndex":idx,"sampleId":c.get("sampleId"),"sampleFingerprint":c["sampleFingerprint"],"imageTensorFingerprint":c["imageTensorFingerprint"],"sequenceTensorFingerprint":c["sequenceTensorFingerprint"],"alignmentPolicy":c["alignmentPolicy"]})
+    body={
+        "schema": MULTIMODAL_DATASET_PROJECTION_SCHEMA,
+        "kind": "multimodal-dataset-projection",
+        "modalities": ["vision", "sequence"],
+        "sampleCount": len(projected),
+        "samplesFingerprint": _canonical_sha256(projected),
+        "alignmentSemantics": "operator-declared-per-sample",
+        "externalModalityRead": False,
+        "isObservedEvidence": False,
+    }
+    body["artifactFingerprint"]=_canonical_sha256(body)
+    return {"kind":"multimodal-dataset-projection","samples":projected,"multimodalDatasetProjectionArtifact":body}
+
+
+def _multimodal_validate_model_spec(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict) or raw.get("schema") != MULTIMODAL_MODEL_SPEC_SCHEMA:
+        raise HTTPException(status_code=400, detail="multimodal modelSpec schema is invalid")
+    vision=_vision_validate_model_spec(raw.get("visionModelSpec"))
+    sequence=_sequence_validate_model_spec(raw.get("sequenceModelSpec"))
+    mode=str(raw.get("fusionMode") or "concat").lower()
+    if mode not in MULTIMODAL_FUSION_MODES:
+        raise HTTPException(status_code=400, detail="unsupported multimodal fusionMode")
+    vision_dim=int(vision["outputFeatures"]); sequence_dim=int(sequence["hiddenFeatures"])
+    if mode=="concat":
+        fused_dim=vision_dim+sequence_dim; weights=None
+    else:
+        if vision_dim != sequence_dim:
+            raise HTTPException(status_code=400, detail="weighted-mean fusion requires equal vision and sequence representation dimensions")
+        raw_weights=raw.get("fusionWeights", [0.5,0.5])
+        if not isinstance(raw_weights,list) or len(raw_weights)!=2:
+            raise HTTPException(status_code=400, detail="fusionWeights must contain [visionWeight, sequenceWeight]")
+        try: weights=[float(raw_weights[0]),float(raw_weights[1])]
+        except Exception as exc: raise HTTPException(status_code=400,detail="fusionWeights must be numeric") from exc
+        if any((not math.isfinite(v) or v<0) for v in weights) or sum(weights)<=0:
+            raise HTTPException(status_code=400, detail="fusionWeights must be finite, non-negative, and have positive sum")
+        total=sum(weights); weights=[v/total for v in weights]; fused_dim=vision_dim
+    if fused_dim < 1 or fused_dim > MAX_MULTIMODAL_FEATURES:
+        raise HTTPException(status_code=413, detail="multimodal fused representation exceeds bounded dimension")
+    out_f=raw.get("outputFeatures")
+    if not isinstance(out_f,int) or isinstance(out_f,bool) or out_f<1 or out_f>MAX_FEATURES:
+        raise HTTPException(status_code=400, detail="multimodal outputFeatures invalid")
+    try:
+        hw=torch.tensor(raw.get("headWeights"),dtype=torch.float32); hb=torch.tensor(raw.get("headBias"),dtype=torch.float32)
+    except Exception as exc:
+        raise HTTPException(status_code=400,detail="multimodal head weights/bias must be rectangular numeric arrays") from exc
+    if tuple(hw.shape)!=(out_f,fused_dim) or tuple(hb.shape)!=(out_f,):
+        raise HTTPException(status_code=400,detail=f"multimodal head shape must be [{out_f},{fused_dim}] plus [{out_f}]")
+    if not torch.isfinite(hw).all() or not torch.isfinite(hb).all():
+        raise HTTPException(status_code=400,detail="multimodal head parameters must be finite")
+    params=int(vision["parameterCount"])+int(sequence["parameterCount"])+int(hw.numel()+hb.numel())
+    if params>MAX_MULTIMODAL_PARAMETERS:
+        raise HTTPException(status_code=413,detail="multimodal model exceeds parameter limit")
+    spec={"schema":MULTIMODAL_MODEL_SPEC_SCHEMA,"visionModelSpec":vision,"sequenceModelSpec":sequence,"fusionMode":mode,"fusionWeights":weights,"visionRepresentationFeatures":vision_dim,"sequenceRepresentationFeatures":sequence_dim,"fusedFeatures":fused_dim,"outputFeatures":out_f,"headWeights":hw.tolist(),"headBias":hb.tolist(),"parameterCount":params}
+    spec["modelSpecFingerprint"]=_canonical_sha256(spec)
+    return spec
+
+
+def _multimodal_model_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    spec=_multimodal_validate_model_spec(payload.get("modelSpec"))
+    return {"kind":"multimodal-model-summary","modalities":["vision","sequence"],"fusionMode":spec["fusionMode"],"visionAdapter":spec["visionModelSpec"]["adapter"],"sequenceAdapter":spec["sequenceModelSpec"]["adapter"],"visionRepresentationFeatures":spec["visionRepresentationFeatures"],"sequenceRepresentationFeatures":spec["sequenceRepresentationFeatures"],"fusedFeatures":spec["fusedFeatures"],"outputFeatures":spec["outputFeatures"],"parameterCount":spec["parameterCount"],"modelSpecFingerprint":spec["modelSpecFingerprint"]}
+
+
+def _multimodal_encode(payload: dict[str, Any], spec: dict[str, Any]) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str,Any]]:
+    v_payload=dict(payload); v_payload["modelSpec"]=spec["visionModelSpec"]
+    s_payload=dict(payload); s_payload["modelSpec"]=spec["sequenceModelSpec"]
+    vision_out,_,image_fp,band_names,_shape=_vision_forward_body(v_payload)
+    _seq_out,sequence_hidden,_,sequence_fp,feature_names,timestamps=_sequence_forward_body(s_payload)
+    vision_rep=vision_out.reshape(-1); sequence_rep=sequence_hidden.reshape(-1)
+    if spec["fusionMode"]=="concat":
+        fused=torch.cat([vision_rep,sequence_rep],dim=0)
+    else:
+        w=spec["fusionWeights"]; fused=vision_rep*float(w[0])+sequence_rep*float(w[1])
+    if int(fused.numel()) != spec["fusedFeatures"] or not bool(torch.isfinite(fused).all()):
+        raise HTTPException(status_code=500,detail="multimodal fused representation violated runtime contract")
+    context={"imageTensorFingerprint":image_fp,"sequenceTensorFingerprint":sequence_fp,"bandNames":band_names,"featureNames":feature_names,"timestampsPresent":bool(timestamps)}
+    return vision_rep,sequence_rep,fused,context
+
+
+def _multimodal_embedding_fuse(payload: dict[str, Any]) -> dict[str, Any]:
+    spec=_multimodal_validate_model_spec(payload.get("modelSpec")); v,s,fused,ctx=_multimodal_encode(payload,spec); vals=_tensor_json(fused)
+    artifact={"schema":MULTIMODAL_FUSION_ARTIFACT_SCHEMA,"kind":"multimodal-fusion","fusionMode":spec["fusionMode"],"fusionWeights":spec["fusionWeights"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"imageTensorFingerprint":ctx["imageTensorFingerprint"],"sequenceTensorFingerprint":ctx["sequenceTensorFingerprint"],"visionRepresentationFingerprint":_canonical_sha256(_tensor_json(v)),"sequenceRepresentationFingerprint":_canonical_sha256(_tensor_json(s)),"fusedFeatures":len(vals),"fusedEmbeddingFingerprint":_canonical_sha256(vals),"isObservedEvidence":False,"fusionSemantics":"model-derived-representation-fusion"}
+    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
+    return {"kind":"multimodal-embedding-fuse","fusedEmbedding":vals,"multimodalFusionArtifact":artifact}
+
+
+def _multimodal_representation_extract(payload: dict[str, Any]) -> dict[str, Any]:
+    spec=_multimodal_validate_model_spec(payload.get("modelSpec")); v,s,fused,ctx=_multimodal_encode(payload,spec)
+    vr=_tensor_json(v); sr=_tensor_json(s); fr=_tensor_json(fused)
+    artifact={"schema":MULTIMODAL_REPRESENTATION_ARTIFACT_SCHEMA,"kind":"multimodal-representation","fusionMode":spec["fusionMode"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"imageTensorFingerprint":ctx["imageTensorFingerprint"],"sequenceTensorFingerprint":ctx["sequenceTensorFingerprint"],"visionRepresentationFingerprint":_canonical_sha256(vr),"sequenceRepresentationFingerprint":_canonical_sha256(sr),"fusedRepresentationFingerprint":_canonical_sha256(fr),"visionDimensions":len(vr),"sequenceDimensions":len(sr),"fusedDimensions":len(fr),"isObservedEvidence":False}
+    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
+    return {"kind":"multimodal-representation-extract","visionRepresentation":vr,"sequenceRepresentation":sr,"fusedRepresentation":fr,"multimodalRepresentationArtifact":artifact}
+
+
+def _multimodal_forward_body(payload: dict[str, Any]) -> tuple[torch.Tensor,dict[str,Any],dict[str,Any],torch.Tensor]:
+    spec=_multimodal_validate_model_spec(payload.get("modelSpec")); _v,_s,fused,ctx=_multimodal_encode(payload,spec)
+    hw=torch.tensor(spec["headWeights"],dtype=torch.float32,device=_current_device_name()); hb=torch.tensor(spec["headBias"],dtype=torch.float32,device=_current_device_name())
+    out=hw@fused+hb
+    return out,spec,ctx,fused
+
+
+def _multimodal_forward(payload: dict[str, Any]) -> dict[str, Any]:
+    out,spec,ctx,fused=_multimodal_forward_body(payload); vals=_tensor_json(out)
+    artifact={"schema":MULTIMODAL_EXECUTION_ARTIFACT_SCHEMA,"kind":"multimodal-forward","modalities":["vision","sequence"],"fusionMode":spec["fusionMode"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"imageTensorFingerprint":ctx["imageTensorFingerprint"],"sequenceTensorFingerprint":ctx["sequenceTensorFingerprint"],"fusedRepresentationFingerprint":_canonical_sha256(_tensor_json(fused)),"outputFingerprint":_canonical_sha256(vals),"outputFeatures":spec["outputFeatures"],"isObservedEvidence":False}
+    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
+    return {"kind":"multimodal-forward","outputs":vals,"multimodalExecutionArtifact":artifact}
+
+
+def _multimodal_infer(payload: dict[str, Any]) -> dict[str, Any]:
+    task=str(payload.get("task") or "regression").lower()
+    if task not in MULTIMODAL_TASKS: raise HTTPException(status_code=400,detail="unsupported multimodal inference task")
+    out,spec,ctx,fused=_multimodal_forward_body(payload)
+    if task=="regression": prediction={"values":_tensor_json(out)}
+    elif task=="binary-classification":
+        if out.numel()!=1: raise HTTPException(status_code=400,detail="binary multimodal classification requires outputFeatures=1")
+        p=float(torch.sigmoid(out.reshape(-1)[0])); prediction={"probability":p,"label":int(p>=0.5)}
+    else:
+        if out.numel()<2: raise HTTPException(status_code=400,detail="multiclass multimodal classification requires outputFeatures>=2")
+        probs=torch.softmax(out.reshape(-1),dim=0); prediction={"probabilities":_tensor_json(probs),"label":int(torch.argmax(probs).item())}
+    artifact={"schema":MULTIMODAL_PREDICTION_ARTIFACT_SCHEMA,"kind":"multimodal-prediction","task":task,"fusionMode":spec["fusionMode"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"imageTensorFingerprint":ctx["imageTensorFingerprint"],"sequenceTensorFingerprint":ctx["sequenceTensorFingerprint"],"predictionFingerprint":_canonical_sha256(prediction),"isObservedEvidence":False,"isEvaluation":False,"predictionPolicy":"model-derived-multimodal-inference"}
+    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
+    return {"kind":"multimodal-infer","task":task,"prediction":prediction,"multimodalPredictionArtifact":artifact}
+
+
+def _multimodal_similarity(payload: dict[str, Any]) -> dict[str, Any]:
+    metric=str(payload.get("metric") or "cosine").lower()
+    if metric not in MULTIMODAL_SIMILARITY_METRICS: raise HTTPException(status_code=400,detail="unsupported multimodal similarity metric")
+    left=_tensor(payload.get("leftEmbedding"),name="leftEmbedding",dtype_name="float32",ndim=1); right=_tensor(payload.get("rightEmbedding"),name="rightEmbedding",dtype_name="float32",ndim=1)
+    if left.numel()<1 or left.numel()>MAX_MULTIMODAL_FEATURES or right.numel()!=left.numel(): raise HTTPException(status_code=400,detail="multimodal similarity embeddings must have equal bounded dimensions")
+    if metric=="cosine":
+        denom=float(torch.linalg.vector_norm(left)*torch.linalg.vector_norm(right)); value=float(torch.dot(left,right)/denom) if denom>0 else 0.0
+    elif metric=="euclidean": value=float(torch.linalg.vector_norm(left-right))
+    else: value=float(torch.dot(left,right))
+    artifact={"schema":MULTIMODAL_SIMILARITY_ARTIFACT_SCHEMA,"kind":"multimodal-similarity","metric":metric,"dimensions":int(left.numel()),"leftFingerprint":_canonical_sha256(_tensor_json(left)),"rightFingerprint":_canonical_sha256(_tensor_json(right)),"value":value,"isObservedEvidence":False,"interpretationPolicy":"representation-similarity-not-semantic-or-causal-proof"}
+    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
+    return {"kind":"multimodal-similarity","metric":metric,"value":value,"multimodalSimilarityArtifact":artifact}
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -3979,6 +4187,19 @@ def health() -> dict[str, Any]:
         "sequenceAdapters": sorted(SEQUENCE_ADAPTERS),
         "sequenceTasks": sorted(SEQUENCE_TASKS),
         "sequenceExternalDataReadEnabled": False,
+        "multimodalNeuralRuntime": True,
+        "multimodalSampleContractSchema": MULTIMODAL_SAMPLE_CONTRACT_SCHEMA,
+        "multimodalDatasetProjectionSchema": MULTIMODAL_DATASET_PROJECTION_SCHEMA,
+        "multimodalModelSpecSchema": MULTIMODAL_MODEL_SPEC_SCHEMA,
+        "multimodalFusionArtifactSchema": MULTIMODAL_FUSION_ARTIFACT_SCHEMA,
+        "multimodalRepresentationArtifactSchema": MULTIMODAL_REPRESENTATION_ARTIFACT_SCHEMA,
+        "multimodalExecutionArtifactSchema": MULTIMODAL_EXECUTION_ARTIFACT_SCHEMA,
+        "multimodalPredictionArtifactSchema": MULTIMODAL_PREDICTION_ARTIFACT_SCHEMA,
+        "multimodalSimilarityArtifactSchema": MULTIMODAL_SIMILARITY_ARTIFACT_SCHEMA,
+        "multimodalModalities": ["vision", "sequence"],
+        "multimodalFusionModes": sorted(MULTIMODAL_FUSION_MODES),
+        "multimodalTasks": sorted(MULTIMODAL_TASKS),
+        "multimodalExternalDataReadEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -4102,7 +4323,23 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.sequence-tensor-contract":
+    if operation == "workspace.neural.multimodal-sample-contract":
+        result = _multimodal_sample_contract(payload)
+    elif operation == "workspace.neural.multimodal-dataset-project":
+        result = _multimodal_dataset_project(payload)
+    elif operation == "workspace.neural.multimodal-model-summary":
+        result = _multimodal_model_summary(payload)
+    elif operation == "workspace.neural.multimodal-embedding-fuse":
+        result = _multimodal_embedding_fuse(payload)
+    elif operation == "workspace.neural.multimodal-representation-extract":
+        result = _multimodal_representation_extract(payload)
+    elif operation == "workspace.neural.multimodal-forward":
+        result = _multimodal_forward(payload)
+    elif operation == "workspace.neural.multimodal-infer":
+        result = _multimodal_infer(payload)
+    elif operation == "workspace.neural.multimodal-similarity":
+        result = _multimodal_similarity(payload)
+    elif operation == "workspace.neural.sequence-tensor-contract":
         result = _sequence_tensor_contract(payload)
     elif operation == "workspace.neural.sequence-window-plan":
         result = _sequence_window_plan(payload)
