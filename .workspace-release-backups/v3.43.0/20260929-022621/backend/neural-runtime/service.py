@@ -34,7 +34,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.43.0"
+SERVICE_VERSION = "3.42.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -181,14 +181,6 @@ OPERATIONS = {
     "workspace.neural.accelerator-reservation-plan",
     "workspace.neural.accelerator-preemption-plan",
     "workspace.neural.accelerator-scheduling-receipt",
-    "workspace.neural.serving-model-binding",
-    "workspace.neural.serving-compatibility-evaluate",
-    "workspace.neural.serving-infer",
-    "workspace.neural.batch-inference-plan",
-    "workspace.neural.batch-inference-execute",
-    "workspace.neural.research-deployment-readiness",
-    "workspace.neural.research-deployment-manifest",
-    "workspace.neural.research-deployment-receipt",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -203,8 +195,6 @@ BLOCKED_PAYLOAD_KEYS = {
     "remoteWorkerUrl", "remoteWorkerToken", "distributedCode", "workerCode",
     "acceleratorUrl", "schedulerUrl", "clusterUrl", "cloudCredentials", "cloudToken",
     "reservationToken", "kubeconfig", "kubernetesConfig", "slurmConfig", "schedulerCredentials",
-    "modelEndpoint", "servingUrl", "deploymentUrl", "publicEndpoint", "networkEndpoint",
-    "containerImage", "dockerImage", "registryCredentials", "deploymentToken", "servingToken", "apiKey",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -5125,224 +5115,6 @@ def _accelerator_scheduling_receipt(payload: dict[str,Any]) -> dict[str,Any]:
     return {"kind":"accelerator-scheduling-receipt","acceleratorSchedulingReceiptArtifact":body}
 
 
-# v3.43.0 — Model Serving, Batch Inference & Research Deployment
-SERVING_MODEL_BINDING_SCHEMA = "sc-workspace-neural-serving-model-binding/1.0"
-SERVING_COMPATIBILITY_SCHEMA = "sc-workspace-neural-serving-compatibility/1.0"
-SERVING_INFERENCE_SCHEMA = "sc-workspace-neural-serving-inference-artifact/1.0"
-BATCH_INFERENCE_PLAN_SCHEMA = "sc-workspace-neural-batch-inference-plan/1.0"
-BATCH_INFERENCE_RESULT_SCHEMA = "sc-workspace-neural-batch-inference-result/1.0"
-RESEARCH_DEPLOYMENT_READINESS_SCHEMA = "sc-workspace-neural-research-deployment-readiness/1.0"
-RESEARCH_DEPLOYMENT_MANIFEST_SCHEMA = "sc-workspace-neural-research-deployment-manifest/1.0"
-RESEARCH_DEPLOYMENT_RECEIPT_SCHEMA = "sc-workspace-neural-research-deployment-receipt/1.0"
-MAX_SERVING_REQUEST_ROWS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SERVING_REQUEST_ROWS", "512")), MAX_INFERENCE_ROWS))
-MAX_BATCH_INFERENCE_ROWS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_BATCH_INFERENCE_ROWS", "4096")), MAX_INFERENCE_ROWS))
-MAX_SERVING_CONCURRENCY = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SERVING_CONCURRENCY", "32")), 128))
-SERVING_AUDIENCES = {"research", "internal"}
-SERVING_MODES = {"workspace-runtime", "operator-managed-private"}
-DEPLOYMENT_OPERATOR_STATES = {"prepared", "approved", "retired"}
-
-
-def _fingerprinted_artifact(value: Any, schema: str, field: str) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=schema:
-        raise HTTPException(status_code=400,detail=f"{field} schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if value.get("artifactFingerprint")!=expected:
-        raise HTTPException(status_code=400,detail=f"{field} fingerprint verification failed")
-    return value
-
-
-def _validate_serving_binding(value: Any) -> dict[str,Any]:
-    binding=_fingerprinted_artifact(value,SERVING_MODEL_BINDING_SCHEMA,"servingModelBindingArtifact")
-    pkg=_validate_model_package(binding.get("modelPackage"))
-    if binding.get("modelPackageFingerprint")!=pkg["artifactFingerprint"] or binding.get("modelPackageId")!=pkg["packageId"]:
-        raise HTTPException(status_code=400,detail="serving model binding package lineage mismatch")
-    return binding
-
-
-def _serving_model_binding(payload: dict[str,Any]) -> dict[str,Any]:
-    pkg=_validate_model_package(payload.get("modelPackage"))
-    serving_id=_distributed_id(payload.get("servingId") or ("serve-"+pkg["packageId"]),"servingId")
-    audience=_bounded_text(payload.get("audience") or "research","audience",24).lower()
-    if audience not in SERVING_AUDIENCES:
-        raise HTTPException(status_code=400,detail="serving audience must remain research or internal")
-    mode=_bounded_text(payload.get("servingMode") or "workspace-runtime","servingMode",40).lower()
-    if mode not in SERVING_MODES:
-        raise HTTPException(status_code=400,detail="unsupported servingMode")
-    max_rows=payload.get("maxRequestRows",min(128,MAX_SERVING_REQUEST_ROWS))
-    if not isinstance(max_rows,int) or isinstance(max_rows,bool) or not 1<=max_rows<=MAX_SERVING_REQUEST_ROWS:
-        raise HTTPException(status_code=400,detail="maxRequestRows is outside the bounded serving range")
-    concurrency=payload.get("maxConcurrency",1)
-    if not isinstance(concurrency,int) or isinstance(concurrency,bool) or not 1<=concurrency<=MAX_SERVING_CONCURRENCY:
-        raise HTTPException(status_code=400,detail="maxConcurrency is outside the bounded serving range")
-    inf=pkg["inferenceContract"]
-    body={"schema":SERVING_MODEL_BINDING_SCHEMA,"kind":"neural-serving-model-binding","servingId":serving_id,
-          "servingMode":mode,"audience":audience,"modelPackage":pkg,"modelPackageId":pkg["packageId"],
-          "modelPackageFingerprint":pkg["artifactFingerprint"],"modelSpecFingerprint":pkg["modelSpecFingerprint"],
-          "runtimeContractFingerprint":pkg["manifest"]["runtimeContractFingerprint"],"task":pkg["task"],
-          "inputFeatures":inf["inputFeatures"],"outputFeatures":inf["outputFeatures"],"featureNames":inf["featureNames"],
-          "maxRequestRows":max_rows,"maxConcurrency":concurrency,"immutableModelBinding":True,
-          "publicNetworkExposure":False,"clientSuppliedEndpointAccepted":False,"arbitraryRuntimeImageAccepted":False,
-          "externalModelReadEnabled":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-serving-model-binding","servingModelBindingArtifact":body}
-
-
-def _serving_compatibility_evaluate(payload: dict[str,Any]) -> dict[str,Any]:
-    binding=_validate_serving_binding(payload.get("servingModelBindingArtifact"))
-    device=_bounded_text(payload.get("deviceClass") or "cpu","deviceClass",16).lower()
-    if device not in {"cpu","cuda"}: raise HTTPException(status_code=400,detail="deviceClass must be cpu or cuda")
-    pkg=binding["modelPackage"]; contract=pkg["runtimeContract"]; reasons=[]
-    if contract.get("runtime")!=RUNTIME: reasons.append("runtime")
-    if contract.get("requiredDependencyPins")!=MODEL_PACKAGE_DEPENDENCY_PINS: reasons.append("dependency-pins")
-    if device not in contract.get("supportedDeviceClasses",[]): reasons.append("device-class")
-    placement_fp=None
-    placement=payload.get("acceleratorPlacementPlanArtifact")
-    if placement is not None:
-        placement=_validate_placement(placement); placement_fp=placement["artifactFingerprint"]
-        if device=="cuda" and not placement.get("placementReady"): reasons.append("accelerator-placement")
-    elif device=="cuda":
-        reasons.append("accelerator-placement-required")
-    body={"schema":SERVING_COMPATIBILITY_SCHEMA,"kind":"neural-serving-compatibility","servingId":binding["servingId"],
-          "servingModelBindingFingerprint":binding["artifactFingerprint"],"modelPackageFingerprint":binding["modelPackageFingerprint"],
-          "deviceClass":device,"acceleratorPlacementPlanFingerprint":placement_fp,"compatible":len(reasons)==0,
-          "reasons":reasons,"requiredDependencyPins":dict(MODEL_PACKAGE_DEPENDENCY_PINS),
-          "publicEndpointRequired":False,"externalRuntimeImageRequired":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-serving-compatibility","servingCompatibilityArtifact":body}
-
-
-def _serving_infer(payload: dict[str,Any]) -> dict[str,Any]:
-    if "targets" in payload: raise HTTPException(status_code=400,detail="serving inference does not accept targets")
-    binding=_validate_serving_binding(payload.get("servingModelBindingArtifact"))
-    features=payload.get("features")
-    if not isinstance(features,list) or not features or len(features)>binding["maxRequestRows"]:
-        raise HTTPException(status_code=413,detail="serving inference row count exceeds the bound model serving contract")
-    request_id=_distributed_id(payload.get("requestId") or "serving-request","requestId")
-    req={"modelPackage":binding["modelPackage"],"features":features}
-    if "rowIds" in payload: req["rowIds"]=payload.get("rowIds")
-    result=_model_package_infer(req); pred=result["predictionArtifact"]
-    body={"schema":SERVING_INFERENCE_SCHEMA,"kind":"neural-serving-inference","requestId":request_id,"servingId":binding["servingId"],
-          "servingModelBindingFingerprint":binding["artifactFingerprint"],"modelPackageFingerprint":binding["modelPackageFingerprint"],
-          "predictionArtifact":pred,"predictionArtifactFingerprint":pred["artifactFingerprint"],"rows":pred["rows"],
-          "task":binding["task"],"executionMode":"bounded-synchronous-workspace-runtime","publicNetworkExposure":False,
-          "externalEndpointInvoked":False,"targetsAccepted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-serving-inference","predictions":result.get("predictions",[]),"servingInferenceArtifact":body}
-
-
-def _batch_inference_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    binding=_validate_serving_binding(payload.get("servingModelBindingArtifact")); features=payload.get("features")
-    tensor=_tensor(features,name="features",dtype_name="float32",ndim=2); rows=int(tensor.shape[0])
-    if rows<1 or rows>MAX_BATCH_INFERENCE_ROWS: raise HTTPException(status_code=413,detail="batch inference row count is outside the bounded range")
-    if int(tensor.shape[1])!=int(binding["inputFeatures"]): raise HTTPException(status_code=400,detail="features width does not match serving model binding")
-    ids=_prediction_row_ids({"rowIds":payload.get("rowIds")} if "rowIds" in payload else {},rows)
-    batch_size=payload.get("batchSize",binding["maxRequestRows"])
-    if not isinstance(batch_size,int) or isinstance(batch_size,bool) or not 1<=batch_size<=binding["maxRequestRows"]:
-        raise HTTPException(status_code=400,detail="batchSize exceeds the serving binding request limit")
-    dataset_fp=_canonical_sha256({"features":features,"rowIds":ids})
-    batches=[]
-    for ordinal,start in enumerate(range(0,rows,batch_size)):
-        stop=min(rows,start+batch_size); batches.append({"ordinal":ordinal,"start":start,"stop":stop,"rowCount":stop-start,"firstRowId":ids[start],"lastRowId":ids[stop-1]})
-    body={"schema":BATCH_INFERENCE_PLAN_SCHEMA,"kind":"neural-batch-inference-plan","servingId":binding["servingId"],
-          "servingModelBindingFingerprint":binding["artifactFingerprint"],"modelPackageFingerprint":binding["modelPackageFingerprint"],
-          "inferenceDatasetFingerprint":dataset_fp,"rowCount":rows,"batchSize":batch_size,"batchCount":len(batches),"batches":batches,
-          "orderingPolicy":"stable-input-order","parallelExecutionRequested":False,"externalQueueRequired":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-batch-inference-plan","batchInferencePlanArtifact":body}
-
-
-def _batch_inference_execute(payload: dict[str,Any]) -> dict[str,Any]:
-    if "targets" in payload: raise HTTPException(status_code=400,detail="batch inference does not accept targets")
-    binding=_validate_serving_binding(payload.get("servingModelBindingArtifact"))
-    plan=_fingerprinted_artifact(payload.get("batchInferencePlanArtifact"),BATCH_INFERENCE_PLAN_SCHEMA,"batchInferencePlanArtifact")
-    if plan.get("servingModelBindingFingerprint")!=binding["artifactFingerprint"]: raise HTTPException(status_code=400,detail="batch inference plan binding lineage mismatch")
-    features=payload.get("features"); tensor=_tensor(features,name="features",dtype_name="float32",ndim=2); rows=int(tensor.shape[0])
-    ids=_prediction_row_ids({"rowIds":payload.get("rowIds")} if "rowIds" in payload else {},rows)
-    dataset_fp=_canonical_sha256({"features":features,"rowIds":ids})
-    if rows!=plan["rowCount"] or dataset_fp!=plan["inferenceDatasetFingerprint"]: raise HTTPException(status_code=400,detail="batch inference data does not match the deterministic plan")
-    batch_receipts=[]; predictions=[]
-    for batch in plan["batches"]:
-        start=int(batch["start"]); stop=int(batch["stop"])
-        result=_model_package_infer({"modelPackage":binding["modelPackage"],"features":features[start:stop],"rowIds":ids[start:stop]})
-        pred=result["predictionArtifact"]; predictions.extend(result.get("predictions",[]))
-        batch_receipts.append({"ordinal":batch["ordinal"],"rowCount":batch["rowCount"],"predictionArtifactFingerprint":pred["artifactFingerprint"],"inferenceDatasetFingerprint":pred["inferenceDatasetFingerprint"]})
-    body={"schema":BATCH_INFERENCE_RESULT_SCHEMA,"kind":"neural-batch-inference-result","servingId":binding["servingId"],
-          "servingModelBindingFingerprint":binding["artifactFingerprint"],"batchInferencePlanFingerprint":plan["artifactFingerprint"],
-          "modelPackageFingerprint":binding["modelPackageFingerprint"],"inferenceDatasetFingerprint":dataset_fp,"rowCount":rows,
-          "batchCount":len(batch_receipts),"batchReceipts":batch_receipts,"predictions":predictions,
-          "executionMode":"bounded-sequential-workspace-runtime","externalQueueInvoked":False,"publicNetworkExposure":False,
-          "targetsAccepted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-batch-inference-result","predictions":predictions,"batchInferenceResultArtifact":body}
-
-
-def _research_deployment_readiness(payload: dict[str,Any]) -> dict[str,Any]:
-    binding=_validate_serving_binding(payload.get("servingModelBindingArtifact"))
-    compatibility=_fingerprinted_artifact(payload.get("servingCompatibilityArtifact"),SERVING_COMPATIBILITY_SCHEMA,"servingCompatibilityArtifact")
-    if compatibility.get("servingModelBindingFingerprint")!=binding["artifactFingerprint"]: raise HTTPException(status_code=400,detail="deployment compatibility binding lineage mismatch")
-    policy=payload.get("deploymentPolicy") or {}
-    if not isinstance(policy,dict): raise HTTPException(status_code=400,detail="deploymentPolicy must be an object")
-    audience=_bounded_text(policy.get("audience") or binding["audience"],"deploymentPolicy.audience",24).lower()
-    if audience not in SERVING_AUDIENCES: raise HTTPException(status_code=400,detail="research deployment audience must remain research or internal")
-    if policy.get("publicNetworkExposure") not in {None,False}: raise HTTPException(status_code=400,detail="public network exposure is not enabled by the Workspace research deployment runtime")
-    max_concurrency=policy.get("maxConcurrentRequests",binding["maxConcurrency"])
-    if not isinstance(max_concurrency,int) or isinstance(max_concurrency,bool) or not 1<=max_concurrency<=binding["maxConcurrency"]:
-        raise HTTPException(status_code=400,detail="maxConcurrentRequests exceeds the serving binding")
-    reasons=[]
-    if not compatibility.get("compatible"): reasons.append("serving-incompatible")
-    batch=payload.get("batchInferencePlanArtifact"); batch_fp=None
-    if batch is not None:
-        batch=_fingerprinted_artifact(batch,BATCH_INFERENCE_PLAN_SCHEMA,"batchInferencePlanArtifact"); batch_fp=batch["artifactFingerprint"]
-        if batch.get("servingModelBindingFingerprint")!=binding["artifactFingerprint"]: reasons.append("batch-plan-lineage")
-    body={"schema":RESEARCH_DEPLOYMENT_READINESS_SCHEMA,"kind":"neural-research-deployment-readiness","servingId":binding["servingId"],
-          "servingModelBindingFingerprint":binding["artifactFingerprint"],"servingCompatibilityFingerprint":compatibility["artifactFingerprint"],
-          "batchInferencePlanFingerprint":batch_fp,"audience":audience,"maxConcurrentRequests":max_concurrency,"ready":len(reasons)==0,"reasons":reasons,
-          "operatorApprovalRequired":True,"publicNetworkExposure":False,"infrastructureMutationExecuted":False,"clientSuppliedEndpointAccepted":False,
-          "isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-research-deployment-readiness","researchDeploymentReadinessArtifact":body}
-
-
-def _research_deployment_manifest(payload: dict[str,Any]) -> dict[str,Any]:
-    binding=_validate_serving_binding(payload.get("servingModelBindingArtifact"))
-    readiness=_fingerprinted_artifact(payload.get("researchDeploymentReadinessArtifact"),RESEARCH_DEPLOYMENT_READINESS_SCHEMA,"researchDeploymentReadinessArtifact")
-    if readiness.get("servingModelBindingFingerprint")!=binding["artifactFingerprint"]: raise HTTPException(status_code=400,detail="research deployment readiness lineage mismatch")
-    if not readiness.get("ready"): raise HTTPException(status_code=409,detail="research deployment is not ready")
-    deployment_id=_distributed_id(payload.get("deploymentId") or ("research-"+binding["servingId"]),"deploymentId")
-    title=_bounded_text(payload.get("title") or "Workspace research deployment","title",200)
-    context=str(payload.get("researchContextRef") or "").strip()
-    if len(context)>300: raise HTTPException(status_code=400,detail="researchContextRef is too long")
-    research_pkg=payload.get("researchPackage"); research_package_id=None; research_package_fp=None
-    if research_pkg is not None:
-        rp=_validate_research_package(research_pkg); research_package_id=rp["packageId"]; research_package_fp=rp["artifactFingerprint"]
-    body={"schema":RESEARCH_DEPLOYMENT_MANIFEST_SCHEMA,"kind":"neural-research-deployment-manifest","deploymentId":deployment_id,"title":title,
-          "researchContextRef":context or None,"servingId":binding["servingId"],"servingModelBindingFingerprint":binding["artifactFingerprint"],
-          "modelPackageId":binding["modelPackageId"],"modelPackageFingerprint":binding["modelPackageFingerprint"],
-          "researchPackageId":research_package_id,"researchPackageFingerprint":research_package_fp,
-          "readinessFingerprint":readiness["artifactFingerprint"],"audience":readiness["audience"],"maxConcurrentRequests":readiness["maxConcurrentRequests"],
-          "deploymentPrepared":True,"deploymentExecuted":False,"operatorControlledActivation":True,"publicNetworkExposure":False,
-          "infrastructureMutationExecuted":False,"externalEndpointProvisioned":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-research-deployment-manifest","researchDeploymentManifestArtifact":body}
-
-
-def _research_deployment_receipt(payload: dict[str,Any]) -> dict[str,Any]:
-    manifest=_fingerprinted_artifact(payload.get("researchDeploymentManifestArtifact"),RESEARCH_DEPLOYMENT_MANIFEST_SCHEMA,"researchDeploymentManifestArtifact")
-    state=_bounded_text(payload.get("operatorState") or "prepared","operatorState",20).lower()
-    if state not in DEPLOYMENT_OPERATOR_STATES: raise HTTPException(status_code=400,detail="operatorState is invalid")
-    batch=payload.get("batchInferenceResultArtifact"); batch_fp=None
-    if batch is not None:
-        batch=_fingerprinted_artifact(batch,BATCH_INFERENCE_RESULT_SCHEMA,"batchInferenceResultArtifact"); batch_fp=batch["artifactFingerprint"]
-        if batch.get("servingModelBindingFingerprint")!=manifest["servingModelBindingFingerprint"]: raise HTTPException(status_code=400,detail="deployment receipt batch lineage mismatch")
-    body={"schema":RESEARCH_DEPLOYMENT_RECEIPT_SCHEMA,"kind":"neural-research-deployment-receipt","deploymentId":manifest["deploymentId"],
-          "researchDeploymentManifestFingerprint":manifest["artifactFingerprint"],"servingModelBindingFingerprint":manifest["servingModelBindingFingerprint"],
-          "modelPackageFingerprint":manifest["modelPackageFingerprint"],"batchInferenceResultFingerprint":batch_fp,"operatorState":state,
-          "operatorDeclaredState":True,"workspaceInfrastructureMutationExecuted":False,"workspacePublicEndpointProvisioned":False,
-          "clientSuppliedEndpointAccepted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"neural-research-deployment-receipt","researchDeploymentReceiptArtifact":body}
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -5483,18 +5255,6 @@ def health() -> dict[str, Any]:
         "acceleratorSchedulingReceiptSchema": ACCELERATOR_SCHEDULING_RECEIPT_SCHEMA,
         "acceleratorSchedulingInfrastructureMutationEnabled": False,
         "acceleratorClientSuppliedSchedulerEndpointsAllowed": False,
-        "modelServingBatchInferenceResearchDeploymentRuntime": True,
-        "servingModelBindingSchema": SERVING_MODEL_BINDING_SCHEMA,
-        "servingCompatibilitySchema": SERVING_COMPATIBILITY_SCHEMA,
-        "servingInferenceArtifactSchema": SERVING_INFERENCE_SCHEMA,
-        "batchInferencePlanSchema": BATCH_INFERENCE_PLAN_SCHEMA,
-        "batchInferenceResultSchema": BATCH_INFERENCE_RESULT_SCHEMA,
-        "researchDeploymentReadinessSchema": RESEARCH_DEPLOYMENT_READINESS_SCHEMA,
-        "researchDeploymentManifestSchema": RESEARCH_DEPLOYMENT_MANIFEST_SCHEMA,
-        "researchDeploymentReceiptSchema": RESEARCH_DEPLOYMENT_RECEIPT_SCHEMA,
-        "modelServingPublicNetworkExposureEnabled": False,
-        "modelServingClientSuppliedEndpointsAllowed": False,
-        "researchDeploymentInfrastructureMutationEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -5618,23 +5378,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.serving-model-binding":
-        result = _serving_model_binding(payload)
-    elif operation == "workspace.neural.serving-compatibility-evaluate":
-        result = _serving_compatibility_evaluate(payload)
-    elif operation == "workspace.neural.serving-infer":
-        result = _serving_infer(payload)
-    elif operation == "workspace.neural.batch-inference-plan":
-        result = _batch_inference_plan(payload)
-    elif operation == "workspace.neural.batch-inference-execute":
-        result = _batch_inference_execute(payload)
-    elif operation == "workspace.neural.research-deployment-readiness":
-        result = _research_deployment_readiness(payload)
-    elif operation == "workspace.neural.research-deployment-manifest":
-        result = _research_deployment_manifest(payload)
-    elif operation == "workspace.neural.research-deployment-receipt":
-        result = _research_deployment_receipt(payload)
-    elif operation == "workspace.neural.accelerator-inventory-contract":
+    if operation == "workspace.neural.accelerator-inventory-contract":
         result = _accelerator_inventory_contract(payload)
     elif operation == "workspace.neural.accelerator-resource-request":
         result = _accelerator_resource_request(payload)

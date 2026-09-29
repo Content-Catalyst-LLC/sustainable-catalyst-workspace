@@ -161,14 +161,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.accelerator-reservation-plan",
         "workspace.neural.accelerator-preemption-plan",
         "workspace.neural.accelerator-scheduling-receipt",
-        "workspace.neural.serving-model-binding",
-        "workspace.neural.serving-compatibility-evaluate",
-        "workspace.neural.serving-infer",
-        "workspace.neural.batch-inference-plan",
-        "workspace.neural.batch-inference-execute",
-        "workspace.neural.research-deployment-readiness",
-        "workspace.neural.research-deployment-manifest",
-        "workspace.neural.research-deployment-receipt",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -967,45 +959,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             nr["workspaceAcceleratorSchedulingArtifact"]={"artifactId":neural_accelerator_scheduling_artifact.artifact_id,"mediaType":neural_accelerator_scheduling_artifact.media_type,
                 "sha256":neural_accelerator_scheduling_artifact.sha256,"bytes":neural_accelerator_scheduling_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
-    neural_model_serving_artifact = None
-    neural_model_serving_ops = {
-        "workspace.neural.serving-model-binding","workspace.neural.serving-compatibility-evaluate","workspace.neural.serving-infer",
-        "workspace.neural.batch-inference-plan","workspace.neural.batch-inference-execute","workspace.neural.research-deployment-readiness",
-        "workspace.neural.research-deployment-manifest","workspace.neural.research-deployment-receipt",
-    }
-    if language == "neural" and row.operation in neural_model_serving_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        keys=("servingModelBindingArtifact","servingCompatibilityArtifact","servingInferenceArtifact","batchInferencePlanArtifact","batchInferenceResultArtifact","researchDeploymentReadinessArtifact","researchDeploymentManifestArtifact","researchDeploymentReceiptArtifact")
-        for key in keys:
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if isinstance(blob,dict):
-            schema=blob.get("schema")
-            mapping={
-                "sc-workspace-neural-serving-model-binding/1.0":("application/vnd.sc.workspace.neural-serving-model-binding+json","neural-serving-binding","binding"),
-                "sc-workspace-neural-serving-compatibility/1.0":("application/vnd.sc.workspace.neural-serving-compatibility+json","neural-serving-compatibility","evaluation"),
-                "sc-workspace-neural-serving-inference-artifact/1.0":("application/vnd.sc.workspace.neural-serving-inference+json","neural-serving-inference","inference"),
-                "sc-workspace-neural-batch-inference-plan/1.0":("application/vnd.sc.workspace.neural-batch-inference-plan+json","neural-batch-inference-plan","plan"),
-                "sc-workspace-neural-batch-inference-result/1.0":("application/vnd.sc.workspace.neural-batch-inference-result+json","neural-batch-inference-result","result"),
-                "sc-workspace-neural-research-deployment-readiness/1.0":("application/vnd.sc.workspace.neural-research-deployment-readiness+json","neural-research-deployment-readiness","evaluation"),
-                "sc-workspace-neural-research-deployment-manifest/1.0":("application/vnd.sc.workspace.neural-research-deployment-manifest+json","neural-research-deployment-manifest","manifest"),
-                "sc-workspace-neural-research-deployment-receipt/1.0":("application/vnd.sc.workspace.neural-research-deployment-receipt+json","neural-research-deployment-receipt","receipt"),
-            }
-            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-model-serving+json","neural-model-serving","analysis"))
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            aid=f"{prefix}-{row.job_id}"; existing_serving=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
-                "filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
-                "expectedRevision":existing_serving.revision if existing_serving is not None else 0,
-                "metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
-                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
-                    "servingModelBindingFingerprint":blob.get("servingModelBindingFingerprint"),"modelPackageFingerprint":blob.get("modelPackageFingerprint"),
-                    "deploymentId":blob.get("deploymentId"),"role":role,"isObservedEvidence":False,"modelServingResearchDeploymentRuntime":True}})
-            neural_model_serving_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceModelServingArtifact"]={"artifactId":neural_model_serving_artifact.artifact_id,"mediaType":neural_model_serving_artifact.media_type,
-                "sha256":neural_model_serving_artifact.sha256,"bytes":neural_model_serving_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -1458,26 +1411,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "infrastructureMutationExecuted":False,"isObservedEvidence":False,
             "workspaceAcceleratorSchedulingArtifactId":neural_accelerator_scheduling_artifact.artifact_id if neural_accelerator_scheduling_artifact is not None else None,
             "workspaceAcceleratorSchedulingArtifactSha256":neural_accelerator_scheduling_artifact.sha256 if neural_accelerator_scheduling_artifact is not None else None,
-        })
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.serving-model-binding","workspace.neural.serving-compatibility-evaluate","workspace.neural.serving-infer",
-        "workspace.neural.batch-inference-plan","workspace.neural.batch-inference-execute","workspace.neural.research-deployment-readiness",
-        "workspace.neural.research-deployment-manifest","workspace.neural.research-deployment-receipt",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("servingModelBindingArtifact","servingCompatibilityArtifact","servingInferenceArtifact","batchInferencePlanArtifact","batchInferenceResultArtifact","researchDeploymentReadinessArtifact","researchDeploymentManifestArtifact","researchDeploymentReceiptArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({
-            "modelServingBatchInferenceResearchDeploymentRuntime":True,"modelServingArtifactSchema":blob.get("schema"),
-            "modelServingArtifactFingerprint":blob.get("artifactFingerprint"),"servingModelBindingFingerprint":blob.get("servingModelBindingFingerprint"),
-            "modelPackageFingerprint":blob.get("modelPackageFingerprint"),"deploymentId":blob.get("deploymentId"),
-            "publicNetworkExposureEnabled":False,"clientSuppliedServingEndpointsAllowed":False,"infrastructureMutationExecuted":False,
-            "isObservedEvidence":False,
-            "workspaceModelServingArtifactId":neural_model_serving_artifact.artifact_id if neural_model_serving_artifact is not None else None,
-            "workspaceModelServingArtifactSha256":neural_model_serving_artifact.sha256 if neural_model_serving_artifact is not None else None,
         })
 
     if language == "neural" and row.operation in {

@@ -33,7 +33,7 @@ def placement(req=None, inv=None, adm=None):
     return s._accelerator_placement_plan({"acceleratorResourceRequestArtifact":req,"acceleratorInventoryArtifact":inv,"acceleratorAdmissionDecisionArtifact":adm})["acceleratorPlacementPlanArtifact"]
 
 def test_health_registry_and_boundaries():
-    h=s.health(); assert h["version"] in {"3.42.0","3.43.0"}; assert len(h["operations"])>=125
+    h=s.health(); assert h["version"]=="3.42.0"; assert len(h["operations"])==125
     assert h["advancedAcceleratorSchedulingResourceGovernanceRuntime"] is True
     assert h["acceleratorSchedulingInfrastructureMutationEnabled"] is False
     assert h["acceleratorClientSuppliedSchedulerEndpointsAllowed"] is False

@@ -13,7 +13,7 @@ def _service():
 def test_patch_identity_preserves_distributed_runtime_contract():
     s=_service()
     h=s.health()
-    assert h['version'] in {'3.41.0.1','3.42.0','3.43.0'}
+    assert h['version'] in {'3.41.0.1','3.42.0'}
     assert len(h['operations'])>=117
     assert h['distributedNeuralExecutionWorkerFabricRuntime'] is True
     assert h['distributedClientSuppliedWorkerEndpointsAllowed'] is False
