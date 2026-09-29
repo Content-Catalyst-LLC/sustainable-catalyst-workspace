@@ -34,7 +34,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.44.0"
+SERVICE_VERSION = "3.43.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -189,14 +189,6 @@ OPERATIONS = {
     "workspace.neural.research-deployment-readiness",
     "workspace.neural.research-deployment-manifest",
     "workspace.neural.research-deployment-receipt",
-    "workspace.neural.cross-runtime-workflow-contract",
-    "workspace.neural.cross-runtime-step-contract",
-    "workspace.neural.cross-runtime-dependency-validate",
-    "workspace.neural.cross-runtime-handoff-plan",
-    "workspace.neural.cross-runtime-execution-plan",
-    "workspace.neural.cross-runtime-run-receipt",
-    "workspace.neural.cross-runtime-reproducibility-manifest",
-    "workspace.neural.cross-runtime-lineage",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -213,8 +205,6 @@ BLOCKED_PAYLOAD_KEYS = {
     "reservationToken", "kubeconfig", "kubernetesConfig", "slurmConfig", "schedulerCredentials",
     "modelEndpoint", "servingUrl", "deploymentUrl", "publicEndpoint", "networkEndpoint",
     "containerImage", "dockerImage", "registryCredentials", "deploymentToken", "servingToken", "apiKey",
-    "workflowRuntimeUrl", "runtimeEndpoint", "runtimeEndpointUrl", "shellCommand", "command", "executable",
-    "secret", "token", "sshCommand", "dockerCommand", "serializedPayload",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -5353,172 +5343,6 @@ def _research_deployment_receipt(payload: dict[str,Any]) -> dict[str,Any]:
     return {"kind":"neural-research-deployment-receipt","researchDeploymentReceiptArtifact":body}
 
 
-# v3.44.0 — Cross-Runtime ML / Neural Workflow Orchestration
-CROSS_RUNTIME_WORKFLOW_SCHEMA = "sc-workspace-cross-runtime-ml-neural-workflow/1.0"
-CROSS_RUNTIME_STEP_SCHEMA = "sc-workspace-cross-runtime-ml-neural-step/1.0"
-CROSS_RUNTIME_DEPENDENCY_SCHEMA = "sc-workspace-cross-runtime-dependency-validation/1.0"
-CROSS_RUNTIME_HANDOFF_SCHEMA = "sc-workspace-cross-runtime-handoff-plan/1.0"
-CROSS_RUNTIME_EXECUTION_PLAN_SCHEMA = "sc-workspace-cross-runtime-execution-plan/1.0"
-CROSS_RUNTIME_RUN_RECEIPT_SCHEMA = "sc-workspace-cross-runtime-run-receipt/1.0"
-CROSS_RUNTIME_REPRODUCIBILITY_SCHEMA = "sc-workspace-cross-runtime-reproducibility-manifest/1.0"
-CROSS_RUNTIME_LINEAGE_SCHEMA = "sc-workspace-cross-runtime-lineage/1.0"
-CROSS_RUNTIME_ALLOWED_RUNTIMES = {"ml", "neural"}
-CROSS_RUNTIME_ML_OPERATIONS = {
-    "workspace.ml.linear-regression", "workspace.ml.logistic-classification",
-    "workspace.ml.random-forest-regression", "workspace.ml.random-forest-classification",
-    "workspace.ml.gradient-boosting-regression", "workspace.ml.gradient-boosting-classification",
-    "workspace.ml.cross-validate", "workspace.ml.predict",
-}
-MAX_CROSS_RUNTIME_STEPS = 64
-MAX_CROSS_RUNTIME_DEPENDENCIES = 256
-
-
-def _cross_id(value: Any, field: str) -> str:
-    text=str(value or "").strip()
-    if not text or len(text)>96 or not all(c.isalnum() or c in "-_.:" for c in text):
-        raise HTTPException(status_code=400, detail=f"{field} is invalid")
-    return text
-
-
-def _cross_step_payload(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict): raise HTTPException(status_code=400,detail="step must be an object")
-    step_id=_cross_id(value.get("stepId"),"stepId")
-    runtime=str(value.get("runtime") or "").strip().lower()
-    if runtime not in CROSS_RUNTIME_ALLOWED_RUNTIMES: raise HTTPException(status_code=400,detail="runtime must be ml or neural")
-    operation=str(value.get("operation") or "").strip()
-    if runtime=="ml":
-        if operation not in CROSS_RUNTIME_ML_OPERATIONS: raise HTTPException(status_code=400,detail="ML operation is not registered for cross-runtime orchestration")
-    else:
-        if operation not in OPERATIONS or operation.startswith("workspace.neural.cross-runtime-"):
-            raise HTTPException(status_code=400,detail="Neural operation is not registered for cross-runtime orchestration")
-    deps=value.get("dependsOn") or []
-    if not isinstance(deps,list) or len(deps)>MAX_CROSS_RUNTIME_DEPENDENCIES: raise HTTPException(status_code=400,detail="dependsOn is invalid")
-    deps=[_cross_id(x,"dependsOn") for x in deps]
-    if step_id in deps or len(set(deps))!=len(deps): raise HTTPException(status_code=400,detail="step dependencies are invalid")
-    output_role=str(value.get("outputRole") or "result").strip().lower()
-    if output_role not in {"result","model","prediction","representation","analysis","package"}: raise HTTPException(status_code=400,detail="outputRole is invalid")
-    body={"schema":CROSS_RUNTIME_STEP_SCHEMA,"kind":"cross-runtime-ml-neural-step","stepId":step_id,"runtime":runtime,
-          "operation":operation,"dependsOn":deps,"outputRole":output_role,"arbitraryCodeExecution":False,
-          "clientSuppliedRuntimeEndpointAccepted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return body
-
-
-def _cross_runtime_step_contract(payload: dict[str,Any]) -> dict[str,Any]:
-    body=_cross_step_payload(payload)
-    return {"kind":"cross-runtime-ml-neural-step","crossRuntimeStepArtifact":body}
-
-
-def _cross_runtime_workflow_contract(payload: dict[str,Any]) -> dict[str,Any]:
-    workflow_id=_cross_id(payload.get("workflowId") or "workflow","workflowId")
-    raw=payload.get("steps") or []
-    if not isinstance(raw,list) or not 1<=len(raw)<=MAX_CROSS_RUNTIME_STEPS: raise HTTPException(status_code=400,detail="steps must be a bounded non-empty list")
-    steps=[_cross_step_payload(x) for x in raw]
-    ids=[x["stepId"] for x in steps]
-    if len(ids)!=len(set(ids)): raise HTTPException(status_code=400,detail="stepId values must be unique")
-    known=set(ids)
-    for s in steps:
-        if any(d not in known for d in s["dependsOn"]): raise HTTPException(status_code=400,detail="workflow contains an unknown dependency")
-    body={"schema":CROSS_RUNTIME_WORKFLOW_SCHEMA,"kind":"cross-runtime-ml-neural-workflow","workflowId":workflow_id,"steps":steps,
-          "stepCount":len(steps),"runtimes":sorted({s["runtime"] for s in steps}),"arbitraryCodeExecution":False,
-          "clientSuppliedRuntimeEndpointsAllowed":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-ml-neural-workflow","crossRuntimeWorkflowArtifact":body}
-
-
-def _validate_cross_workflow(value: Any) -> dict[str,Any]:
-    return _fingerprinted_artifact(value,CROSS_RUNTIME_WORKFLOW_SCHEMA,"crossRuntimeWorkflowArtifact")
-
-
-def _topological_steps(workflow: dict[str,Any]) -> list[str]:
-    deps={s["stepId"]:set(s.get("dependsOn") or []) for s in workflow["steps"]}
-    order=[]
-    while deps:
-        ready=sorted(k for k,v in deps.items() if not v)
-        if not ready: raise HTTPException(status_code=409,detail="workflow dependency graph contains a cycle")
-        for k in ready:
-            order.append(k); deps.pop(k)
-        for v in deps.values(): v.difference_update(ready)
-    return order
-
-
-def _cross_runtime_dependency_validate(payload: dict[str,Any]) -> dict[str,Any]:
-    wf=_validate_cross_workflow(payload.get("crossRuntimeWorkflowArtifact"))
-    order=_topological_steps(wf)
-    body={"schema":CROSS_RUNTIME_DEPENDENCY_SCHEMA,"kind":"cross-runtime-dependency-validation","workflowId":wf["workflowId"],
-          "workflowFingerprint":wf["artifactFingerprint"],"valid":True,"topologicalOrder":order,"cycleDetected":False,
-          "stepCount":wf["stepCount"],"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-dependency-validation","crossRuntimeDependencyArtifact":body}
-
-
-def _cross_runtime_handoff_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    wf=_validate_cross_workflow(payload.get("crossRuntimeWorkflowArtifact")); order=_topological_steps(wf)
-    by={s["stepId"]:s for s in wf["steps"]}; handoffs=[]
-    for target in order:
-        for source in by[target]["dependsOn"]:
-            handoffs.append({"fromStepId":source,"toStepId":target,"fromRuntime":by[source]["runtime"],"toRuntime":by[target]["runtime"],
-                             "artifactReferenceMode":"workspace-artifact-id-and-sha256","automaticSerializationConversion":False})
-    body={"schema":CROSS_RUNTIME_HANDOFF_SCHEMA,"kind":"cross-runtime-handoff-plan","workflowId":wf["workflowId"],
-          "workflowFingerprint":wf["artifactFingerprint"],"handoffs":handoffs,"handoffCount":len(handoffs),
-          "crossRuntimeHandoffCount":sum(1 for x in handoffs if x["fromRuntime"]!=x["toRuntime"]),"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-handoff-plan","crossRuntimeHandoffPlanArtifact":body}
-
-
-def _cross_runtime_execution_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    wf=_validate_cross_workflow(payload.get("crossRuntimeWorkflowArtifact")); order=_topological_steps(wf); by={s["stepId"]:s for s in wf["steps"]}
-    stages=[]
-    completed=set()
-    while len(completed)<len(order):
-        ready=[sid for sid in order if sid not in completed and set(by[sid]["dependsOn"]).issubset(completed)]
-        stages.append({"stage":len(stages),"stepIds":ready,"runtimes":sorted({by[s]["runtime"] for s in ready})}); completed.update(ready)
-    body={"schema":CROSS_RUNTIME_EXECUTION_PLAN_SCHEMA,"kind":"cross-runtime-execution-plan","workflowId":wf["workflowId"],
-          "workflowFingerprint":wf["artifactFingerprint"],"topologicalOrder":order,"stages":stages,"stageCount":len(stages),
-          "deterministicPlanning":True,"automaticExecution":False,"arbitraryCodeExecution":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-execution-plan","crossRuntimeExecutionPlanArtifact":body}
-
-
-def _cross_runtime_run_receipt(payload: dict[str,Any]) -> dict[str,Any]:
-    plan=_fingerprinted_artifact(payload.get("crossRuntimeExecutionPlanArtifact"),CROSS_RUNTIME_EXECUTION_PLAN_SCHEMA,"crossRuntimeExecutionPlanArtifact")
-    results=payload.get("stepResults") or []
-    if not isinstance(results,list) or len(results)>MAX_CROSS_RUNTIME_STEPS: raise HTTPException(status_code=400,detail="stepResults is invalid")
-    normalized=[]
-    for x in results:
-        if not isinstance(x,dict): raise HTTPException(status_code=400,detail="stepResults entries must be objects")
-        sid=_cross_id(x.get("stepId"),"stepResults.stepId"); sha=str(x.get("artifactSha256") or "").lower()
-        if not re.fullmatch(r"[0-9a-f]{64}",sha): raise HTTPException(status_code=400,detail="artifactSha256 must be SHA-256")
-        normalized.append({"stepId":sid,"artifactId":_cross_id(x.get("artifactId"),"artifactId"),"artifactSha256":sha,"status":str(x.get("status") or "completed")})
-    body={"schema":CROSS_RUNTIME_RUN_RECEIPT_SCHEMA,"kind":"cross-runtime-run-receipt","workflowId":plan["workflowId"],
-          "executionPlanFingerprint":plan["artifactFingerprint"],"stepResults":sorted(normalized,key=lambda x:x["stepId"]),"resultCount":len(normalized),
-          "operatorOrchestrated":True,"automaticRemoteExecution":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-run-receipt","crossRuntimeRunReceiptArtifact":body}
-
-
-def _cross_runtime_reproducibility_manifest(payload: dict[str,Any]) -> dict[str,Any]:
-    wf=_validate_cross_workflow(payload.get("crossRuntimeWorkflowArtifact"))
-    plan=_fingerprinted_artifact(payload.get("crossRuntimeExecutionPlanArtifact"),CROSS_RUNTIME_EXECUTION_PLAN_SCHEMA,"crossRuntimeExecutionPlanArtifact")
-    if plan.get("workflowFingerprint")!=wf["artifactFingerprint"]: raise HTTPException(status_code=400,detail="execution plan lineage mismatch")
-    body={"schema":CROSS_RUNTIME_REPRODUCIBILITY_SCHEMA,"kind":"cross-runtime-reproducibility-manifest","workflowId":wf["workflowId"],
-          "workflowFingerprint":wf["artifactFingerprint"],"executionPlanFingerprint":plan["artifactFingerprint"],
-          "runtimeContracts":[{"runtime":"ml","runtimeId":"python-sklearn-predictive"},{"runtime":"neural","runtimeId":"python-pytorch-neural"}],
-          "deterministicPlanning":True,"artifactDigestsRequired":True,"environmentCaptureRequired":True,"automaticExecution":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-reproducibility-manifest","crossRuntimeReproducibilityManifestArtifact":body}
-
-
-def _cross_runtime_lineage(payload: dict[str,Any]) -> dict[str,Any]:
-    wf=_validate_cross_workflow(payload.get("crossRuntimeWorkflowArtifact")); order=_topological_steps(wf); by={s["stepId"]:s for s in wf["steps"]}
-    edges=[{"from":d,"to":s["stepId"],"relation":"artifact-handoff"} for s in wf["steps"] for d in s["dependsOn"]]
-    body={"schema":CROSS_RUNTIME_LINEAGE_SCHEMA,"kind":"cross-runtime-lineage","workflowId":wf["workflowId"],"workflowFingerprint":wf["artifactFingerprint"],
-          "nodes":[{"stepId":sid,"runtime":by[sid]["runtime"],"operation":by[sid]["operation"]} for sid in order],"edges":edges,
-          "nodeCount":len(order),"edgeCount":len(edges),"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"cross-runtime-lineage","crossRuntimeLineageArtifact":body}
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -5671,18 +5495,6 @@ def health() -> dict[str, Any]:
         "modelServingPublicNetworkExposureEnabled": False,
         "modelServingClientSuppliedEndpointsAllowed": False,
         "researchDeploymentInfrastructureMutationEnabled": False,
-        "crossRuntimeMLNeuralWorkflowOrchestrationRuntime": True,
-        "crossRuntimeWorkflowSchema": CROSS_RUNTIME_WORKFLOW_SCHEMA,
-        "crossRuntimeStepSchema": CROSS_RUNTIME_STEP_SCHEMA,
-        "crossRuntimeDependencyValidationSchema": CROSS_RUNTIME_DEPENDENCY_SCHEMA,
-        "crossRuntimeHandoffPlanSchema": CROSS_RUNTIME_HANDOFF_SCHEMA,
-        "crossRuntimeExecutionPlanSchema": CROSS_RUNTIME_EXECUTION_PLAN_SCHEMA,
-        "crossRuntimeRunReceiptSchema": CROSS_RUNTIME_RUN_RECEIPT_SCHEMA,
-        "crossRuntimeReproducibilityManifestSchema": CROSS_RUNTIME_REPRODUCIBILITY_SCHEMA,
-        "crossRuntimeLineageSchema": CROSS_RUNTIME_LINEAGE_SCHEMA,
-        "crossRuntimeAllowedRuntimes": ["ml", "neural"],
-        "crossRuntimeAutomaticExecutionEnabled": False,
-        "crossRuntimeClientSuppliedRuntimeEndpointsAllowed": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -5806,23 +5618,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.cross-runtime-workflow-contract":
-        result = _cross_runtime_workflow_contract(payload)
-    elif operation == "workspace.neural.cross-runtime-step-contract":
-        result = _cross_runtime_step_contract(payload)
-    elif operation == "workspace.neural.cross-runtime-dependency-validate":
-        result = _cross_runtime_dependency_validate(payload)
-    elif operation == "workspace.neural.cross-runtime-handoff-plan":
-        result = _cross_runtime_handoff_plan(payload)
-    elif operation == "workspace.neural.cross-runtime-execution-plan":
-        result = _cross_runtime_execution_plan(payload)
-    elif operation == "workspace.neural.cross-runtime-run-receipt":
-        result = _cross_runtime_run_receipt(payload)
-    elif operation == "workspace.neural.cross-runtime-reproducibility-manifest":
-        result = _cross_runtime_reproducibility_manifest(payload)
-    elif operation == "workspace.neural.cross-runtime-lineage":
-        result = _cross_runtime_lineage(payload)
-    elif operation == "workspace.neural.serving-model-binding":
+    if operation == "workspace.neural.serving-model-binding":
         result = _serving_model_binding(payload)
     elif operation == "workspace.neural.serving-compatibility-evaluate":
         result = _serving_compatibility_evaluate(payload)

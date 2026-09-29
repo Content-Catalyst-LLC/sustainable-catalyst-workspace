@@ -169,14 +169,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.research-deployment-readiness",
         "workspace.neural.research-deployment-manifest",
         "workspace.neural.research-deployment-receipt",
-        "workspace.neural.cross-runtime-workflow-contract",
-        "workspace.neural.cross-runtime-step-contract",
-        "workspace.neural.cross-runtime-dependency-validate",
-        "workspace.neural.cross-runtime-handoff-plan",
-        "workspace.neural.cross-runtime-execution-plan",
-        "workspace.neural.cross-runtime-run-receipt",
-        "workspace.neural.cross-runtime-reproducibility-manifest",
-        "workspace.neural.cross-runtime-lineage",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -975,34 +967,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             nr["workspaceAcceleratorSchedulingArtifact"]={"artifactId":neural_accelerator_scheduling_artifact.artifact_id,"mediaType":neural_accelerator_scheduling_artifact.media_type,
                 "sha256":neural_accelerator_scheduling_artifact.sha256,"bytes":neural_accelerator_scheduling_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
-    neural_cross_runtime_artifact = None
-    neural_cross_runtime_ops = {
-        "workspace.neural.cross-runtime-workflow-contract","workspace.neural.cross-runtime-step-contract",
-        "workspace.neural.cross-runtime-dependency-validate","workspace.neural.cross-runtime-handoff-plan",
-        "workspace.neural.cross-runtime-execution-plan","workspace.neural.cross-runtime-run-receipt",
-        "workspace.neural.cross-runtime-reproducibility-manifest","workspace.neural.cross-runtime-lineage",
-    }
-    if language == "neural" and row.operation in neural_cross_runtime_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        keys=("crossRuntimeWorkflowArtifact","crossRuntimeStepArtifact","crossRuntimeDependencyArtifact","crossRuntimeHandoffPlanArtifact","crossRuntimeExecutionPlanArtifact","crossRuntimeRunReceiptArtifact","crossRuntimeReproducibilityManifestArtifact","crossRuntimeLineageArtifact")
-        for key in keys:
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if isinstance(blob,dict):
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            aid=f"cross-runtime-workflow-{row.job_id}"; existing_cross=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
-                "filename":f"cross-runtime-workflow-{row.job_id}.json","mediaType":"application/vnd.sc.workspace.cross-runtime-workflow+json",
-                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),"expectedRevision":existing_cross.revision if existing_cross is not None else 0,
-                "metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
-                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
-                    "workflowId":blob.get("workflowId"),"role":"workflow-orchestration","isObservedEvidence":False,
-                    "crossRuntimeMLNeuralWorkflowOrchestration":True}})
-            neural_cross_runtime_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceCrossRuntimeWorkflowArtifact"]={"artifactId":neural_cross_runtime_artifact.artifact_id,"mediaType":neural_cross_runtime_artifact.media_type,
-                "sha256":neural_cross_runtime_artifact.sha256,"bytes":neural_cross_runtime_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_model_serving_artifact = None
     neural_model_serving_ops = {
         "workspace.neural.serving-model-binding","workspace.neural.serving-compatibility-evaluate","workspace.neural.serving-infer",
@@ -1495,23 +1459,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "workspaceAcceleratorSchedulingArtifactId":neural_accelerator_scheduling_artifact.artifact_id if neural_accelerator_scheduling_artifact is not None else None,
             "workspaceAcceleratorSchedulingArtifactSha256":neural_accelerator_scheduling_artifact.sha256 if neural_accelerator_scheduling_artifact is not None else None,
         })
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.cross-runtime-workflow-contract","workspace.neural.cross-runtime-step-contract",
-        "workspace.neural.cross-runtime-dependency-validate","workspace.neural.cross-runtime-handoff-plan",
-        "workspace.neural.cross-runtime-execution-plan","workspace.neural.cross-runtime-run-receipt",
-        "workspace.neural.cross-runtime-reproducibility-manifest","workspace.neural.cross-runtime-lineage",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("crossRuntimeWorkflowArtifact","crossRuntimeStepArtifact","crossRuntimeDependencyArtifact","crossRuntimeHandoffPlanArtifact","crossRuntimeExecutionPlanArtifact","crossRuntimeRunReceiptArtifact","crossRuntimeReproducibilityManifestArtifact","crossRuntimeLineageArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({"crossRuntimeMLNeuralWorkflowOrchestrationRuntime":True,"crossRuntimeArtifactSchema":blob.get("schema"),
-            "crossRuntimeArtifactFingerprint":blob.get("artifactFingerprint"),"workflowId":blob.get("workflowId"),
-            "automaticCrossRuntimeExecutionEnabled":False,"clientSuppliedRuntimeEndpointsAllowed":False,"isObservedEvidence":False,
-            "workspaceCrossRuntimeWorkflowArtifactId":neural_cross_runtime_artifact.artifact_id if neural_cross_runtime_artifact is not None else None,
-            "workspaceCrossRuntimeWorkflowArtifactSha256":neural_cross_runtime_artifact.sha256 if neural_cross_runtime_artifact is not None else None})
 
     if language == "neural" and row.operation in {
         "workspace.neural.serving-model-binding","workspace.neural.serving-compatibility-evaluate","workspace.neural.serving-infer",

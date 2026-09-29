@@ -19,7 +19,7 @@ def plan(b=None):
     b=b or binding(); return s._batch_inference_plan({"servingModelBindingArtifact":b,"features":[[1,2],[3,4],[5,6]],"rowIds":["r1","r2","r3"],"batchSize":2})["batchInferencePlanArtifact"]
 
 def test_health_registry_and_serving_boundaries():
-    h=s.health(); assert h["version"] in {"3.43.0","3.44.0"} and len(h["operations"])>=133
+    h=s.health(); assert h["version"]=="3.43.0" and len(h["operations"])==133
     assert h["modelServingBatchInferenceResearchDeploymentRuntime"] is True
     assert h["modelServingPublicNetworkExposureEnabled"] is False and h["researchDeploymentInfrastructureMutationEnabled"] is False
     for k in ("modelEndpoint","servingUrl","deploymentUrl","publicEndpoint","containerImage","dockerImage","deploymentToken","apiKey"): assert k in s.BLOCKED_PAYLOAD_KEYS
@@ -76,7 +76,7 @@ def test_workspace_registry_and_artifact_persistence_contract():
     ROOT=P.parents[1]
     if str(ROOT) not in sys.path: sys.path.insert(0,str(ROOT))
     from app.polyglot import RUNTIME_BY_LANGUAGE
-    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)>=133
+    n=RUNTIME_BY_LANGUAGE['neural']; assert len(n.operations)==133
     for op in ('workspace.neural.serving-model-binding','workspace.neural.serving-infer','workspace.neural.batch-inference-execute','workspace.neural.research-deployment-receipt'): assert op in n.operations
     poly=(ROOT/'app'/'polyglot.py').read_text()
     assert 'workspaceModelServingArtifact' in poly and 'sc-workspace-artifact-store/1.0' in poly
