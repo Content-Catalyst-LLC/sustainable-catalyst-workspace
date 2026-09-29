@@ -137,14 +137,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.neural-symbolic-relation-score",
         "workspace.neural.neural-symbolic-infer",
         "workspace.neural.neural-symbolic-explain",
-        "workspace.neural.research-package-plan",
-        "workspace.neural.research-package-create",
-        "workspace.neural.research-package-verify",
-        "workspace.neural.research-package-inspect",
-        "workspace.neural.research-package-reproduction-plan",
-        "workspace.neural.research-package-reproduction-verify",
-        "workspace.neural.research-package-export",
-        "workspace.neural.research-package-lineage",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -822,45 +814,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             neural_multimodal_artifact=store_artifact(db,row.user_key,req)
             nr["workspaceMultimodalArtifact"]={"artifactId":neural_multimodal_artifact.artifact_id,"mediaType":neural_multimodal_artifact.media_type,"sha256":neural_multimodal_artifact.sha256,"bytes":neural_multimodal_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
-    neural_research_package_artifact = None
-    neural_research_package_ops = {
-        "workspace.neural.research-package-plan","workspace.neural.research-package-create","workspace.neural.research-package-verify",
-        "workspace.neural.research-package-inspect","workspace.neural.research-package-reproduction-plan",
-        "workspace.neural.research-package-reproduction-verify","workspace.neural.research-package-export","workspace.neural.research-package-lineage",
-    }
-    if language == "neural" and row.operation in neural_research_package_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        keys=("deepLearningResearchPackage","researchPackagePlanArtifact","researchPackageVerificationArtifact","researchPackageInspectionArtifact","researchPackageReproductionPlanArtifact","researchPackageReproductionVerificationArtifact","researchPackageExportArtifact","researchPackageLineageArtifact")
-        for key in keys:
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if isinstance(blob,dict):
-            schema=blob.get("schema")
-            mapping={
-                "sc-workspace-neural-research-package/1.0":("application/vnd.sc.workspace.deep-learning-research-package+json","neural-research-package","package"),
-                "sc-workspace-neural-research-package-plan/1.0":("application/vnd.sc.workspace.deep-learning-research-package-plan+json","neural-research-package-plan","plan"),
-                "sc-workspace-neural-research-package-verification/1.0":("application/vnd.sc.workspace.deep-learning-research-package-verification+json","neural-research-package-verification","verification"),
-                "sc-workspace-neural-research-package-inspection/1.0":("application/vnd.sc.workspace.deep-learning-research-package-inspection+json","neural-research-package-inspection","analysis"),
-                "sc-workspace-neural-research-reproduction-plan/1.0":("application/vnd.sc.workspace.deep-learning-reproduction-plan+json","neural-research-reproduction-plan","plan"),
-                "sc-workspace-neural-research-reproduction-verification/1.0":("application/vnd.sc.workspace.deep-learning-reproduction-verification+json","neural-research-reproduction-verification","verification"),
-                "sc-workspace-neural-research-package-export/1.0":("application/vnd.sc.workspace.deep-learning-research-package-export+json","neural-research-package-export","export"),
-                "sc-workspace-neural-research-lineage/1.0":("application/vnd.sc.workspace.deep-learning-research-lineage+json","neural-research-lineage","lineage"),
-            }
-            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.deep-learning-research+json","neural-research-package","analysis"))
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            aid=f"{prefix}-{row.job_id}"; existing_research=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
-                "filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
-                "expectedRevision":existing_research.revision if existing_research is not None else 0,
-                "metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
-                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
-                    "packageId":blob.get("packageId"),"researchPackageFingerprint":blob.get("researchPackageFingerprint") or blob.get("artifactFingerprint"),
-                    "role":role,"isObservedEvidence":False,"reproducibleDeepLearningResearchPackage":True}})
-            neural_research_package_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceDeepLearningResearchArtifact"]={"artifactId":neural_research_package_artifact.artifact_id,"mediaType":neural_research_package_artifact.media_type,
-                "sha256":neural_research_package_artifact.sha256,"bytes":neural_research_package_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -1005,14 +958,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedSequenceArtifact":True,"isObservedEvidence":False},
             })
             store_run_output(db,row.user_key,run_id,sequence_output)
-        if neural_research_package_artifact is not None:
-            research_output = ExecutionRunOutputRequest.model_validate({
-                "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-research-package-artifact",
-                "artifactId":neural_research_package_artifact.artifact_id,"role":"package","label":"Reproducible deep learning research package artifact",
-                "mediaType":neural_research_package_artifact.media_type,"sha256":neural_research_package_artifact.sha256,"bytes":neural_research_package_artifact.bytes,
-                "metadata":{"language":"neural","operation":row.operation,"reproducibleDeepLearningResearchPackage":True,"isObservedEvidence":False},
-            })
-            store_run_output(db,row.user_key,run_id,research_output)
         if neural_symbolic_artifact is not None:
             ns_output = ExecutionRunOutputRequest.model_validate({
                 "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-symbolic-artifact",
@@ -1264,25 +1209,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "workspaceSequenceArtifactSha256":neural_sequence_artifact.sha256 if neural_sequence_artifact is not None else None,
         })
 
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.research-package-plan","workspace.neural.research-package-create","workspace.neural.research-package-verify",
-        "workspace.neural.research-package-inspect","workspace.neural.research-package-reproduction-plan",
-        "workspace.neural.research-package-reproduction-verify","workspace.neural.research-package-export","workspace.neural.research-package-lineage",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("deepLearningResearchPackage","researchPackagePlanArtifact","researchPackageVerificationArtifact","researchPackageInspectionArtifact","researchPackageReproductionPlanArtifact","researchPackageReproductionVerificationArtifact","researchPackageExportArtifact","researchPackageLineageArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({
-            "reproducibleDeepLearningResearchPackagesRuntime":True,"deepLearningResearchArtifactSchema":blob.get("schema"),
-            "deepLearningResearchArtifactFingerprint":blob.get("artifactFingerprint"),"packageId":blob.get("packageId"),
-            "researchPackageFingerprint":blob.get("researchPackageFingerprint") or blob.get("artifactFingerprint"),
-            "automaticReproductionExecution":False,"isObservedEvidence":False,
-            "workspaceDeepLearningResearchArtifactId":neural_research_package_artifact.artifact_id if neural_research_package_artifact is not None else None,
-            "workspaceDeepLearningResearchArtifactSha256":neural_research_package_artifact.sha256 if neural_research_package_artifact is not None else None,
-        })
 
     if language == "neural" and row.operation in {
         "workspace.neural.neural-symbolic-symbol-contract","workspace.neural.neural-symbolic-context-project",

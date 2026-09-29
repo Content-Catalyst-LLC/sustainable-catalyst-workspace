@@ -1,0 +1,24 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.40.0",
+  "title": "Reproducible Deep Learning Research Packages",
+  "baseline": "3.39.0.1",
+  "rollback": "3.39.0.1",
+  "databaseMigration": false,
+  "neuralRuntimeVersion": "3.40.0",
+  "neuralRuntimeOperations": 109,
+  "newOperations": [
+    "workspace.neural.research-package-plan",
+    "workspace.neural.research-package-create",
+    "workspace.neural.research-package-verify",
+    "workspace.neural.research-package-inspect",
+    "workspace.neural.research-package-reproduction-plan",
+    "workspace.neural.research-package-reproduction-verify",
+    "workspace.neural.research-package-export",
+    "workspace.neural.research-package-lineage"
+  ],
+  "packageFormat": "sc-workspace-reproducible-deep-learning-research-package/1.0",
+  "automaticReproductionExecution": false,
+  "externalArtifactReadEnabled": false
+}

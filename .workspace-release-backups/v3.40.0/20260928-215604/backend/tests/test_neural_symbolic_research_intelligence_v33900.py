@@ -18,7 +18,7 @@ def rules():
     ]
 
 def test_health_and_registry():
-    h=s.health(); assert h["version"] in {"3.39.0","3.40.0"}; assert len(h["operations"])>=101; assert h["neuralSymbolicResearchIntelligenceRuntime"] is True; assert h["neuralSymbolicTruthAdjudicationEnabled"] is False
+    h=s.health(); assert h["version"]=="3.39.0"; assert len(h["operations"])==101; assert h["neuralSymbolicResearchIntelligenceRuntime"] is True; assert h["neuralSymbolicTruthAdjudicationEnabled"] is False
 
 def test_symbol_context_binding():
     a=s._ns_symbol_contract({"symbol":symbols()[0]})["neuralSymbolicSymbolArtifact"]; assert a["truthValueAssigned"] is False

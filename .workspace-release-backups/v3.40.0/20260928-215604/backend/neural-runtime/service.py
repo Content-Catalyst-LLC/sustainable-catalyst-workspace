@@ -6,7 +6,6 @@ import hmac
 import json
 import math
 import os
-import re
 import threading
 import time
 import zlib
@@ -34,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.40.0"
+SERVICE_VERSION = "3.39.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -157,14 +156,6 @@ OPERATIONS = {
     "workspace.neural.neural-symbolic-relation-score",
     "workspace.neural.neural-symbolic-infer",
     "workspace.neural.neural-symbolic-explain",
-    "workspace.neural.research-package-plan",
-    "workspace.neural.research-package-create",
-    "workspace.neural.research-package-verify",
-    "workspace.neural.research-package-inspect",
-    "workspace.neural.research-package-reproduction-plan",
-    "workspace.neural.research-package-reproduction-verify",
-    "workspace.neural.research-package-export",
-    "workspace.neural.research-package-lineage",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -174,7 +165,6 @@ BLOCKED_PAYLOAD_KEYS = {
     "sequenceUrl", "sequencePath", "dataUrl", "dataPath", "filePath",
     "imageUrl", "imagePath", "modalityUrl", "modalityPath", "encoderUrl", "encoderPath",
     "symbolResolverUrl", "ruleEngineUrl", "ontologyUrl", "knowledgeBaseUrl", "externalSymbolPath",
-    "researchPackageUrl", "researchPackagePath", "exportPath", "artifactUrl", "artifactPath",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -4312,277 +4302,6 @@ def _ns_explain(payload: dict[str,Any]) -> dict[str,Any]:
     return {"kind":"neural-symbolic-explain","reasons":reasons,"neuralSymbolicExplanationArtifact":body}
 
 
-# v3.40.0 — Reproducible Deep Learning Research Packages
-DL_RESEARCH_PACKAGE_PLAN_SCHEMA = "sc-workspace-neural-research-package-plan/1.0"
-DL_RESEARCH_PACKAGE_SCHEMA = "sc-workspace-neural-research-package/1.0"
-DL_RESEARCH_PACKAGE_MANIFEST_SCHEMA = "sc-workspace-neural-research-package-manifest/1.0"
-DL_REPRODUCTION_PLAN_SCHEMA = "sc-workspace-neural-research-reproduction-plan/1.0"
-DL_REPRODUCTION_VERIFICATION_SCHEMA = "sc-workspace-neural-research-reproduction-verification/1.0"
-DL_RESEARCH_PACKAGE_INSPECTION_SCHEMA = "sc-workspace-neural-research-package-inspection/1.0"
-DL_RESEARCH_PACKAGE_EXPORT_SCHEMA = "sc-workspace-neural-research-package-export/1.0"
-DL_RESEARCH_LINEAGE_SCHEMA = "sc-workspace-neural-research-lineage/1.0"
-DL_RESEARCH_PACKAGE_FORMAT = "sc-workspace-reproducible-deep-learning-research-package/1.0"
-DL_RESEARCH_PACKAGE_MEDIA_TYPE = "application/vnd.sc.workspace.deep-learning-research-package+json"
-MAX_DL_RESEARCH_COMPONENTS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_RESEARCH_PACKAGE_COMPONENTS", "128")), 512))
-MAX_DL_RESEARCH_DEPENDENCIES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_RESEARCH_PACKAGE_DEPENDENCIES", "32")), 128))
-DL_RESEARCH_COMPONENT_ROLES = {
-    "dataset", "model-package", "checkpoint", "training", "evaluation", "calibration", "uncertainty",
-    "explainability", "embedding", "prediction", "gnn", "vision", "sequence", "multimodal",
-    "neural-symbolic", "trial-search", "environment", "runtime-contract", "other-analysis",
-}
-DL_RESEARCH_REPRODUCTION_POLICIES = {"strict-digest", "digest-and-runtime-compatible"}
-
-
-def _bounded_text(value: Any, field: str, max_len: int = 240) -> str:
-    if not isinstance(value, str):
-        raise HTTPException(status_code=400, detail=f"{field} must be a string")
-    value=value.strip()
-    if not value or len(value)>max_len or any(ch in value for ch in "\r\n\x00"):
-        raise HTTPException(status_code=400, detail=f"{field} must be non-empty and bounded")
-    return value
-
-
-def _normalize_research_component(raw: Any) -> dict[str, Any]:
-    if not isinstance(raw, dict):
-        raise HTTPException(status_code=400, detail="research package components must be objects")
-    allowed={"componentId","artifactId","role","schema","sha256","bytes","operation","artifactFingerprint","requiredForReproduction","dependsOn"}
-    extra=sorted(set(raw)-allowed)
-    if extra:
-        raise HTTPException(status_code=400, detail=f"unsupported research component fields: {','.join(extra)}")
-    cid=_bounded_text(raw.get("componentId"),"componentId",160)
-    aid=_bounded_text(raw.get("artifactId"),"artifactId",160)
-    role=_bounded_text(raw.get("role"),"role",80)
-    if role not in DL_RESEARCH_COMPONENT_ROLES:
-        raise HTTPException(status_code=400, detail="unsupported deep-learning research package component role")
-    schema=_bounded_text(raw.get("schema"),"schema",240)
-    digest=_bounded_text(raw.get("sha256"),"sha256",64).lower()
-    if not re.fullmatch(r"[0-9a-f]{64}",digest):
-        raise HTTPException(status_code=400, detail="component sha256 must be a 64-character hexadecimal digest")
-    size=raw.get("bytes",0)
-    if not isinstance(size,int) or isinstance(size,bool) or size<0 or size>10*1024*1024*1024:
-        raise HTTPException(status_code=400, detail="component bytes must be a bounded non-negative integer")
-    op=str(raw.get("operation") or "").strip()
-    if len(op)>200 or any(ch in op for ch in "\r\n\x00"):
-        raise HTTPException(status_code=400, detail="component operation is invalid")
-    fp=str(raw.get("artifactFingerprint") or "").strip().lower()
-    if fp and not re.fullmatch(r"[0-9a-f]{64}",fp):
-        raise HTTPException(status_code=400, detail="artifactFingerprint must be a SHA-256 digest when supplied")
-    deps=raw.get("dependsOn") or []
-    if not isinstance(deps,list) or len(deps)>MAX_DL_RESEARCH_DEPENDENCIES:
-        raise HTTPException(status_code=400, detail="component dependsOn must be a bounded list")
-    normalized_deps=[]
-    for dep in deps:
-        d=_bounded_text(dep,"dependsOn",160)
-        if d==cid: raise HTTPException(status_code=400,detail="research package components cannot depend on themselves")
-        if d not in normalized_deps: normalized_deps.append(d)
-    return {
-        "componentId":cid,"artifactId":aid,"role":role,"schema":schema,"sha256":digest,"bytes":size,
-        "operation":op or None,"artifactFingerprint":fp or None,
-        "requiredForReproduction":bool(raw.get("requiredForReproduction",True)),"dependsOn":sorted(normalized_deps),
-    }
-
-
-def _normalize_research_components(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    raw=payload.get("components")
-    if not isinstance(raw,list) or not raw or len(raw)>MAX_DL_RESEARCH_COMPONENTS:
-        raise HTTPException(status_code=400, detail="components must be a non-empty bounded list")
-    components=[_normalize_research_component(x) for x in raw]
-    ids=[x["componentId"] for x in components]
-    if len(set(ids))!=len(ids): raise HTTPException(status_code=400,detail="research package componentId values must be unique")
-    known=set(ids)
-    for c in components:
-        missing=sorted(set(c["dependsOn"])-known)
-        if missing: raise HTTPException(status_code=400,detail=f"component dependency not found: {missing[0]}")
-    graph={c["componentId"]:c["dependsOn"] for c in components}
-    temp=set(); done=set()
-    def visit(node: str):
-        if node in temp: raise HTTPException(status_code=400,detail="research package dependency graph must be acyclic")
-        if node in done: return
-        temp.add(node)
-        for dep in graph[node]: visit(dep)
-        temp.remove(node); done.add(node)
-    for node in sorted(graph): visit(node)
-    return sorted(components,key=lambda x:x["componentId"])
-
-
-def _research_package_runtime_contract() -> dict[str, Any]:
-    return {
-        "schema":"sc-workspace-neural-research-runtime-contract/1.0","runtime":RUNTIME,"runtimeVersion":SERVICE_VERSION,
-        "engine":ENGINE,"engineVersion":torch.__version__,"numpyVersion":np.__version__,
-        "requiredDependencyPins":dict(MODEL_PACKAGE_DEPENDENCY_PINS),"devicePolicy":"governed-explicit-device-orchestration",
-        "declarativeModelSpecsOnly":True,"arbitraryCodeRequired":False,"serializedModelRequired":False,
-        "clientSuppliedRuntimeUrlsAllowed":False,"automaticReproductionExecution":False,
-    }
-
-
-def _topological_component_ids(components: list[dict[str, Any]]) -> list[str]:
-    graph={c["componentId"]:c["dependsOn"] for c in components}; out=[]; seen=set()
-    def walk(n):
-        if n in seen:return
-        for d in graph[n]: walk(d)
-        seen.add(n); out.append(n)
-    for n in sorted(graph): walk(n)
-    return out
-
-
-def _research_package_plan(payload: dict[str, Any]) -> dict[str, Any]:
-    components=_normalize_research_components(payload)
-    policy=str(payload.get("reproductionPolicy") or "strict-digest").strip()
-    if policy not in DL_RESEARCH_REPRODUCTION_POLICIES:
-        raise HTTPException(status_code=400,detail="unsupported reproductionPolicy")
-    required=[c["componentId"] for c in components if c["requiredForReproduction"]]
-    optional=[c["componentId"] for c in components if not c["requiredForReproduction"]]
-    body={
-        "schema":DL_RESEARCH_PACKAGE_PLAN_SCHEMA,"kind":"deep-learning-research-package-plan",
-        "componentCount":len(components),"requiredComponentIds":required,"optionalComponentIds":optional,
-        "orderedComponentIds":_topological_component_ids(components),"componentClosureFingerprint":_canonical_sha256(components),
-        "reproductionPolicy":policy,"runtimeContract":_research_package_runtime_contract(),
-        "deterministicSeedRequired":True,"automaticReproductionExecution":False,"externalArtifactReadEnabled":False,
-        "isObservedEvidence":False,
-    }
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"deep-learning-research-package-plan","components":components,"researchPackagePlanArtifact":body}
-
-
-def _research_package_body_for_fingerprint(package: dict[str, Any]) -> dict[str, Any]:
-    return {k:v for k,v in package.items() if k not in {"packageId","artifactFingerprint"}}
-
-
-def _validate_research_package(value: Any) -> dict[str, Any]:
-    if not isinstance(value,dict) or value.get("schema")!=DL_RESEARCH_PACKAGE_SCHEMA or value.get("format")!=DL_RESEARCH_PACKAGE_FORMAT:
-        raise HTTPException(status_code=400,detail="researchPackage must use the governed deep-learning research package schema")
-    package=dict(value); supplied=str(package.get("artifactFingerprint") or "")
-    expected=_canonical_sha256(_research_package_body_for_fingerprint(package))
-    if not supplied or not hmac.compare_digest(supplied,expected):
-        raise HTTPException(status_code=400,detail="deep-learning research package fingerprint verification failed")
-    if package.get("packageId")!="dlrp_"+expected[:24]: raise HTTPException(status_code=400,detail="research package id does not match fingerprint")
-    manifest=package.get("manifest")
-    if not isinstance(manifest,dict) or manifest.get("schema")!=DL_RESEARCH_PACKAGE_MANIFEST_SCHEMA:
-        raise HTTPException(status_code=400,detail="deep-learning research package manifest is missing")
-    mf=dict(manifest); mfp=str(mf.pop("manifestFingerprint","") or "")
-    if not mfp or not hmac.compare_digest(mfp,_canonical_sha256(mf)):
-        raise HTTPException(status_code=400,detail="research package manifest fingerprint verification failed")
-    components=package.get("components")
-    if not isinstance(components,list): raise HTTPException(status_code=400,detail="research package components are missing")
-    normalized=_normalize_research_components({"components":components})
-    if normalized!=components: raise HTTPException(status_code=400,detail="research package components are not canonically ordered")
-    if manifest.get("componentClosureFingerprint")!=_canonical_sha256(components):
-        raise HTTPException(status_code=400,detail="research package component closure fingerprint mismatch")
-    return package
-
-
-def _research_package_create(payload: dict[str, Any]) -> dict[str, Any]:
-    plan=_research_package_plan(payload); components=plan["components"]
-    title=str(payload.get("title") or "Deep Learning Research Package").strip()
-    if not title or len(title)>500: raise HTTPException(status_code=400,detail="title must be non-empty and bounded")
-    context_ref=str(payload.get("researchContextRef") or "").strip()
-    if len(context_ref)>240 or any(ch in context_ref for ch in "\r\n\x00"): raise HTTPException(status_code=400,detail="researchContextRef is invalid")
-    seed=_seed(payload); runtime_contract=_research_package_runtime_contract()
-    manifest={
-        "schema":DL_RESEARCH_PACKAGE_MANIFEST_SCHEMA,"title":title,"researchContextRef":context_ref or None,
-        "componentCount":len(components),"requiredComponentIds":[c["componentId"] for c in components if c["requiredForReproduction"]],
-        "optionalComponentIds":[c["componentId"] for c in components if not c["requiredForReproduction"]],
-        "orderedComponentIds":_topological_component_ids(components),"componentClosureFingerprint":_canonical_sha256(components),
-        "runtimeContractFingerprint":_canonical_sha256(runtime_contract),"seed":seed,
-        "reproductionPolicy":plan["researchPackagePlanArtifact"]["reproductionPolicy"],
-        "artifactIntegrity":"sha256-pinned","automaticReproductionExecution":False,"isObservedEvidence":False,
-    }
-    manifest["manifestFingerprint"]=_canonical_sha256(manifest)
-    package={
-        "schema":DL_RESEARCH_PACKAGE_SCHEMA,"format":DL_RESEARCH_PACKAGE_FORMAT,"kind":"deep-learning-research-package",
-        "title":title,"researchContextRef":context_ref or None,"manifest":manifest,"components":components,
-        "runtimeContract":runtime_contract,"seed":seed,"reproductionPolicy":manifest["reproductionPolicy"],
-        "provenancePolicy":"content-addressed-artifact-lineage","evidenceBoundary":{"isObservedEvidence":False,"truthValueAssigned":False},
-        "securityBoundary":{"arbitraryCodeEmbedded":False,"serializedModelEmbedded":False,"credentialsEmbedded":False,"runtimeUrlEmbedded":False},
-    }
-    fp=_canonical_sha256(_research_package_body_for_fingerprint(package)); package["packageId"]="dlrp_"+fp[:24]; package["artifactFingerprint"]=fp
-    return {"kind":"deep-learning-research-package-create","packageId":package["packageId"],"researchPackageFingerprint":fp,"deepLearningResearchPackage":package}
-
-
-def _research_package_verify(payload: dict[str, Any]) -> dict[str, Any]:
-    package=_validate_research_package(payload.get("researchPackage")); runtime=package.get("runtimeContract") or {}
-    compatible=(runtime.get("runtime")==RUNTIME and runtime.get("engine")==ENGINE and runtime.get("requiredDependencyPins")==MODEL_PACKAGE_DEPENDENCY_PINS)
-    body={"schema":"sc-workspace-neural-research-package-verification/1.0","kind":"deep-learning-research-package-verification",
-          "packageId":package["packageId"],"researchPackageFingerprint":package["artifactFingerprint"],"valid":True,"runtimeCompatible":compatible,
-          "componentCount":len(package["components"]),"allComponentsDigestPinned":all(bool(c.get("sha256")) for c in package["components"]),
-          "dependencyClosureValid":True,"automaticExecutionPerformed":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"deep-learning-research-package-verify","valid":True,"runtimeCompatible":compatible,"researchPackageVerificationArtifact":body}
-
-
-def _research_package_inspect(payload: dict[str, Any]) -> dict[str, Any]:
-    package=_validate_research_package(payload.get("researchPackage")); comps=package["components"]
-    counts={}
-    for c in comps: counts[c["role"]]=counts.get(c["role"],0)+1
-    body={"schema":DL_RESEARCH_PACKAGE_INSPECTION_SCHEMA,"kind":"deep-learning-research-package-inspection",
-          "packageId":package["packageId"],"researchPackageFingerprint":package["artifactFingerprint"],"title":package["title"],
-          "componentCount":len(comps),"requiredComponentCount":sum(1 for c in comps if c["requiredForReproduction"]),
-          "roles":dict(sorted(counts.items())),"reproductionPolicy":package["reproductionPolicy"],
-          "runtimeContractFingerprint":package["manifest"]["runtimeContractFingerprint"],"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"deep-learning-research-package-inspect","summary":body,"researchPackageInspectionArtifact":body}
-
-
-def _research_package_reproduction_plan(payload: dict[str, Any]) -> dict[str, Any]:
-    package=_validate_research_package(payload.get("researchPackage")); by_id={c["componentId"]:c for c in package["components"]}
-    steps=[]
-    for index,cid in enumerate(_topological_component_ids(package["components"]),start=1):
-        c=by_id[cid]; steps.append({"step":index,"componentId":cid,"artifactId":c["artifactId"],"role":c["role"],"sha256":c["sha256"],"operation":c["operation"],"dependsOn":c["dependsOn"],"requiredForReproduction":c["requiredForReproduction"]})
-    body={"schema":DL_REPRODUCTION_PLAN_SCHEMA,"kind":"deep-learning-research-reproduction-plan","packageId":package["packageId"],
-          "researchPackageFingerprint":package["artifactFingerprint"],"steps":steps,"stepCount":len(steps),"seed":package["seed"],
-          "verificationPolicy":package["reproductionPolicy"],"executionPolicy":"plan-only-human-orchestrated","automaticExecution":False,
-          "clientSuppliedRuntimeUrlsAllowed":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"deep-learning-research-package-reproduction-plan","reproductionSteps":steps,"researchPackageReproductionPlanArtifact":body}
-
-
-def _research_package_reproduction_verify(payload: dict[str, Any]) -> dict[str, Any]:
-    package=_validate_research_package(payload.get("researchPackage")); observed=_normalize_research_components({"components":payload.get("observedComponents")})
-    expected={c["componentId"]:c for c in package["components"]}; got={c["componentId"]:c for c in observed}
-    missing_required=sorted(cid for cid,c in expected.items() if c["requiredForReproduction"] and cid not in got)
-    missing_optional=sorted(cid for cid,c in expected.items() if not c["requiredForReproduction"] and cid not in got)
-    mismatches=[]
-    for cid in sorted(set(expected)&set(got)):
-        if expected[cid]["sha256"]!=got[cid]["sha256"]: mismatches.append({"componentId":cid,"expectedSha256":expected[cid]["sha256"],"observedSha256":got[cid]["sha256"]})
-    extras=sorted(set(got)-set(expected))
-    required_mismatch=any(expected[x["componentId"]]["requiredForReproduction"] for x in mismatches)
-    if missing_required: classification="incomplete"
-    elif required_mismatch: classification="divergent"
-    elif mismatches: classification="divergent"
-    elif missing_optional or extras: classification="compatible"
-    else: classification="exact"
-    body={"schema":DL_REPRODUCTION_VERIFICATION_SCHEMA,"kind":"deep-learning-research-reproduction-verification",
-          "packageId":package["packageId"],"researchPackageFingerprint":package["artifactFingerprint"],"classification":classification,
-          "missingRequiredComponentIds":missing_required,"missingOptionalComponentIds":missing_optional,"unexpectedComponentIds":extras,
-          "digestMismatches":mismatches,"exactDigests":classification=="exact","automaticExecutionPerformed":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"deep-learning-research-package-reproduction-verify","classification":classification,"researchPackageReproductionVerificationArtifact":body}
-
-
-def _research_package_export(payload: dict[str, Any]) -> dict[str, Any]:
-    package=_validate_research_package(payload.get("researchPackage")); raw=json.dumps(package,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode("utf-8")
-    export_sha=hashlib.sha256(raw).hexdigest(); filename=f"{package['packageId']}.json"
-    artifact={"schema":DL_RESEARCH_PACKAGE_EXPORT_SCHEMA,"kind":"deep-learning-research-package-export","packageId":package["packageId"],
-              "researchPackageFingerprint":package["artifactFingerprint"],"filename":filename,"mediaType":DL_RESEARCH_PACKAGE_MEDIA_TYPE,
-              "bytes":len(raw),"sha256":export_sha,"encoding":"base64+canonical-json","externalWritePerformed":False,"isObservedEvidence":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
-    return {"kind":"deep-learning-research-package-export","export":{"filename":filename,"mediaType":DL_RESEARCH_PACKAGE_MEDIA_TYPE,"contentBase64":base64.b64encode(raw).decode("ascii"),"bytes":len(raw),"sha256":export_sha},"researchPackageExportArtifact":artifact}
-
-
-def _research_package_lineage(payload: dict[str, Any]) -> dict[str, Any]:
-    package=_validate_research_package(payload.get("researchPackage")); nodes=[{"nodeId":package["packageId"],"nodeType":"research-package","fingerprint":package["artifactFingerprint"]}]
-    edges=[]
-    for c in package["components"]:
-        nodes.append({"nodeId":c["componentId"],"nodeType":"component","artifactId":c["artifactId"],"role":c["role"],"sha256":c["sha256"]})
-        edges.append({"from":package["packageId"],"to":c["componentId"],"relation":"contains"})
-        for dep in c["dependsOn"]: edges.append({"from":c["componentId"],"to":dep,"relation":"depends-on"})
-    body={"schema":DL_RESEARCH_LINEAGE_SCHEMA,"kind":"deep-learning-research-lineage","packageId":package["packageId"],
-          "researchPackageFingerprint":package["artifactFingerprint"],"nodes":nodes,"edges":sorted(edges,key=lambda x:(x["from"],x["to"],x["relation"])),
-          "nodeCount":len(nodes),"edgeCount":len(edges),"lineagePolicy":"content-addressed-dependency-closure","isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"deep-learning-research-package-lineage","researchPackageLineageArtifact":body}
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -4689,16 +4408,6 @@ def health() -> dict[str, Any]:
         "neuralSymbolicRuleOperators": sorted(NEURAL_SYMBOLIC_RULE_OPERATORS),
         "neuralSymbolicTruthAdjudicationEnabled": False,
         "neuralSymbolicExternalKnowledgeBaseReadEnabled": False,
-        "reproducibleDeepLearningResearchPackagesRuntime": True,
-        "deepLearningResearchPackageSchema": DL_RESEARCH_PACKAGE_SCHEMA,
-        "deepLearningResearchPackageManifestSchema": DL_RESEARCH_PACKAGE_MANIFEST_SCHEMA,
-        "deepLearningResearchPackagePlanSchema": DL_RESEARCH_PACKAGE_PLAN_SCHEMA,
-        "deepLearningResearchReproductionPlanSchema": DL_REPRODUCTION_PLAN_SCHEMA,
-        "deepLearningResearchReproductionVerificationSchema": DL_REPRODUCTION_VERIFICATION_SCHEMA,
-        "deepLearningResearchPackageFormat": DL_RESEARCH_PACKAGE_FORMAT,
-        "deepLearningResearchPackageOperations": ["research-package-plan","research-package-create","research-package-verify","research-package-inspect","research-package-reproduction-plan","research-package-reproduction-verify","research-package-export","research-package-lineage"],
-        "deepLearningResearchPackageAutomaticExecution": False,
-        "deepLearningResearchPackageExternalArtifactReadEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -4822,23 +4531,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.research-package-plan":
-        result = _research_package_plan(payload)
-    elif operation == "workspace.neural.research-package-create":
-        result = _research_package_create(payload)
-    elif operation == "workspace.neural.research-package-verify":
-        result = _research_package_verify(payload)
-    elif operation == "workspace.neural.research-package-inspect":
-        result = _research_package_inspect(payload)
-    elif operation == "workspace.neural.research-package-reproduction-plan":
-        result = _research_package_reproduction_plan(payload)
-    elif operation == "workspace.neural.research-package-reproduction-verify":
-        result = _research_package_reproduction_verify(payload)
-    elif operation == "workspace.neural.research-package-export":
-        result = _research_package_export(payload)
-    elif operation == "workspace.neural.research-package-lineage":
-        result = _research_package_lineage(payload)
-    elif operation == "workspace.neural.neural-symbolic-symbol-contract":
+    if operation == "workspace.neural.neural-symbolic-symbol-contract":
         result = _ns_symbol_contract(payload)
     elif operation == "workspace.neural.neural-symbolic-context-project":
         result = _ns_context_project(payload)
