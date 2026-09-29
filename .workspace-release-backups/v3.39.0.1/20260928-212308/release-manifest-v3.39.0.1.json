@@ -1,0 +1,18 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.39.0.1",
+  "title": "Neural-Symbolic Artifact Persistence Repair",
+  "baseline": "3.39.0",
+  "databaseMigration": false,
+  "neuralRuntimeVersion": "3.39.0",
+  "neuralRuntimeOperations": 101,
+  "newOperations": [],
+  "repair": {
+    "component": "workspace-backend-worker",
+    "defect": "neural-symbolic artifact persistence used obsolete ArtifactStoreRequest payload",
+    "contract": "sc-workspace-artifact-store/1.0"
+  },
+  "truthAdjudicationEnabled": false,
+  "externalKnowledgeBaseReadEnabled": false
+}

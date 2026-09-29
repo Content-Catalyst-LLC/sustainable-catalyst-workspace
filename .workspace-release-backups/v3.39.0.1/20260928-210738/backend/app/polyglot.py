@@ -761,23 +761,7 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "sc-workspace-neural-symbolic-explanation-artifact/1.0":("application/vnd.sc.workspace.neural-symbolic-explanation+json","neural-symbolic-explanation","analysis"),
             }
             media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-symbolic+json","neural-symbolic","analysis"))
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            aid=f"{prefix}-{row.job_id}"
-            existing_symbolic=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({
-                "schema":"sc-workspace-artifact-store/1.0",
-                "artifactId":aid,
-                "projectId":row.project_id or None,
-                "filename":f"{prefix}-{row.job_id}.json",
-                "mediaType":media,
-                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
-                "expectedRevision":existing_symbolic.revision if existing_symbolic is not None else 0,
-                "metadata":{
-                    "kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
-                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
-                    "role":role,"truthValueAssigned":False,"isObservedEvidence":False,
-                },
-            })
+            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store-request/1.0","mediaType":media,"role":role,"label":prefix+"-"+row.job_id,"contentJson":blob})
             neural_symbolic_artifact=store_artifact(db,row.user_key,req)
             nr["workspaceNeuralSymbolicArtifact"]={"artifactId":neural_symbolic_artifact.artifact_id,"mediaType":neural_symbolic_artifact.media_type,"sha256":neural_symbolic_artifact.sha256,"bytes":neural_symbolic_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
