@@ -2,3 +2,48 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .DS_Store
+.venv/
+.env
+.env.*
+!.env.example
+*.log
+node_modules/
+coverage/
+
+# Runtime/local data
+backend/data/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Local release staging, backups, and generated history
+/release-staging/
+/dist-v*/
+/.workspace-release-backups/
+/.workspace-repair-backups/
+/history/
+/release-history/
+/*.zip
+/*.tgz
+/*.tar.gz
+
+# Generated release artifacts belong in release bundles/history, not repository root.
+/VALIDATION_REPORT_*.md
+/*VALIDATION*.txt
+/*CERTIFICATION*.md
+/RELEASE_NOTES_*.md
+/release-manifest-*.json
+/DEPLOY_WORKSPACE_BACKEND_*.md
+/WORKSPACE_V*_TERMINAL_COMMANDS.txt
+/WORKSPACE_V*_INSTALL_AND_TEST.md
+/PACKAGE_WORKSPACE_*.sh
+/APPLY_AND_PUSH_WORKSPACE_*.sh
+/APPLY_WORKSPACE_*.py
+/VALIDATE_WORKSPACE_*.py
+/*_V[0-9]*.md
+/*_v[0-9]*.md
+/*.patch
+
+# Operational/release helpers belong under scripts/, not repository root.
+/*.sh
+/*.py
