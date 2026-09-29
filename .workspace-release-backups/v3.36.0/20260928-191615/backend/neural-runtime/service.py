@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.36.0"
+SERVICE_VERSION = "3.35.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -124,14 +124,6 @@ OPERATIONS = {
     "workspace.neural.gnn-embedding-extract",
     "workspace.neural.gnn-embedding-similarity",
     "workspace.neural.gnn-embedding-neighbors",
-    "workspace.neural.vision-tensor-contract",
-    "workspace.neural.vision-dataset-project",
-    "workspace.neural.vision-model-summary",
-    "workspace.neural.vision-forward",
-    "workspace.neural.vision-infer",
-    "workspace.neural.vision-tile-plan",
-    "workspace.neural.remote-sensing-band-project",
-    "workspace.neural.remote-sensing-index-compute",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -3475,205 +3467,6 @@ def _gnn_embedding_neighbors(payload: dict[str, Any]) -> dict[str, Any]:
     artifact={"schema":GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,"kind":"gnn-embedding-neighbors","metric":metric,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"queryCount":len(results),"topK":topk,"resultsFingerprint":_canonical_sha256(results),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding-neighbors","metric":metric,"results":results,"gnnEmbeddingAnalysisArtifact":artifact}
 
 
-
-# v3.36.0 Computer Vision & Remote Sensing Neural Runtime.
-IMAGE_TENSOR_CONTRACT_SCHEMA = "sc-workspace-neural-image-tensor-contract/1.0"
-VISION_DATASET_PROJECTION_SCHEMA = "sc-workspace-neural-vision-dataset-projection/1.0"
-VISION_MODEL_SPEC_SCHEMA = "sc-workspace-neural-vision-model-spec/1.0"
-VISION_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-vision-execution-artifact/1.0"
-VISION_PREDICTION_ARTIFACT_SCHEMA = "sc-workspace-neural-vision-prediction-artifact/1.0"
-VISION_TILE_PLAN_SCHEMA = "sc-workspace-neural-vision-tile-plan/1.0"
-REMOTE_SENSING_PROJECTION_ARTIFACT_SCHEMA = "sc-workspace-neural-remote-sensing-projection-artifact/1.0"
-REMOTE_SENSING_INDEX_ARTIFACT_SCHEMA = "sc-workspace-neural-remote-sensing-index-artifact/1.0"
-VISION_ADAPTERS = {"bounded-cnn"}
-VISION_ACTIVATIONS = {"identity", "relu", "tanh"}
-VISION_TASKS = {"regression", "binary-classification", "multiclass-classification"}
-SPECTRAL_INDEX_PRESETS = {
-    "ndvi": ("nir", "red"),
-    "ndwi": ("green", "nir"),
-    "nbr": ("nir", "swir2"),
-    "ndmi": ("nir", "swir1"),
-}
-MAX_VISION_CHANNELS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_CHANNELS", "32")), 128))
-MAX_VISION_SIDE = max(8, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_SIDE", "1024")), 4096))
-MAX_VISION_ELEMENTS = max(1024, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_ELEMENTS", "1048576")), 8388608))
-MAX_VISION_CONV_LAYERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_CONV_LAYERS", "4")), 8))
-MAX_VISION_CONV_CHANNELS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_CONV_CHANNELS", "128")), 512))
-MAX_VISION_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_PARAMETERS", "500000")), MAX_PARAMETERS))
-MAX_VISION_SCENES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_SCENES", "16")), 128))
-MAX_VISION_TILES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_VISION_TILES", "4096")), 20000))
-
-
-def _vision_activation(x: torch.Tensor, name: str) -> torch.Tensor:
-    if name == "identity": return x
-    if name == "relu": return F.relu(x)
-    if name == "tanh": return torch.tanh(x)
-    raise HTTPException(status_code=400, detail="unsupported vision activation")
-
-
-def _vision_image(payload: dict[str, Any], key: str = "imageTensor") -> tuple[torch.Tensor, list[str]]:
-    raw = payload.get(key)
-    if not isinstance(raw, list) or not raw:
-        raise HTTPException(status_code=400, detail=f"{key} must be a non-empty nested array")
-    try: x = torch.tensor(raw, dtype=torch.float32, device=_current_device_name())
-    except Exception as exc: raise HTTPException(status_code=400, detail=f"{key} must be a rectangular numeric array") from exc
-    if x.ndim == 2: x = x.unsqueeze(0)
-    if x.ndim != 3: raise HTTPException(status_code=400, detail=f"{key} must have shape [channels,height,width] or [height,width]")
-    c,h,w = map(int, x.shape)
-    if c < 1 or c > MAX_VISION_CHANNELS or h < 1 or w < 1 or h > MAX_VISION_SIDE or w > MAX_VISION_SIDE or x.numel() > MAX_VISION_ELEMENTS:
-        raise HTTPException(status_code=413, detail="vision tensor exceeds governed channel/shape/element limits")
-    if not torch.isfinite(x).all(): raise HTTPException(status_code=400, detail="vision tensor values must be finite")
-    names = payload.get("bandNames")
-    if names is None: names = [f"band-{i+1}" for i in range(c)]
-    if not isinstance(names, list) or len(names) != c or any(not isinstance(v, str) or not v.strip() for v in names):
-        raise HTTPException(status_code=400, detail="bandNames must align with channels")
-    lowered=[v.strip().lower() for v in names]
-    if len(set(lowered)) != len(lowered): raise HTTPException(status_code=400, detail="bandNames must be unique")
-    return x, [v.strip() for v in names]
-
-
-def _vision_spatial_context(payload: dict[str, Any]) -> dict[str, Any]:
-    ctx={k:payload.get(k) for k in ("sceneId","crs","bbox","transform","capturedAt") if payload.get(k) is not None}
-    return {"value":ctx,"fingerprint":_canonical_sha256(ctx)}
-
-
-def _vision_tensor_contract(payload: dict[str, Any]) -> dict[str, Any]:
-    x,names=_vision_image(payload); c,h,w=map(int,x.shape); spatial=_vision_spatial_context(payload)
-    body={"schema":IMAGE_TENSOR_CONTRACT_SCHEMA,"kind":"vision-tensor-contract","dtype":"float32","layout":"CHW","channels":c,"height":h,"width":w,"elements":int(x.numel()),"bandNames":names,"tensorFingerprint":_canonical_sha256(x.detach().cpu().tolist()),"spatialContextFingerprint":spatial["fingerprint"],"externalRasterRead":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"vision-tensor-contract","visionTensorContractArtifact":body}
-
-
-def _vision_dataset_project(payload: dict[str, Any]) -> dict[str, Any]:
-    scenes=payload.get("scenes")
-    if not isinstance(scenes,list) or not scenes or len(scenes)>MAX_VISION_SCENES: raise HTTPException(status_code=400,detail="scenes must be a bounded non-empty array")
-    items=[]; total=0
-    for i,scene in enumerate(scenes):
-        if not isinstance(scene,dict): raise HTTPException(status_code=400,detail="each scene must be an object")
-        x,names=_vision_image(scene); total += int(x.numel())
-        if total > MAX_VISION_ELEMENTS*MAX_VISION_SCENES: raise HTTPException(status_code=413,detail="vision dataset projection exceeds aggregate limit")
-        spatial=_vision_spatial_context(scene); c,h,w=map(int,x.shape)
-        items.append({"sceneId":str(scene.get("sceneId") or f"scene-{i}"),"channels":c,"height":h,"width":w,"bandNames":names,"tensorFingerprint":_canonical_sha256(x.detach().cpu().tolist()),"spatialContextFingerprint":spatial["fingerprint"]})
-    artifact={"schema":VISION_DATASET_PROJECTION_SCHEMA,"kind":"vision-dataset-projection","sceneCount":len(items),"totalElements":total,"scenes":items,"externalRasterRead":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
-    return {"kind":"vision-dataset-projection","scenes":items,"visionDatasetProjectionArtifact":artifact}
-
-
-def _vision_validate_model_spec(raw: Any) -> dict[str, Any]:
-    if not isinstance(raw,dict) or raw.get("schema") != VISION_MODEL_SPEC_SCHEMA: raise HTTPException(status_code=400,detail="modelSpec schema is invalid")
-    adapter=str(raw.get("adapter") or "").lower(); in_c=raw.get("inputChannels"); out_f=raw.get("outputFeatures"); layers=raw.get("convLayers")
-    if adapter not in VISION_ADAPTERS: raise HTTPException(status_code=400,detail="unsupported vision adapter")
-    if not isinstance(in_c,int) or isinstance(in_c,bool) or in_c<1 or in_c>MAX_VISION_CHANNELS: raise HTTPException(status_code=400,detail="inputChannels invalid")
-    if not isinstance(out_f,int) or isinstance(out_f,bool) or out_f<1 or out_f>MAX_FEATURES: raise HTTPException(status_code=400,detail="outputFeatures invalid")
-    if not isinstance(layers,list) or not layers or len(layers)>MAX_VISION_CONV_LAYERS: raise HTTPException(status_code=400,detail="convLayers must be bounded and non-empty")
-    normalized=[]; current=in_c; params=0
-    for idx,layer in enumerate(layers):
-        if not isinstance(layer,dict): raise HTTPException(status_code=400,detail="each conv layer must be an object")
-        oc=layer.get("outChannels"); k=layer.get("kernelSize"); act=str(layer.get("activation") or "relu").lower()
-        if not isinstance(oc,int) or isinstance(oc,bool) or oc<1 or oc>MAX_VISION_CONV_CHANNELS: raise HTTPException(status_code=400,detail="outChannels invalid")
-        if k not in (1,3,5): raise HTTPException(status_code=400,detail="kernelSize must be 1, 3, or 5")
-        if act not in VISION_ACTIVATIONS: raise HTTPException(status_code=400,detail="vision activation invalid")
-        weights=layer.get("weights"); bias=layer.get("bias")
-        try: wt=torch.tensor(weights,dtype=torch.float32); bt=torch.tensor(bias,dtype=torch.float32)
-        except Exception as exc: raise HTTPException(status_code=400,detail="conv weights/bias must be rectangular numeric arrays") from exc
-        if tuple(wt.shape)!=(oc,current,k,k) or tuple(bt.shape)!=(oc,): raise HTTPException(status_code=400,detail=f"conv layer {idx} weight/bias shape mismatch")
-        if not torch.isfinite(wt).all() or not torch.isfinite(bt).all(): raise HTTPException(status_code=400,detail="vision model parameters must be finite")
-        params += wt.numel()+bt.numel(); normalized.append({"outChannels":oc,"kernelSize":k,"padding":k//2,"activation":act,"weights":wt.tolist(),"bias":bt.tolist()}); current=oc
-    try: hw=torch.tensor(raw.get("headWeights"),dtype=torch.float32); hb=torch.tensor(raw.get("headBias"),dtype=torch.float32)
-    except Exception as exc: raise HTTPException(status_code=400,detail="head weights/bias must be rectangular numeric arrays") from exc
-    if tuple(hw.shape)!=(out_f,current) or tuple(hb.shape)!=(out_f,): raise HTTPException(status_code=400,detail="head weight/bias shape mismatch")
-    if not torch.isfinite(hw).all() or not torch.isfinite(hb).all(): raise HTTPException(status_code=400,detail="vision head parameters must be finite")
-    params += hw.numel()+hb.numel()
-    if params > MAX_VISION_PARAMETERS: raise HTTPException(status_code=413,detail="vision model exceeds parameter limit")
-    spec={"schema":VISION_MODEL_SPEC_SCHEMA,"adapter":adapter,"inputChannels":in_c,"outputFeatures":out_f,"convLayers":normalized,"headWeights":hw.tolist(),"headBias":hb.tolist(),"parameterCount":int(params)}
-    spec["modelSpecFingerprint"]=_canonical_sha256(spec)
-    return spec
-
-
-def _vision_model_summary(payload: dict[str, Any]) -> dict[str, Any]:
-    spec=_vision_validate_model_spec(payload.get("modelSpec")); return {"kind":"vision-model-summary","adapter":spec["adapter"],"inputChannels":spec["inputChannels"],"outputFeatures":spec["outputFeatures"],"convLayerCount":len(spec["convLayers"]),"parameterCount":spec["parameterCount"],"modelSpecFingerprint":spec["modelSpecFingerprint"]}
-
-
-def _vision_forward_body(payload: dict[str, Any]) -> tuple[torch.Tensor, dict[str,Any], str, list[str], list[int]]:
-    x,names=_vision_image(payload); spec=_vision_validate_model_spec(payload.get("modelSpec"))
-    if int(x.shape[0]) != spec["inputChannels"]: raise HTTPException(status_code=400,detail="image channels do not match modelSpec inputChannels")
-    y=x.unsqueeze(0)
-    for layer in spec["convLayers"]:
-        wt=torch.tensor(layer["weights"],dtype=torch.float32,device=x.device); bt=torch.tensor(layer["bias"],dtype=torch.float32,device=x.device)
-        y=F.conv2d(y,wt,bt,padding=int(layer["padding"])); y=_vision_activation(y,layer["activation"])
-    pooled=y.mean(dim=(2,3)); hw=torch.tensor(spec["headWeights"],dtype=torch.float32,device=x.device); hb=torch.tensor(spec["headBias"],dtype=torch.float32,device=x.device); logits=pooled@hw.t()+hb
-    return logits.squeeze(0),spec,_canonical_sha256(x.detach().cpu().tolist()),names,list(map(int,y.shape))
-
-
-def _vision_forward(payload: dict[str, Any]) -> dict[str, Any]:
-    logits,spec,image_fp,names,feature_shape=_vision_forward_body(payload); values=logits.detach().cpu().tolist(); spatial=_vision_spatial_context(payload)
-    artifact={"schema":VISION_EXECUTION_ARTIFACT_SCHEMA,"kind":"vision-forward","adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"imageTensorFingerprint":image_fp,"spatialContextFingerprint":spatial["fingerprint"],"bandNames":names,"featureMapShape":feature_shape,"outputFeatures":spec["outputFeatures"],"outputFingerprint":_canonical_sha256(values),"isObservedEvidence":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"vision-forward","outputs":values,"visionExecutionArtifact":artifact}
-
-
-def _vision_infer(payload: dict[str, Any]) -> dict[str, Any]:
-    task=str(payload.get("task") or "").lower()
-    if task not in VISION_TASKS: raise HTTPException(status_code=400,detail="unsupported vision inference task")
-    logits,spec,image_fp,names,_shape=_vision_forward_body(payload); raw=logits.detach().cpu()
-    if task=="regression": prediction={"values":raw.tolist()}
-    elif task=="binary-classification":
-        if raw.numel()!=1: raise HTTPException(status_code=400,detail="binary classification requires outputFeatures=1")
-        p=float(torch.sigmoid(raw.reshape(-1)[0])); prediction={"probability":p,"class":int(p>=0.5)}
-    else:
-        if raw.numel()<2: raise HTTPException(status_code=400,detail="multiclass classification requires outputFeatures>=2")
-        prob=torch.softmax(raw.reshape(-1),dim=0); prediction={"probabilities":prob.tolist(),"class":int(torch.argmax(prob))}
-    artifact={"schema":VISION_PREDICTION_ARTIFACT_SCHEMA,"kind":"vision-prediction","task":task,"adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"imageTensorFingerprint":image_fp,"predictionFingerprint":_canonical_sha256(prediction),"bandNames":names,"isObservedEvidence":False,"isEvaluation":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"vision-infer","task":task,"prediction":prediction,"visionPredictionArtifact":artifact}
-
-
-def _axis_starts(length: int, tile: int, overlap: int) -> list[int]:
-    if tile<1 or tile>length or overlap<0 or overlap>=tile: raise HTTPException(status_code=400,detail="invalid tile/overlap dimensions")
-    step=tile-overlap; starts=list(range(0,max(1,length-tile+1),step)); last=length-tile
-    if not starts or starts[-1]!=last: starts.append(last)
-    return sorted(set(starts))
-
-
-def _vision_tile_plan(payload: dict[str, Any]) -> dict[str, Any]:
-    h=payload.get("height"); w=payload.get("width"); th=payload.get("tileHeight"); tw=payload.get("tileWidth"); oh=int(payload.get("overlapHeight",0)); ow=int(payload.get("overlapWidth",0))
-    if any(not isinstance(v,int) or isinstance(v,bool) for v in (h,w,th,tw)): raise HTTPException(status_code=400,detail="height/width/tile dimensions must be integers")
-    if h<1 or w<1 or h>MAX_VISION_SIDE or w>MAX_VISION_SIDE: raise HTTPException(status_code=400,detail="scene dimensions invalid")
-    ys=_axis_starts(h,th,oh); xs=_axis_starts(w,tw,ow); windows=[]
-    for y in ys:
-        for x in xs:
-            windows.append({"tileIndex":len(windows),"y":y,"x":x,"height":th,"width":tw})
-            if len(windows)>MAX_VISION_TILES: raise HTTPException(status_code=413,detail="vision tile plan exceeds tile limit")
-    artifact={"schema":VISION_TILE_PLAN_SCHEMA,"kind":"vision-tile-plan","height":h,"width":w,"tileHeight":th,"tileWidth":tw,"overlapHeight":oh,"overlapWidth":ow,"tileCount":len(windows),"windowsFingerprint":_canonical_sha256(windows)}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"vision-tile-plan","windows":windows,"visionTilePlanArtifact":artifact}
-
-
-def _band_index(names: list[str], name: str) -> int:
-    lowered=[n.lower() for n in names]; key=str(name).strip().lower()
-    if key not in lowered: raise HTTPException(status_code=400,detail=f"band '{name}' not present")
-    return lowered.index(key)
-
-
-def _remote_sensing_band_project(payload: dict[str, Any]) -> dict[str, Any]:
-    x,names=_vision_image(payload); selected=payload.get("selectBands")
-    if not isinstance(selected,list) or not selected or len(selected)>len(names) or any(not isinstance(v,str) for v in selected): raise HTTPException(status_code=400,detail="selectBands must be a bounded non-empty band-name array")
-    idx=[_band_index(names,n) for n in selected]
-    if len(set(idx))!=len(idx): raise HTTPException(status_code=400,detail="selectBands must be unique")
-    projected=x[idx,:,:].detach().cpu().tolist(); spatial=_vision_spatial_context(payload)
-    artifact={"schema":REMOTE_SENSING_PROJECTION_ARTIFACT_SCHEMA,"kind":"remote-sensing-band-projection","sourceBandNames":names,"selectedBandNames":[names[i] for i in idx],"sourceTensorFingerprint":_canonical_sha256(x.detach().cpu().tolist()),"projectedTensorFingerprint":_canonical_sha256(projected),"spatialContextFingerprint":spatial["fingerprint"],"externalRasterRead":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"remote-sensing-band-projection","bandNames":[names[i] for i in idx],"imageTensor":projected,"remoteSensingProjectionArtifact":artifact}
-
-
-def _remote_sensing_index_compute(payload: dict[str, Any]) -> dict[str, Any]:
-    x,names=_vision_image(payload); index_name=str(payload.get("index") or "").lower(); pair=payload.get("bands")
-    if index_name in SPECTRAL_INDEX_PRESETS: a_name,b_name=SPECTRAL_INDEX_PRESETS[index_name]
-    elif index_name in {"normalized-difference","nd"}:
-        if not isinstance(pair,list) or len(pair)!=2 or any(not isinstance(v,str) for v in pair): raise HTTPException(status_code=400,detail="custom normalized difference requires bands=[A,B]")
-        a_name,b_name=pair
-    else: raise HTTPException(status_code=400,detail="unsupported remote-sensing spectral index")
-    a=x[_band_index(names,a_name)]; b=x[_band_index(names,b_name)]; denom=a+b; valid=torch.abs(denom)>1e-12; out=torch.zeros_like(a); out[valid]=(a[valid]-b[valid])/denom[valid]; vals=out.detach().cpu().tolist(); mask=valid.detach().cpu().tolist(); valid_vals=out[valid]
-    stats={"validCount":int(valid.sum()),"invalidCount":int((~valid).sum()),"min":float(valid_vals.min()) if valid_vals.numel() else None,"max":float(valid_vals.max()) if valid_vals.numel() else None,"mean":float(valid_vals.mean()) if valid_vals.numel() else None}
-    spatial=_vision_spatial_context(payload); artifact={"schema":REMOTE_SENSING_INDEX_ARTIFACT_SCHEMA,"kind":"remote-sensing-spectral-index","index":index_name,"numeratorBand":names[_band_index(names,a_name)],"referenceBand":names[_band_index(names,b_name)],"sourceTensorFingerprint":_canonical_sha256(x.detach().cpu().tolist()),"indexFingerprint":_canonical_sha256({"values":vals,"validMask":mask}),"statistics":stats,"spatialContextFingerprint":spatial["fingerprint"],"isObservedEvidence":False,"interpretationPolicy":"derived-spectral-index-not-ground-truth"}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"remote-sensing-spectral-index","index":index_name,"values":vals,"validMask":mask,"statistics":stats,"remoteSensingIndexArtifact":artifact}
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -3730,19 +3523,6 @@ def health() -> dict[str, Any]:
         "gnnEmbeddingAnalysisArtifactSchema": GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,
         "gnnExplainabilityMethods": ["input-gradient", "feature-occlusion"],
         "gnnEmbeddingMetrics": sorted(GNN_EMBEDDING_METRICS),
-        "computerVisionRemoteSensingRuntime": True,
-        "imageTensorContractSchema": IMAGE_TENSOR_CONTRACT_SCHEMA,
-        "visionDatasetProjectionSchema": VISION_DATASET_PROJECTION_SCHEMA,
-        "visionModelSpecSchema": VISION_MODEL_SPEC_SCHEMA,
-        "visionExecutionArtifactSchema": VISION_EXECUTION_ARTIFACT_SCHEMA,
-        "visionPredictionArtifactSchema": VISION_PREDICTION_ARTIFACT_SCHEMA,
-        "visionTilePlanSchema": VISION_TILE_PLAN_SCHEMA,
-        "remoteSensingProjectionArtifactSchema": REMOTE_SENSING_PROJECTION_ARTIFACT_SCHEMA,
-        "remoteSensingIndexArtifactSchema": REMOTE_SENSING_INDEX_ARTIFACT_SCHEMA,
-        "visionAdapters": sorted(VISION_ADAPTERS),
-        "visionTasks": sorted(VISION_TASKS),
-        "remoteSensingSpectralIndices": sorted(SPECTRAL_INDEX_PRESETS),
-        "visionExternalRasterReadEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -3866,23 +3646,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.vision-tensor-contract":
-        result = _vision_tensor_contract(payload)
-    elif operation == "workspace.neural.vision-dataset-project":
-        result = _vision_dataset_project(payload)
-    elif operation == "workspace.neural.vision-model-summary":
-        result = _vision_model_summary(payload)
-    elif operation == "workspace.neural.vision-forward":
-        result = _vision_forward(payload)
-    elif operation == "workspace.neural.vision-infer":
-        result = _vision_infer(payload)
-    elif operation == "workspace.neural.vision-tile-plan":
-        result = _vision_tile_plan(payload)
-    elif operation == "workspace.neural.remote-sensing-band-project":
-        result = _remote_sensing_band_project(payload)
-    elif operation == "workspace.neural.remote-sensing-index-compute":
-        result = _remote_sensing_index_compute(payload)
-    elif operation == "workspace.neural.gnn-evaluate":
+    if operation == "workspace.neural.gnn-evaluate":
         result = _gnn_evaluate(payload)
     elif operation == "workspace.neural.gnn-calibration-report":
         result = _gnn_calibration_report(payload)

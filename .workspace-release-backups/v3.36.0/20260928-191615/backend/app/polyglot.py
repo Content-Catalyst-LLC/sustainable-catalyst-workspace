@@ -105,14 +105,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.gnn-embedding-extract",
         "workspace.neural.gnn-embedding-similarity",
         "workspace.neural.gnn-embedding-neighbors",
-        "workspace.neural.vision-tensor-contract",
-        "workspace.neural.vision-dataset-project",
-        "workspace.neural.vision-model-summary",
-        "workspace.neural.vision-forward",
-        "workspace.neural.vision-infer",
-        "workspace.neural.vision-tile-plan",
-        "workspace.neural.remote-sensing-band-project",
-        "workspace.neural.remote-sensing-index-compute",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -635,41 +627,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                                        "sha256":neural_gnn_artifact.sha256,"bytes":neural_gnn_artifact.bytes,
                                        "artifactFingerprint":blob.get("artifactFingerprint")}
 
-
-    neural_vision_artifact = None
-    neural_vision_ops = {
-        "workspace.neural.vision-tensor-contract",
-        "workspace.neural.vision-dataset-project",
-        "workspace.neural.vision-forward",
-        "workspace.neural.vision-infer",
-        "workspace.neural.vision-tile-plan",
-        "workspace.neural.remote-sensing-band-project",
-        "workspace.neural.remote-sensing-index-compute",
-    }
-    if language == "neural" and row.operation in neural_vision_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        for key in ("visionTensorContractArtifact","visionDatasetProjectionArtifact","visionExecutionArtifact","visionPredictionArtifact","visionTilePlanArtifact","remoteSensingProjectionArtifact","remoteSensingIndexArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if blob:
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            schema=blob.get("schema")
-            mapping={
-                "sc-workspace-neural-image-tensor-contract/1.0":("application/vnd.sc.workspace.neural-image-tensor-contract+json","neural-image-tensor-contract","contract"),
-                "sc-workspace-neural-vision-dataset-projection/1.0":("application/vnd.sc.workspace.neural-vision-dataset-projection+json","neural-vision-dataset","dataset-projection"),
-                "sc-workspace-neural-vision-execution-artifact/1.0":("application/vnd.sc.workspace.neural-vision-execution+json","neural-vision-execution","execution"),
-                "sc-workspace-neural-vision-prediction-artifact/1.0":("application/vnd.sc.workspace.neural-vision-prediction+json","neural-vision-prediction","prediction"),
-                "sc-workspace-neural-vision-tile-plan/1.0":("application/vnd.sc.workspace.neural-vision-tile-plan+json","neural-vision-tile-plan","tile-plan"),
-                "sc-workspace-neural-remote-sensing-projection-artifact/1.0":("application/vnd.sc.workspace.remote-sensing-projection+json","remote-sensing-projection","dataset-projection"),
-                "sc-workspace-neural-remote-sensing-index-artifact/1.0":("application/vnd.sc.workspace.remote-sensing-index+json","remote-sensing-index","analysis"),
-            }
-            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-vision+json","neural-vision","analysis"))
-            aid=f"{prefix}-{row.job_id}"; existing=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,"filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),"expectedRevision":existing.revision if existing is not None else 0,"metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,"runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),"spatialContextFingerprint":blob.get("spatialContextFingerprint"),"role":role,"isObservedEvidence":False}})
-            neural_vision_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceVisionArtifact"]={"artifactId":neural_vision_artifact.artifact_id,"mediaType":neural_vision_artifact.media_type,"sha256":neural_vision_artifact.sha256,"bytes":neural_vision_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -796,16 +753,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedGnnArtifact":True,"isObservedEvidence":False},
             })
             store_run_output(db,row.user_key,run_id,gnn_output)
-
-
-        if neural_vision_artifact is not None:
-            vision_output = ExecutionRunOutputRequest.model_validate({
-                "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-vision-artifact",
-                "artifactId":neural_vision_artifact.artifact_id,"role":"analysis","label":"Governed computer vision / remote sensing artifact",
-                "mediaType":neural_vision_artifact.media_type,"sha256":neural_vision_artifact.sha256,"bytes":neural_vision_artifact.bytes,
-                "metadata":{"language":"neural","operation":row.operation,"governedVisionArtifact":True,"isObservedEvidence":False},
-            })
-            store_run_output(db,row.user_key,run_id,vision_output)
 
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
@@ -997,29 +944,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "isObservedEvidence":False,"clientSuppliedGraphRuntimeUrlAllowed":False,
             "workspaceGnnArtifactId":neural_gnn_artifact.artifact_id if neural_gnn_artifact is not None else None,
             "workspaceGnnArtifactSha256":neural_gnn_artifact.sha256 if neural_gnn_artifact is not None else None,
-        })
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.vision-tensor-contract",
-        "workspace.neural.vision-dataset-project",
-        "workspace.neural.vision-model-summary",
-        "workspace.neural.vision-forward",
-        "workspace.neural.vision-infer",
-        "workspace.neural.vision-tile-plan",
-        "workspace.neural.remote-sensing-band-project",
-        "workspace.neural.remote-sensing-index-compute",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("visionTensorContractArtifact","visionDatasetProjectionArtifact","visionExecutionArtifact","visionPredictionArtifact","visionTilePlanArtifact","remoteSensingProjectionArtifact","remoteSensingIndexArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({
-            "computerVisionRemoteSensingRuntime":True,"visionArtifactSchema":blob.get("schema"),
-            "visionArtifactFingerprint":blob.get("artifactFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),
-            "spatialContextFingerprint":blob.get("spatialContextFingerprint"),"isObservedEvidence":False,
-            "externalRasterReadEnabled":False,"workspaceVisionArtifactId":neural_vision_artifact.artifact_id if neural_vision_artifact is not None else None,
-            "workspaceVisionArtifactSha256":neural_vision_artifact.sha256 if neural_vision_artifact is not None else None,
         })
 
     receipt=PolyglotExecutionReceipt(
