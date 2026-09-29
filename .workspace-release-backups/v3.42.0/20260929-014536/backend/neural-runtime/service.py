@@ -34,7 +34,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.42.0"
+SERVICE_VERSION = "3.41.0.1"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -173,14 +173,6 @@ OPERATIONS = {
     "workspace.neural.distributed-lease-heartbeat",
     "workspace.neural.distributed-retry-failover-plan",
     "workspace.neural.distributed-execution-receipt",
-    "workspace.neural.accelerator-inventory-contract",
-    "workspace.neural.accelerator-resource-request",
-    "workspace.neural.accelerator-quota-evaluate",
-    "workspace.neural.accelerator-admission-decision",
-    "workspace.neural.accelerator-placement-plan",
-    "workspace.neural.accelerator-reservation-plan",
-    "workspace.neural.accelerator-preemption-plan",
-    "workspace.neural.accelerator-scheduling-receipt",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -193,8 +185,6 @@ BLOCKED_PAYLOAD_KEYS = {
     "researchPackageUrl", "researchPackagePath", "exportPath", "artifactUrl", "artifactPath",
     "workerUrl", "workerEndpoint", "workerEndpointUrl", "workerToken", "registrationToken", "sshHost", "sshKey",
     "remoteWorkerUrl", "remoteWorkerToken", "distributedCode", "workerCode",
-    "acceleratorUrl", "schedulerUrl", "clusterUrl", "cloudCredentials", "cloudToken",
-    "reservationToken", "kubeconfig", "kubernetesConfig", "slurmConfig", "schedulerCredentials",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -4863,258 +4853,6 @@ def _distributed_execution_receipt(payload: dict[str,Any]) -> dict[str,Any]:
     return {"kind":"distributed-neural-execution-receipt","distributedExecutionReceiptArtifact":body}
 
 
-# v3.42.0 — Advanced Accelerator Scheduling & Resource Governance
-ACCELERATOR_INVENTORY_SCHEMA = "sc-workspace-neural-accelerator-inventory-contract/1.0"
-ACCELERATOR_RESOURCE_REQUEST_SCHEMA = "sc-workspace-neural-accelerator-resource-request/1.0"
-ACCELERATOR_QUOTA_EVALUATION_SCHEMA = "sc-workspace-neural-accelerator-quota-evaluation/1.0"
-ACCELERATOR_ADMISSION_DECISION_SCHEMA = "sc-workspace-neural-accelerator-admission-decision/1.0"
-ACCELERATOR_PLACEMENT_PLAN_SCHEMA = "sc-workspace-neural-accelerator-placement-plan/1.0"
-ACCELERATOR_RESERVATION_PLAN_SCHEMA = "sc-workspace-neural-accelerator-reservation-plan/1.0"
-ACCELERATOR_PREEMPTION_PLAN_SCHEMA = "sc-workspace-neural-accelerator-preemption-plan/1.0"
-ACCELERATOR_SCHEDULING_RECEIPT_SCHEMA = "sc-workspace-neural-accelerator-scheduling-receipt/1.0"
-MAX_GOVERNED_ACCELERATORS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GOVERNED_ACCELERATORS", "64")), 256))
-MAX_ACCELERATORS_PER_REQUEST = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_ACCELERATORS_PER_REQUEST", "8")), 32))
-MAX_ACCELERATOR_RESERVATION_SECONDS = max(60, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_ACCELERATOR_RESERVATION_SECONDS", "86400")), 604800))
-ACCELERATOR_PRECISIONS = {"float32", "float16", "bfloat16"}
-ACCELERATOR_PRIORITY_CLASSES = {"low", "normal", "high"}
-ACCELERATOR_RESOURCE_STATUSES = {"available", "busy", "draining", "offline"}
-
-
-def _validate_accelerator_resource_request(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=ACCELERATOR_RESOURCE_REQUEST_SCHEMA:
-        raise HTTPException(status_code=400,detail="acceleratorResourceRequestArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if value.get("artifactFingerprint")!=expected:
-        raise HTTPException(status_code=400,detail="accelerator resource request fingerprint verification failed")
-    return value
-
-
-def _validate_accelerator_inventory(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=ACCELERATOR_INVENTORY_SCHEMA:
-        raise HTTPException(status_code=400,detail="acceleratorInventoryArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k not in {"inventoryFingerprint","artifactFingerprint"}})
-    if value.get("inventoryFingerprint")!=expected or value.get("artifactFingerprint")!=expected:
-        raise HTTPException(status_code=400,detail="accelerator inventory fingerprint verification failed")
-    return value
-
-
-def _accelerator_inventory_contract(payload: dict[str,Any]) -> dict[str,Any]:
-    pool=_validate_worker_pool(payload.get("workerPoolArtifact"))
-    raw=payload.get("accelerators")
-    if not isinstance(raw,list) or not raw or len(raw)>MAX_GOVERNED_ACCELERATORS:
-        raise HTTPException(status_code=400,detail="accelerators must be a non-empty bounded list")
-    workers={w["workerId"]:w for w in pool["workers"]}
-    resources=[]; ids=[]
-    for item in raw:
-        if not isinstance(item,dict): raise HTTPException(status_code=400,detail="accelerator entries must be objects")
-        aid=_distributed_id(item.get("acceleratorId"),"acceleratorId")
-        wid=_distributed_id(item.get("workerId"),"workerId")
-        if wid not in workers: raise HTTPException(status_code=400,detail=f"accelerator worker is not present in governed worker pool: {wid}")
-        device=_bounded_text(item.get("device"),"device",32).lower()
-        if not re.fullmatch(r"cuda:\d+",device) or device not in workers[wid]["devices"]:
-            raise HTTPException(status_code=400,detail="accelerator device must be a cuda:N device declared by its governed worker")
-        memory=item.get("memoryMiB")
-        if not isinstance(memory,int) or isinstance(memory,bool) or not 1<=memory<=1048576 or memory>workers[wid].get("memoryMiB",0):
-            raise HTTPException(status_code=400,detail="accelerator memoryMiB must be positive and within the worker declaration")
-        precisions=item.get("supportedPrecisions") or ["float32"]
-        if not isinstance(precisions,list) or not precisions or len(precisions)>len(ACCELERATOR_PRECISIONS):
-            raise HTTPException(status_code=400,detail="supportedPrecisions must be a bounded non-empty list")
-        pclean=sorted(set(_bounded_text(x,"precision",16).lower() for x in precisions))
-        if any(x not in ACCELERATOR_PRECISIONS for x in pclean): raise HTTPException(status_code=400,detail="unsupported accelerator precision")
-        status=_bounded_text(item.get("status") or "available","status",16).lower()
-        if status not in ACCELERATOR_RESOURCE_STATUSES: raise HTTPException(status_code=400,detail="unsupported accelerator status")
-        current=item.get("currentReservations",0); maximum=item.get("maxConcurrentReservations",1)
-        if not isinstance(current,int) or isinstance(current,bool) or current<0 or current>64: raise HTTPException(status_code=400,detail="currentReservations is invalid")
-        if not isinstance(maximum,int) or isinstance(maximum,bool) or not 1<=maximum<=64 or current>maximum: raise HTTPException(status_code=400,detail="maxConcurrentReservations is invalid")
-        resources.append({"acceleratorId":aid,"workerId":wid,"device":device,"memoryMiB":memory,"supportedPrecisions":pclean,
-                          "workerCapabilities":workers[wid]["capabilities"],"status":status,"currentReservations":current,"maxConcurrentReservations":maximum})
-        ids.append(aid)
-    if len(ids)!=len(set(ids)): raise HTTPException(status_code=400,detail="acceleratorId values must be unique")
-    resources=sorted(resources,key=lambda x:(x["workerId"],x["device"],x["acceleratorId"]))
-    body={"schema":ACCELERATOR_INVENTORY_SCHEMA,"kind":"accelerator-inventory-contract","poolId":pool["poolId"],"poolFingerprint":pool["poolFingerprint"],
-          "accelerators":resources,"acceleratorCount":len(resources),"serverOperatorAuthority":True,"clientSuppliedEndpointsAccepted":False,
-          "automaticProvisioningExecuted":False,"isObservedEvidence":False}
-    fp=_canonical_sha256(body); body["inventoryFingerprint"]=fp; body["artifactFingerprint"]=fp
-    return {"kind":"accelerator-inventory-contract","acceleratorInventoryArtifact":body}
-
-
-def _accelerator_resource_request(payload: dict[str,Any]) -> dict[str,Any]:
-    request_id=_distributed_id(payload.get("requestId") or "accelerator-request","requestId")
-    count=payload.get("acceleratorCount",1)
-    if not isinstance(count,int) or isinstance(count,bool) or not 1<=count<=MAX_ACCELERATORS_PER_REQUEST: raise HTTPException(status_code=400,detail="acceleratorCount is invalid")
-    mem=payload.get("minimumMemoryMiBPerAccelerator",1)
-    if not isinstance(mem,int) or isinstance(mem,bool) or not 1<=mem<=1048576: raise HTTPException(status_code=400,detail="minimumMemoryMiBPerAccelerator is invalid")
-    precision=_bounded_text(payload.get("precision") or "float32","precision",16).lower()
-    if precision not in ACCELERATOR_PRECISIONS: raise HTTPException(status_code=400,detail="unsupported precision")
-    runtime=payload.get("maxRuntimeSeconds",3600)
-    if not isinstance(runtime,int) or isinstance(runtime,bool) or not 1<=runtime<=MAX_ACCELERATOR_RESERVATION_SECONDS: raise HTTPException(status_code=400,detail="maxRuntimeSeconds is invalid")
-    priority=_bounded_text(payload.get("priorityClass") or "normal","priorityClass",16).lower()
-    if priority not in ACCELERATOR_PRIORITY_CLASSES: raise HTTPException(status_code=400,detail="unsupported priorityClass")
-    caps=_distributed_capabilities(payload.get("requiredCapabilities") or ["accelerator","inference"],"requiredCapabilities")
-    if "accelerator" not in caps: caps=sorted(set(caps+["accelerator"]))
-    budget=payload.get("budgetUnits",count*runtime)
-    if not isinstance(budget,int) or isinstance(budget,bool) or not 1<=budget<=100_000_000: raise HTTPException(status_code=400,detail="budgetUnits is invalid")
-    body={"schema":ACCELERATOR_RESOURCE_REQUEST_SCHEMA,"kind":"accelerator-resource-request","requestId":request_id,"acceleratorCount":count,
-          "minimumMemoryMiBPerAccelerator":mem,"precision":precision,"maxRuntimeSeconds":runtime,"priorityClass":priority,
-          "requiredCapabilities":caps,"budgetUnits":budget,"infrastructureActionRequested":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-resource-request","acceleratorResourceRequestArtifact":body}
-
-
-def _accelerator_quota_evaluate(payload: dict[str,Any]) -> dict[str,Any]:
-    req=_validate_accelerator_resource_request(payload.get("acceleratorResourceRequestArtifact"))
-    policy=payload.get("quotaPolicy") or {}
-    if not isinstance(policy,dict): raise HTTPException(status_code=400,detail="quotaPolicy must be an object")
-    policy_id=_distributed_id(policy.get("policyId") or "default-accelerator-quota","policyId")
-    def bounded(name, default, low, high):
-        v=policy.get(name,default)
-        if not isinstance(v,int) or isinstance(v,bool) or not low<=v<=high: raise HTTPException(status_code=400,detail=f"{name} is invalid")
-        return v
-    max_count=bounded("maxAcceleratorsPerRequest",MAX_ACCELERATORS_PER_REQUEST,1,32)
-    max_mem=bounded("maxMemoryMiBPerAccelerator",1048576,1,1048576)
-    max_runtime=bounded("maxRuntimeSeconds",MAX_ACCELERATOR_RESERVATION_SECONDS,1,MAX_ACCELERATOR_RESERVATION_SECONDS)
-    budget_limit=bounded("budgetLimitUnits",100_000_000,1,100_000_000)
-    usage=payload.get("currentUsage") or {}
-    if not isinstance(usage,dict): raise HTTPException(status_code=400,detail="currentUsage must be an object")
-    active=usage.get("activeReservations",0); consumed=usage.get("consumedBudgetUnits",0)
-    if not isinstance(active,int) or isinstance(active,bool) or active<0 or active>100000: raise HTTPException(status_code=400,detail="activeReservations is invalid")
-    if not isinstance(consumed,int) or isinstance(consumed,bool) or consumed<0 or consumed>100_000_000: raise HTTPException(status_code=400,detail="consumedBudgetUnits is invalid")
-    allowed_priorities=policy.get("allowedPriorityClasses") or sorted(ACCELERATOR_PRIORITY_CLASSES)
-    allowed_precisions=policy.get("allowedPrecisions") or sorted(ACCELERATOR_PRECISIONS)
-    if not isinstance(allowed_priorities,list) or any(x not in ACCELERATOR_PRIORITY_CLASSES for x in allowed_priorities): raise HTTPException(status_code=400,detail="allowedPriorityClasses is invalid")
-    if not isinstance(allowed_precisions,list) or any(x not in ACCELERATOR_PRECISIONS for x in allowed_precisions): raise HTTPException(status_code=400,detail="allowedPrecisions is invalid")
-    violations=[]
-    if req["acceleratorCount"]>max_count: violations.append("accelerator-count")
-    if req["minimumMemoryMiBPerAccelerator"]>max_mem: violations.append("memory-per-accelerator")
-    if req["maxRuntimeSeconds"]>max_runtime: violations.append("runtime")
-    if req["budgetUnits"]+consumed>budget_limit: violations.append("budget")
-    if req["priorityClass"] not in allowed_priorities: violations.append("priority-class")
-    if req["precision"] not in allowed_precisions: violations.append("precision")
-    body={"schema":ACCELERATOR_QUOTA_EVALUATION_SCHEMA,"kind":"accelerator-quota-evaluation","policyId":policy_id,
-          "requestId":req["requestId"],"requestFingerprint":req["artifactFingerprint"],"withinQuota":not violations,"violations":violations,
-          "currentUsage":{"activeReservations":active,"consumedBudgetUnits":consumed},"policy":{"maxAcceleratorsPerRequest":max_count,
-          "maxMemoryMiBPerAccelerator":max_mem,"maxRuntimeSeconds":max_runtime,"budgetLimitUnits":budget_limit,
-          "allowedPriorityClasses":sorted(set(allowed_priorities)),"allowedPrecisions":sorted(set(allowed_precisions))},
-          "policySuppliedExplicitly":True,"automaticInfrastructureAction":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-quota-evaluation","acceleratorQuotaEvaluationArtifact":body}
-
-
-def _validate_quota_evaluation(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=ACCELERATOR_QUOTA_EVALUATION_SCHEMA: raise HTTPException(status_code=400,detail="acceleratorQuotaEvaluationArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if value.get("artifactFingerprint")!=expected: raise HTTPException(status_code=400,detail="quota evaluation fingerprint verification failed")
-    return value
-
-
-def _eligible_accelerators(inventory: dict[str,Any], req: dict[str,Any]) -> list[dict[str,Any]]:
-    out=[]
-    for a in inventory["accelerators"]:
-        if a["status"] not in {"available","busy"}: continue
-        if not set(req["requiredCapabilities"]).issubset(set(a.get("workerCapabilities") or [])): continue
-        if a["currentReservations"]>=a["maxConcurrentReservations"]: continue
-        if a["memoryMiB"]<req["minimumMemoryMiBPerAccelerator"]: continue
-        if req["precision"] not in a["supportedPrecisions"]: continue
-        out.append(a)
-    return sorted(out,key=lambda a:(a["currentReservations"],a["workerId"],a["device"],a["acceleratorId"]))
-
-
-def _accelerator_admission_decision(payload: dict[str,Any]) -> dict[str,Any]:
-    req=_validate_accelerator_resource_request(payload.get("acceleratorResourceRequestArtifact")); inv=_validate_accelerator_inventory(payload.get("acceleratorInventoryArtifact")); quota=_validate_quota_evaluation(payload.get("acceleratorQuotaEvaluationArtifact"))
-    if quota.get("requestFingerprint")!=req["artifactFingerprint"]: raise HTTPException(status_code=400,detail="quota evaluation does not belong to resource request")
-    eligible=_eligible_accelerators(inv,req); reasons=[]
-    if not quota["withinQuota"]: reasons.extend("quota:"+x for x in quota["violations"])
-    if len(eligible)<req["acceleratorCount"]: reasons.append("insufficient-eligible-accelerators")
-    admitted=not reasons
-    body={"schema":ACCELERATOR_ADMISSION_DECISION_SCHEMA,"kind":"accelerator-admission-decision","requestId":req["requestId"],
-          "requestFingerprint":req["artifactFingerprint"],"inventoryFingerprint":inv["inventoryFingerprint"],"quotaEvaluationFingerprint":quota["artifactFingerprint"],
-          "admitted":admitted,"reasons":reasons,"eligibleAcceleratorIds":[a["acceleratorId"] for a in eligible],"eligibleAcceleratorCount":len(eligible),
-          "humanOverrideApplied":False,"automaticProvisioningExecuted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-admission-decision","acceleratorAdmissionDecisionArtifact":body}
-
-
-def _validate_admission(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=ACCELERATOR_ADMISSION_DECISION_SCHEMA: raise HTTPException(status_code=400,detail="acceleratorAdmissionDecisionArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if value.get("artifactFingerprint")!=expected: raise HTTPException(status_code=400,detail="admission decision fingerprint verification failed")
-    return value
-
-
-def _accelerator_placement_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    req=_validate_accelerator_resource_request(payload.get("acceleratorResourceRequestArtifact")); inv=_validate_accelerator_inventory(payload.get("acceleratorInventoryArtifact")); adm=_validate_admission(payload.get("acceleratorAdmissionDecisionArtifact"))
-    if adm["requestFingerprint"]!=req["artifactFingerprint"] or adm["inventoryFingerprint"]!=inv["inventoryFingerprint"]: raise HTTPException(status_code=400,detail="admission decision lineage mismatch")
-    selected=[]
-    if adm["admitted"]:
-        eligible={a["acceleratorId"]:a for a in _eligible_accelerators(inv,req)}
-        for aid in adm["eligibleAcceleratorIds"]:
-            if aid in eligible and len(selected)<req["acceleratorCount"]: selected.append(eligible[aid])
-    assignments=[{"ordinal":i,"acceleratorId":a["acceleratorId"],"workerId":a["workerId"],"device":a["device"],"memoryMiB":a["memoryMiB"]} for i,a in enumerate(selected)]
-    body={"schema":ACCELERATOR_PLACEMENT_PLAN_SCHEMA,"kind":"accelerator-placement-plan","requestId":req["requestId"],"requestFingerprint":req["artifactFingerprint"],
-          "inventoryFingerprint":inv["inventoryFingerprint"],"admissionDecisionFingerprint":adm["artifactFingerprint"],"placementReady":adm["admitted"] and len(assignments)==req["acceleratorCount"],
-          "assignments":assignments,"assignmentCount":len(assignments),"selectionPolicy":"least-reserved-then-worker-device-id","placementExecuted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-placement-plan","acceleratorPlacementPlanArtifact":body}
-
-
-def _validate_placement(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=ACCELERATOR_PLACEMENT_PLAN_SCHEMA: raise HTTPException(status_code=400,detail="acceleratorPlacementPlanArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if value.get("artifactFingerprint")!=expected: raise HTTPException(status_code=400,detail="placement plan fingerprint verification failed")
-    return value
-
-
-def _accelerator_reservation_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    req=_validate_accelerator_resource_request(payload.get("acceleratorResourceRequestArtifact")); placement=_validate_placement(payload.get("acceleratorPlacementPlanArtifact"))
-    if placement["requestFingerprint"]!=req["artifactFingerprint"]: raise HTTPException(status_code=400,detail="placement plan does not belong to request")
-    lease=payload.get("leaseSeconds",req["maxRuntimeSeconds"])
-    if not isinstance(lease,int) or isinstance(lease,bool) or not 1<=lease<=req["maxRuntimeSeconds"]: raise HTTPException(status_code=400,detail="leaseSeconds exceeds governed request runtime")
-    reservation_id=_distributed_id(payload.get("reservationId") or ("reservation-"+req["requestId"]),"reservationId")
-    reservations=[{"reservationItemId":f"{reservation_id}:{a['ordinal']}","acceleratorId":a["acceleratorId"],"workerId":a["workerId"],"device":a["device"],"leaseSeconds":lease,"priorityClass":req["priorityClass"],"preemptible":req["priorityClass"]!="high"} for a in placement["assignments"]]
-    body={"schema":ACCELERATOR_RESERVATION_PLAN_SCHEMA,"kind":"accelerator-reservation-plan","reservationId":reservation_id,"requestId":req["requestId"],
-          "requestFingerprint":req["artifactFingerprint"],"placementPlanFingerprint":placement["artifactFingerprint"],"reservationReady":placement["placementReady"],
-          "reservations":reservations,"reservationCount":len(reservations),"reservationCommitted":False,"serverCommitRequired":True,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-reservation-plan","acceleratorReservationPlanArtifact":body}
-
-
-def _accelerator_preemption_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    incoming=_validate_accelerator_resource_request(payload.get("incomingResourceRequestArtifact"))
-    raw=payload.get("activeReservations") or []
-    if not isinstance(raw,list) or len(raw)>MAX_GOVERNED_ACCELERATORS*4: raise HTTPException(status_code=400,detail="activeReservations is invalid")
-    rank={"low":0,"normal":1,"high":2}; candidates=[]
-    for item in raw:
-        if not isinstance(item,dict): raise HTTPException(status_code=400,detail="active reservation entries must be objects")
-        rid=_distributed_id(item.get("reservationItemId"),"reservationItemId"); aid=_distributed_id(item.get("acceleratorId"),"acceleratorId")
-        priority=_bounded_text(item.get("priorityClass") or "normal","priorityClass",16).lower()
-        if priority not in ACCELERATOR_PRIORITY_CLASSES: raise HTTPException(status_code=400,detail="active reservation priority is invalid")
-        preemptible=bool(item.get("preemptible",False)); age=item.get("ageSeconds",0)
-        if not isinstance(age,int) or isinstance(age,bool) or age<0 or age>10_000_000: raise HTTPException(status_code=400,detail="ageSeconds is invalid")
-        if preemptible and rank[priority]<rank[incoming["priorityClass"]]: candidates.append({"reservationItemId":rid,"acceleratorId":aid,"priorityClass":priority,"ageSeconds":age})
-    candidates=sorted(candidates,key=lambda x:(rank[x["priorityClass"]],-x["ageSeconds"],x["reservationItemId"]))
-    selected=candidates[:incoming["acceleratorCount"]]
-    body={"schema":ACCELERATOR_PREEMPTION_PLAN_SCHEMA,"kind":"accelerator-preemption-plan","incomingRequestId":incoming["requestId"],
-          "incomingRequestFingerprint":incoming["artifactFingerprint"],"preemptionNeeded":bool(selected),"candidateCount":len(candidates),"selectedVictims":selected,
-          "automaticPreemptionExecuted":False,"operatorApprovalRequired":bool(selected),"policy":"lower-priority-preemptible-oldest-first","isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-preemption-plan","acceleratorPreemptionPlanArtifact":body}
-
-
-def _accelerator_scheduling_receipt(payload: dict[str,Any]) -> dict[str,Any]:
-    adm=_validate_admission(payload.get("acceleratorAdmissionDecisionArtifact")); placement=_validate_placement(payload.get("acceleratorPlacementPlanArtifact"))
-    reservation=payload.get("acceleratorReservationPlanArtifact")
-    if not isinstance(reservation,dict) or reservation.get("schema")!=ACCELERATOR_RESERVATION_PLAN_SCHEMA: raise HTTPException(status_code=400,detail="acceleratorReservationPlanArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in reservation.items() if k!="artifactFingerprint"})
-    if reservation.get("artifactFingerprint")!=expected: raise HTTPException(status_code=400,detail="reservation plan fingerprint verification failed")
-    if placement["admissionDecisionFingerprint"]!=adm["artifactFingerprint"] or reservation["placementPlanFingerprint"]!=placement["artifactFingerprint"]: raise HTTPException(status_code=400,detail="scheduling lineage mismatch")
-    body={"schema":ACCELERATOR_SCHEDULING_RECEIPT_SCHEMA,"kind":"accelerator-scheduling-receipt","requestId":adm["requestId"],"admitted":adm["admitted"],
-          "admissionDecisionFingerprint":adm["artifactFingerprint"],"placementPlanFingerprint":placement["artifactFingerprint"],"reservationPlanFingerprint":reservation["artifactFingerprint"],
-          "assignedAcceleratorIds":[x["acceleratorId"] for x in placement["assignments"]],"reservationCount":reservation["reservationCount"],
-          "schedulingPolicy":"governed-deterministic-placement","infrastructureMutationExecuted":False,"clientSuppliedSchedulerEndpointAccepted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"accelerator-scheduling-receipt","acceleratorSchedulingReceiptArtifact":body}
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -5244,17 +4982,6 @@ def health() -> dict[str, Any]:
         "distributedClientSuppliedWorkerEndpointsAllowed": False,
         "distributedServerManagedTransportOnly": True,
         "distributedAutomaticRemoteCodeExecution": False,
-        "advancedAcceleratorSchedulingResourceGovernanceRuntime": True,
-        "acceleratorInventoryContractSchema": ACCELERATOR_INVENTORY_SCHEMA,
-        "acceleratorResourceRequestSchema": ACCELERATOR_RESOURCE_REQUEST_SCHEMA,
-        "acceleratorQuotaEvaluationSchema": ACCELERATOR_QUOTA_EVALUATION_SCHEMA,
-        "acceleratorAdmissionDecisionSchema": ACCELERATOR_ADMISSION_DECISION_SCHEMA,
-        "acceleratorPlacementPlanSchema": ACCELERATOR_PLACEMENT_PLAN_SCHEMA,
-        "acceleratorReservationPlanSchema": ACCELERATOR_RESERVATION_PLAN_SCHEMA,
-        "acceleratorPreemptionPlanSchema": ACCELERATOR_PREEMPTION_PLAN_SCHEMA,
-        "acceleratorSchedulingReceiptSchema": ACCELERATOR_SCHEDULING_RECEIPT_SCHEMA,
-        "acceleratorSchedulingInfrastructureMutationEnabled": False,
-        "acceleratorClientSuppliedSchedulerEndpointsAllowed": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -5378,23 +5105,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.accelerator-inventory-contract":
-        result = _accelerator_inventory_contract(payload)
-    elif operation == "workspace.neural.accelerator-resource-request":
-        result = _accelerator_resource_request(payload)
-    elif operation == "workspace.neural.accelerator-quota-evaluate":
-        result = _accelerator_quota_evaluate(payload)
-    elif operation == "workspace.neural.accelerator-admission-decision":
-        result = _accelerator_admission_decision(payload)
-    elif operation == "workspace.neural.accelerator-placement-plan":
-        result = _accelerator_placement_plan(payload)
-    elif operation == "workspace.neural.accelerator-reservation-plan":
-        result = _accelerator_reservation_plan(payload)
-    elif operation == "workspace.neural.accelerator-preemption-plan":
-        result = _accelerator_preemption_plan(payload)
-    elif operation == "workspace.neural.accelerator-scheduling-receipt":
-        result = _accelerator_scheduling_receipt(payload)
-    elif operation == "workspace.neural.distributed-worker-contract":
+    if operation == "workspace.neural.distributed-worker-contract":
         result = _distributed_worker_contract(payload)
     elif operation == "workspace.neural.distributed-worker-pool-plan":
         result = _distributed_worker_pool_plan(payload)

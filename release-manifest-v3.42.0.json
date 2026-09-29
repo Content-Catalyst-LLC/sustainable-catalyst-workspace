@@ -1,0 +1,29 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.42.0",
+  "title": "Advanced Accelerator Scheduling & Resource Governance",
+  "baseline": "3.41.0.1",
+  "rollback": "3.41.0.1",
+  "databaseMigration": false,
+  "neuralRuntimeVersion": "3.42.0",
+  "neuralRuntimeOperations": 125,
+  "newOperations": [
+    "workspace.neural.accelerator-inventory-contract",
+    "workspace.neural.accelerator-resource-request",
+    "workspace.neural.accelerator-quota-evaluate",
+    "workspace.neural.accelerator-admission-decision",
+    "workspace.neural.accelerator-placement-plan",
+    "workspace.neural.accelerator-reservation-plan",
+    "workspace.neural.accelerator-preemption-plan",
+    "workspace.neural.accelerator-scheduling-receipt"
+  ],
+  "frontendBaseline": "3.41.0.1",
+  "frontendAssetContinuityPreserved": true,
+  "canonicalPluginRoot": "sustainable-catalyst-workspace",
+  "advancedAcceleratorSchedulingResourceGovernanceRuntime": true,
+  "infrastructureMutationEnabled": false,
+  "clientSuppliedSchedulerEndpointsAllowed": false,
+  "distributedNeuralExecutionWorkerFabricRuntime": true,
+  "automaticRemoteCodeExecution": false
+}

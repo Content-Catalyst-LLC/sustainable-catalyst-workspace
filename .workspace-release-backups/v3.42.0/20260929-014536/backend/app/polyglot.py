@@ -153,14 +153,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.distributed-lease-heartbeat",
         "workspace.neural.distributed-retry-failover-plan",
         "workspace.neural.distributed-execution-receipt",
-        "workspace.neural.accelerator-inventory-contract",
-        "workspace.neural.accelerator-resource-request",
-        "workspace.neural.accelerator-quota-evaluate",
-        "workspace.neural.accelerator-admission-decision",
-        "workspace.neural.accelerator-placement-plan",
-        "workspace.neural.accelerator-reservation-plan",
-        "workspace.neural.accelerator-preemption-plan",
-        "workspace.neural.accelerator-scheduling-receipt",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -918,47 +910,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             nr["workspaceDistributedNeuralArtifact"]={"artifactId":neural_distributed_artifact.artifact_id,"mediaType":neural_distributed_artifact.media_type,
                 "sha256":neural_distributed_artifact.sha256,"bytes":neural_distributed_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
-
-    neural_accelerator_scheduling_artifact = None
-    neural_accelerator_scheduling_ops = {
-        "workspace.neural.accelerator-inventory-contract","workspace.neural.accelerator-resource-request",
-        "workspace.neural.accelerator-quota-evaluate","workspace.neural.accelerator-admission-decision",
-        "workspace.neural.accelerator-placement-plan","workspace.neural.accelerator-reservation-plan",
-        "workspace.neural.accelerator-preemption-plan","workspace.neural.accelerator-scheduling-receipt",
-    }
-    if language == "neural" and row.operation in neural_accelerator_scheduling_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        keys=("acceleratorInventoryArtifact","acceleratorResourceRequestArtifact","acceleratorQuotaEvaluationArtifact","acceleratorAdmissionDecisionArtifact","acceleratorPlacementPlanArtifact","acceleratorReservationPlanArtifact","acceleratorPreemptionPlanArtifact","acceleratorSchedulingReceiptArtifact")
-        for key in keys:
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if isinstance(blob,dict):
-            schema=blob.get("schema")
-            mapping={
-                "sc-workspace-neural-accelerator-inventory-contract/1.0":("application/vnd.sc.workspace.neural-accelerator-inventory+json","neural-accelerator-inventory","contract"),
-                "sc-workspace-neural-accelerator-resource-request/1.0":("application/vnd.sc.workspace.neural-accelerator-request+json","neural-accelerator-request","request"),
-                "sc-workspace-neural-accelerator-quota-evaluation/1.0":("application/vnd.sc.workspace.neural-accelerator-quota+json","neural-accelerator-quota","evaluation"),
-                "sc-workspace-neural-accelerator-admission-decision/1.0":("application/vnd.sc.workspace.neural-accelerator-admission+json","neural-accelerator-admission","decision"),
-                "sc-workspace-neural-accelerator-placement-plan/1.0":("application/vnd.sc.workspace.neural-accelerator-placement+json","neural-accelerator-placement","plan"),
-                "sc-workspace-neural-accelerator-reservation-plan/1.0":("application/vnd.sc.workspace.neural-accelerator-reservation+json","neural-accelerator-reservation","plan"),
-                "sc-workspace-neural-accelerator-preemption-plan/1.0":("application/vnd.sc.workspace.neural-accelerator-preemption+json","neural-accelerator-preemption","plan"),
-                "sc-workspace-neural-accelerator-scheduling-receipt/1.0":("application/vnd.sc.workspace.neural-accelerator-scheduling-receipt+json","neural-accelerator-scheduling","receipt"),
-            }
-            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-accelerator-scheduling+json","neural-accelerator-scheduling","analysis"))
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            aid=f"{prefix}-{row.job_id}"; existing_accelerator=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
-                "filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
-                "expectedRevision":existing_accelerator.revision if existing_accelerator is not None else 0,
-                "metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
-                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
-                    "requestFingerprint":blob.get("requestFingerprint"),"inventoryFingerprint":blob.get("inventoryFingerprint"),
-                    "role":role,"isObservedEvidence":False,"advancedAcceleratorResourceGovernance":True}})
-            neural_accelerator_scheduling_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceAcceleratorSchedulingArtifact"]={"artifactId":neural_accelerator_scheduling_artifact.artifact_id,"mediaType":neural_accelerator_scheduling_artifact.media_type,
-                "sha256":neural_accelerator_scheduling_artifact.sha256,"bytes":neural_accelerator_scheduling_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -1390,27 +1341,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "isObservedEvidence":False,
             "workspaceDistributedNeuralArtifactId":neural_distributed_artifact.artifact_id if neural_distributed_artifact is not None else None,
             "workspaceDistributedNeuralArtifactSha256":neural_distributed_artifact.sha256 if neural_distributed_artifact is not None else None,
-        })
-
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.accelerator-inventory-contract","workspace.neural.accelerator-resource-request",
-        "workspace.neural.accelerator-quota-evaluate","workspace.neural.accelerator-admission-decision",
-        "workspace.neural.accelerator-placement-plan","workspace.neural.accelerator-reservation-plan",
-        "workspace.neural.accelerator-preemption-plan","workspace.neural.accelerator-scheduling-receipt",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("acceleratorInventoryArtifact","acceleratorResourceRequestArtifact","acceleratorQuotaEvaluationArtifact","acceleratorAdmissionDecisionArtifact","acceleratorPlacementPlanArtifact","acceleratorReservationPlanArtifact","acceleratorPreemptionPlanArtifact","acceleratorSchedulingReceiptArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({
-            "advancedAcceleratorSchedulingResourceGovernanceRuntime":True,"acceleratorSchedulingArtifactSchema":blob.get("schema"),
-            "acceleratorSchedulingArtifactFingerprint":blob.get("artifactFingerprint"),"requestFingerprint":blob.get("requestFingerprint"),
-            "inventoryFingerprint":blob.get("inventoryFingerprint"),"clientSuppliedSchedulerEndpointsAllowed":False,
-            "infrastructureMutationExecuted":False,"isObservedEvidence":False,
-            "workspaceAcceleratorSchedulingArtifactId":neural_accelerator_scheduling_artifact.artifact_id if neural_accelerator_scheduling_artifact is not None else None,
-            "workspaceAcceleratorSchedulingArtifactSha256":neural_accelerator_scheduling_artifact.sha256 if neural_accelerator_scheduling_artifact is not None else None,
         })
 
     if language == "neural" and row.operation in {
