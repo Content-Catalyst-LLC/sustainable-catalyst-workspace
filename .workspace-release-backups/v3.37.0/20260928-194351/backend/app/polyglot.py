@@ -113,14 +113,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.vision-tile-plan",
         "workspace.neural.remote-sensing-band-project",
         "workspace.neural.remote-sensing-index-compute",
-        "workspace.neural.sequence-tensor-contract",
-        "workspace.neural.sequence-window-plan",
-        "workspace.neural.sequence-dataset-project",
-        "workspace.neural.sequence-model-summary",
-        "workspace.neural.sequence-forward",
-        "workspace.neural.sequence-infer",
-        "workspace.neural.sequence-embedding-extract",
-        "workspace.neural.sequence-forecast",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -678,41 +670,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             neural_vision_artifact=store_artifact(db,row.user_key,req)
             nr["workspaceVisionArtifact"]={"artifactId":neural_vision_artifact.artifact_id,"mediaType":neural_vision_artifact.media_type,"sha256":neural_vision_artifact.sha256,"bytes":neural_vision_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
-
-    neural_sequence_artifact = None
-    neural_sequence_ops = {
-        "workspace.neural.sequence-tensor-contract",
-        "workspace.neural.sequence-window-plan",
-        "workspace.neural.sequence-dataset-project",
-        "workspace.neural.sequence-forward",
-        "workspace.neural.sequence-infer",
-        "workspace.neural.sequence-embedding-extract",
-        "workspace.neural.sequence-forecast",
-    }
-    if language == "neural" and row.operation in neural_sequence_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        for key in ("sequenceTensorContractArtifact","sequenceWindowPlanArtifact","sequenceDatasetProjectionArtifact","sequenceExecutionArtifact","sequencePredictionArtifact","sequenceEmbeddingArtifact","sequenceForecastArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if blob:
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            schema=blob.get("schema")
-            mapping={
-                "sc-workspace-neural-sequence-tensor-contract/1.0":("application/vnd.sc.workspace.neural-sequence-contract+json","neural-sequence-contract","contract"),
-                "sc-workspace-neural-sequence-window-plan/1.0":("application/vnd.sc.workspace.neural-sequence-window-plan+json","neural-sequence-window-plan","window-plan"),
-                "sc-workspace-neural-sequence-dataset-projection/1.0":("application/vnd.sc.workspace.neural-sequence-dataset+json","neural-sequence-dataset","dataset-projection"),
-                "sc-workspace-neural-sequence-execution-artifact/1.0":("application/vnd.sc.workspace.neural-sequence-execution+json","neural-sequence-execution","execution"),
-                "sc-workspace-neural-sequence-prediction-artifact/1.0":("application/vnd.sc.workspace.neural-sequence-prediction+json","neural-sequence-prediction","prediction"),
-                "sc-workspace-neural-sequence-embedding-artifact/1.0":("application/vnd.sc.workspace.neural-sequence-embedding+json","neural-sequence-embedding","representation"),
-                "sc-workspace-neural-sequence-forecast-artifact/1.0":("application/vnd.sc.workspace.neural-sequence-forecast+json","neural-sequence-forecast","forecast"),
-            }
-            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-sequence+json","neural-sequence","analysis"))
-            aid=f"{prefix}-{row.job_id}"; existing=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,"filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),"expectedRevision":existing.revision if existing is not None else 0,"metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,"runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),"sourceSequenceFingerprint":blob.get("sourceSequenceFingerprint"),"role":role,"isObservedEvidence":False}})
-            neural_sequence_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceSequenceArtifact"]={"artifactId":neural_sequence_artifact.artifact_id,"mediaType":neural_sequence_artifact.media_type,"sha256":neural_sequence_artifact.sha256,"bytes":neural_sequence_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -849,14 +806,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedVisionArtifact":True,"isObservedEvidence":False},
             })
             store_run_output(db,row.user_key,run_id,vision_output)
-        if neural_sequence_artifact is not None:
-            sequence_output = ExecutionRunOutputRequest.model_validate({
-                "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-sequence-artifact",
-                "artifactId":neural_sequence_artifact.artifact_id,"role":"analysis","label":"Governed temporal deep learning / sequence artifact",
-                "mediaType":neural_sequence_artifact.media_type,"sha256":neural_sequence_artifact.sha256,"bytes":neural_sequence_artifact.bytes,
-                "metadata":{"language":"neural","operation":row.operation,"governedSequenceArtifact":True,"isObservedEvidence":False},
-            })
-            store_run_output(db,row.user_key,run_id,sequence_output)
 
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
@@ -1071,26 +1020,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "spatialContextFingerprint":blob.get("spatialContextFingerprint"),"isObservedEvidence":False,
             "externalRasterReadEnabled":False,"workspaceVisionArtifactId":neural_vision_artifact.artifact_id if neural_vision_artifact is not None else None,
             "workspaceVisionArtifactSha256":neural_vision_artifact.sha256 if neural_vision_artifact is not None else None,
-        })
-
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.sequence-tensor-contract","workspace.neural.sequence-window-plan","workspace.neural.sequence-dataset-project",
-        "workspace.neural.sequence-model-summary","workspace.neural.sequence-forward","workspace.neural.sequence-infer",
-        "workspace.neural.sequence-embedding-extract","workspace.neural.sequence-forecast",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("sequenceTensorContractArtifact","sequenceWindowPlanArtifact","sequenceDatasetProjectionArtifact","sequenceExecutionArtifact","sequencePredictionArtifact","sequenceEmbeddingArtifact","sequenceForecastArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({
-            "temporalDeepLearningSequenceRuntime":True,"sequenceArtifactSchema":blob.get("schema"),
-            "sequenceArtifactFingerprint":blob.get("artifactFingerprint"),"modelSpecFingerprint":blob.get("modelSpecFingerprint"),
-            "sourceSequenceFingerprint":blob.get("sourceSequenceFingerprint") or blob.get("sequenceFingerprint"),
-            "isObservedEvidence":False,"externalSequenceReadEnabled":False,
-            "workspaceSequenceArtifactId":neural_sequence_artifact.artifact_id if neural_sequence_artifact is not None else None,
-            "workspaceSequenceArtifactSha256":neural_sequence_artifact.sha256 if neural_sequence_artifact is not None else None,
         })
 
     receipt=PolyglotExecutionReceipt(

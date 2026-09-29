@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.37.0"
+SERVICE_VERSION = "3.36.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -132,21 +132,12 @@ OPERATIONS = {
     "workspace.neural.vision-tile-plan",
     "workspace.neural.remote-sensing-band-project",
     "workspace.neural.remote-sensing-index-compute",
-    "workspace.neural.sequence-tensor-contract",
-    "workspace.neural.sequence-window-plan",
-    "workspace.neural.sequence-dataset-project",
-    "workspace.neural.sequence-model-summary",
-    "workspace.neural.sequence-forward",
-    "workspace.neural.sequence-infer",
-    "workspace.neural.sequence-embedding-extract",
-    "workspace.neural.sequence-forecast",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
     "code", "python", "script", "packages", "requirements", "runtimeUrl", "credentials",
     "pickleBase64", "joblibBase64", "torchModuleBase64", "stateDictBase64", "torchScriptBase64",
     "modulePath", "classPath", "importPath", "checkpointPath", "weightsPath",
-    "sequenceUrl", "sequencePath", "dataUrl", "dataPath", "filePath",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -3683,221 +3674,6 @@ def _remote_sensing_index_compute(payload: dict[str, Any]) -> dict[str, Any]:
     spatial=_vision_spatial_context(payload); artifact={"schema":REMOTE_SENSING_INDEX_ARTIFACT_SCHEMA,"kind":"remote-sensing-spectral-index","index":index_name,"numeratorBand":names[_band_index(names,a_name)],"referenceBand":names[_band_index(names,b_name)],"sourceTensorFingerprint":_canonical_sha256(x.detach().cpu().tolist()),"indexFingerprint":_canonical_sha256({"values":vals,"validMask":mask}),"statistics":stats,"spatialContextFingerprint":spatial["fingerprint"],"isObservedEvidence":False,"interpretationPolicy":"derived-spectral-index-not-ground-truth"}
     artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"remote-sensing-spectral-index","index":index_name,"values":vals,"validMask":mask,"statistics":stats,"remoteSensingIndexArtifact":artifact}
 
-
-# v3.37 Temporal Deep Learning & Sequence Models
-SEQUENCE_TENSOR_CONTRACT_SCHEMA = "sc-workspace-neural-sequence-tensor-contract/1.0"
-SEQUENCE_WINDOW_PLAN_SCHEMA = "sc-workspace-neural-sequence-window-plan/1.0"
-SEQUENCE_DATASET_PROJECTION_SCHEMA = "sc-workspace-neural-sequence-dataset-projection/1.0"
-SEQUENCE_MODEL_SPEC_SCHEMA = "sc-workspace-neural-sequence-model-spec/1.0"
-SEQUENCE_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-sequence-execution-artifact/1.0"
-SEQUENCE_PREDICTION_ARTIFACT_SCHEMA = "sc-workspace-neural-sequence-prediction-artifact/1.0"
-SEQUENCE_EMBEDDING_ARTIFACT_SCHEMA = "sc-workspace-neural-sequence-embedding-artifact/1.0"
-SEQUENCE_FORECAST_ARTIFACT_SCHEMA = "sc-workspace-neural-sequence-forecast-artifact/1.0"
-SEQUENCE_ADAPTERS = {"tanh-rnn", "gru"}
-SEQUENCE_TASKS = {"regression", "binary-classification", "multiclass-classification"}
-MAX_SEQUENCE_STEPS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_STEPS", "4096")), 32768))
-MAX_SEQUENCE_FEATURES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_FEATURES", "512")), 4096))
-MAX_SEQUENCE_HIDDEN = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_HIDDEN", "512")), 2048))
-MAX_SEQUENCE_OUTPUTS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_OUTPUTS", "512")), 4096))
-MAX_SEQUENCE_WINDOWS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_WINDOWS", "4096")), 20000))
-MAX_SEQUENCE_HORIZON = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_HORIZON", "64")), 512))
-MAX_SEQUENCE_PARAMETERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_SEQUENCE_PARAMETERS", "500000")), MAX_PARAMETERS))
-
-
-def _sequence_tensor(payload: dict[str, Any], key: str = "sequenceTensor") -> tuple[torch.Tensor, list[str], list[Any]]:
-    raw = payload.get(key)
-    if not isinstance(raw, list) or not raw:
-        raise HTTPException(status_code=400, detail=f"{key} must be a non-empty [steps,features] array")
-    try:
-        x = torch.tensor(raw, dtype=torch.float32, device=_current_device_name())
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"{key} must be a rectangular numeric array") from exc
-    if x.ndim != 2:
-        raise HTTPException(status_code=400, detail=f"{key} must have rank 2 [steps,features]")
-    steps, features = int(x.shape[0]), int(x.shape[1])
-    if steps < 1 or steps > MAX_SEQUENCE_STEPS or features < 1 or features > MAX_SEQUENCE_FEATURES:
-        raise HTTPException(status_code=413, detail="sequence tensor exceeds bounded shape limits")
-    if x.numel() > MAX_TENSOR_ELEMENTS or not bool(torch.isfinite(x).all()):
-        raise HTTPException(status_code=400, detail="sequence tensor exceeds element limit or contains non-finite values")
-    names = payload.get("featureNames")
-    if names is None:
-        names = [f"feature-{i}" for i in range(features)]
-    if not isinstance(names, list) or len(names) != features or any(not isinstance(n, str) or not n.strip() for n in names):
-        raise HTTPException(status_code=400, detail="featureNames must match sequence feature count")
-    names = [str(n).strip()[:128] for n in names]
-    timestamps = payload.get("timestamps") or []
-    if timestamps and (not isinstance(timestamps, list) or len(timestamps) != steps):
-        raise HTTPException(status_code=400, detail="timestamps must be omitted or match sequence length")
-    return x, names, list(timestamps)
-
-
-def _sequence_tensor_contract(payload: dict[str, Any]) -> dict[str, Any]:
-    x, names, timestamps = _sequence_tensor(payload)
-    body = {
-        "schema": SEQUENCE_TENSOR_CONTRACT_SCHEMA,
-        "kind": "sequence-tensor-contract",
-        "layout": "TF",
-        "steps": int(x.shape[0]),
-        "features": int(x.shape[1]),
-        "featureNames": names,
-        "timestampsPresent": bool(timestamps),
-        "sequenceFingerprint": _canonical_sha256(_tensor_json(x)),
-        "timestampFingerprint": _canonical_sha256(timestamps) if timestamps else None,
-        "externalSequenceRead": False,
-    }
-    body["artifactFingerprint"] = _canonical_sha256(body)
-    return {"kind": "sequence-tensor-contract", "sequenceTensorContractArtifact": body}
-
-
-def _sequence_window_plan(payload: dict[str, Any]) -> dict[str, Any]:
-    length = int(payload.get("length") or 0)
-    window = int(payload.get("windowLength") or 0)
-    horizon = int(payload.get("horizon") or 1)
-    stride = int(payload.get("stride") or 1)
-    if length < 2 or length > MAX_SEQUENCE_STEPS:
-        raise HTTPException(status_code=400, detail="length is outside bounded sequence limits")
-    if window < 1 or window >= length:
-        raise HTTPException(status_code=400, detail="windowLength must be positive and less than sequence length")
-    if horizon < 1 or horizon > MAX_SEQUENCE_HORIZON or window + horizon > length:
-        raise HTTPException(status_code=400, detail="horizon is invalid for the requested sequence")
-    if stride < 1 or stride > window:
-        raise HTTPException(status_code=400, detail="stride must be between 1 and windowLength")
-    windows=[]
-    start=0
-    while start + window + horizon <= length:
-        windows.append({"inputStart":start,"inputEnd":start+window,"targetStart":start+window,"targetEnd":start+window+horizon})
-        if len(windows) > MAX_SEQUENCE_WINDOWS:
-            raise HTTPException(status_code=413, detail="sequence window plan exceeds bounded window count")
-        start += stride
-    body={"schema":SEQUENCE_WINDOW_PLAN_SCHEMA,"kind":"sequence-window-plan","length":length,"windowLength":window,"horizon":horizon,"stride":stride,"windowCount":len(windows),"windowsFingerprint":_canonical_sha256(windows),"deterministic":True}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"sequence-window-plan","windows":windows,"sequenceWindowPlanArtifact":body}
-
-
-def _sequence_dataset_project(payload: dict[str, Any]) -> dict[str, Any]:
-    x,names,timestamps=_sequence_tensor(payload)
-    plan=_sequence_window_plan({"length":int(x.shape[0]),"windowLength":payload.get("windowLength",8),"horizon":payload.get("horizon",1),"stride":payload.get("stride",1)})
-    windows=[]; targets=[]; time_windows=[]
-    for w in plan["windows"]:
-        windows.append(_tensor_json(x[w["inputStart"]:w["inputEnd"]]))
-        targets.append(_tensor_json(x[w["targetStart"]:w["targetEnd"]]))
-        if timestamps:
-            time_windows.append({"inputs":timestamps[w["inputStart"]:w["inputEnd"]],"targets":timestamps[w["targetStart"]:w["targetEnd"]]})
-    body={"schema":SEQUENCE_DATASET_PROJECTION_SCHEMA,"kind":"sequence-dataset-projection","featureNames":names,"windowLength":plan["sequenceWindowPlanArtifact"]["windowLength"],"horizon":plan["sequenceWindowPlanArtifact"]["horizon"],"stride":plan["sequenceWindowPlanArtifact"]["stride"],"windowCount":len(windows),"sourceSequenceFingerprint":_canonical_sha256(_tensor_json(x)),"windowsFingerprint":_canonical_sha256(windows),"targetsFingerprint":_canonical_sha256(targets),"timestampsPresent":bool(timestamps),"externalSequenceRead":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"sequence-dataset-projection","windows":windows,"targets":targets,"timestampWindows":time_windows,"sequenceDatasetProjectionArtifact":body}
-
-
-def _sequence_weight(value: Any, rows: int, cols: int, name: str) -> torch.Tensor:
-    t=_tensor(value,name=name,dtype_name="float32",ndim=2)
-    if list(t.shape)!=[rows,cols]:
-        raise HTTPException(status_code=400, detail=f"{name} shape must be [{rows},{cols}]")
-    return t
-
-
-def _sequence_bias(value: Any, size: int, name: str) -> torch.Tensor:
-    t=_tensor(value,name=name,dtype_name="float32",ndim=1)
-    if list(t.shape)!=[size]:
-        raise HTTPException(status_code=400, detail=f"{name} shape must be [{size}]")
-    return t
-
-
-def _sequence_validate_model_spec(raw: Any) -> dict[str, Any]:
-    if not isinstance(raw,dict) or raw.get("schema") != SEQUENCE_MODEL_SPEC_SCHEMA:
-        raise HTTPException(status_code=400, detail="modelSpec schema is invalid")
-    adapter=str(raw.get("adapter") or "")
-    if adapter not in SEQUENCE_ADAPTERS:
-        raise HTTPException(status_code=400, detail="unsupported sequence adapter")
-    f=int(raw.get("inputFeatures") or 0); h=int(raw.get("hiddenFeatures") or 0); o=int(raw.get("outputFeatures") or 0)
-    if f<1 or f>MAX_SEQUENCE_FEATURES or h<1 or h>MAX_SEQUENCE_HIDDEN or o<1 or o>MAX_SEQUENCE_OUTPUTS:
-        raise HTTPException(status_code=400, detail="sequence model dimensions are invalid")
-    spec={"schema":SEQUENCE_MODEL_SPEC_SCHEMA,"adapter":adapter,"inputFeatures":f,"hiddenFeatures":h,"outputFeatures":o}
-    params=0
-    if adapter=="tanh-rnn":
-        wi=_sequence_weight(raw.get("inputWeights"),h,f,"inputWeights"); wh=_sequence_weight(raw.get("recurrentWeights"),h,h,"recurrentWeights"); b=_sequence_bias(raw.get("hiddenBias"),h,"hiddenBias")
-        spec.update(inputWeights=_tensor_json(wi),recurrentWeights=_tensor_json(wh),hiddenBias=_tensor_json(b)); params += h*f+h*h+h
-    else:
-        for gate,prefix in (("update","update"),("reset","reset"),("candidate","candidate")):
-            wi=_sequence_weight(raw.get(prefix+"InputWeights"),h,f,prefix+"InputWeights"); wh=_sequence_weight(raw.get(prefix+"RecurrentWeights"),h,h,prefix+"RecurrentWeights"); b=_sequence_bias(raw.get(prefix+"Bias"),h,prefix+"Bias")
-            spec[prefix+"InputWeights"]=_tensor_json(wi); spec[prefix+"RecurrentWeights"]=_tensor_json(wh); spec[prefix+"Bias"]=_tensor_json(b); params += h*f+h*h+h
-    ow=_sequence_weight(raw.get("outputWeights"),o,h,"outputWeights"); ob=_sequence_bias(raw.get("outputBias"),o,"outputBias")
-    spec["outputWeights"]=_tensor_json(ow); spec["outputBias"]=_tensor_json(ob); params += o*h+o
-    if params > MAX_SEQUENCE_PARAMETERS:
-        raise HTTPException(status_code=413, detail="sequence model exceeds parameter limit")
-    spec["parameterCount"]=int(params)
-    spec["modelSpecFingerprint"]=_canonical_sha256(spec)
-    return spec
-
-
-def _sequence_model_summary(payload: dict[str, Any]) -> dict[str, Any]:
-    spec=_sequence_validate_model_spec(payload.get("modelSpec"))
-    return {"kind":"sequence-model-summary","adapter":spec["adapter"],"inputFeatures":spec["inputFeatures"],"hiddenFeatures":spec["hiddenFeatures"],"outputFeatures":spec["outputFeatures"],"parameterCount":spec["parameterCount"],"modelSpecFingerprint":spec["modelSpecFingerprint"]}
-
-
-def _sequence_step(spec: dict[str, Any], x: torch.Tensor, h: torch.Tensor) -> torch.Tensor:
-    if spec["adapter"]=="tanh-rnn":
-        wi=torch.tensor(spec["inputWeights"],dtype=torch.float32,device=_current_device_name()); wh=torch.tensor(spec["recurrentWeights"],dtype=torch.float32,device=_current_device_name()); b=torch.tensor(spec["hiddenBias"],dtype=torch.float32,device=_current_device_name())
-        return torch.tanh(wi @ x + wh @ h + b)
-    def gate(prefix: str):
-        wi=torch.tensor(spec[prefix+"InputWeights"],dtype=torch.float32,device=_current_device_name()); wh=torch.tensor(spec[prefix+"RecurrentWeights"],dtype=torch.float32,device=_current_device_name()); b=torch.tensor(spec[prefix+"Bias"],dtype=torch.float32,device=_current_device_name())
-        return wi,wh,b
-    zwi,zwh,zb=gate("update"); rwi,rwh,rb=gate("reset"); nwi,nwh,nb=gate("candidate")
-    z=torch.sigmoid(zwi@x+zwh@h+zb); r=torch.sigmoid(rwi@x+rwh@h+rb); n=torch.tanh(nwi@x+nwh@(r*h)+nb)
-    return (1.0-z)*n+z*h
-
-
-def _sequence_forward_body(payload: dict[str, Any]) -> tuple[torch.Tensor,torch.Tensor,dict[str,Any],str,list[str],list[Any]]:
-    x,names,timestamps=_sequence_tensor(payload); spec=_sequence_validate_model_spec(payload.get("modelSpec"))
-    if int(x.shape[1]) != spec["inputFeatures"]:
-        raise HTTPException(status_code=400, detail="sequence feature count does not match modelSpec inputFeatures")
-    h=torch.zeros(spec["hiddenFeatures"],dtype=torch.float32,device=_current_device_name())
-    for t in range(int(x.shape[0])): h=_sequence_step(spec,x[t],h)
-    ow=torch.tensor(spec["outputWeights"],dtype=torch.float32,device=_current_device_name()); ob=torch.tensor(spec["outputBias"],dtype=torch.float32,device=_current_device_name()); out=ow@h+ob
-    return out,h,spec,_canonical_sha256(_tensor_json(x)),names,timestamps
-
-
-def _sequence_forward(payload: dict[str, Any]) -> dict[str, Any]:
-    out,h,spec,seq_fp,names,timestamps=_sequence_forward_body(payload); vals=_tensor_json(out)
-    artifact={"schema":SEQUENCE_EXECUTION_ARTIFACT_SCHEMA,"kind":"sequence-forward","adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceSequenceFingerprint":seq_fp,"steps":len(payload.get("sequenceTensor") or []),"featureNames":names,"hiddenFingerprint":_canonical_sha256(_tensor_json(h)),"outputFingerprint":_canonical_sha256(vals),"isObservedEvidence":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
-    return {"kind":"sequence-forward","outputs":vals,"hiddenState":_tensor_json(h),"sequenceExecutionArtifact":artifact}
-
-
-def _sequence_infer(payload: dict[str, Any]) -> dict[str, Any]:
-    task=str(payload.get("task") or "regression")
-    if task not in SEQUENCE_TASKS: raise HTTPException(status_code=400,detail="unsupported sequence inference task")
-    out,h,spec,seq_fp,names,timestamps=_sequence_forward_body(payload)
-    if task=="regression": prediction={"values":_tensor_json(out)}
-    elif task=="binary-classification":
-        if out.numel()!=1: raise HTTPException(status_code=400,detail="binary classification requires outputFeatures=1")
-        p=float(torch.sigmoid(out[0]).item()); prediction={"probability":p,"label":int(p>=0.5)}
-    else:
-        probs=torch.softmax(out,dim=0); prediction={"probabilities":_tensor_json(probs),"label":int(torch.argmax(probs).item())}
-    artifact={"schema":SEQUENCE_PREDICTION_ARTIFACT_SCHEMA,"kind":"sequence-prediction","task":task,"adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceSequenceFingerprint":seq_fp,"predictionFingerprint":_canonical_sha256(prediction),"isObservedEvidence":False,"isEvaluation":False,"predictionPolicy":"model-derived-sequence-inference"}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
-    return {"kind":"sequence-inference","prediction":prediction,"sequencePredictionArtifact":artifact}
-
-
-def _sequence_embedding_extract(payload: dict[str, Any]) -> dict[str, Any]:
-    out,h,spec,seq_fp,names,timestamps=_sequence_forward_body(payload); emb=_tensor_json(h)
-    artifact={"schema":SEQUENCE_EMBEDDING_ARTIFACT_SCHEMA,"kind":"sequence-embedding","adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceSequenceFingerprint":seq_fp,"dimensions":len(emb),"embeddingFingerprint":_canonical_sha256(emb),"isObservedEvidence":False}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
-    return {"kind":"sequence-embedding-extract","embedding":emb,"sequenceEmbeddingArtifact":artifact}
-
-
-def _sequence_forecast(payload: dict[str, Any]) -> dict[str, Any]:
-    x,names,timestamps=_sequence_tensor(payload); spec=_sequence_validate_model_spec(payload.get("modelSpec")); horizon=int(payload.get("forecastHorizon") or 1)
-    if horizon<1 or horizon>MAX_SEQUENCE_HORIZON: raise HTTPException(status_code=400,detail="forecastHorizon exceeds bounded limit")
-    if spec["outputFeatures"] != spec["inputFeatures"] and horizon>1: raise HTTPException(status_code=400,detail="recursive multi-step forecast requires outputFeatures=inputFeatures")
-    current=x.clone(); values=[]
-    for _ in range(horizon):
-        local=dict(payload); local["sequenceTensor"]=_tensor_json(current); out,h,_,_,_,_=_sequence_forward_body(local); step=_tensor_json(out); values.append(step)
-        if horizon>1: current=torch.cat([current[1:],out.reshape(1,-1)],dim=0)
-    source_fp=_canonical_sha256(_tensor_json(x))
-    artifact={"schema":SEQUENCE_FORECAST_ARTIFACT_SCHEMA,"kind":"sequence-forecast","adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceSequenceFingerprint":source_fp,"forecastHorizon":horizon,"forecastFingerprint":_canonical_sha256(values),"isObservedEvidence":False,"uncertaintySemantics":"point-forecast-only-no-calibrated-uncertainty","recursive":horizon>1}
-    artifact["artifactFingerprint"]=_canonical_sha256(artifact)
-    return {"kind":"sequence-forecast","forecast":values,"sequenceForecastArtifact":artifact}
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -3967,18 +3743,6 @@ def health() -> dict[str, Any]:
         "visionTasks": sorted(VISION_TASKS),
         "remoteSensingSpectralIndices": sorted(SPECTRAL_INDEX_PRESETS),
         "visionExternalRasterReadEnabled": False,
-        "temporalDeepLearningSequenceRuntime": True,
-        "sequenceTensorContractSchema": SEQUENCE_TENSOR_CONTRACT_SCHEMA,
-        "sequenceWindowPlanSchema": SEQUENCE_WINDOW_PLAN_SCHEMA,
-        "sequenceDatasetProjectionSchema": SEQUENCE_DATASET_PROJECTION_SCHEMA,
-        "sequenceModelSpecSchema": SEQUENCE_MODEL_SPEC_SCHEMA,
-        "sequenceExecutionArtifactSchema": SEQUENCE_EXECUTION_ARTIFACT_SCHEMA,
-        "sequencePredictionArtifactSchema": SEQUENCE_PREDICTION_ARTIFACT_SCHEMA,
-        "sequenceEmbeddingArtifactSchema": SEQUENCE_EMBEDDING_ARTIFACT_SCHEMA,
-        "sequenceForecastArtifactSchema": SEQUENCE_FORECAST_ARTIFACT_SCHEMA,
-        "sequenceAdapters": sorted(SEQUENCE_ADAPTERS),
-        "sequenceTasks": sorted(SEQUENCE_TASKS),
-        "sequenceExternalDataReadEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -4102,23 +3866,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.sequence-tensor-contract":
-        result = _sequence_tensor_contract(payload)
-    elif operation == "workspace.neural.sequence-window-plan":
-        result = _sequence_window_plan(payload)
-    elif operation == "workspace.neural.sequence-dataset-project":
-        result = _sequence_dataset_project(payload)
-    elif operation == "workspace.neural.sequence-model-summary":
-        result = _sequence_model_summary(payload)
-    elif operation == "workspace.neural.sequence-forward":
-        result = _sequence_forward(payload)
-    elif operation == "workspace.neural.sequence-infer":
-        result = _sequence_infer(payload)
-    elif operation == "workspace.neural.sequence-embedding-extract":
-        result = _sequence_embedding_extract(payload)
-    elif operation == "workspace.neural.sequence-forecast":
-        result = _sequence_forecast(payload)
-    elif operation == "workspace.neural.vision-tensor-contract":
+    if operation == "workspace.neural.vision-tensor-contract":
         result = _vision_tensor_contract(payload)
     elif operation == "workspace.neural.vision-dataset-project":
         result = _vision_dataset_project(payload)
