@@ -21,7 +21,7 @@ def dispatch():
     return s._distributed_dispatch_plan({"workerPoolArtifact":pool(),"shardPlanArtifact":shards(),"requiredCapabilities":["cpu","inference"],"requiredDevice":"cpu","operation":"workspace.neural.research-package-verify","payloadFingerprint":"a"*64})["distributedDispatchPlanArtifact"]
 
 def test_health_and_registry():
-    h=s.health(); assert h["version"] in {"3.41.0","3.41.0.1"}; assert len(h["operations"])==117; assert h["distributedNeuralExecutionWorkerFabricRuntime"] is True; assert h["distributedClientSuppliedWorkerEndpointsAllowed"] is False
+    h=s.health(); assert h["version"]=="3.41.0"; assert len(h["operations"])==117; assert h["distributedNeuralExecutionWorkerFabricRuntime"] is True; assert h["distributedClientSuppliedWorkerEndpointsAllowed"] is False
 
 def test_worker_contract_and_pool_are_endpoint_free():
     w=s._distributed_worker_contract(workers()[0])["distributedWorkerArtifact"]; assert w["workerId"]=="worker-cpu-a" and w["dynamicRegistration"] is False

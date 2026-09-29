@@ -1,0 +1,20 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.41.0.1",
+  "title": "Frontend Asset Continuity & Plugin Identity Repair",
+  "baseline": "3.41.0",
+  "rollback": "3.41.0",
+  "databaseMigration": false,
+  "neuralRuntimeVersion": "3.41.0.1",
+  "neuralRuntimeOperations": 117,
+  "newOperations": [],
+  "frontendBaseline": "3.39.0.1",
+  "frontendAssetContinuityRepair": true,
+  "canonicalPluginRoot": "sustainable-catalyst-workspace",
+  "minimumCurrentStyleBytes": 100000,
+  "minimumCurrentScriptBytes": 5000,
+  "staleReleaseCopyRepair": true,
+  "distributedNeuralExecutionWorkerFabricRuntime": true,
+  "automaticRemoteCodeExecution": false
+}

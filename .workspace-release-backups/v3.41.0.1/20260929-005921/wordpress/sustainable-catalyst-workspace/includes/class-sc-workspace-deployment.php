@@ -15,13 +15,10 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '3.41.0';
-    const ROLLBACK_RELEASE = '3.41.0';
+    const PREVIOUS_RELEASE = '3.0.0';
+    const ROLLBACK_RELEASE = '3.0.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
-    const CANONICAL_PLUGIN_ROOT = 'sustainable-catalyst-workspace';
-    const MIN_CURRENT_STYLE_BYTES = 100000;
-    const MIN_CURRENT_SCRIPT_BYTES = 5000;
 
     public static function required_files() {
         return array(
@@ -91,43 +88,30 @@ final class SC_Workspace_Deployment_Hardening {
         );
     }
 
-public static function preflight() {
-    $missing = array();
-    foreach (self::required_files() as $label => $relative) {
-        $path = SC_WORKSPACE_DIR . $relative;
-        if (!is_file($path) || !is_readable($path)) {
-            $missing[] = $label;
+    public static function preflight() {
+        $missing = array();
+        foreach (self::required_files() as $label => $relative) {
+            $path = SC_WORKSPACE_DIR . $relative;
+            if (!is_file($path) || !is_readable($path)) {
+                $missing[] = $label;
+            }
         }
+        global $wp_version;
+        $wp_ok = !isset($wp_version) || version_compare((string) $wp_version, self::REQUIRED_WORDPRESS, '>=');
+        $php_ok = version_compare(PHP_VERSION, self::REQUIRED_PHP, '>=');
+        return array(
+            'schema' => self::SCHEMA,
+            'workspace_version' => SC_WORKSPACE_VERSION,
+            'ok' => empty($missing) && $wp_ok && $php_ok,
+            'required_file_count' => count(self::required_files()),
+            'missing_required_file_count' => count($missing),
+            'missing_required_files' => $missing,
+            'wordpress_supported' => $wp_ok,
+            'php_supported' => $php_ok,
+            'project_data_inspected' => false,
+            'project_data_mutated' => false,
+        );
     }
-    $canonical_root = basename(rtrim(SC_WORKSPACE_DIR, '/\\')) === self::CANONICAL_PLUGIN_ROOT;
-    $current_style = SC_WORKSPACE_DIR . 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css';
-    $current_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js';
-    $style_bytes = (is_file($current_style) && is_readable($current_style)) ? (int) filesize($current_style) : 0;
-    $script_bytes = (is_file($current_script) && is_readable($current_script)) ? (int) filesize($current_script) : 0;
-    $asset_continuity_ok = $style_bytes >= self::MIN_CURRENT_STYLE_BYTES && $script_bytes >= self::MIN_CURRENT_SCRIPT_BYTES;
-    global $wp_version;
-    $wp_ok = !isset($wp_version) || version_compare((string) $wp_version, self::REQUIRED_WORDPRESS, '>=');
-    $php_ok = version_compare(PHP_VERSION, self::REQUIRED_PHP, '>=');
-    return array(
-        'schema' => self::SCHEMA,
-        'workspace_version' => SC_WORKSPACE_VERSION,
-        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok,
-        'required_file_count' => count(self::required_files()),
-        'missing_required_file_count' => count($missing),
-        'missing_required_files' => $missing,
-        'canonical_plugin_root' => $canonical_root,
-        'canonical_plugin_root_expected' => self::CANONICAL_PLUGIN_ROOT,
-        'current_style_bytes' => $style_bytes,
-        'current_script_bytes' => $script_bytes,
-        'minimum_current_style_bytes' => self::MIN_CURRENT_STYLE_BYTES,
-        'minimum_current_script_bytes' => self::MIN_CURRENT_SCRIPT_BYTES,
-        'asset_continuity_ok' => $asset_continuity_ok,
-        'wordpress_supported' => $wp_ok,
-        'php_supported' => $php_ok,
-        'project_data_inspected' => false,
-        'project_data_mutated' => false,
-    );
-}
 
     public static function observe($source = 'runtime') {
         if (!function_exists('get_option') || !function_exists('update_option')) {
@@ -209,11 +193,6 @@ public static function preflight() {
             'required_files_complete' => empty($preflight['missing_required_file_count']),
             'missing_required_file_count' => (int) $preflight['missing_required_file_count'],
             'missing_required_files' => $preflight['missing_required_files'],
-            'canonical_plugin_root' => !empty($preflight['canonical_plugin_root']),
-            'canonical_plugin_root_expected' => isset($preflight['canonical_plugin_root_expected']) ? (string) $preflight['canonical_plugin_root_expected'] : self::CANONICAL_PLUGIN_ROOT,
-            'asset_continuity_ok' => !empty($preflight['asset_continuity_ok']),
-            'current_style_bytes' => isset($preflight['current_style_bytes']) ? (int) $preflight['current_style_bytes'] : 0,
-            'current_script_bytes' => isset($preflight['current_script_bytes']) ? (int) $preflight['current_script_bytes'] : 0,
             'runtime_marker_present' => $marker_version !== '',
             'runtime_marker_version' => $marker_version,
             'runtime_marker_matches' => $marker_matches,
@@ -248,12 +227,6 @@ public static function preflight() {
         if ($missing > 0) {
             $message .= ' ' . $missing . ' required release file(s) are missing or unreadable.';
         }
-        if (empty($diagnostics['canonical_plugin_root'])) {
-            $message .= ' The plugin directory is not the canonical sustainable-catalyst-workspace root.';
-        }
-        if (empty($diagnostics['asset_continuity_ok'])) {
-            $message .= ' Current versioned frontend assets are missing or below continuity thresholds.';
-        }
         if (!empty($diagnostics['registry_pending'])) {
             $message .= ' Product Registry registration is still pending.';
         }
@@ -276,10 +249,6 @@ public static function preflight() {
             'bounded_deployment_history' => true,
             'deployment_history_limit' => self::MAX_HISTORY,
             'server_package_integrity_check' => true,
-            'canonical_plugin_root_required' => true,
-            'frontend_asset_continuity_check' => true,
-            'minimum_current_style_bytes' => self::MIN_CURRENT_STYLE_BYTES,
-            'minimum_current_script_bytes' => self::MIN_CURRENT_SCRIPT_BYTES,
             'mixed_version_browser_detection' => true,
             'versioned_asset_filenames' => true,
             'version_query_required' => true,
