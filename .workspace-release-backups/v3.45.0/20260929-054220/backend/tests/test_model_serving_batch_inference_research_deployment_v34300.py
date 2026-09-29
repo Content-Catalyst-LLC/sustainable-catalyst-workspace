@@ -19,7 +19,7 @@ def plan(b=None):
     b=b or binding(); return s._batch_inference_plan({"servingModelBindingArtifact":b,"features":[[1,2],[3,4],[5,6]],"rowIds":["r1","r2","r3"],"batchSize":2})["batchInferencePlanArtifact"]
 
 def test_health_registry_and_serving_boundaries():
-    h=s.health(); assert h["version"] in {"3.43.0","3.44.0","3.45.0"} and len(h["operations"])>=133
+    h=s.health(); assert h["version"] in {"3.43.0","3.44.0"} and len(h["operations"])>=133
     assert h["modelServingBatchInferenceResearchDeploymentRuntime"] is True
     assert h["modelServingPublicNetworkExposureEnabled"] is False and h["researchDeploymentInfrastructureMutationEnabled"] is False
     for k in ("modelEndpoint","servingUrl","deploymentUrl","publicEndpoint","containerImage","dockerImage","deploymentToken","apiKey"): assert k in s.BLOCKED_PAYLOAD_KEYS

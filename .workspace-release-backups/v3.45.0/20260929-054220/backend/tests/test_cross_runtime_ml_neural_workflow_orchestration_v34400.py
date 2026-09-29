@@ -14,7 +14,7 @@ def workflow():
     return s._cross_runtime_workflow_contract({"workflowId":"wf-ml-neural-1","steps":steps})["crossRuntimeWorkflowArtifact"]
 
 def test_health_registry_and_guardrails():
-    h=s.health(); assert h["version"] in {"3.44.0","3.45.0"} and len(h["operations"])==141
+    h=s.health(); assert h["version"]=="3.44.0" and len(h["operations"])==141
     assert h["crossRuntimeMLNeuralWorkflowOrchestrationRuntime"] is True
     assert h["crossRuntimeAllowedRuntimes"]==["ml","neural"]
     assert h["crossRuntimeAutomaticExecutionEnabled"] is False

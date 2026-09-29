@@ -34,7 +34,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.45.0"
+SERVICE_VERSION = "3.44.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -5683,17 +5683,6 @@ def health() -> dict[str, Any]:
         "crossRuntimeAllowedRuntimes": ["ml", "neural"],
         "crossRuntimeAutomaticExecutionEnabled": False,
         "crossRuntimeClientSuppliedRuntimeEndpointsAllowed": False,
-        "deepLearningRuntimeProductionCertificationII": True,
-        "deepLearningRuntimeProductionCertificationIISchema": "sc-workspace-neural-production-certification-ii/1.0",
-        "deepLearningRuntimeCertifiedBaseline": "3.45.0",
-        "deepLearningRuntimeRollbackBaseline": "3.44.0",
-        "deepLearningRuntimeCertifiedOperationCount": len(OPERATIONS),
-        "deepLearningRuntimeOperationRegistrySha256": hashlib.sha256("\n".join(sorted(OPERATIONS)).encode("utf-8")).hexdigest(),
-        "deepLearningRuntimeCertificationDomains": ["gnn","vision","sequence","multimodal","neural-symbolic","research-packages","distributed-execution","accelerator-governance","model-serving","cross-runtime-orchestration"],
-        "deepLearningRuntimeArtifactPersistenceCertified": True,
-        "deepLearningRuntimeRollbackCertified": True,
-        "deepLearningRuntimeArbitraryCodeExecutionAllowed": False,
-        "deepLearningRuntimeInfrastructureMutationEnabled": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
