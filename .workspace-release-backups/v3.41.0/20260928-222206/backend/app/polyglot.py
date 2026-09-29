@@ -145,14 +145,6 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.research-package-reproduction-verify",
         "workspace.neural.research-package-export",
         "workspace.neural.research-package-lineage",
-        "workspace.neural.distributed-worker-contract",
-        "workspace.neural.distributed-worker-pool-plan",
-        "workspace.neural.distributed-capability-match",
-        "workspace.neural.distributed-shard-plan",
-        "workspace.neural.distributed-dispatch-plan",
-        "workspace.neural.distributed-lease-heartbeat",
-        "workspace.neural.distributed-retry-failover-plan",
-        "workspace.neural.distributed-execution-receipt",
     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
@@ -869,47 +861,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             nr["workspaceDeepLearningResearchArtifact"]={"artifactId":neural_research_package_artifact.artifact_id,"mediaType":neural_research_package_artifact.media_type,
                 "sha256":neural_research_package_artifact.sha256,"bytes":neural_research_package_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
 
-
-    neural_distributed_artifact = None
-    neural_distributed_ops = {
-        "workspace.neural.distributed-worker-contract","workspace.neural.distributed-worker-pool-plan",
-        "workspace.neural.distributed-capability-match","workspace.neural.distributed-shard-plan",
-        "workspace.neural.distributed-dispatch-plan","workspace.neural.distributed-lease-heartbeat",
-        "workspace.neural.distributed-retry-failover-plan","workspace.neural.distributed-execution-receipt",
-    }
-    if language == "neural" and row.operation in neural_distributed_ops and isinstance(result, dict):
-        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob=None
-        keys=("distributedWorkerArtifact","distributedWorkerPoolArtifact","distributedCapabilityMatchArtifact","distributedShardPlanArtifact","distributedDispatchPlanArtifact","distributedLeaseHeartbeatArtifact","distributedRetryFailoverArtifact","distributedExecutionReceiptArtifact")
-        for key in keys:
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        if isinstance(blob,dict):
-            schema=blob.get("schema")
-            mapping={
-                "sc-workspace-neural-distributed-worker-contract/1.0":("application/vnd.sc.workspace.neural-distributed-worker+json","neural-distributed-worker","contract"),
-                "sc-workspace-neural-distributed-worker-pool-plan/1.0":("application/vnd.sc.workspace.neural-distributed-pool+json","neural-distributed-pool","plan"),
-                "sc-workspace-neural-distributed-capability-match/1.0":("application/vnd.sc.workspace.neural-distributed-capability-match+json","neural-distributed-capability","analysis"),
-                "sc-workspace-neural-distributed-shard-plan/1.0":("application/vnd.sc.workspace.neural-distributed-shard-plan+json","neural-distributed-shards","plan"),
-                "sc-workspace-neural-distributed-dispatch-plan/1.0":("application/vnd.sc.workspace.neural-distributed-dispatch+json","neural-distributed-dispatch","plan"),
-                "sc-workspace-neural-distributed-lease-heartbeat/1.0":("application/vnd.sc.workspace.neural-distributed-lease+json","neural-distributed-lease","state"),
-                "sc-workspace-neural-distributed-retry-failover-plan/1.0":("application/vnd.sc.workspace.neural-distributed-failover+json","neural-distributed-failover","plan"),
-                "sc-workspace-neural-distributed-execution-receipt/1.0":("application/vnd.sc.workspace.neural-distributed-receipt+json","neural-distributed-receipt","receipt"),
-            }
-            media,prefix,role=mapping.get(schema,("application/vnd.sc.workspace.neural-distributed+json","neural-distributed","analysis"))
-            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
-            aid=f"{prefix}-{row.job_id}"; existing_distributed=get_artifact(db,row.user_key,aid)
-            req=ArtifactStoreRequest.model_validate({"schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
-                "filename":f"{prefix}-{row.job_id}.json","mediaType":media,"contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
-                "expectedRevision":existing_distributed.revision if existing_distributed is not None else 0,
-                "metadata":{"kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
-                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
-                    "dispatchPlanFingerprint":blob.get("dispatchPlanFingerprint"),"poolFingerprint":blob.get("poolFingerprint"),
-                    "role":role,"isObservedEvidence":False,"distributedNeuralWorkerFabric":True}})
-            neural_distributed_artifact=store_artifact(db,row.user_key,req)
-            nr["workspaceDistributedNeuralArtifact"]={"artifactId":neural_distributed_artifact.artifact_id,"mediaType":neural_distributed_artifact.media_type,
-                "sha256":neural_distributed_artifact.sha256,"bytes":neural_distributed_artifact.bytes,"artifactFingerprint":blob.get("artifactFingerprint")}
-
     neural_trial_search_artifact = None
     neural_trial_search_ops = {
         "workspace.neural.trial-execute", "workspace.neural.batch-execute",
@@ -1054,14 +1005,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "metadata":{"language":"neural","operation":row.operation,"governedSequenceArtifact":True,"isObservedEvidence":False},
             })
             store_run_output(db,row.user_key,run_id,sequence_output)
-        if neural_distributed_artifact is not None:
-            distributed_output = ExecutionRunOutputRequest.model_validate({
-                "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-distributed-artifact",
-                "artifactId":neural_distributed_artifact.artifact_id,"role":"analysis","label":"Governed distributed neural execution / worker fabric artifact",
-                "mediaType":neural_distributed_artifact.media_type,"sha256":neural_distributed_artifact.sha256,"bytes":neural_distributed_artifact.bytes,
-                "metadata":{"language":"neural","operation":row.operation,"distributedNeuralWorkerFabric":True,"isObservedEvidence":False},
-            })
-            store_run_output(db,row.user_key,run_id,distributed_output)
         if neural_research_package_artifact is not None:
             research_output = ExecutionRunOutputRequest.model_validate({
                 "schema":"sc-workspace-execution-run-output/1.0","outputId":"neural-research-package-artifact",
@@ -1321,27 +1264,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "workspaceSequenceArtifactSha256":neural_sequence_artifact.sha256 if neural_sequence_artifact is not None else None,
         })
 
-
-
-    if language == "neural" and row.operation in {
-        "workspace.neural.distributed-worker-contract","workspace.neural.distributed-worker-pool-plan",
-        "workspace.neural.distributed-capability-match","workspace.neural.distributed-shard-plan",
-        "workspace.neural.distributed-dispatch-plan","workspace.neural.distributed-lease-heartbeat",
-        "workspace.neural.distributed-retry-failover-plan","workspace.neural.distributed-execution-receipt",
-    }:
-        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
-        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
-        blob={}
-        for key in ("distributedWorkerArtifact","distributedWorkerPoolArtifact","distributedCapabilityMatchArtifact","distributedShardPlanArtifact","distributedDispatchPlanArtifact","distributedLeaseHeartbeatArtifact","distributedRetryFailoverArtifact","distributedExecutionReceiptArtifact"):
-            if isinstance(nr.get(key),dict): blob=nr.get(key); break
-        receipt_details.update({
-            "distributedNeuralExecutionWorkerFabricRuntime":True,"distributedNeuralArtifactSchema":blob.get("schema"),
-            "distributedNeuralArtifactFingerprint":blob.get("artifactFingerprint"),"dispatchPlanFingerprint":blob.get("dispatchPlanFingerprint"),
-            "poolFingerprint":blob.get("poolFingerprint"),"clientSuppliedWorkerEndpointsAllowed":False,"dynamicWorkerRegistrationEnabled":False,
-            "isObservedEvidence":False,
-            "workspaceDistributedNeuralArtifactId":neural_distributed_artifact.artifact_id if neural_distributed_artifact is not None else None,
-            "workspaceDistributedNeuralArtifactSha256":neural_distributed_artifact.sha256 if neural_distributed_artifact is not None else None,
-        })
 
     if language == "neural" and row.operation in {
         "workspace.neural.research-package-plan","workspace.neural.research-package-create","workspace.neural.research-package-verify",

@@ -34,7 +34,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.41.0"
+SERVICE_VERSION = "3.40.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -165,14 +165,6 @@ OPERATIONS = {
     "workspace.neural.research-package-reproduction-verify",
     "workspace.neural.research-package-export",
     "workspace.neural.research-package-lineage",
-    "workspace.neural.distributed-worker-contract",
-    "workspace.neural.distributed-worker-pool-plan",
-    "workspace.neural.distributed-capability-match",
-    "workspace.neural.distributed-shard-plan",
-    "workspace.neural.distributed-dispatch-plan",
-    "workspace.neural.distributed-lease-heartbeat",
-    "workspace.neural.distributed-retry-failover-plan",
-    "workspace.neural.distributed-execution-receipt",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -183,8 +175,6 @@ BLOCKED_PAYLOAD_KEYS = {
     "imageUrl", "imagePath", "modalityUrl", "modalityPath", "encoderUrl", "encoderPath",
     "symbolResolverUrl", "ruleEngineUrl", "ontologyUrl", "knowledgeBaseUrl", "externalSymbolPath",
     "researchPackageUrl", "researchPackagePath", "exportPath", "artifactUrl", "artifactPath",
-    "workerUrl", "workerEndpoint", "workerEndpointUrl", "workerToken", "registrationToken", "sshHost", "sshKey",
-    "remoteWorkerUrl", "remoteWorkerToken", "distributedCode", "workerCode",
 }
 
 ALLOWED_DTYPES: dict[str, torch.dtype] = {
@@ -4593,266 +4583,6 @@ def _research_package_lineage(payload: dict[str, Any]) -> dict[str, Any]:
     return {"kind":"deep-learning-research-package-lineage","researchPackageLineageArtifact":body}
 
 
-# v3.41.0 — Distributed Neural Execution & Worker Fabric
-DISTRIBUTED_WORKER_SCHEMA = "sc-workspace-neural-distributed-worker-contract/1.0"
-DISTRIBUTED_WORKER_POOL_SCHEMA = "sc-workspace-neural-distributed-worker-pool-plan/1.0"
-DISTRIBUTED_CAPABILITY_MATCH_SCHEMA = "sc-workspace-neural-distributed-capability-match/1.0"
-DISTRIBUTED_SHARD_PLAN_SCHEMA = "sc-workspace-neural-distributed-shard-plan/1.0"
-DISTRIBUTED_DISPATCH_PLAN_SCHEMA = "sc-workspace-neural-distributed-dispatch-plan/1.0"
-DISTRIBUTED_LEASE_HEARTBEAT_SCHEMA = "sc-workspace-neural-distributed-lease-heartbeat/1.0"
-DISTRIBUTED_RETRY_FAILOVER_SCHEMA = "sc-workspace-neural-distributed-retry-failover-plan/1.0"
-DISTRIBUTED_EXECUTION_RECEIPT_SCHEMA = "sc-workspace-neural-distributed-execution-receipt/1.0"
-MAX_DISTRIBUTED_WORKERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_DISTRIBUTED_WORKERS", "64")), 256))
-MAX_DISTRIBUTED_SHARDS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_DISTRIBUTED_SHARDS", "256")), 2048))
-MAX_DISTRIBUTED_CAPABILITIES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_DISTRIBUTED_CAPABILITIES", "32")), 128))
-MAX_DISTRIBUTED_LABELS = 16
-DISTRIBUTED_WORKER_CAPABILITIES = {
-    "cpu", "accelerator", "training", "inference", "gnn", "vision", "sequence", "multimodal",
-    "neural-symbolic", "research-package", "checkpoint-resume", "explainability", "embedding", "remote-broker",
-}
-DISTRIBUTED_WORKER_STATUSES = {"ready", "busy", "draining", "offline"}
-DISTRIBUTED_RECEIPT_STATUSES = {"succeeded", "failed", "cancelled"}
-
-
-def _distributed_id(value: Any, field: str, max_len: int = 160) -> str:
-    value=_bounded_text(value,field,max_len)
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,%d}" % (max_len-1),value):
-        raise HTTPException(status_code=400,detail=f"{field} contains unsupported characters")
-    return value
-
-
-def _distributed_capabilities(value: Any, field: str="capabilities") -> list[str]:
-    if not isinstance(value,list) or not value or len(value)>MAX_DISTRIBUTED_CAPABILITIES:
-        raise HTTPException(status_code=400,detail=f"{field} must be a non-empty bounded list")
-    out=[]
-    for item in value:
-        cap=_bounded_text(item,field,80).lower()
-        if cap not in DISTRIBUTED_WORKER_CAPABILITIES:
-            raise HTTPException(status_code=400,detail=f"unsupported distributed worker capability: {cap}")
-        if cap not in out: out.append(cap)
-    return sorted(out)
-
-
-def _distributed_worker_body(payload: dict[str,Any]) -> dict[str,Any]:
-    worker_id=_distributed_id(payload.get("workerId"),"workerId")
-    capabilities=_distributed_capabilities(payload.get("capabilities"))
-    devices=payload.get("devices") or ["cpu"]
-    if not isinstance(devices,list) or not devices or len(devices)>8:
-        raise HTTPException(status_code=400,detail="devices must be a non-empty bounded list")
-    normalized_devices=[]
-    for raw in devices:
-        device=_bounded_text(raw,"device",32).lower()
-        if device!="cpu" and not re.fullmatch(r"cuda:\d+",device):
-            raise HTTPException(status_code=400,detail="distributed worker device must be cpu or cuda:N")
-        if device not in normalized_devices: normalized_devices.append(device)
-    concurrency=payload.get("maxConcurrentTasks",1)
-    if not isinstance(concurrency,int) or isinstance(concurrency,bool) or not 1<=concurrency<=64:
-        raise HTTPException(status_code=400,detail="maxConcurrentTasks must be between 1 and 64")
-    memory=payload.get("memoryMiB",0)
-    if not isinstance(memory,int) or isinstance(memory,bool) or not 0<=memory<=1048576:
-        raise HTTPException(status_code=400,detail="memoryMiB must be a bounded non-negative integer")
-    labels=payload.get("labels") or {}
-    if not isinstance(labels,dict) or len(labels)>MAX_DISTRIBUTED_LABELS:
-        raise HTTPException(status_code=400,detail="labels must be a bounded object")
-    clean_labels={}
-    for k,v in labels.items():
-        key=_distributed_id(str(k),"label key",64); val=_bounded_text(str(v),"label value",120); clean_labels[key]=val
-    body={
-        "schema":DISTRIBUTED_WORKER_SCHEMA,"kind":"distributed-neural-worker-contract","workerId":worker_id,
-        "capabilities":capabilities,"devices":sorted(normalized_devices),"maxConcurrentTasks":concurrency,"memoryMiB":memory,
-        "labels":dict(sorted(clean_labels.items())),"provisioningAuthority":"server-operator","dynamicRegistration":False,
-        "clientSuppliedEndpointAccepted":False,"arbitraryCodeExecution":False,"isObservedEvidence":False,
-    }
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return body
-
-
-def _distributed_worker_contract(payload: dict[str,Any]) -> dict[str,Any]:
-    body=_distributed_worker_body(payload)
-    return {"kind":"distributed-neural-worker-contract","distributedWorkerArtifact":body}
-
-
-def _normalize_distributed_workers(raw: Any) -> list[dict[str,Any]]:
-    if not isinstance(raw,list) or not raw or len(raw)>MAX_DISTRIBUTED_WORKERS:
-        raise HTTPException(status_code=400,detail="workers must be a non-empty bounded list")
-    workers=[]
-    for item in raw:
-        if not isinstance(item,dict): raise HTTPException(status_code=400,detail="worker entries must be objects")
-        if item.get("schema")==DISTRIBUTED_WORKER_SCHEMA:
-            source={k:item.get(k) for k in ("workerId","capabilities","devices","maxConcurrentTasks","memoryMiB","labels")}
-        else: source=item
-        workers.append(_distributed_worker_body(source))
-    ids=[w["workerId"] for w in workers]
-    if len(ids)!=len(set(ids)): raise HTTPException(status_code=400,detail="workerId values must be unique")
-    return sorted(workers,key=lambda w:w["workerId"])
-
-
-def _distributed_worker_pool_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    workers=_normalize_distributed_workers(payload.get("workers")); pool_id=_distributed_id(payload.get("poolId") or "default-neural-pool","poolId")
-    body={
-        "schema":DISTRIBUTED_WORKER_POOL_SCHEMA,"kind":"distributed-neural-worker-pool-plan","poolId":pool_id,
-        "workers":workers,"workerCount":len(workers),"totalConcurrency":sum(w["maxConcurrentTasks"] for w in workers),
-        "capabilityUnion":sorted(set(c for w in workers for c in w["capabilities"])),
-        "workerEndpointsEmbedded":False,"dynamicRegistration":False,"serverManagedTransportOnly":True,"isObservedEvidence":False,
-    }
-    body["poolFingerprint"]=_canonical_sha256({k:v for k,v in body.items() if k!="poolFingerprint"})
-    body["artifactFingerprint"]=body["poolFingerprint"]
-    return {"kind":"distributed-neural-worker-pool-plan","distributedWorkerPoolArtifact":body}
-
-
-def _validate_worker_pool(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=DISTRIBUTED_WORKER_POOL_SCHEMA:
-        raise HTTPException(status_code=400,detail="workerPoolArtifact schema is invalid")
-    expected=_canonical_sha256({k:v for k,v in value.items() if k not in {"poolFingerprint","artifactFingerprint"}})
-    if value.get("poolFingerprint")!=expected or value.get("artifactFingerprint")!=expected:
-        raise HTTPException(status_code=400,detail="worker pool fingerprint verification failed")
-    return value
-
-
-def _distributed_requirements(payload: dict[str,Any]) -> tuple[list[str],str|None,int]:
-    req=_distributed_capabilities(payload.get("requiredCapabilities") or ["cpu"],"requiredCapabilities")
-    device=str(payload.get("requiredDevice") or "").strip().lower() or None
-    if device and device!="cpu" and device!="accelerator" and not re.fullmatch(r"cuda:\d+",device):
-        raise HTTPException(status_code=400,detail="requiredDevice is invalid")
-    mem=payload.get("minimumMemoryMiB",0)
-    if not isinstance(mem,int) or isinstance(mem,bool) or not 0<=mem<=1048576: raise HTTPException(status_code=400,detail="minimumMemoryMiB is invalid")
-    return req,device,mem
-
-
-def _eligible_worker_ids(pool: dict[str,Any], req: list[str], device: str|None, mem: int) -> list[str]:
-    out=[]
-    for w in pool["workers"]:
-        if not set(req).issubset(set(w["capabilities"])): continue
-        if mem and w.get("memoryMiB",0)<mem: continue
-        if device:
-            if device=="accelerator" and not any(d.startswith("cuda:") for d in w["devices"]): continue
-            elif device!="accelerator" and device not in w["devices"]: continue
-        out.append(w["workerId"])
-    return sorted(out)
-
-
-def _distributed_capability_match(payload: dict[str,Any]) -> dict[str,Any]:
-    pool=_validate_worker_pool(payload.get("workerPoolArtifact")); req,device,mem=_distributed_requirements(payload)
-    eligible=_eligible_worker_ids(pool,req,device,mem)
-    body={"schema":DISTRIBUTED_CAPABILITY_MATCH_SCHEMA,"kind":"distributed-neural-capability-match","poolId":pool["poolId"],"poolFingerprint":pool["poolFingerprint"],"requiredCapabilities":req,"requiredDevice":device,"minimumMemoryMiB":mem,"eligibleWorkerIds":eligible,"eligibleWorkerCount":len(eligible),"matchAvailable":bool(eligible),"selectionPolicy":"deterministic-capability-subset","isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"distributed-neural-capability-match","eligibleWorkerIds":eligible,"distributedCapabilityMatchArtifact":body}
-
-
-def _distributed_shard_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    count=payload.get("itemCount")
-    if not isinstance(count,int) or isinstance(count,bool) or not 1<=count<=10_000_000: raise HTTPException(status_code=400,detail="itemCount must be a positive bounded integer")
-    requested=payload.get("shardCount")
-    target=payload.get("targetShardSize")
-    if requested is None:
-        if not isinstance(target,int) or isinstance(target,bool) or target<1: raise HTTPException(status_code=400,detail="targetShardSize must be positive when shardCount is omitted")
-        requested=(count+target-1)//target
-    if not isinstance(requested,int) or isinstance(requested,bool) or not 1<=requested<=MAX_DISTRIBUTED_SHARDS: raise HTTPException(status_code=400,detail="shardCount is invalid")
-    shard_count=min(requested,count); base=count//shard_count; rem=count%shard_count; start=0; shards=[]
-    for i in range(shard_count):
-        size=base+(1 if i<rem else 0); end=start+size
-        shards.append({"shardId":f"shard-{i:04d}","ordinal":i,"startIndex":start,"endIndexExclusive":end,"itemCount":size}); start=end
-    body={"schema":DISTRIBUTED_SHARD_PLAN_SCHEMA,"kind":"distributed-neural-shard-plan","itemCount":count,"shardCount":shard_count,"shards":shards,"partitionPolicy":"deterministic-contiguous-balanced","overlap":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"distributed-neural-shard-plan","distributedShardPlanArtifact":body}
-
-
-def _validate_shard_plan(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=DISTRIBUTED_SHARD_PLAN_SCHEMA: raise HTTPException(status_code=400,detail="shardPlanArtifact schema is invalid")
-    supplied=value.get("artifactFingerprint"); expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if supplied!=expected: raise HTTPException(status_code=400,detail="shard plan fingerprint verification failed")
-    return value
-
-
-def _distributed_dispatch_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    pool=_validate_worker_pool(payload.get("workerPoolArtifact")); shards=_validate_shard_plan(payload.get("shardPlanArtifact")); req,device,mem=_distributed_requirements(payload)
-    eligible=_eligible_worker_ids(pool,req,device,mem)
-    if not eligible: raise HTTPException(status_code=409,detail="no distributed neural worker satisfies the declared requirements")
-    operation=_bounded_text(payload.get("operation"),"operation",200)
-    if not operation.startswith("workspace.neural.") or operation not in OPERATIONS or operation.startswith("workspace.neural.distributed-"):
-        raise HTTPException(status_code=400,detail="operation must be a registered non-fabric neural operation")
-    pfp=str(payload.get("payloadFingerprint") or "").lower()
-    if not re.fullmatch(r"[0-9a-f]{64}",pfp): raise HTTPException(status_code=400,detail="payloadFingerprint must be a SHA-256 digest")
-    assignments=[]; loads={wid:0 for wid in eligible}
-    for shard in shards["shards"]:
-        wid=min(eligible,key=lambda x:(loads[x],x)); loads[wid]+=1
-        aid="assign_"+_canonical_sha256({"workerId":wid,"shardId":shard["shardId"],"operation":operation,"payloadFingerprint":pfp})[:20]
-        assignments.append({"assignmentId":aid,"workerId":wid,"shardId":shard["shardId"],"operation":operation,"payloadFingerprint":pfp,"attempt":1})
-    body={"schema":DISTRIBUTED_DISPATCH_PLAN_SCHEMA,"kind":"distributed-neural-dispatch-plan","poolId":pool["poolId"],"poolFingerprint":pool["poolFingerprint"],"shardPlanFingerprint":shards["artifactFingerprint"],"operation":operation,"payloadFingerprint":pfp,"requiredCapabilities":req,"requiredDevice":device,"minimumMemoryMiB":mem,"assignments":assignments,"assignmentCount":len(assignments),"eligibleWorkerIds":eligible,"dispatchPolicy":"deterministic-least-assigned-then-worker-id","payloadEmbedded":False,"workerEndpointsEmbedded":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"distributed-neural-dispatch-plan","distributedDispatchPlanArtifact":body}
-
-
-def _validate_dispatch_plan(value: Any) -> dict[str,Any]:
-    if not isinstance(value,dict) or value.get("schema")!=DISTRIBUTED_DISPATCH_PLAN_SCHEMA: raise HTTPException(status_code=400,detail="dispatchPlanArtifact schema is invalid")
-    supplied=value.get("artifactFingerprint"); expected=_canonical_sha256({k:v for k,v in value.items() if k!="artifactFingerprint"})
-    if supplied!=expected: raise HTTPException(status_code=400,detail="dispatch plan fingerprint verification failed")
-    return value
-
-
-def _distributed_lease_heartbeat(payload: dict[str,Any]) -> dict[str,Any]:
-    dispatch=_validate_dispatch_plan(payload.get("dispatchPlanArtifact")); lease_seconds=payload.get("leaseSeconds",120)
-    if not isinstance(lease_seconds,int) or isinstance(lease_seconds,bool) or not 10<=lease_seconds<=3600: raise HTTPException(status_code=400,detail="leaseSeconds must be between 10 and 3600")
-    heartbeats=payload.get("heartbeats") or []
-    if not isinstance(heartbeats,list) or len(heartbeats)>MAX_DISTRIBUTED_WORKERS: raise HTTPException(status_code=400,detail="heartbeats must be a bounded list")
-    hb={}
-    for raw in heartbeats:
-        if not isinstance(raw,dict): raise HTTPException(status_code=400,detail="heartbeat entries must be objects")
-        wid=_distributed_id(raw.get("workerId"),"workerId"); seq=raw.get("sequence"); status=str(raw.get("status") or "ready").lower()
-        if not isinstance(seq,int) or isinstance(seq,bool) or seq<0: raise HTTPException(status_code=400,detail="heartbeat sequence must be a non-negative integer")
-        if status not in DISTRIBUTED_WORKER_STATUSES: raise HTTPException(status_code=400,detail="heartbeat status is invalid")
-        hb[wid]={"workerId":wid,"sequence":seq,"status":status}
-    leases=[]
-    for a in dispatch["assignments"]:
-        state=hb.get(a["workerId"],{"workerId":a["workerId"],"sequence":0,"status":"offline"})
-        lease_id="lease_"+_canonical_sha256({"assignmentId":a["assignmentId"],"workerId":a["workerId"],"sequence":state["sequence"],"leaseSeconds":lease_seconds})[:20]
-        leases.append({"leaseId":lease_id,"assignmentId":a["assignmentId"],"workerId":a["workerId"],"heartbeatSequence":state["sequence"],"workerStatus":state["status"],"leaseSeconds":lease_seconds,"eligibleToRun":state["status"] in {"ready","busy"}})
-    body={"schema":DISTRIBUTED_LEASE_HEARTBEAT_SCHEMA,"kind":"distributed-neural-lease-heartbeat","dispatchPlanFingerprint":dispatch["artifactFingerprint"],"leaseSeconds":lease_seconds,"heartbeats":[hb[k] for k in sorted(hb)],"leases":leases,"activeLeaseCount":sum(1 for x in leases if x["eligibleToRun"]),"heartbeatPolicy":"operator-reported-monotonic-sequence-no-wall-clock-trust","isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"distributed-neural-lease-heartbeat","distributedLeaseHeartbeatArtifact":body}
-
-
-def _distributed_retry_failover_plan(payload: dict[str,Any]) -> dict[str,Any]:
-    dispatch=_validate_dispatch_plan(payload.get("dispatchPlanArtifact")); pool=_validate_worker_pool(payload.get("workerPoolArtifact")); failed=payload.get("failedAssignmentIds") or []
-    if not isinstance(failed,list) or len(failed)>MAX_DISTRIBUTED_SHARDS: raise HTTPException(status_code=400,detail="failedAssignmentIds must be bounded")
-    failed_ids=sorted({_distributed_id(x,"failedAssignmentId") for x in failed}); max_attempts=payload.get("maxAttempts",3)
-    if not isinstance(max_attempts,int) or isinstance(max_attempts,bool) or not 1<=max_attempts<=5: raise HTTPException(status_code=400,detail="maxAttempts must be between 1 and 5")
-    known={a["assignmentId"]:a for a in dispatch["assignments"]}; unknown=sorted(set(failed_ids)-set(known))
-    if unknown: raise HTTPException(status_code=400,detail=f"failed assignment not found: {unknown[0]}")
-    retries=[]
-    for aid in failed_ids:
-        a=known[aid]; alternatives=sorted(w["workerId"] for w in pool["workers"] if w["workerId"] in dispatch["eligibleWorkerIds"] and w["workerId"]!=a["workerId"])
-        attempt=a.get("attempt",1)+1
-        retries.append({"assignmentId":aid,"priorWorkerId":a["workerId"],"retryAttempt":attempt,"retryAllowed":attempt<=max_attempts and bool(alternatives),"failoverWorkerId":alternatives[0] if attempt<=max_attempts and alternatives else None,"decision":"failover" if attempt<=max_attempts and alternatives else "terminal"})
-    body={"schema":DISTRIBUTED_RETRY_FAILOVER_SCHEMA,"kind":"distributed-neural-retry-failover-plan","dispatchPlanFingerprint":dispatch["artifactFingerprint"],"poolFingerprint":pool["poolFingerprint"],"maxAttempts":max_attempts,"retries":retries,"retryCount":sum(1 for r in retries if r["retryAllowed"]),"policy":"bounded-deterministic-alternate-worker","automaticInfiniteRetry":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"distributed-neural-retry-failover-plan","distributedRetryFailoverArtifact":body}
-
-
-def _distributed_execution_receipt(payload: dict[str,Any]) -> dict[str,Any]:
-    dispatch=_validate_dispatch_plan(payload.get("dispatchPlanArtifact")); raw=payload.get("shardReceipts")
-    if not isinstance(raw,list) or len(raw)>MAX_DISTRIBUTED_SHARDS: raise HTTPException(status_code=400,detail="shardReceipts must be a bounded list")
-    known={a["assignmentId"]:a for a in dispatch["assignments"]}; receipts=[]; seen=set()
-    for r in raw:
-        if not isinstance(r,dict): raise HTTPException(status_code=400,detail="shard receipt entries must be objects")
-        aid=_distributed_id(r.get("assignmentId"),"assignmentId")
-        if aid not in known or aid in seen: raise HTTPException(status_code=400,detail="receipt assignmentId is unknown or duplicated")
-        seen.add(aid); wid=_distributed_id(r.get("workerId"),"workerId")
-        if wid!=known[aid]["workerId"]: raise HTTPException(status_code=400,detail="receipt workerId does not match dispatch assignment")
-        status=str(r.get("status") or "").lower()
-        if status not in DISTRIBUTED_RECEIPT_STATUSES: raise HTTPException(status_code=400,detail="receipt status is invalid")
-        sha=str(r.get("resultSha256") or "").lower(); artifact_id=str(r.get("resultArtifactId") or "").strip()
-        if status=="succeeded":
-            if not artifact_id or not re.fullmatch(r"[0-9a-f]{64}",sha): raise HTTPException(status_code=400,detail="successful shard receipts require resultArtifactId and resultSha256")
-        attempt=r.get("attempt",1)
-        if not isinstance(attempt,int) or isinstance(attempt,bool) or not 1<=attempt<=5: raise HTTPException(status_code=400,detail="receipt attempt is invalid")
-        receipts.append({"assignmentId":aid,"workerId":wid,"status":status,"attempt":attempt,"resultArtifactId":artifact_id or None,"resultSha256":sha or None,"errorCode":str(r.get("errorCode") or "")[:120] or None})
-    receipts=sorted(receipts,key=lambda x:x["assignmentId"]); expected=set(known); succeeded=sum(1 for r in receipts if r["status"]=="succeeded"); failed=sum(1 for r in receipts if r["status"]=="failed")
-    body={"schema":DISTRIBUTED_EXECUTION_RECEIPT_SCHEMA,"kind":"distributed-neural-execution-receipt","dispatchPlanFingerprint":dispatch["artifactFingerprint"],"assignmentCount":len(known),"receiptCount":len(receipts),"succeededCount":succeeded,"failedCount":failed,"cancelledCount":sum(1 for r in receipts if r["status"]=="cancelled"),"complete":seen==expected,"allSucceeded":seen==expected and succeeded==len(known),"shardReceipts":receipts,"crossWorkerResultFingerprint":_canonical_sha256(receipts),"resultAggregationExecuted":False,"isObservedEvidence":False}
-    body["artifactFingerprint"]=_canonical_sha256(body)
-    return {"kind":"distributed-neural-execution-receipt","distributedExecutionReceiptArtifact":body}
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -4969,19 +4699,6 @@ def health() -> dict[str, Any]:
         "deepLearningResearchPackageOperations": ["research-package-plan","research-package-create","research-package-verify","research-package-inspect","research-package-reproduction-plan","research-package-reproduction-verify","research-package-export","research-package-lineage"],
         "deepLearningResearchPackageAutomaticExecution": False,
         "deepLearningResearchPackageExternalArtifactReadEnabled": False,
-        "distributedNeuralExecutionWorkerFabricRuntime": True,
-        "distributedWorkerContractSchema": DISTRIBUTED_WORKER_SCHEMA,
-        "distributedWorkerPoolSchema": DISTRIBUTED_WORKER_POOL_SCHEMA,
-        "distributedCapabilityMatchSchema": DISTRIBUTED_CAPABILITY_MATCH_SCHEMA,
-        "distributedShardPlanSchema": DISTRIBUTED_SHARD_PLAN_SCHEMA,
-        "distributedDispatchPlanSchema": DISTRIBUTED_DISPATCH_PLAN_SCHEMA,
-        "distributedLeaseHeartbeatSchema": DISTRIBUTED_LEASE_HEARTBEAT_SCHEMA,
-        "distributedRetryFailoverSchema": DISTRIBUTED_RETRY_FAILOVER_SCHEMA,
-        "distributedExecutionReceiptSchema": DISTRIBUTED_EXECUTION_RECEIPT_SCHEMA,
-        "distributedWorkerDynamicRegistrationEnabled": False,
-        "distributedClientSuppliedWorkerEndpointsAllowed": False,
-        "distributedServerManagedTransportOnly": True,
-        "distributedAutomaticRemoteCodeExecution": False,
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -5105,23 +4822,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.distributed-worker-contract":
-        result = _distributed_worker_contract(payload)
-    elif operation == "workspace.neural.distributed-worker-pool-plan":
-        result = _distributed_worker_pool_plan(payload)
-    elif operation == "workspace.neural.distributed-capability-match":
-        result = _distributed_capability_match(payload)
-    elif operation == "workspace.neural.distributed-shard-plan":
-        result = _distributed_shard_plan(payload)
-    elif operation == "workspace.neural.distributed-dispatch-plan":
-        result = _distributed_dispatch_plan(payload)
-    elif operation == "workspace.neural.distributed-lease-heartbeat":
-        result = _distributed_lease_heartbeat(payload)
-    elif operation == "workspace.neural.distributed-retry-failover-plan":
-        result = _distributed_retry_failover_plan(payload)
-    elif operation == "workspace.neural.distributed-execution-receipt":
-        result = _distributed_execution_receipt(payload)
-    elif operation == "workspace.neural.research-package-plan":
+    if operation == "workspace.neural.research-package-plan":
         result = _research_package_plan(payload)
     elif operation == "workspace.neural.research-package-create":
         result = _research_package_create(payload)

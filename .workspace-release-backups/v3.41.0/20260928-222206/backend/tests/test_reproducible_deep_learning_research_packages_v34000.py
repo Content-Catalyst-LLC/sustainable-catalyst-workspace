@@ -15,7 +15,7 @@ def package():
     return s._research_package_create({"components":components(),"title":"Reproducible test","researchContextRef":"core:research:1","seed":3400,"reproductionPolicy":"strict-digest"})["deepLearningResearchPackage"]
 
 def test_health_and_registry():
-    h=s.health(); assert tuple(map(int,h["version"].split("."))) >= (3,40,0); assert len(h["operations"])>=109; assert h["reproducibleDeepLearningResearchPackagesRuntime"] is True; assert h["deepLearningResearchPackageAutomaticExecution"] is False
+    h=s.health(); assert h["version"]=="3.40.0"; assert len(h["operations"])==109; assert h["reproducibleDeepLearningResearchPackagesRuntime"] is True; assert h["deepLearningResearchPackageAutomaticExecution"] is False
 
 def test_plan_create_verify_and_inspect():
     plan=s._research_package_plan({"components":components()})["researchPackagePlanArtifact"]; assert plan["componentCount"]==3; assert plan["orderedComponentIds"]==["dataset","model","eval"]

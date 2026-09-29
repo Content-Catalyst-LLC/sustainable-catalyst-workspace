@@ -1,0 +1,25 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "sustainable-catalyst-workspace",
+  "version": "3.41.0",
+  "title": "Distributed Neural Execution & Worker Fabric",
+  "baseline": "3.40.0",
+  "rollback": "3.40.0",
+  "databaseMigration": false,
+  "neuralRuntimeVersion": "3.41.0",
+  "neuralRuntimeOperations": 117,
+  "newOperations": [
+    "workspace.neural.distributed-worker-contract",
+    "workspace.neural.distributed-worker-pool-plan",
+    "workspace.neural.distributed-capability-match",
+    "workspace.neural.distributed-shard-plan",
+    "workspace.neural.distributed-dispatch-plan",
+    "workspace.neural.distributed-lease-heartbeat",
+    "workspace.neural.distributed-retry-failover-plan",
+    "workspace.neural.distributed-execution-receipt"
+  ],
+  "dynamicWorkerRegistrationEnabled": false,
+  "clientSuppliedWorkerEndpointsAllowed": false,
+  "serverManagedTransportOnly": true,
+  "automaticRemoteCodeExecution": false
+}
