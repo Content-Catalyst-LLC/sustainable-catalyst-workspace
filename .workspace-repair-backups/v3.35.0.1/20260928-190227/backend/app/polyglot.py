@@ -80,14 +80,10 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.trial-plan", "workspace.neural.trial-execute",
         "workspace.neural.batch-execute", "workspace.neural.hyperparameter-grid",
         "workspace.neural.hyperparameter-random",
-        "workspace.neural.remote-gpu-plan",
-        "workspace.neural.remote-gpu-submit",
-        "workspace.neural.remote-gpu-status",
-        "workspace.neural.remote-gpu-cancel",
-        "workspace.neural.certification-plan",
-        "workspace.neural.certification-execute",
-        "workspace.neural.certification-verify",
-        "workspace.neural.certification-report",
+        "workspace.neural.remote-worker-inventory", "workspace.neural.remote-dispatch-plan",
+        "workspace.neural.remote-execute", "workspace.neural.remote-receipt-verify",
+        "workspace.neural.certification-plan", "workspace.neural.certification-execute",
+        "workspace.neural.certification-verify", "workspace.neural.certification-report",
         "workspace.neural.graph-tensor-contract",
         "workspace.neural.graph-dataset-project",
         "workspace.neural.gnn-model-summary",
@@ -98,14 +94,7 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.neural.gnn-train",
         "workspace.neural.gnn-checkpoint-create",
         "workspace.neural.gnn-checkpoint-resume",
-        "workspace.neural.gnn-evaluate",
-        "workspace.neural.gnn-calibration-report",
-        "workspace.neural.gnn-explain-gradient",
-        "workspace.neural.gnn-explain-occlusion",
-        "workspace.neural.gnn-embedding-extract",
-        "workspace.neural.gnn-embedding-similarity",
-        "workspace.neural.gnn-embedding-neighbors",
-    ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
+    ), "Production-certified hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, device orchestration, reproducible trial execution, operator-governed remote GPU dispatch, and machine-verifiable runtime assurance."),
     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
         "workspace.forecast.holt-winters", "workspace.forecast.arima", "workspace.forecast.backtest", "workspace.forecast.evaluate",
@@ -572,13 +561,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         "workspace.neural.gnn-train",
         "workspace.neural.gnn-checkpoint-create",
         "workspace.neural.gnn-checkpoint-resume",
-        "workspace.neural.gnn-evaluate",
-        "workspace.neural.gnn-calibration-report",
-        "workspace.neural.gnn-explain-gradient",
-        "workspace.neural.gnn-explain-occlusion",
-        "workspace.neural.gnn-embedding-extract",
-        "workspace.neural.gnn-embedding-similarity",
-        "workspace.neural.gnn-embedding-neighbors",
     }
     if language == "neural" and row.operation in neural_gnn_ops and isinstance(result, dict):
         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
@@ -590,11 +572,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         if blob is None and isinstance(nr.get("gnnTrainingPlanArtifact"),dict): blob=nr.get("gnnTrainingPlanArtifact")
         if blob is None and isinstance(nr.get("gnnTrainingArtifact"),dict): blob=nr.get("gnnTrainingArtifact")
         if blob is None and isinstance(nr.get("gnnCheckpointArtifact"),dict): blob=nr.get("gnnCheckpointArtifact")
-        if blob is None and isinstance(nr.get("gnnEvaluationArtifact"),dict): blob=nr.get("gnnEvaluationArtifact")
-        if blob is None and isinstance(nr.get("gnnCalibrationArtifact"),dict): blob=nr.get("gnnCalibrationArtifact")
-        if blob is None and isinstance(nr.get("gnnExplainabilityArtifact"),dict): blob=nr.get("gnnExplainabilityArtifact")
-        if blob is None and isinstance(nr.get("gnnEmbeddingArtifact"),dict): blob=nr.get("gnnEmbeddingArtifact")
-        if blob is None and isinstance(nr.get("gnnEmbeddingAnalysisArtifact"),dict): blob=nr.get("gnnEmbeddingAnalysisArtifact")
         if blob:
             raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
             schema=blob.get("schema")
@@ -604,11 +581,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             elif schema=="sc-workspace-neural-gnn-training-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-training+json"; prefix="neural-gnn-training"; role="training"
             elif schema=="sc-workspace-neural-gnn-checkpoint-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-checkpoint+json"; prefix="neural-gnn-checkpoint"; role="checkpoint"
             elif schema=="sc-workspace-neural-gnn-prediction-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-prediction+json"; prefix="neural-gnn-prediction"; role="prediction"
-            elif schema=="sc-workspace-neural-gnn-evaluation-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-evaluation+json"; prefix="neural-gnn-evaluation"; role="evaluation"
-            elif schema=="sc-workspace-neural-gnn-calibration-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-calibration+json"; prefix="neural-gnn-calibration"; role="calibration"
-            elif schema=="sc-workspace-neural-gnn-explainability-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-explainability+json"; prefix="neural-gnn-explainability"; role="explainability"
-            elif schema=="sc-workspace-neural-gnn-embedding-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-embedding+json"; prefix="neural-gnn-embedding"; role="representation"
-            elif schema=="sc-workspace-neural-gnn-embedding-analysis-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-embedding-analysis+json"; prefix="neural-gnn-embedding-analysis"; role="analysis"
             else: media="application/vnd.sc.workspace.neural-gnn-execution+json"; prefix="neural-gnn-execution"; role="execution"
             aid=f"{prefix}-{row.job_id}"
             existing_gnn=get_artifact(db,row.user_key,aid)
@@ -666,6 +638,67 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
                 "artifactId":neural_trial_search_artifact.artifact_id,"mediaType":neural_trial_search_artifact.media_type,
                 "sha256":neural_trial_search_artifact.sha256,"bytes":neural_trial_search_artifact.bytes,
                 "artifactFingerprint":blob.get("artifactFingerprint"),
+            }
+
+    neural_remote_execution_artifact = None
+    if language == "neural" and row.operation == "workspace.neural.remote-execute" and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        neural_result=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=neural_result.get("remoteExecutionArtifact") if isinstance(neural_result.get("remoteExecutionArtifact"),dict) else None
+        if blob and blob.get("schema")=="sc-workspace-neural-remote-execution-artifact/1.0":
+            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            aid=f"neural-remote-execution-{row.job_id}"
+            existing_remote=get_artifact(db,row.user_key,aid)
+            req=ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
+                "filename":f"neural-remote-execution-{row.job_id}.json",
+                "mediaType":"application/vnd.sc.workspace.neural-remote-execution+json",
+                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
+                "expectedRevision":existing_remote.revision if existing_remote is not None else 0,
+                "metadata":{
+                    "kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
+                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"artifactFingerprint":blob.get("artifactFingerprint"),
+                    "dispatchId":blob.get("dispatchId"),"workerId":blob.get("workerId"),
+                    "remoteOperation":blob.get("operation"),"resultFingerprint":blob.get("resultFingerprint"),
+                    "receiptFingerprint":blob.get("receiptFingerprint"),"role":"remote-execution",
+                },
+            })
+            neural_remote_execution_artifact=store_artifact(db,row.user_key,req)
+            neural_result["workspaceRemoteExecutionArtifact"]={
+                "artifactId":neural_remote_execution_artifact.artifact_id,"mediaType":neural_remote_execution_artifact.media_type,
+                "sha256":neural_remote_execution_artifact.sha256,"bytes":neural_remote_execution_artifact.bytes,
+                "artifactFingerprint":blob.get("artifactFingerprint"),
+            }
+
+    neural_certification_artifact = None
+    if language == "neural" and row.operation == "workspace.neural.certification-execute" and isinstance(result, dict):
+        remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+        neural_result=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        blob=neural_result.get("certificationArtifact") if isinstance(neural_result.get("certificationArtifact"),dict) else None
+        if blob and blob.get("schema")=="sc-workspace-neural-production-certification-artifact/1.0":
+            raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+            aid=f"neural-production-certification-{row.job_id}"
+            existing_cert=get_artifact(db,row.user_key,aid)
+            req=ArtifactStoreRequest.model_validate({
+                "schema":"sc-workspace-artifact-store/1.0","artifactId":aid,"projectId":row.project_id or None,
+                "filename":f"neural-production-certification-{row.job_id}.json",
+                "mediaType":"application/vnd.sc.workspace.neural-production-certification+json",
+                "contentBase64":__import__('base64').b64encode(raw_blob).decode("ascii"),
+                "expectedRevision":existing_cert.revision if existing_cert is not None else 0,
+                "metadata":{
+                    "kind":blob.get("kind"),"language":"neural","operation":row.operation,"jobId":row.job_id,
+                    "runtime":RUNTIME_BY_LANGUAGE[language].runtime,"certificationId":blob.get("certificationId"),
+                    "artifactFingerprint":blob.get("artifactFingerprint"),"profile":blob.get("profile"),
+                    "productionStatus":blob.get("productionStatus"),"requiredCheckCount":blob.get("requiredCheckCount"),
+                    "passedRequiredCheckCount":blob.get("passedRequiredCheckCount"),
+                    "remoteGpuTransportStatus":blob.get("remoteGpuTransportStatus"),"role":"runtime-certification",
+                },
+            })
+            neural_certification_artifact=store_artifact(db,row.user_key,req)
+            neural_result["workspaceProductionCertificationArtifact"]={
+                "artifactId":neural_certification_artifact.artifact_id,"mediaType":neural_certification_artifact.media_type,
+                "sha256":neural_certification_artifact.sha256,"bytes":neural_certification_artifact.bytes,
+                "certificationArtifactFingerprint":blob.get("artifactFingerprint"),"certificationId":blob.get("certificationId"),
             }
 
     result_doc={"schema":"sc-workspace-polyglot-result/1.0","language":language,"operation":row.operation,"result":result}
@@ -909,6 +942,55 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             "workspaceTrialSearchArtifactId":neural_trial_search_artifact.artifact_id if neural_trial_search_artifact is not None else None,
             "workspaceTrialSearchArtifactSha256":neural_trial_search_artifact.sha256 if neural_trial_search_artifact is not None else None,
         })
+    if language == "neural" and row.operation in {
+        "workspace.neural.remote-worker-inventory","workspace.neural.remote-dispatch-plan",
+        "workspace.neural.remote-execute","workspace.neural.remote-receipt-verify",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        plan=nr.get("dispatchPlan") if isinstance(nr.get("dispatchPlan"),dict) else {}
+        receipt_blob=nr.get("remoteReceipt") if isinstance(nr.get("remoteReceipt"),dict) else {}
+        art=nr.get("remoteExecutionArtifact") if isinstance(nr.get("remoteExecutionArtifact"),dict) else {}
+        receipt_details.update({
+            "neuralRemoteGpuExecutionBroker":True,
+            "remoteWorkerInventorySchema":"sc-workspace-neural-remote-worker-inventory/1.0",
+            "remoteDispatchPlanSchema":"sc-workspace-neural-remote-dispatch-plan/1.0",
+            "remoteExecutionReceiptSchema":"sc-workspace-neural-remote-execution-receipt/1.0",
+            "remoteExecutionArtifactSchema":art.get("schema"),
+            "remoteExecutionArtifactFingerprint":art.get("artifactFingerprint"),
+            "remoteDispatchId":art.get("dispatchId") or receipt_blob.get("dispatchId"),
+            "remoteWorkerId":art.get("workerId") or receipt_blob.get("workerId") or plan.get("workerId"),
+            "remoteOperation":art.get("operation") or receipt_blob.get("operation") or plan.get("operation"),
+            "remoteResultFingerprint":art.get("resultFingerprint") or receipt_blob.get("resultFingerprint"),
+            "remoteReceiptFingerprint":art.get("receiptFingerprint") or receipt_blob.get("receiptFingerprint"),
+            "remoteDispatchPlanFingerprint":art.get("dispatchPlanFingerprint") or plan.get("planFingerprint"),
+            "workspaceRemoteExecutionArtifactId":neural_remote_execution_artifact.artifact_id if neural_remote_execution_artifact is not None else None,
+            "workspaceRemoteExecutionArtifactSha256":neural_remote_execution_artifact.sha256 if neural_remote_execution_artifact is not None else None,
+            "clientSuppliedRemoteWorkerUrlsAllowed":False,
+        })
+    if language == "neural" and row.operation in {
+        "workspace.neural.certification-plan","workspace.neural.certification-execute",
+        "workspace.neural.certification-verify","workspace.neural.certification-report",
+    }:
+        remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+        nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+        plan=nr.get("certificationPlan") if isinstance(nr.get("certificationPlan"),dict) else {}
+        art=nr.get("certificationArtifact") if isinstance(nr.get("certificationArtifact"),dict) else {}
+        report=nr.get("certificationReport") if isinstance(nr.get("certificationReport"),dict) else {}
+        receipt_details.update({
+            "neuralRuntimeProductionCertification":True,
+            "productionCertificationProfile":art.get("profile") or plan.get("profile") or report.get("profile") or "workspace-neural-production/1.0",
+            "productionCertificationPlanFingerprint":plan.get("planFingerprint") or art.get("planFingerprint"),
+            "productionCertificationArtifactSchema":art.get("schema"),
+            "productionCertificationArtifactFingerprint":art.get("artifactFingerprint") or nr.get("certificationArtifactFingerprint"),
+            "productionCertificationId":art.get("certificationId") or nr.get("certificationId") or report.get("certificationId"),
+            "productionCertificationStatus":art.get("productionStatus") or report.get("productionStatus"),
+            "productionCertificationRequiredChecksPassed":art.get("passedRequiredCheckCount") or report.get("requiredChecksPassed"),
+            "productionCertificationRequiredChecksTotal":art.get("requiredCheckCount") or report.get("requiredChecksTotal"),
+            "remoteGpuTransportStatus":art.get("remoteGpuTransportStatus") or report.get("remoteGpuTransportStatus"),
+            "workspaceProductionCertificationArtifactId":neural_certification_artifact.artifact_id if neural_certification_artifact is not None else None,
+            "workspaceProductionCertificationArtifactSha256":neural_certification_artifact.sha256 if neural_certification_artifact is not None else None,
+        })
 
     if language == "neural" and row.operation in {
         "workspace.neural.graph-tensor-contract","workspace.neural.graph-dataset-project","workspace.neural.gnn-model-summary",
@@ -918,13 +1000,6 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
         "workspace.neural.gnn-train",
         "workspace.neural.gnn-checkpoint-create",
         "workspace.neural.gnn-checkpoint-resume",
-        "workspace.neural.gnn-evaluate",
-        "workspace.neural.gnn-calibration-report",
-        "workspace.neural.gnn-explain-gradient",
-        "workspace.neural.gnn-explain-occlusion",
-        "workspace.neural.gnn-embedding-extract",
-        "workspace.neural.gnn-embedding-similarity",
-        "workspace.neural.gnn-embedding-neighbors",
     }:
         remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
         nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}

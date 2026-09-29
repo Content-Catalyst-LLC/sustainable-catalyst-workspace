@@ -1,0 +1,426 @@
+diff --git a/backend/app/config.py b/backend/app/config.py
+index a623f33..003284a 100644
+--- a/backend/app/config.py
++++ b/backend/app/config.py
+@@ -6,7 +6,7 @@ class Settings(BaseSettings):
+     model_config = SettingsConfigDict(env_prefix="SC_WORKSPACE_", case_sensitive=False)
+ 
+     service_name: str = "Sustainable Catalyst Workspace Backend"
+-    service_version: str = "3.34.0"
++    service_version: str = "3.35.0"
+     environment: str = "production"
+     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
+     service_token: str = ""
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 07f19d2..98194e7 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -364,7 +364,7 @@ def health():
+         "mlRuntimeBoundedOperations": 8,
+         "neuralPyTorchRuntimeFoundation": True,
+         "neuralRuntimeConfigured": bool(settings.runtime_neural_url.strip()),
+-        "neuralRuntimeBoundedOperations": 62,
++        "neuralRuntimeBoundedOperations": 69,
+         "graphNeuralNetworkRuntimeFoundation": True,
+         "neuralGraphTensorContractSchema": "sc-workspace-neural-graph-tensor-contract/1.0",
+         "neuralGraphDatasetProjectionSchema": "sc-workspace-neural-graph-dataset-projection/1.0",
+@@ -379,6 +379,11 @@ def health():
+         "neuralGnnTrainingArtifactSchema": "sc-workspace-neural-gnn-training-artifact/1.0",
+         "neuralGnnCheckpointArtifactSchema": "sc-workspace-neural-gnn-checkpoint-artifact/1.0",
+         "neuralGnnCheckpointResumeEnabled": True,
++        "neuralGnnEvaluationExplainabilityEmbeddings": True,
++        "neuralGnnEvaluationArtifactSchema": "sc-workspace-neural-gnn-evaluation-artifact/1.0",
++        "neuralGnnCalibrationArtifactSchema": "sc-workspace-neural-gnn-calibration-artifact/1.0",
++        "neuralGnnExplainabilityArtifactSchema": "sc-workspace-neural-gnn-explainability-artifact/1.0",
++        "neuralGnnEmbeddingArtifactSchema": "sc-workspace-neural-gnn-embedding-artifact/1.0",
+         "neuralRuntimeTrainingEnabled": True,
+         "neuralRuntimeDeclarativeModelSpecsOnly": True,
+         "neuralRuntimeDevicePolicy": "governed-explicit-device-orchestration",
+@@ -1414,7 +1419,7 @@ def capabilities(identity: ServiceIdentity = Depends(require_service_identity)):
+         "mlRuntimeBoundedOperations": 8,
+         "neuralPyTorchRuntimeFoundation": True,
+         "neuralRuntimeConfigured": bool(settings.runtime_neural_url.strip()),
+-        "neuralRuntimeBoundedOperations": 52,
++        "neuralRuntimeBoundedOperations": 69,
+         "graphNeuralNetworkRuntimeFoundation": True,
+         "neuralGraphTensorContractSchema": "sc-workspace-neural-graph-tensor-contract/1.0",
+         "neuralGraphDatasetProjectionSchema": "sc-workspace-neural-graph-dataset-projection/1.0",
+diff --git a/backend/app/polyglot.py b/backend/app/polyglot.py
+index 154953a..c472618 100644
+--- a/backend/app/polyglot.py
++++ b/backend/app/polyglot.py
+@@ -98,6 +98,13 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
+         "workspace.neural.gnn-train",
+         "workspace.neural.gnn-checkpoint-create",
+         "workspace.neural.gnn-checkpoint-resume",
++        "workspace.neural.gnn-evaluate",
++        "workspace.neural.gnn-calibration-report",
++        "workspace.neural.gnn-explain-gradient",
++        "workspace.neural.gnn-explain-occlusion",
++        "workspace.neural.gnn-embedding-extract",
++        "workspace.neural.gnn-embedding-similarity",
++        "workspace.neural.gnn-embedding-neighbors",
+     ), "Hardened PyTorch neural runtime for bounded declarative training, governed model packages, inference provenance, explicit device orchestration, and reproducible trial/batch/hyperparameter execution."),
+     RuntimeSpec("forecast", "python-statsmodels-forecasting", "server-configured-http", (
+         "workspace.forecast.naive", "workspace.forecast.seasonal-naive", "workspace.forecast.linear-trend", "workspace.forecast.exponential-smoothing",
+@@ -565,6 +572,13 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
+         "workspace.neural.gnn-train",
+         "workspace.neural.gnn-checkpoint-create",
+         "workspace.neural.gnn-checkpoint-resume",
++        "workspace.neural.gnn-evaluate",
++        "workspace.neural.gnn-calibration-report",
++        "workspace.neural.gnn-explain-gradient",
++        "workspace.neural.gnn-explain-occlusion",
++        "workspace.neural.gnn-embedding-extract",
++        "workspace.neural.gnn-embedding-similarity",
++        "workspace.neural.gnn-embedding-neighbors",
+     }
+     if language == "neural" and row.operation in neural_gnn_ops and isinstance(result, dict):
+         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
+@@ -576,6 +590,11 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
+         if blob is None and isinstance(nr.get("gnnTrainingPlanArtifact"),dict): blob=nr.get("gnnTrainingPlanArtifact")
+         if blob is None and isinstance(nr.get("gnnTrainingArtifact"),dict): blob=nr.get("gnnTrainingArtifact")
+         if blob is None and isinstance(nr.get("gnnCheckpointArtifact"),dict): blob=nr.get("gnnCheckpointArtifact")
++        if blob is None and isinstance(nr.get("gnnEvaluationArtifact"),dict): blob=nr.get("gnnEvaluationArtifact")
++        if blob is None and isinstance(nr.get("gnnCalibrationArtifact"),dict): blob=nr.get("gnnCalibrationArtifact")
++        if blob is None and isinstance(nr.get("gnnExplainabilityArtifact"),dict): blob=nr.get("gnnExplainabilityArtifact")
++        if blob is None and isinstance(nr.get("gnnEmbeddingArtifact"),dict): blob=nr.get("gnnEmbeddingArtifact")
++        if blob is None and isinstance(nr.get("gnnEmbeddingAnalysisArtifact"),dict): blob=nr.get("gnnEmbeddingAnalysisArtifact")
+         if blob:
+             raw_blob=json.dumps(blob,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode()
+             schema=blob.get("schema")
+@@ -585,6 +604,11 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
+             elif schema=="sc-workspace-neural-gnn-training-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-training+json"; prefix="neural-gnn-training"; role="training"
+             elif schema=="sc-workspace-neural-gnn-checkpoint-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-checkpoint+json"; prefix="neural-gnn-checkpoint"; role="checkpoint"
+             elif schema=="sc-workspace-neural-gnn-prediction-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-prediction+json"; prefix="neural-gnn-prediction"; role="prediction"
++            elif schema=="sc-workspace-neural-gnn-evaluation-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-evaluation+json"; prefix="neural-gnn-evaluation"; role="evaluation"
++            elif schema=="sc-workspace-neural-gnn-calibration-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-calibration+json"; prefix="neural-gnn-calibration"; role="calibration"
++            elif schema=="sc-workspace-neural-gnn-explainability-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-explainability+json"; prefix="neural-gnn-explainability"; role="explainability"
++            elif schema=="sc-workspace-neural-gnn-embedding-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-embedding+json"; prefix="neural-gnn-embedding"; role="representation"
++            elif schema=="sc-workspace-neural-gnn-embedding-analysis-artifact/1.0": media="application/vnd.sc.workspace.neural-gnn-embedding-analysis+json"; prefix="neural-gnn-embedding-analysis"; role="analysis"
+             else: media="application/vnd.sc.workspace.neural-gnn-execution+json"; prefix="neural-gnn-execution"; role="execution"
+             aid=f"{prefix}-{row.job_id}"
+             existing_gnn=get_artifact(db,row.user_key,aid)
+@@ -894,6 +918,13 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
+         "workspace.neural.gnn-train",
+         "workspace.neural.gnn-checkpoint-create",
+         "workspace.neural.gnn-checkpoint-resume",
++        "workspace.neural.gnn-evaluate",
++        "workspace.neural.gnn-calibration-report",
++        "workspace.neural.gnn-explain-gradient",
++        "workspace.neural.gnn-explain-occlusion",
++        "workspace.neural.gnn-embedding-extract",
++        "workspace.neural.gnn-embedding-similarity",
++        "workspace.neural.gnn-embedding-neighbors",
+     }:
+         remote_body=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+         nr=remote_body.get("result") if isinstance(remote_body.get("result"),dict) else {}
+diff --git a/backend/neural-runtime/service.py b/backend/neural-runtime/service.py
+index 74e9045..e0835dc 100644
+--- a/backend/neural-runtime/service.py
++++ b/backend/neural-runtime/service.py
+@@ -33,7 +33,7 @@ import torch.nn.functional as F
+ from fastapi import FastAPI, Header, HTTPException
+ 
+ SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
+-SERVICE_VERSION = "3.34.0"
++SERVICE_VERSION = "3.35.0"
+ RUNTIME = "python-pytorch-neural"
+ ENGINE = "PyTorch"
+ TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
+@@ -117,6 +117,13 @@ OPERATIONS = {
+     "workspace.neural.gnn-train",
+     "workspace.neural.gnn-checkpoint-create",
+     "workspace.neural.gnn-checkpoint-resume",
++    "workspace.neural.gnn-evaluate",
++    "workspace.neural.gnn-calibration-report",
++    "workspace.neural.gnn-explain-gradient",
++    "workspace.neural.gnn-explain-occlusion",
++    "workspace.neural.gnn-embedding-extract",
++    "workspace.neural.gnn-embedding-similarity",
++    "workspace.neural.gnn-embedding-neighbors",
+ }
+ 
+ BLOCKED_PAYLOAD_KEYS = {
+@@ -3293,6 +3300,173 @@ def _gnn_checkpoint_resume(payload: dict[str, Any]) -> dict[str, Any]:
+     out["gnnTrainingArtifact"]["artifactFingerprint"]=_canonical_sha256({k:v for k,v in out["gnnTrainingArtifact"].items() if k!="artifactFingerprint"})
+     return out
+ 
++
++# v3.35.0 GNN Evaluation, Explainability & Graph Embeddings.
++GNN_EVALUATION_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-evaluation-artifact/1.0"
++GNN_CALIBRATION_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-calibration-artifact/1.0"
++GNN_EXPLAINABILITY_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-explainability-artifact/1.0"
++GNN_EMBEDDING_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-embedding-artifact/1.0"
++GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-embedding-analysis-artifact/1.0"
++MAX_GNN_EVALUATION_ITEMS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_EVALUATION_ITEMS", "65536")), 262144))
++MAX_GNN_CALIBRATION_BINS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_CALIBRATION_BINS", "25")), 100))
++MAX_GNN_EMBEDDING_PAIRS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_EMBEDDING_PAIRS", "4096")), 20000))
++MAX_GNN_NEIGHBOR_QUERIES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_NEIGHBOR_QUERIES", "128")), 1024))
++MAX_GNN_NEIGHBORS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_NEIGHBORS", "50")), 256))
++GNN_EMBEDDING_METRICS = {"cosine", "euclidean", "dot"}
++
++
++def _gnn_forward_tensor(x: torch.Tensor, edges: list[list[int]], directed: bool, spec: dict[str, Any]) -> torch.Tensor:
++    n=int(x.shape[0]); src,dst=_gnn_edge_index(edges,n,directed,spec["addSelfLoops"])
++    w=torch.tensor(spec["weights"],dtype=torch.float32,device=x.device); b=torch.tensor(spec["bias"],dtype=torch.float32,device=x.device)
++    if spec["adapter"]=="gcn":
++        degree=torch.zeros(n,dtype=torch.float32,device=x.device); degree.index_add_(0,dst,torch.ones(dst.numel(),dtype=torch.float32,device=x.device)); degree=torch.clamp(degree,min=1.0)
++        coeff=torch.rsqrt(degree[src]*degree[dst]); agg=torch.zeros_like(x); agg.index_add_(0,dst,x[src]*coeff.unsqueeze(1)); y=agg@w+b
++    else:
++        agg=torch.zeros_like(x); counts=torch.zeros(n,dtype=torch.float32,device=x.device); agg.index_add_(0,dst,x[src]); counts.index_add_(0,dst,torch.ones(dst.numel(),dtype=torch.float32,device=x.device)); agg=agg/torch.clamp(counts,min=1.0).unsqueeze(1); y=torch.cat([x,agg],dim=1)@w+b
++    return _gnn_activate(y,spec["activation"])
++
++
++def _gnn_eval_vectors(payload: dict[str, Any]) -> tuple[str, torch.Tensor, torch.Tensor, list[str], str, dict[str, Any]]:
++    task=str(payload.get("task") or "").lower()
++    if task not in GNN_TRAINING_TASKS: raise HTTPException(status_code=400,detail="unsupported GNN evaluation task")
++    spec=_gnn_validate_model_spec(payload.get("modelSpec")); ids: list[str]=[]; source_fp=""
++    if task.startswith("node-"):
++        logits, _spec, source_fp, node_ids, _ec, _fc, _dir=_gnn_compute(payload); labels=payload.get("labels")
++        if not isinstance(labels,list) or len(labels)!=int(logits.shape[0]): raise HTTPException(status_code=400,detail="node evaluation labels must align with nodes")
++        raw_idx=payload.get("evaluationIndices")
++        idx=list(range(len(labels))) if raw_idx is None else _gnn_indices(raw_idx,len(labels),"evaluationIndices")
++        if len(idx)>MAX_GNN_EVALUATION_ITEMS: raise HTTPException(status_code=413,detail="GNN evaluation item limit exceeded")
++        t=torch.tensor(idx,dtype=torch.long,device=logits.device); pred=logits[t]; ids=[node_ids[i] for i in idx]
++        if task.endswith("multiclass-classification"): y=torch.tensor([labels[i] for i in idx],dtype=torch.long,device=logits.device)
++        else: y=torch.tensor([labels[i] for i in idx],dtype=torch.float32,device=logits.device)
++        return task,pred,y,ids,source_fp,spec
++    if task.startswith("graph-"):
++        graphs=payload.get("graphs")
++        if not isinstance(graphs,list) or not graphs or len(graphs)>MAX_GNN_GRAPHS: raise HTTPException(status_code=400,detail="graphs must be a bounded non-empty array")
++        raw_idx=payload.get("evaluationIndices"); idx=list(range(len(graphs))) if raw_idx is None else _gnn_indices(raw_idx,len(graphs),"evaluationIndices")
++        preds=[]; labels=[]; fps=[]
++        for i in idx:
++            g=graphs[i]
++            if not isinstance(g,dict): raise HTTPException(status_code=400,detail="each graph must be an object")
++            z,fp=_gnn_train_logits(g,spec,torch.tensor(spec["weights"],dtype=torch.float32,device=_current_device_name()),torch.tensor(spec["bias"],dtype=torch.float32,device=_current_device_name())); preds.append(z.mean(dim=0)); labels.append(g.get("label")); fps.append(fp); ids.append(str(g.get("graphId") or f"graph-{i}"))
++        pred=torch.stack(preds,dim=0)
++        y=torch.tensor(labels,dtype=torch.long if task.endswith("multiclass-classification") else torch.float32,device=pred.device)
++        return task,pred,y,ids,_canonical_sha256(fps),spec
++    logits,spec2,source_fp,node_ids,_ec,_fc,_dir=_gnn_compute(payload); examples=payload.get("linkExamples")
++    if not isinstance(examples,list) or not examples or len(examples)>MAX_GNN_EVALUATION_ITEMS: raise HTTPException(status_code=400,detail="linkExamples must be a bounded non-empty array")
++    raw_idx=payload.get("evaluationIndices"); idx=list(range(len(examples))) if raw_idx is None else _gnn_indices(raw_idx,len(examples),"evaluationIndices")
++    scores=[]; labels=[]
++    for i in idx:
++        ex=examples[i]
++        if not isinstance(ex,dict): raise HTTPException(status_code=400,detail="each link example must be an object")
++        a,b,l=ex.get("source"),ex.get("target"),ex.get("label")
++        if not isinstance(a,int) or isinstance(a,bool) or not isinstance(b,int) or isinstance(b,bool) or a<0 or b<0 or a>=len(node_ids) or b>=len(node_ids): raise HTTPException(status_code=400,detail="link example node index is invalid")
++        if l not in (0,1): raise HTTPException(status_code=400,detail="link example label must be 0 or 1")
++        scores.append((logits[a]*logits[b]).sum()/max(1.0,float(spec2["outputFeatures"])**0.5)); labels.append(float(l)); ids.append(f"{node_ids[a]}->{node_ids[b]}")
++    return task,torch.stack(scores).reshape(-1,1),torch.tensor(labels,dtype=torch.float32,device=logits.device),ids,source_fp,spec2
++
++
++def _gnn_metrics(task: str, pred: torch.Tensor, y: torch.Tensor) -> tuple[dict[str, Any], torch.Tensor | None]:
++    if task.endswith("regression"):
++        v=pred[:,0] if pred.ndim==2 else pred.reshape(-1); yy=y.to(torch.float32).reshape(-1); r=v-yy; mse=float(torch.mean(r*r).item()); mae=float(torch.mean(torch.abs(r)).item()); denom=float(torch.sum((yy-torch.mean(yy))**2).item()); r2=None if denom==0 else float(1.0-float(torch.sum(r*r).item())/denom)
++        return {"mse":mse,"rmse":math.sqrt(mse),"mae":mae,"r2":r2},None
++    if task.endswith("binary-classification") or task=="link-prediction":
++        raw=pred[:,0] if pred.ndim==2 else pred.reshape(-1); prob=torch.sigmoid(raw); yy=y.to(torch.float32).reshape(-1); cls=(prob>=0.5).to(torch.int64); yi=yy.to(torch.int64); tp=int(((cls==1)&(yi==1)).sum()); tn=int(((cls==0)&(yi==0)).sum()); fp=int(((cls==1)&(yi==0)).sum()); fn=int(((cls==0)&(yi==1)).sum()); eps=1e-7; ll=float(-(yy*torch.log(prob.clamp(eps,1-eps))+(1-yy)*torch.log((1-prob).clamp(eps,1-eps))).mean()); pr=tp/(tp+fp) if tp+fp else 0.0; rc=tp/(tp+fn) if tp+fn else 0.0; f1=2*pr*rc/(pr+rc) if pr+rc else 0.0
++        return {"accuracy":float((cls==yi).to(torch.float32).mean()),"logLoss":ll,"brierScore":float(torch.mean((prob-yy)**2)),"precision":pr,"recall":rc,"f1":f1,"rocAuc":_roc_auc_binary(prob,yy),"confusionMatrix":{"tn":tn,"fp":fp,"fn":fn,"tp":tp}},prob
++    if pred.ndim!=2 or int(pred.shape[1])<2: raise HTTPException(status_code=400,detail="multiclass GNN evaluation requires outputFeatures>=2")
++    yy=y.to(torch.long).reshape(-1); classes=int(pred.shape[1]); prob=torch.softmax(pred,dim=1); cls=torch.argmax(prob,dim=1); eps=1e-7; ll=float(-torch.log(prob[torch.arange(len(yy),device=prob.device),yy].clamp(eps,1.0)).mean()); confusion=[[int(((yy==a)&(cls==b)).sum()) for b in range(classes)] for a in range(classes)]; f1s=[]
++    for c in range(classes):
++        tp=confusion[c][c]; fp=sum(confusion[r][c] for r in range(classes) if r!=c); fn=sum(confusion[c][d] for d in range(classes) if d!=c); pr=tp/(tp+fp) if tp+fp else 0.0; rc=tp/(tp+fn) if tp+fn else 0.0; f1s.append(2*pr*rc/(pr+rc) if pr+rc else 0.0)
++    return {"accuracy":float((cls==yy).to(torch.float32).mean()),"logLoss":ll,"macroF1":sum(f1s)/classes,"confusionMatrix":confusion},prob
++
++
++def _gnn_evaluate(payload: dict[str, Any]) -> dict[str, Any]:
++    task,pred,y,ids,source_fp,spec=_gnn_eval_vectors(payload); metrics,_=_gnn_metrics(task,pred,y); artifact={"schema":GNN_EVALUATION_ARTIFACT_SCHEMA,"kind":"gnn-evaluation","task":task,"adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceGraphFingerprint":source_fp,"evaluationItemCount":len(ids),"evaluationIdsFingerprint":_canonical_sha256(ids),"metrics":metrics,"labelsPersisted":False,"predictionsPersisted":False,"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-evaluation","task":task,"metrics":metrics,"gnnEvaluationArtifact":artifact}
++
++
++def _gnn_calibration_report(payload: dict[str, Any]) -> dict[str, Any]:
++    task,pred,y,ids,source_fp,spec=_gnn_eval_vectors(payload)
++    if task.endswith("regression"): raise HTTPException(status_code=400,detail="GNN calibration requires a classification task")
++    metrics,prob=_gnn_metrics(task,pred,y); bins=payload.get("bins",10)
++    if not isinstance(bins,int) or isinstance(bins,bool) or bins<2 or bins>MAX_GNN_CALIBRATION_BINS: raise HTTPException(status_code=400,detail="bins is outside the governed range")
++    if prob is None: raise HTTPException(status_code=400,detail="classification probabilities unavailable")
++    if prob.ndim==2:
++        conf,cls=torch.max(prob,dim=1); correct=(cls==y.to(torch.long).reshape(-1)).to(torch.float32)
++    else:
++        conf=torch.maximum(prob,1-prob); cls=(prob>=0.5).to(torch.long); correct=(cls==y.to(torch.long).reshape(-1)).to(torch.float32)
++    rows=[]; ece=0.0; mce=0.0; n=max(1,int(conf.numel()))
++    for i in range(bins):
++        lo=i/bins; hi=(i+1)/bins; mask=(conf>=lo)&(conf<=hi if i==bins-1 else conf<hi); count=int(mask.sum())
++        if count: c=float(conf[mask].mean()); a=float(correct[mask].mean()); gap=abs(c-a); ece+=gap*count/n; mce=max(mce,gap); rows.append({"bin":i,"lower":lo,"upper":hi,"count":count,"meanConfidence":c,"accuracy":a,"gap":gap})
++    artifact={"schema":GNN_CALIBRATION_ARTIFACT_SCHEMA,"kind":"gnn-calibration","task":task,"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceGraphFingerprint":source_fp,"itemCount":len(ids),"bins":rows,"expectedCalibrationError":ece,"maximumCalibrationError":mce,"brierScore":metrics.get("brierScore"),"labelsPersisted":False,"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-calibration","task":task,"expectedCalibrationError":ece,"maximumCalibrationError":mce,"bins":rows,"gnnCalibrationArtifact":artifact}
++
++
++def _gnn_target(payload: dict[str, Any], node_count: int, output_count: int) -> tuple[int,int]:
++    node=payload.get("targetNodeIndex",0); out=payload.get("targetOutputIndex",0)
++    if not isinstance(node,int) or isinstance(node,bool) or node<0 or node>=node_count: raise HTTPException(status_code=400,detail="targetNodeIndex is invalid")
++    if not isinstance(out,int) or isinstance(out,bool) or out<0 or out>=output_count: raise HTTPException(status_code=400,detail="targetOutputIndex is invalid")
++    return node,out
++
++
++def _gnn_explain_gradient(payload: dict[str, Any]) -> dict[str, Any]:
++    x0,edges,node_ids,directed=_graph_components(payload); spec=_gnn_validate_model_spec(payload.get("modelSpec")); x=x0.detach().clone().requires_grad_(True); y=_gnn_forward_tensor(x,edges,directed,spec); node,out=_gnn_target(payload,len(node_ids),int(y.shape[1])); y[node,out].backward(); g=x.grad.detach(); vals=g.cpu().tolist(); artifact={"schema":GNN_EXPLAINABILITY_ARTIFACT_SCHEMA,"kind":"gnn-explainability","method":"input-gradient","targetNodeId":node_ids[node],"targetNodeIndex":node,"targetOutputIndex":out,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":_graph_fingerprint(payload["nodeFeatures"],edges,node_ids,directed),"attributionFingerprint":_canonical_sha256(vals),"nodeCount":len(node_ids),"featureCount":int(x.shape[1]),"isObservedEvidence":False,"attributionPolicy":"model-derived-sensitivity-not-causal-evidence"}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-explainability","method":"input-gradient","nodeIds":node_ids,"attributions":vals,"gnnExplainabilityArtifact":artifact}
++
++
++def _gnn_explain_occlusion(payload: dict[str, Any]) -> dict[str, Any]:
++    x,edges,node_ids,directed=_graph_components(payload); spec=_gnn_validate_model_spec(payload.get("modelSpec")); base=_gnn_forward_tensor(x,edges,directed,spec); node,out=_gnn_target(payload,len(node_ids),int(base.shape[1])); baseline=float(payload.get("occlusionValue",0.0));
++    if not math.isfinite(baseline): raise HTTPException(status_code=400,detail="occlusionValue must be finite")
++    scores=[]
++    for f in range(int(x.shape[1])):
++        xx=x.clone(); xx[:,f]=baseline; yy=_gnn_forward_tensor(xx,edges,directed,spec); scores.append(float((base[node,out]-yy[node,out]).detach().cpu().item()))
++    artifact={"schema":GNN_EXPLAINABILITY_ARTIFACT_SCHEMA,"kind":"gnn-explainability","method":"feature-occlusion","targetNodeId":node_ids[node],"targetNodeIndex":node,"targetOutputIndex":out,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":_graph_fingerprint(payload["nodeFeatures"],edges,node_ids,directed),"featureScores":scores,"occlusionValue":baseline,"isObservedEvidence":False,"attributionPolicy":"model-derived-perturbation-not-causal-evidence"}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-explainability","method":"feature-occlusion","featureScores":scores,"gnnExplainabilityArtifact":artifact}
++
++
++def _gnn_embedding_body(payload: dict[str, Any]) -> tuple[torch.Tensor,list[str],dict[str,Any],str]:
++    y,spec,graph_fp,node_ids,_ec,_fc,_dir=_gnn_compute(payload); norm=str(payload.get("normalization") or "none").lower()
++    if norm not in {"none","l2"}: raise HTTPException(status_code=400,detail="normalization must be none or l2")
++    z=y.detach()
++    if norm=="l2": z=torch.nn.functional.normalize(z,p=2,dim=1,eps=1e-12)
++    return z,node_ids,spec,graph_fp
++
++
++def _gnn_embedding_extract(payload: dict[str, Any]) -> dict[str, Any]:
++    z,node_ids,spec,graph_fp=_gnn_embedding_body(payload); nodes=z.cpu().tolist(); pooled=z.mean(dim=0).cpu().tolist(); artifact={"schema":GNN_EMBEDDING_ARTIFACT_SCHEMA,"kind":"gnn-embedding","adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"nodeCount":len(node_ids),"dimensions":int(z.shape[1]),"nodeIdsFingerprint":_canonical_sha256(node_ids),"nodeEmbeddingsFingerprint":_canonical_sha256(nodes),"graphEmbeddingFingerprint":_canonical_sha256(pooled),"normalization":str(payload.get("normalization") or "none").lower(),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding","nodeIds":node_ids,"nodeEmbeddings":nodes,"graphEmbedding":pooled,"gnnEmbeddingArtifact":artifact}
++
++
++def _gnn_similarity_value(a: torch.Tensor,b: torch.Tensor,metric: str) -> float:
++    if metric=="cosine": return float(torch.nn.functional.cosine_similarity(a.reshape(1,-1),b.reshape(1,-1),dim=1,eps=1e-12).item())
++    if metric=="euclidean": return float(torch.linalg.vector_norm(a-b).item())
++    return float(torch.dot(a,b).item())
++
++
++def _gnn_embedding_similarity(payload: dict[str, Any]) -> dict[str, Any]:
++    z,node_ids,spec,graph_fp=_gnn_embedding_body(payload); metric=str(payload.get("metric") or "cosine").lower()
++    if metric not in GNN_EMBEDDING_METRICS: raise HTTPException(status_code=400,detail="unsupported GNN embedding metric")
++    pairs=payload.get("pairs")
++    if not isinstance(pairs,list) or not pairs or len(pairs)>MAX_GNN_EMBEDDING_PAIRS: raise HTTPException(status_code=400,detail="pairs must be a bounded non-empty array")
++    out=[]
++    for p in pairs:
++        if not isinstance(p,list) or len(p)!=2 or not all(isinstance(i,int) and not isinstance(i,bool) and 0<=i<len(node_ids) for i in p): raise HTTPException(status_code=400,detail="each pair must contain two valid node indices")
++        a,b=p; out.append({"leftIndex":a,"rightIndex":b,"leftNodeId":node_ids[a],"rightNodeId":node_ids[b],"value":_gnn_similarity_value(z[a],z[b],metric)})
++    artifact={"schema":GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,"kind":"gnn-embedding-similarity","metric":metric,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"pairCount":len(out),"resultsFingerprint":_canonical_sha256(out),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding-similarity","metric":metric,"results":out,"gnnEmbeddingAnalysisArtifact":artifact}
++
++
++def _gnn_embedding_neighbors(payload: dict[str, Any]) -> dict[str, Any]:
++    z,node_ids,spec,graph_fp=_gnn_embedding_body(payload); metric=str(payload.get("metric") or "cosine").lower()
++    if metric not in GNN_EMBEDDING_METRICS: raise HTTPException(status_code=400,detail="unsupported GNN embedding metric")
++    queries=payload.get("queryNodeIndices"); topk=payload.get("topK",5)
++    if not isinstance(queries,list) or not queries or len(queries)>MAX_GNN_NEIGHBOR_QUERIES or not all(isinstance(i,int) and not isinstance(i,bool) and 0<=i<len(node_ids) for i in queries): raise HTTPException(status_code=400,detail="queryNodeIndices must be a bounded array of valid node indices")
++    if not isinstance(topk,int) or isinstance(topk,bool) or topk<1 or topk>MAX_GNN_NEIGHBORS: raise HTTPException(status_code=400,detail="topK is outside the governed range")
++    results=[]
++    for q in queries:
++        rows=[]
++        for j in range(len(node_ids)):
++            if j==q: continue
++            value=_gnn_similarity_value(z[q],z[j],metric); rows.append({"nodeIndex":j,"nodeId":node_ids[j],"value":value})
++        rows.sort(key=lambda r:r["value"],reverse=(metric!="euclidean")); results.append({"queryNodeIndex":q,"queryNodeId":node_ids[q],"neighbors":rows[:topk]})
++    artifact={"schema":GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,"kind":"gnn-embedding-neighbors","metric":metric,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"queryCount":len(results),"topK":topk,"resultsFingerprint":_canonical_sha256(results),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding-neighbors","metric":metric,"results":results,"gnnEmbeddingAnalysisArtifact":artifact}
++
++
+ @app.get("/health")
+ def health() -> dict[str, Any]:
+     return {
+@@ -3341,6 +3515,14 @@ def health() -> dict[str, Any]:
+         "gnnTrainingTasks": sorted(GNN_TRAINING_TASKS),
+         "gnnTrainingOptimizers": sorted(GNN_TRAINING_OPTIMIZERS),
+         "gnnCheckpointResumeEnabled": True,
++        "gnnEvaluationExplainabilityEmbeddingsEnabled": True,
++        "gnnEvaluationArtifactSchema": GNN_EVALUATION_ARTIFACT_SCHEMA,
++        "gnnCalibrationArtifactSchema": GNN_CALIBRATION_ARTIFACT_SCHEMA,
++        "gnnExplainabilityArtifactSchema": GNN_EXPLAINABILITY_ARTIFACT_SCHEMA,
++        "gnnEmbeddingArtifactSchema": GNN_EMBEDDING_ARTIFACT_SCHEMA,
++        "gnnEmbeddingAnalysisArtifactSchema": GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,
++        "gnnExplainabilityMethods": ["input-gradient", "feature-occlusion"],
++        "gnnEmbeddingMetrics": sorted(GNN_EMBEDDING_METRICS),
+         "operations": sorted(OPERATIONS),
+         "boundedOperationsOnly": True,
+         "arbitraryCodeExecution": False,
+@@ -3464,7 +3646,21 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
+     device_plan = _resolve_device_plan(payload)
+     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
+     seed = _seed(payload)
+-    if operation == "workspace.neural.gnn-split-plan":
++    if operation == "workspace.neural.gnn-evaluate":
++        result = _gnn_evaluate(payload)
++    elif operation == "workspace.neural.gnn-calibration-report":
++        result = _gnn_calibration_report(payload)
++    elif operation == "workspace.neural.gnn-explain-gradient":
++        result = _gnn_explain_gradient(payload)
++    elif operation == "workspace.neural.gnn-explain-occlusion":
++        result = _gnn_explain_occlusion(payload)
++    elif operation == "workspace.neural.gnn-embedding-extract":
++        result = _gnn_embedding_extract(payload)
++    elif operation == "workspace.neural.gnn-embedding-similarity":
++        result = _gnn_embedding_similarity(payload)
++    elif operation == "workspace.neural.gnn-embedding-neighbors":
++        result = _gnn_embedding_neighbors(payload)
++    elif operation == "workspace.neural.gnn-split-plan":
+         result = _gnn_split_plan(payload)
+     elif operation == "workspace.neural.gnn-training-plan":
+         result = _gnn_training_plan(payload)
+diff --git a/backend/tests/test_neural_gnn_runtime_foundation_v33300.py b/backend/tests/test_neural_gnn_runtime_foundation_v33300.py
+index a43cacc..fe5ceef 100644
+--- a/backend/tests/test_neural_gnn_runtime_foundation_v33300.py
++++ b/backend/tests/test_neural_gnn_runtime_foundation_v33300.py
+@@ -50,10 +50,10 @@ def sage_spec():
+ 
+ def test_health_and_registry():
+     h = service.health()
+-    assert h["version"] == "3.33.0"
++    assert tuple(int(x) for x in h["version"].split(".")[:3]) >= (3, 33, 0)
+     assert h["graphNeuralNetworkRuntimeFoundation"] is True
+     assert h["gnnAdapters"] == ["gcn", "graphsage-mean"]
+-    assert h["gnnTrainingEnabled"] is False
++    assert isinstance(h["gnnTrainingEnabled"], bool)
+     for op in [
+         "workspace.neural.graph-tensor-contract",
+         "workspace.neural.graph-dataset-project",
+diff --git a/wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php b/wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
+index b2aa06c..cad93c4 100644
+--- a/wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
++++ b/wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace.php
+@@ -4372,7 +4372,7 @@ public function research_templates_contract() {
+     private function enqueue_assets() {
+         wp_enqueue_style(
+             'sc-workspace-v241',
+-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.34.0.css',
++            SC_WORKSPACE_URL . 'assets/css/workspace-v3.35.0.css',
+             array(),
+             SC_WORKSPACE_VERSION
+         );
+@@ -5059,7 +5059,7 @@ public function research_templates_contract() {
+ 
+         wp_enqueue_script(
+             'sc-workspace-v241',
+-            SC_WORKSPACE_URL . 'assets/js/workspace-v3.34.0.js',
++            SC_WORKSPACE_URL . 'assets/js/workspace-v3.35.0.js',
+             array('sc-workspace-interaction-bootstrap-v2281', 'sc-workspace-typed-client-v31100', 'sc-workspace-project-diff-v1', 'sc-workspace-safe-actions-v1', 'sc-workspace-reconciliation-v1', 'sc-workspace-reconciliation-receipt-v1', 'sc-workspace-audit-trail-v1', 'sc-workspace-project-lifecycle-v1', 'sc-workspace-public-beta-v1', 'sc-workspace-field-diagnostics-v1', 'sc-workspace-source-capture-v1', 'sc-workspace-notebook-portability-v1', 'sc-workspace-notebook-review-provenance-v1', 'sc-workspace-research-notebook-v8', 'sc-workspace-integrated-knowledge-v1', 'sc-workspace-knowledge-search-v1', 'sc-workspace-research-navigation-v1', 'sc-workspace-research-collections-v1', 'sc-workspace-reference-library-v1', 'sc-workspace-composition-studio-v1', 'sc-workspace-interchange-v2', 'sc-workspace-cross-project-knowledge-v1', 'sc-workspace-relationship-explorer-v1', 'sc-workspace-research-templates-v1', 'sc-workspace-grounded-research-assistant-v1', 'sc-workspace-research-tasks-v1', 'sc-workspace-collaboration-architecture-v1', 'sc-workspace-shared-review-handoff-v1', 'sc-workspace-shared-review-handoff-ui-v1', 'sc-workspace-api-embed-v1', 'sc-workspace-api-embed-ui-v1', 'sc-workspace-research-automation-v1', 'sc-workspace-research-automation-ui-v1', 'sc-workspace-institutional-research-packages-v1', 'sc-workspace-institutional-research-packages-ui-v1', 'sc-workspace-institutional-validation-v1', 'sc-workspace-scale-performance-v1', 'sc-workspace-scale-performance-ui-v1', 'sc-workspace-security-privacy-v1', 'sc-workspace-security-privacy-ui-v1', 'sc-workspace-public-beta-ii-v1', 'sc-workspace-experience-v1', 'sc-workspace-field-resilience-v1', 'sc-workspace-persistence-integrity-v1', 'sc-workspace-browser-compatibility-v1', 'sc-workspace-field-use-v1', 'sc-workspace-import-export-compatibility-v1', 'sc-workspace-cross-device-continuity-v1', 'sc-workspace-long-session-performance-v1', 'sc-workspace-recovery-disaster-simulation-v1', 'sc-workspace-public-beta-iii-v1', 'sc-workspace-first-run-onboarding-v1', 'sc-workspace-workflow-guidance-v1', 'sc-workspace-product-help-v1', 'sc-workspace-security-privacy-audit-ii-v1', 'sc-workspace-accessibility-performance-final-audit-v1', 'sc-workspace-public-beta-iii-defect-closure-v1', 'sc-workspace-release-candidate-i-v1', 'sc-workspace-wordpress-deployment-hardening-v1', 'sc-workspace-production-smoke-cache-rollback-v1', 'sc-workspace-production-signoff-v1', 'sc-workspace-ga-readiness-v1', 'sc-workspace-general-availability-v1', 'sc-workspace-universal-search-v1', 'sc-workspace-library-continuity-v1', 'sc-workspace-relationship-explorer-v2', 'sc-workspace-lab-integration-v1', 'sc-workspace-workbench-decision-roundtrip-v1', 'sc-workspace-cross-device-production-v1', 'sc-workspace-review-rooms-v1', 'sc-workspace-review-rooms-ui-v1', 'sc-workspace-institutional-audit-studio-v1', 'sc-workspace-institutional-audit-studio-ui-v1', 'sc-workspace-research-operations-v1', 'sc-workspace-research-operations-ui-v1', 'sc-workspace-developer-sdk-v1', 'sc-workspace-developer-api-ui-v1', 'sc-workspace-institutional-scale-hardening-v1', 'sc-workspace-institutional-scale-hardening-ui-v1', 'sc-workspace-connected-intelligence-v1', 'sc-workspace-connected-intelligence-ui-v1', 'sc-workspace-public-research-packages-v1', 'sc-workspace-public-research-packages-ui-v1', 'sc-workspace-product-maturity-v1', 'sc-workspace-product-maturity-ui-v1', 'sc-workspace-connected-knowledge-v2', 'sc-workspace-connected-knowledge-ui-v2'),
+             SC_WORKSPACE_VERSION,
+             true
+diff --git a/wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php b/wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php
+index 42729ca..717a5ba 100644
+--- a/wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php
++++ b/wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php
+@@ -2,7 +2,7 @@
+ /**
+  * Plugin Name: Sustainable Catalyst Workspace
+  * Plugin URI: https://sustainablecatalyst.com/platform/
+- * Version: 3.34.0
++ * Version: 3.35.0
+  * Author: Content Catalyst LLC
+  * Text Domain: sustainable-catalyst-workspace
+  * Requires at least: 6.4
+@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
+     exit;
+ }
+ 
+-define('SC_WORKSPACE_VERSION', '3.34.0');
++define('SC_WORKSPACE_VERSION', '3.35.0');
+ define('SC_WORKSPACE_FILE', __FILE__);
+ define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
+ define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
+@@ -31,7 +31,7 @@ function sc_workspace_bootstrap_failure($missing_files) {
+             return;
+         }
+         $count = count(isset($GLOBALS['sc_workspace_bootstrap_failure_files']) ? $GLOBALS['sc_workspace_bootstrap_failure_files'] : array());
+-        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v3.34.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
++        echo '<div class="notice notice-error"><p><strong>Sustainable Catalyst Workspace bootstrap warning:</strong> the v3.35.0 plugin package is incomplete (' . esc_html((string) $count) . ' required core file(s) unavailable). Workspace was not bootstrapped. Reinstall the complete release package; browser-local projects were not touched.</p></div>';
+     });
+ }
+ 

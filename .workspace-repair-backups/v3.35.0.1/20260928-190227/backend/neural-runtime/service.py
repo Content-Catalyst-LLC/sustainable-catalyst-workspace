@@ -9,6 +9,10 @@ import os
 import threading
 import time
 import zlib
+import secrets
+import urllib.error
+import urllib.request
+from uuid import uuid4
 from typing import Any
 from contextvars import ContextVar
 
@@ -33,7 +37,7 @@ import torch.nn.functional as F
 from fastapi import FastAPI, Header, HTTPException
 
 SERVICE = "Sustainable Catalyst Workspace Neural Runtime"
-SERVICE_VERSION = "3.35.0"
+SERVICE_VERSION = "3.34.0"
 RUNTIME = "python-pytorch-neural"
 ENGINE = "PyTorch"
 TOKEN = os.getenv("SC_WORKSPACE_NEURAL_RUNTIME_TOKEN", "").strip()
@@ -99,10 +103,10 @@ OPERATIONS = {
     "workspace.neural.batch-execute",
     "workspace.neural.hyperparameter-grid",
     "workspace.neural.hyperparameter-random",
-    "workspace.neural.remote-gpu-plan",
-    "workspace.neural.remote-gpu-submit",
-    "workspace.neural.remote-gpu-status",
-    "workspace.neural.remote-gpu-cancel",
+    "workspace.neural.remote-worker-inventory",
+    "workspace.neural.remote-dispatch-plan",
+    "workspace.neural.remote-execute",
+    "workspace.neural.remote-receipt-verify",
     "workspace.neural.certification-plan",
     "workspace.neural.certification-execute",
     "workspace.neural.certification-verify",
@@ -117,13 +121,6 @@ OPERATIONS = {
     "workspace.neural.gnn-train",
     "workspace.neural.gnn-checkpoint-create",
     "workspace.neural.gnn-checkpoint-resume",
-    "workspace.neural.gnn-evaluate",
-    "workspace.neural.gnn-calibration-report",
-    "workspace.neural.gnn-explain-gradient",
-    "workspace.neural.gnn-explain-occlusion",
-    "workspace.neural.gnn-embedding-extract",
-    "workspace.neural.gnn-embedding-similarity",
-    "workspace.neural.gnn-embedding-neighbors",
 }
 
 BLOCKED_PAYLOAD_KEYS = {
@@ -164,6 +161,59 @@ ALLOWED_HYPERPARAMETER_PATHS = {
     "optimizer.name", "optimizer.learningRate", "optimizer.weightDecay", "batchSize", "epochs"
 }
 ALLOWED_TRIAL_OBJECTIVE_METRICS = {"loss", "accuracy", "mae", "rmse"}
+# v3.31 governed remote GPU execution broker. Remote endpoints are operator-configured
+# only; clients can never supply a runtime URL. The broker is disabled by default.
+REMOTE_WORKER_INVENTORY_SCHEMA = "sc-workspace-neural-remote-worker-inventory/1.0"
+REMOTE_DISPATCH_PLAN_SCHEMA = "sc-workspace-neural-remote-dispatch-plan/1.0"
+REMOTE_DISPATCH_ENVELOPE_SCHEMA = "sc-workspace-neural-remote-dispatch-envelope/1.0"
+REMOTE_EXECUTION_RECEIPT_SCHEMA = "sc-workspace-neural-remote-execution-receipt/1.0"
+REMOTE_EXECUTION_ARTIFACT_SCHEMA = "sc-workspace-neural-remote-execution-artifact/1.0"
+REMOTE_WORKER_RESPONSE_SCHEMA = "sc-workspace-neural-remote-worker-response/1.0"
+# v3.32 production certification closes the v3.20-v3.31 neural runtime line with a
+# bounded, machine-verifiable certification contract. It does not claim a remote GPU
+# was physically exercised when no worker is attached; transport readiness is conditional.
+PRODUCTION_CERTIFICATION_PROFILE = "workspace-neural-production/1.0"
+PRODUCTION_CERTIFICATION_PLAN_SCHEMA = "sc-workspace-neural-production-certification-plan/1.0"
+PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA = "sc-workspace-neural-production-certification-artifact/1.0"
+PRODUCTION_CERTIFICATION_REPORT_SCHEMA = "sc-workspace-neural-production-certification-report/1.0"
+PRODUCTION_CERTIFICATION_REQUIRED_CHECKS = (
+    "runtime-registry-integrity",
+    "hardened-identity-cache-contract",
+    "bounded-security-boundary",
+    "cpu-device-plan",
+    "deterministic-inference",
+    "reproducible-model-package-roundtrip",
+    "dependency-runtime-contract",
+    "evidence-prediction-boundary",
+    "remote-broker-safety",
+)
+REMOTE_BROKER_ENABLED = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_BROKER_ENABLED", "false").strip().lower() in {"1","true","yes","on"}
+REMOTE_WORKER_MODE = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_MODE", "false").strip().lower() in {"1","true","yes","on"}
+REMOTE_SHARED_SECRET = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_HMAC_SECRET", "").strip()
+REMOTE_WORKER_ID = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_ID", "").strip()
+REMOTE_WORKER_DEVICE = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKER_DEVICE", "cuda:0").strip().lower() or "cuda:0"
+REMOTE_WORKERS_JSON = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_WORKERS_JSON", "[]").strip() or "[]"
+REMOTE_ALLOW_INSECURE_HTTP = os.getenv("SC_WORKSPACE_NEURAL_REMOTE_ALLOW_INSECURE_HTTP", "false").strip().lower() in {"1","true","yes","on"}
+MAX_REMOTE_WORKERS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_REMOTE_WORKERS", "8")), 32))
+REMOTE_TIMEOUT_SECONDS = max(1.0, min(float(os.getenv("SC_WORKSPACE_NEURAL_REMOTE_TIMEOUT_SECONDS", "60")), 300.0))
+REMOTE_ENVELOPE_TTL_SECONDS = max(15, min(int(os.getenv("SC_WORKSPACE_NEURAL_REMOTE_ENVELOPE_TTL_SECONDS", "120")), 600))
+MAX_REMOTE_RESPONSE_BYTES = max(1024 * 1024, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_REMOTE_RESPONSE_BYTES", str(25 * 1024 * 1024))), 50 * 1024 * 1024))
+REMOTE_ALLOWED_OPERATIONS = {
+    "workspace.neural.train-linear", "workspace.neural.train-mlp",
+    "workspace.neural.resume-linear", "workspace.neural.resume-mlp",
+    "workspace.neural.evaluate-regression", "workspace.neural.evaluate-binary", "workspace.neural.evaluate-multiclass",
+    "workspace.neural.calibration-report", "workspace.neural.uncertainty-summary",
+    "workspace.neural.explain-gradient", "workspace.neural.explain-integrated-gradients",
+    "workspace.neural.explain-occlusion", "workspace.neural.explain-global-sensitivity",
+    "workspace.neural.embedding-generate", "workspace.neural.representation-summary",
+    "workspace.neural.embedding-similarity", "workspace.neural.embedding-neighbors",
+    "workspace.neural.infer-regression", "workspace.neural.infer-binary", "workspace.neural.infer-multiclass",
+    "workspace.neural.package-infer", "workspace.neural.accelerator-smoke",
+    "workspace.neural.trial-execute", "workspace.neural.batch-execute",
+    "workspace.neural.hyperparameter-grid", "workspace.neural.hyperparameter-random",
+}
+_REMOTE_NONCES: dict[str, int] = {}
+_REMOTE_NONCE_LOCK = threading.Lock()
 torch.set_num_threads(TRAIN_THREADS)
 _OPTIMIZER_INIT_LOCK = threading.Lock()
 
@@ -2510,7 +2560,7 @@ def _package_runtime_contract() -> dict[str, Any]:
         "engineVersion": torch.__version__,
         "numpyVersion": np.__version__,
         "requiredDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
-        "devicePolicy": "governed-explicit-device-orchestration",
+        "devicePolicy": "governed-remote-gpu-execution-broker",
         "acceleratorRequired": False,
         "supportedDeviceClasses": ["cpu", "cuda"],
         "deviceSelectionMustBeExplicit": True,
@@ -2702,6 +2752,480 @@ def _model_package_infer(payload: dict[str, Any]) -> dict[str, Any]:
     result["packageVerified"]=True
     result["kind"]="neural-packaged-inference-result"
     return result
+
+def _certification_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    profile = str(payload.get("profile") or PRODUCTION_CERTIFICATION_PROFILE)
+    if profile != PRODUCTION_CERTIFICATION_PROFILE:
+        raise HTTPException(status_code=400, detail="production certification profile is not registered")
+    plan = {
+        "schema": PRODUCTION_CERTIFICATION_PLAN_SCHEMA,
+        "profile": PRODUCTION_CERTIFICATION_PROFILE,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "expectedOperationCount": len(OPERATIONS),
+        "requiredChecks": list(PRODUCTION_CERTIFICATION_REQUIRED_CHECKS),
+        "conditionalChecks": ["remote-gpu-worker-transport"],
+        "remoteGpuSemantics": "conditionally-certified-unless-worker-attached",
+        "arbitraryCodeExecution": False,
+        "clientSuppliedPackagesAllowed": False,
+        "clientSuppliedSerializedModelsAllowed": False,
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
+        "rollbackRequired": True,
+    }
+    plan["planFingerprint"] = _canonical_sha256(plan)
+    return {"kind": "neural-production-certification-plan", "certificationPlan": plan, "planFingerprint": plan["planFingerprint"]}
+
+
+def _certification_check(check_id: str, passed: bool, details: dict[str, Any] | None = None, *, conditional: bool = False, status: str | None = None) -> dict[str, Any]:
+    return {
+        "checkId": check_id,
+        "required": not conditional,
+        "conditional": conditional,
+        "passed": bool(passed),
+        "status": status or ("pass" if passed else "fail"),
+        "details": details or {},
+    }
+
+
+def _certification_execute(payload: dict[str, Any]) -> dict[str, Any]:
+    plan = _certification_plan(payload)["certificationPlan"]
+    checks: list[dict[str, Any]] = []
+
+    registry_ok = len(OPERATIONS) == 52 and all(op in OPERATIONS for op in {
+        "workspace.neural.train-linear", "workspace.neural.checkpoint-inspect",
+        "workspace.neural.evaluate-regression", "workspace.neural.explain-integrated-gradients",
+        "workspace.neural.embedding-generate", "workspace.neural.infer-regression",
+        "workspace.neural.package-create", "workspace.neural.device-plan",
+        "workspace.neural.hyperparameter-grid", "workspace.neural.remote-dispatch-plan",
+        "workspace.neural.certification-execute",
+    })
+    checks.append(_certification_check("runtime-registry-integrity", registry_ok, {"operationCount": len(OPERATIONS)}))
+
+    identity = {
+        "user": os.getenv("USER", ""), "home": os.getenv("HOME", ""),
+        "xdgCacheHome": os.getenv("XDG_CACHE_HOME", ""),
+        "torchInductorCacheDir": os.getenv("TORCHINDUCTOR_CACHE_DIR", ""),
+    }
+    identity_ok = identity == {"user": "scworkspace", "home": "/tmp", "xdgCacheHome": "/tmp/.cache", "torchInductorCacheDir": "/tmp/torchinductor"}
+    checks.append(_certification_check("hardened-identity-cache-contract", identity_ok, identity))
+
+    security = {
+        "boundedOperationsOnly": True,
+        "arbitraryCodeExecution": False,
+        "clientSuppliedCodeAllowed": False,
+        "clientSuppliedPackagesAllowed": False,
+        "clientSuppliedSerializedModelsAllowed": False,
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
+        "blockedPayloadKeyCount": len(BLOCKED_PAYLOAD_KEYS),
+    }
+    security_ok = all(security[k] is False for k in ["arbitraryCodeExecution", "clientSuppliedCodeAllowed", "clientSuppliedPackagesAllowed", "clientSuppliedSerializedModelsAllowed", "clientSuppliedRemoteWorkerUrlsAllowed"]) and security["blockedPayloadKeyCount"] >= 10
+    checks.append(_certification_check("bounded-security-boundary", security_ok, security))
+
+    cpu_plan = _resolve_device_plan({"deviceRequest": "cpu"})
+    cpu_ok = cpu_plan.get("selectedDevice") == "cpu" and not cpu_plan.get("acceleratorSelected") and len(str(cpu_plan.get("planFingerprint") or "")) == 64
+    checks.append(_certification_check("cpu-device-plan", cpu_ok, {"selectedDevice": cpu_plan.get("selectedDevice"), "planFingerprint": cpu_plan.get("planFingerprint")}))
+
+    model_spec = {"schema": "sc-workspace-neural-model-spec/1.0", "modelType": "linear", "weights": [[2.0]], "bias": [1.0], "activation": "identity"}
+    infer = _infer_regression({"modelSpec": model_spec, "features": [[3.0]], "rowIds": ["cert-row"]})
+    preds = infer.get("predictions") or []
+    inference_ok = len(preds) == 1 and abs(float(preds[0]["outputs"][0]) - 7.0) < 1e-9 and len(str((infer.get("predictionArtifact") or {}).get("artifactFingerprint") or "")) == 64
+    checks.append(_certification_check("deterministic-inference", inference_ok, {"expected": 7.0, "observed": preds[0]["outputs"][0] if preds else None, "predictionArtifactFingerprint": (infer.get("predictionArtifact") or {}).get("artifactFingerprint")}))
+
+    package = _model_package_create({"modelSpec": model_spec, "task": "regression", "featureNames": ["x"]})
+    package_artifact = package.get("modelPackage") or {}
+    package_verify = _model_package_verify({"modelPackage": package_artifact})
+    package_ok = package_verify.get("valid") is True and package_verify.get("compatible") is True and len(str(package.get("modelPackageFingerprint") or "")) == 64
+    checks.append(_certification_check("reproducible-model-package-roundtrip", package_ok, {"packageId": package.get("packageId"), "modelPackageFingerprint": package.get("modelPackageFingerprint"), "compatible": package_verify.get("compatible")}))
+
+    dependency_details = {
+        "engine": ENGINE, "engineVersion": torch.__version__, "numpyVersion": np.__version__,
+        "requiredDependencyPins": dict(MODEL_PACKAGE_DEPENDENCY_PINS),
+    }
+    dependency_ok = bool(torch.__version__) and bool(np.__version__) and MODEL_PACKAGE_DEPENDENCY_PINS == {"torch": "2.10.0", "numpy": "2.2.6"}
+    checks.append(_certification_check("dependency-runtime-contract", dependency_ok, dependency_details))
+
+    boundary = (infer.get("predictionArtifact") or {}).get("evidenceBoundary") or {}
+    boundary_ok = boundary.get("isObservedEvidence") is False and boundary.get("targetsAccepted") is False
+    checks.append(_certification_check("evidence-prediction-boundary", boundary_ok, boundary))
+
+    broker_details: dict[str, Any] = {
+        "brokerEnabled": REMOTE_BROKER_ENABLED,
+        "workerMode": REMOTE_WORKER_MODE,
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
+    }
+    broker_ok = True
+    if REMOTE_BROKER_ENABLED:
+        try:
+            workers = _remote_worker_registry()
+            broker_details.update({"workerCount": len(workers), "registryFingerprint": _remote_registry_fingerprint(workers), "signingSecretConfigured": bool(REMOTE_SHARED_SECRET)})
+            broker_ok = bool(REMOTE_SHARED_SECRET)
+        except HTTPException as exc:
+            broker_details["error"] = str(exc.detail); broker_ok = False
+    else:
+        broker_details.update({"workerCount": 0, "safeDefault": True})
+    checks.append(_certification_check("remote-broker-safety", broker_ok, broker_details))
+
+    conditional_pass = False
+    conditional_status = "not-exercised-no-worker-attached"
+    if REMOTE_BROKER_ENABLED:
+        try:
+            workers = [w for w in _remote_worker_registry() if w.get("enabled")]
+            conditional_pass = bool(workers and REMOTE_SHARED_SECRET)
+            conditional_status = "ready-worker-registered" if conditional_pass else "not-exercised-no-enabled-worker"
+        except HTTPException:
+            conditional_status = "configuration-invalid"
+    checks.append(_certification_check("remote-gpu-worker-transport", conditional_pass, {"brokerEnabled": REMOTE_BROKER_ENABLED}, conditional=True, status=conditional_status))
+
+    required = [x for x in checks if x["required"]]
+    all_required = all(x["passed"] for x in required)
+    artifact = {
+        "schema": PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA,
+        "kind": "neural-runtime-production-certification",
+        "profile": PRODUCTION_CERTIFICATION_PROFILE,
+        "runtime": RUNTIME,
+        "runtimeVersion": SERVICE_VERSION,
+        "engine": ENGINE,
+        "engineVersion": torch.__version__,
+        "numpyVersion": np.__version__,
+        "planFingerprint": plan["planFingerprint"],
+        "operationCount": len(OPERATIONS),
+        "checks": checks,
+        "requiredCheckCount": len(required),
+        "passedRequiredCheckCount": sum(1 for x in required if x["passed"]),
+        "allRequiredPassed": all_required,
+        "productionStatus": "certified" if all_required else "failed",
+        "remoteGpuTransportStatus": conditional_status,
+        "evidenceBoundary": "certification-artifact-is-runtime-assurance-evidence-not-scientific-observed-evidence",
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    artifact["certificationId"] = "nrc_" + artifact["artifactFingerprint"][:24]
+    return {"kind": "neural-runtime-production-certification", "certificationArtifact": artifact, "certificationArtifactFingerprint": artifact["artifactFingerprint"], "certificationId": artifact["certificationId"], "allRequiredPassed": all_required}
+
+
+def _validate_certification_artifact(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("schema") != PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"certificationArtifact must use {PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA}")
+    supplied = str(value.get("artifactFingerprint") or "")
+    base = {k: v for k, v in value.items() if k not in {"artifactFingerprint", "certificationId"}}
+    expected = _canonical_sha256(base)
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=400, detail="certificationArtifact fingerprint verification failed")
+    expected_id = "nrc_" + supplied[:24]
+    if value.get("certificationId") != expected_id:
+        raise HTTPException(status_code=400, detail="certificationArtifact identity verification failed")
+    if value.get("profile") != PRODUCTION_CERTIFICATION_PROFILE or value.get("runtime") != RUNTIME:
+        raise HTTPException(status_code=400, detail="certificationArtifact profile/runtime mismatch")
+    checks = value.get("checks")
+    if not isinstance(checks, list):
+        raise HTTPException(status_code=400, detail="certificationArtifact checks are invalid")
+    required_ids = {str(x.get("checkId")) for x in checks if isinstance(x, dict) and x.get("required") is True}
+    if required_ids != set(PRODUCTION_CERTIFICATION_REQUIRED_CHECKS):
+        raise HTTPException(status_code=400, detail="certificationArtifact required check set mismatch")
+    return value
+
+
+def _certification_verify(payload: dict[str, Any]) -> dict[str, Any]:
+    artifact = _validate_certification_artifact(payload.get("certificationArtifact"))
+    current_version = artifact.get("runtimeVersion") == SERVICE_VERSION
+    required_pass = artifact.get("allRequiredPassed") is True and artifact.get("productionStatus") == "certified"
+    if not required_pass:
+        raise HTTPException(status_code=409, detail="certificationArtifact does not certify all required production checks")
+    return {
+        "kind": "neural-runtime-production-certification-verification",
+        "valid": True,
+        "currentRuntimeVersion": current_version,
+        "certificationId": artifact.get("certificationId"),
+        "certificationArtifactFingerprint": artifact.get("artifactFingerprint"),
+        "productionStatus": artifact.get("productionStatus"),
+        "remoteGpuTransportStatus": artifact.get("remoteGpuTransportStatus"),
+    }
+
+
+def _certification_report(payload: dict[str, Any]) -> dict[str, Any]:
+    artifact = _validate_certification_artifact(payload.get("certificationArtifact"))
+    checks = artifact.get("checks") or []
+    report = {
+        "schema": PRODUCTION_CERTIFICATION_REPORT_SCHEMA,
+        "profile": artifact.get("profile"),
+        "runtimeVersion": artifact.get("runtimeVersion"),
+        "certificationId": artifact.get("certificationId"),
+        "certificationArtifactFingerprint": artifact.get("artifactFingerprint"),
+        "productionStatus": artifact.get("productionStatus"),
+        "requiredChecksPassed": artifact.get("passedRequiredCheckCount"),
+        "requiredChecksTotal": artifact.get("requiredCheckCount"),
+        "conditionalChecks": [{"checkId": x.get("checkId"), "status": x.get("status"), "passed": x.get("passed")} for x in checks if isinstance(x, dict) and x.get("conditional")],
+        "failedRequiredChecks": [x.get("checkId") for x in checks if isinstance(x, dict) and x.get("required") and not x.get("passed")],
+        "remoteGpuTransportStatus": artifact.get("remoteGpuTransportStatus"),
+        "assuranceBoundary": artifact.get("evidenceBoundary"),
+    }
+    report["reportFingerprint"] = _canonical_sha256(report)
+    return {"kind": "neural-runtime-production-certification-report", "certificationReport": report, "reportFingerprint": report["reportFingerprint"]}
+
+
+def _remote_hmac(value: dict[str, Any]) -> str:
+    if not REMOTE_SHARED_SECRET:
+        raise HTTPException(status_code=503, detail="remote GPU broker signing secret is not configured")
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str).encode("utf-8")
+    return hmac.new(REMOTE_SHARED_SECRET.encode("utf-8"), raw, hashlib.sha256).hexdigest()
+
+
+def _remote_worker_registry() -> list[dict[str, Any]]:
+    try:
+        raw = json.loads(REMOTE_WORKERS_JSON)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="remote GPU worker registry JSON is invalid") from exc
+    if not isinstance(raw, list) or len(raw) > MAX_REMOTE_WORKERS:
+        raise HTTPException(status_code=503, detail="remote GPU worker registry exceeds bounded size or is not an array")
+    workers: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=503, detail="remote GPU worker registry entry must be an object")
+        worker_id = str(item.get("workerId") or "").strip()
+        url = str(item.get("url") or "").strip().rstrip("/")
+        device = str(item.get("device") or "cuda:0").strip().lower()
+        enabled = bool(item.get("enabled", True))
+        tags = item.get("tags") if isinstance(item.get("tags"), list) else []
+        if not worker_id or worker_id in seen or not url:
+            raise HTTPException(status_code=503, detail="remote GPU worker registry contains missing or duplicate identity")
+        if not url.startswith("https://") and not (REMOTE_ALLOW_INSECURE_HTTP and url.startswith("http://")):
+            raise HTTPException(status_code=503, detail="remote GPU worker endpoint must use HTTPS under current policy")
+        if not device.startswith("cuda:"):
+            raise HTTPException(status_code=503, detail="remote GPU worker must declare an explicit CUDA device")
+        seen.add(worker_id)
+        workers.append({"workerId": worker_id, "url": url, "device": device, "enabled": enabled, "tags": [str(x) for x in tags[:16]]})
+    return sorted(workers, key=lambda x: x["workerId"])
+
+
+def _remote_registry_fingerprint(workers: list[dict[str, Any]]) -> str:
+    public = [{k: v for k, v in w.items() if k != "url"} | {"endpointConfigured": True} for w in workers]
+    return _canonical_sha256(public)
+
+
+def _remote_worker_inventory(payload: dict[str, Any]) -> dict[str, Any]:
+    workers = _remote_worker_registry()
+    public = [{k: v for k, v in w.items() if k != "url"} | {"endpointConfigured": True} for w in workers]
+    body = {
+        "schema": REMOTE_WORKER_INVENTORY_SCHEMA,
+        "brokerEnabled": REMOTE_BROKER_ENABLED,
+        "workerMode": REMOTE_WORKER_MODE,
+        "workerCount": len(public),
+        "enabledWorkerCount": sum(1 for w in public if w.get("enabled")),
+        "workers": public,
+        "clientSuppliedWorkerUrlsAllowed": False,
+    }
+    body["inventoryFingerprint"] = _canonical_sha256(body)
+    return {"kind": "neural-remote-worker-inventory", "remoteWorkerInventory": body, "inventoryFingerprint": body["inventoryFingerprint"]}
+
+
+def _remote_dispatch_plan(payload: dict[str, Any]) -> dict[str, Any]:
+    if not REMOTE_BROKER_ENABLED:
+        raise HTTPException(status_code=409, detail="remote GPU execution broker is disabled by operator policy")
+    operation = str(payload.get("remoteOperation") or "").strip()
+    remote_payload = payload.get("remotePayload")
+    if operation not in REMOTE_ALLOWED_OPERATIONS or operation.startswith("workspace.neural.remote-"):
+        raise HTTPException(status_code=400, detail="remote neural operation is not allowed by broker policy")
+    if not isinstance(remote_payload, dict):
+        raise HTTPException(status_code=400, detail="remotePayload must be an object")
+    if any(k in remote_payload for k in BLOCKED_PAYLOAD_KEYS):
+        raise HTTPException(status_code=400, detail="remotePayload contains a blocked client-supplied execution field")
+    workers = [w for w in _remote_worker_registry() if w.get("enabled")]
+    requested_id = str(payload.get("workerId") or "").strip()
+    if requested_id:
+        workers = [w for w in workers if w["workerId"] == requested_id]
+    if not workers:
+        raise HTTPException(status_code=409, detail="no enabled registered remote GPU worker satisfies the dispatch request")
+    worker = workers[0]
+    plan = {
+        "schema": REMOTE_DISPATCH_PLAN_SCHEMA,
+        "workerId": worker["workerId"],
+        "selectedDevice": worker["device"],
+        "operation": operation,
+        "payloadFingerprint": _canonical_sha256(remote_payload),
+        "workerRegistryFingerprint": _remote_registry_fingerprint(_remote_worker_registry()),
+        "dispatchPolicy": "operator-managed-worker-allowlist",
+        "clientSuppliedWorkerUrlsAllowed": False,
+    }
+    plan["planFingerprint"] = _canonical_sha256(plan)
+    return {"kind": "neural-remote-dispatch-plan", "dispatchPlan": plan, "planFingerprint": plan["planFingerprint"]}
+
+
+def _validate_remote_receipt(receipt: Any, *, expected_dispatch_id: str | None = None, expected_worker_id: str | None = None, expected_operation: str | None = None, expected_result_fingerprint: str | None = None) -> dict[str, Any]:
+    if not isinstance(receipt, dict) or receipt.get("schema") != REMOTE_EXECUTION_RECEIPT_SCHEMA:
+        raise HTTPException(status_code=400, detail=f"remoteReceipt must use {REMOTE_EXECUTION_RECEIPT_SCHEMA}")
+    supplied_fp = str(receipt.get("receiptFingerprint") or "")
+    base = {k: v for k, v in receipt.items() if k not in {"receiptFingerprint", "signature"}}
+    if not supplied_fp or not hmac.compare_digest(supplied_fp, _canonical_sha256(base)):
+        raise HTTPException(status_code=400, detail="remote execution receipt fingerprint verification failed")
+    sig_base = dict(base); sig_base["receiptFingerprint"] = supplied_fp
+    supplied_sig = str(receipt.get("signature") or "")
+    if not supplied_sig or not hmac.compare_digest(supplied_sig, _remote_hmac(sig_base)):
+        raise HTTPException(status_code=400, detail="remote execution receipt signature verification failed")
+    if expected_dispatch_id and receipt.get("dispatchId") != expected_dispatch_id:
+        raise HTTPException(status_code=400, detail="remote execution receipt dispatch identity mismatch")
+    if expected_worker_id and receipt.get("workerId") != expected_worker_id:
+        raise HTTPException(status_code=400, detail="remote execution receipt worker identity mismatch")
+    if expected_operation and receipt.get("operation") != expected_operation:
+        raise HTTPException(status_code=400, detail="remote execution receipt operation mismatch")
+    if expected_result_fingerprint and receipt.get("resultFingerprint") != expected_result_fingerprint:
+        raise HTTPException(status_code=400, detail="remote execution receipt result fingerprint mismatch")
+    return receipt
+
+
+def _remote_receipt_verify(payload: dict[str, Any]) -> dict[str, Any]:
+    receipt = _validate_remote_receipt(payload.get("remoteReceipt"))
+    return {
+        "kind": "neural-remote-receipt-verification",
+        "valid": True,
+        "workerId": receipt.get("workerId"),
+        "dispatchId": receipt.get("dispatchId"),
+        "operation": receipt.get("operation"),
+        "resultFingerprint": receipt.get("resultFingerprint"),
+        "receiptFingerprint": receipt.get("receiptFingerprint"),
+    }
+
+
+def _remote_execute(payload: dict[str, Any]) -> dict[str, Any]:
+    if not REMOTE_SHARED_SECRET:
+        raise HTTPException(status_code=503, detail="remote GPU broker signing secret is not configured")
+    planned = _remote_dispatch_plan(payload)["dispatchPlan"]
+    worker = next((w for w in _remote_worker_registry() if w["workerId"] == planned["workerId"]), None)
+    if worker is None:
+        raise HTTPException(status_code=409, detail="planned remote GPU worker is no longer registered")
+    issued = int(time.time())
+    dispatch = {
+        "schema": REMOTE_DISPATCH_ENVELOPE_SCHEMA,
+        "dispatchId": f"ngd_{uuid4().hex}",
+        "nonce": secrets.token_hex(16),
+        "issuedAt": issued,
+        "expiresAt": issued + REMOTE_ENVELOPE_TTL_SECONDS,
+        "workerId": worker["workerId"],
+        "operation": planned["operation"],
+        "payload": payload["remotePayload"],
+        "payloadFingerprint": planned["payloadFingerprint"],
+        "dispatchPlanFingerprint": planned["planFingerprint"],
+        "requestedDevice": worker["device"],
+        "originRuntimeVersion": SERVICE_VERSION,
+    }
+    dispatch["signature"] = _remote_hmac(dispatch)
+    raw = json.dumps(dispatch, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(worker["url"] + "/v1/remote/execute", data=raw, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=REMOTE_TIMEOUT_SECONDS) as resp:
+            response_raw = resp.read(MAX_REMOTE_RESPONSE_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read(4096).decode("utf-8", "replace")
+        raise HTTPException(status_code=502, detail=f"remote GPU worker rejected dispatch: {exc.code} {detail[:500]}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="remote GPU worker dispatch failed") from exc
+    if len(response_raw) > MAX_REMOTE_RESPONSE_BYTES:
+        raise HTTPException(status_code=502, detail="remote GPU worker response exceeded bounded size")
+    try:
+        response = json.loads(response_raw.decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="remote GPU worker returned invalid JSON") from exc
+    if not isinstance(response, dict) or response.get("schema") != REMOTE_WORKER_RESPONSE_SCHEMA or response.get("ok") is not True:
+        raise HTTPException(status_code=502, detail="remote GPU worker returned an invalid response contract")
+    remote_result = response.get("result")
+    if not isinstance(remote_result, dict):
+        raise HTTPException(status_code=502, detail="remote GPU worker response is missing result")
+    result_fp = _canonical_sha256(remote_result)
+    receipt = _validate_remote_receipt(response.get("receipt"), expected_dispatch_id=dispatch["dispatchId"], expected_worker_id=worker["workerId"], expected_operation=planned["operation"], expected_result_fingerprint=result_fp)
+    artifact = {
+        "schema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
+        "kind": "neural-remote-gpu-execution",
+        "dispatchId": dispatch["dispatchId"],
+        "workerId": worker["workerId"],
+        "operation": planned["operation"],
+        "selectedDevice": receipt.get("selectedDevice"),
+        "dispatchPlanFingerprint": planned["planFingerprint"],
+        "payloadFingerprint": planned["payloadFingerprint"],
+        "resultFingerprint": result_fp,
+        "receiptFingerprint": receipt.get("receiptFingerprint"),
+        "remoteRuntimeVersion": receipt.get("runtimeVersion"),
+        "evidenceBoundary": "remote-execution-receipt-is-compute-provenance-not-observed-evidence",
+    }
+    artifact["artifactFingerprint"] = _canonical_sha256(artifact)
+    return {"kind": "neural-remote-gpu-execution", "remoteExecutionArtifact": artifact, "remoteReceipt": receipt, "remoteResult": remote_result}
+
+
+def _prune_and_claim_remote_nonce(nonce: str, expires_at: int) -> None:
+    now = int(time.time())
+    with _REMOTE_NONCE_LOCK:
+        stale = [k for k, v in _REMOTE_NONCES.items() if v < now]
+        for key in stale:
+            _REMOTE_NONCES.pop(key, None)
+        if nonce in _REMOTE_NONCES:
+            raise HTTPException(status_code=409, detail="remote dispatch nonce has already been used")
+        _REMOTE_NONCES[nonce] = expires_at
+
+
+@app.post("/v1/remote/execute")
+def remote_worker_execute(envelope: dict[str, Any]) -> dict[str, Any]:
+    if not REMOTE_WORKER_MODE:
+        raise HTTPException(status_code=404, detail="remote GPU worker mode is disabled")
+    if not REMOTE_SHARED_SECRET or not REMOTE_WORKER_ID:
+        raise HTTPException(status_code=503, detail="remote GPU worker identity/signing configuration is incomplete")
+    if envelope.get("schema") != REMOTE_DISPATCH_ENVELOPE_SCHEMA:
+        raise HTTPException(status_code=400, detail="unsupported remote dispatch envelope")
+    supplied_sig = str(envelope.get("signature") or "")
+    base = {k: v for k, v in envelope.items() if k != "signature"}
+    if not supplied_sig or not hmac.compare_digest(supplied_sig, _remote_hmac(base)):
+        raise HTTPException(status_code=401, detail="remote dispatch signature verification failed")
+    now = int(time.time())
+    issued = int(envelope.get("issuedAt") or 0); expires = int(envelope.get("expiresAt") or 0)
+    if issued <= 0 or expires <= now or issued > now + 30 or expires - issued > REMOTE_ENVELOPE_TTL_SECONDS:
+        raise HTTPException(status_code=401, detail="remote dispatch envelope is expired or outside the allowed clock window")
+    if str(envelope.get("workerId") or "") != REMOTE_WORKER_ID:
+        raise HTTPException(status_code=403, detail="remote dispatch worker identity mismatch")
+    nonce = str(envelope.get("nonce") or "")
+    if len(nonce) < 16:
+        raise HTTPException(status_code=400, detail="remote dispatch nonce is invalid")
+    _prune_and_claim_remote_nonce(nonce, expires)
+    operation = str(envelope.get("operation") or "")
+    if operation not in REMOTE_ALLOWED_OPERATIONS or operation.startswith("workspace.neural.remote-"):
+        raise HTTPException(status_code=400, detail="remote dispatch operation is not allowed")
+    payload = envelope.get("payload")
+    if not isinstance(payload, dict) or _canonical_sha256(payload) != str(envelope.get("payloadFingerprint") or ""):
+        raise HTTPException(status_code=400, detail="remote dispatch payload fingerprint verification failed")
+    requested_device = str(envelope.get("requestedDevice") or "").lower()
+    if requested_device != REMOTE_WORKER_DEVICE:
+        raise HTTPException(status_code=409, detail="remote dispatch requested device does not match worker device contract")
+    local_payload = dict(payload)
+    local_payload["deviceRequest"] = {"preference": REMOTE_WORKER_DEVICE, "strict": True, "allowFallback": False}
+    local_envelope = {
+        "schema": "sc-workspace-polyglot-execution-envelope/1.0",
+        "workspaceVersion": SERVICE_VERSION,
+        "jobId": str(envelope.get("dispatchId") or "remote-job"),
+        "language": "neural",
+        "operation": operation,
+        "payload": local_payload,
+        "arbitraryCodeExecution": False,
+    }
+    started = int(time.time())
+    result = execute(local_envelope, authorization=f"Bearer {TOKEN}")
+    finished = int(time.time())
+    result_fp = _canonical_sha256(result)
+    receipt_base = {
+        "schema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "dispatchId": str(envelope.get("dispatchId")),
+        "workerId": REMOTE_WORKER_ID,
+        "operation": operation,
+        "payloadFingerprint": str(envelope.get("payloadFingerprint")),
+        "dispatchPlanFingerprint": str(envelope.get("dispatchPlanFingerprint")),
+        "resultFingerprint": result_fp,
+        "selectedDevice": result.get("device"),
+        "devicePlanFingerprint": (result.get("devicePlan") or {}).get("planFingerprint"),
+        "runtimeVersion": SERVICE_VERSION,
+        "engineVersion": torch.__version__,
+        "startedAt": started,
+        "finishedAt": finished,
+    }
+    receipt_fp = _canonical_sha256(receipt_base)
+    receipt_sig_base = dict(receipt_base); receipt_sig_base["receiptFingerprint"] = receipt_fp
+    receipt = dict(receipt_sig_base); receipt["signature"] = _remote_hmac(receipt_sig_base)
+    return {"ok": True, "schema": REMOTE_WORKER_RESPONSE_SCHEMA, "result": result, "receipt": receipt}
+
 
 # v3.33.0 Graph Neural Network Runtime Foundation.
 GRAPH_TENSOR_CONTRACT_SCHEMA = "sc-workspace-neural-graph-tensor-contract/1.0"
@@ -3300,173 +3824,6 @@ def _gnn_checkpoint_resume(payload: dict[str, Any]) -> dict[str, Any]:
     out["gnnTrainingArtifact"]["artifactFingerprint"]=_canonical_sha256({k:v for k,v in out["gnnTrainingArtifact"].items() if k!="artifactFingerprint"})
     return out
 
-
-# v3.35.0 GNN Evaluation, Explainability & Graph Embeddings.
-GNN_EVALUATION_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-evaluation-artifact/1.0"
-GNN_CALIBRATION_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-calibration-artifact/1.0"
-GNN_EXPLAINABILITY_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-explainability-artifact/1.0"
-GNN_EMBEDDING_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-embedding-artifact/1.0"
-GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA = "sc-workspace-neural-gnn-embedding-analysis-artifact/1.0"
-MAX_GNN_EVALUATION_ITEMS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_EVALUATION_ITEMS", "65536")), 262144))
-MAX_GNN_CALIBRATION_BINS = max(2, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_CALIBRATION_BINS", "25")), 100))
-MAX_GNN_EMBEDDING_PAIRS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_EMBEDDING_PAIRS", "4096")), 20000))
-MAX_GNN_NEIGHBOR_QUERIES = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_NEIGHBOR_QUERIES", "128")), 1024))
-MAX_GNN_NEIGHBORS = max(1, min(int(os.getenv("SC_WORKSPACE_NEURAL_MAX_GNN_NEIGHBORS", "50")), 256))
-GNN_EMBEDDING_METRICS = {"cosine", "euclidean", "dot"}
-
-
-def _gnn_forward_tensor(x: torch.Tensor, edges: list[list[int]], directed: bool, spec: dict[str, Any]) -> torch.Tensor:
-    n=int(x.shape[0]); src,dst=_gnn_edge_index(edges,n,directed,spec["addSelfLoops"])
-    w=torch.tensor(spec["weights"],dtype=torch.float32,device=x.device); b=torch.tensor(spec["bias"],dtype=torch.float32,device=x.device)
-    if spec["adapter"]=="gcn":
-        degree=torch.zeros(n,dtype=torch.float32,device=x.device); degree.index_add_(0,dst,torch.ones(dst.numel(),dtype=torch.float32,device=x.device)); degree=torch.clamp(degree,min=1.0)
-        coeff=torch.rsqrt(degree[src]*degree[dst]); agg=torch.zeros_like(x); agg.index_add_(0,dst,x[src]*coeff.unsqueeze(1)); y=agg@w+b
-    else:
-        agg=torch.zeros_like(x); counts=torch.zeros(n,dtype=torch.float32,device=x.device); agg.index_add_(0,dst,x[src]); counts.index_add_(0,dst,torch.ones(dst.numel(),dtype=torch.float32,device=x.device)); agg=agg/torch.clamp(counts,min=1.0).unsqueeze(1); y=torch.cat([x,agg],dim=1)@w+b
-    return _gnn_activate(y,spec["activation"])
-
-
-def _gnn_eval_vectors(payload: dict[str, Any]) -> tuple[str, torch.Tensor, torch.Tensor, list[str], str, dict[str, Any]]:
-    task=str(payload.get("task") or "").lower()
-    if task not in GNN_TRAINING_TASKS: raise HTTPException(status_code=400,detail="unsupported GNN evaluation task")
-    spec=_gnn_validate_model_spec(payload.get("modelSpec")); ids: list[str]=[]; source_fp=""
-    if task.startswith("node-"):
-        logits, _spec, source_fp, node_ids, _ec, _fc, _dir=_gnn_compute(payload); labels=payload.get("labels")
-        if not isinstance(labels,list) or len(labels)!=int(logits.shape[0]): raise HTTPException(status_code=400,detail="node evaluation labels must align with nodes")
-        raw_idx=payload.get("evaluationIndices")
-        idx=list(range(len(labels))) if raw_idx is None else _gnn_indices(raw_idx,len(labels),"evaluationIndices")
-        if len(idx)>MAX_GNN_EVALUATION_ITEMS: raise HTTPException(status_code=413,detail="GNN evaluation item limit exceeded")
-        t=torch.tensor(idx,dtype=torch.long,device=logits.device); pred=logits[t]; ids=[node_ids[i] for i in idx]
-        if task.endswith("multiclass-classification"): y=torch.tensor([labels[i] for i in idx],dtype=torch.long,device=logits.device)
-        else: y=torch.tensor([labels[i] for i in idx],dtype=torch.float32,device=logits.device)
-        return task,pred,y,ids,source_fp,spec
-    if task.startswith("graph-"):
-        graphs=payload.get("graphs")
-        if not isinstance(graphs,list) or not graphs or len(graphs)>MAX_GNN_GRAPHS: raise HTTPException(status_code=400,detail="graphs must be a bounded non-empty array")
-        raw_idx=payload.get("evaluationIndices"); idx=list(range(len(graphs))) if raw_idx is None else _gnn_indices(raw_idx,len(graphs),"evaluationIndices")
-        preds=[]; labels=[]; fps=[]
-        for i in idx:
-            g=graphs[i]
-            if not isinstance(g,dict): raise HTTPException(status_code=400,detail="each graph must be an object")
-            z,fp=_gnn_train_logits(g,spec,torch.tensor(spec["weights"],dtype=torch.float32,device=_current_device_name()),torch.tensor(spec["bias"],dtype=torch.float32,device=_current_device_name())); preds.append(z.mean(dim=0)); labels.append(g.get("label")); fps.append(fp); ids.append(str(g.get("graphId") or f"graph-{i}"))
-        pred=torch.stack(preds,dim=0)
-        y=torch.tensor(labels,dtype=torch.long if task.endswith("multiclass-classification") else torch.float32,device=pred.device)
-        return task,pred,y,ids,_canonical_sha256(fps),spec
-    logits,spec2,source_fp,node_ids,_ec,_fc,_dir=_gnn_compute(payload); examples=payload.get("linkExamples")
-    if not isinstance(examples,list) or not examples or len(examples)>MAX_GNN_EVALUATION_ITEMS: raise HTTPException(status_code=400,detail="linkExamples must be a bounded non-empty array")
-    raw_idx=payload.get("evaluationIndices"); idx=list(range(len(examples))) if raw_idx is None else _gnn_indices(raw_idx,len(examples),"evaluationIndices")
-    scores=[]; labels=[]
-    for i in idx:
-        ex=examples[i]
-        if not isinstance(ex,dict): raise HTTPException(status_code=400,detail="each link example must be an object")
-        a,b,l=ex.get("source"),ex.get("target"),ex.get("label")
-        if not isinstance(a,int) or isinstance(a,bool) or not isinstance(b,int) or isinstance(b,bool) or a<0 or b<0 or a>=len(node_ids) or b>=len(node_ids): raise HTTPException(status_code=400,detail="link example node index is invalid")
-        if l not in (0,1): raise HTTPException(status_code=400,detail="link example label must be 0 or 1")
-        scores.append((logits[a]*logits[b]).sum()/max(1.0,float(spec2["outputFeatures"])**0.5)); labels.append(float(l)); ids.append(f"{node_ids[a]}->{node_ids[b]}")
-    return task,torch.stack(scores).reshape(-1,1),torch.tensor(labels,dtype=torch.float32,device=logits.device),ids,source_fp,spec2
-
-
-def _gnn_metrics(task: str, pred: torch.Tensor, y: torch.Tensor) -> tuple[dict[str, Any], torch.Tensor | None]:
-    if task.endswith("regression"):
-        v=pred[:,0] if pred.ndim==2 else pred.reshape(-1); yy=y.to(torch.float32).reshape(-1); r=v-yy; mse=float(torch.mean(r*r).item()); mae=float(torch.mean(torch.abs(r)).item()); denom=float(torch.sum((yy-torch.mean(yy))**2).item()); r2=None if denom==0 else float(1.0-float(torch.sum(r*r).item())/denom)
-        return {"mse":mse,"rmse":math.sqrt(mse),"mae":mae,"r2":r2},None
-    if task.endswith("binary-classification") or task=="link-prediction":
-        raw=pred[:,0] if pred.ndim==2 else pred.reshape(-1); prob=torch.sigmoid(raw); yy=y.to(torch.float32).reshape(-1); cls=(prob>=0.5).to(torch.int64); yi=yy.to(torch.int64); tp=int(((cls==1)&(yi==1)).sum()); tn=int(((cls==0)&(yi==0)).sum()); fp=int(((cls==1)&(yi==0)).sum()); fn=int(((cls==0)&(yi==1)).sum()); eps=1e-7; ll=float(-(yy*torch.log(prob.clamp(eps,1-eps))+(1-yy)*torch.log((1-prob).clamp(eps,1-eps))).mean()); pr=tp/(tp+fp) if tp+fp else 0.0; rc=tp/(tp+fn) if tp+fn else 0.0; f1=2*pr*rc/(pr+rc) if pr+rc else 0.0
-        return {"accuracy":float((cls==yi).to(torch.float32).mean()),"logLoss":ll,"brierScore":float(torch.mean((prob-yy)**2)),"precision":pr,"recall":rc,"f1":f1,"rocAuc":_roc_auc_binary(prob,yy),"confusionMatrix":{"tn":tn,"fp":fp,"fn":fn,"tp":tp}},prob
-    if pred.ndim!=2 or int(pred.shape[1])<2: raise HTTPException(status_code=400,detail="multiclass GNN evaluation requires outputFeatures>=2")
-    yy=y.to(torch.long).reshape(-1); classes=int(pred.shape[1]); prob=torch.softmax(pred,dim=1); cls=torch.argmax(prob,dim=1); eps=1e-7; ll=float(-torch.log(prob[torch.arange(len(yy),device=prob.device),yy].clamp(eps,1.0)).mean()); confusion=[[int(((yy==a)&(cls==b)).sum()) for b in range(classes)] for a in range(classes)]; f1s=[]
-    for c in range(classes):
-        tp=confusion[c][c]; fp=sum(confusion[r][c] for r in range(classes) if r!=c); fn=sum(confusion[c][d] for d in range(classes) if d!=c); pr=tp/(tp+fp) if tp+fp else 0.0; rc=tp/(tp+fn) if tp+fn else 0.0; f1s.append(2*pr*rc/(pr+rc) if pr+rc else 0.0)
-    return {"accuracy":float((cls==yy).to(torch.float32).mean()),"logLoss":ll,"macroF1":sum(f1s)/classes,"confusionMatrix":confusion},prob
-
-
-def _gnn_evaluate(payload: dict[str, Any]) -> dict[str, Any]:
-    task,pred,y,ids,source_fp,spec=_gnn_eval_vectors(payload); metrics,_=_gnn_metrics(task,pred,y); artifact={"schema":GNN_EVALUATION_ARTIFACT_SCHEMA,"kind":"gnn-evaluation","task":task,"adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceGraphFingerprint":source_fp,"evaluationItemCount":len(ids),"evaluationIdsFingerprint":_canonical_sha256(ids),"metrics":metrics,"labelsPersisted":False,"predictionsPersisted":False,"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-evaluation","task":task,"metrics":metrics,"gnnEvaluationArtifact":artifact}
-
-
-def _gnn_calibration_report(payload: dict[str, Any]) -> dict[str, Any]:
-    task,pred,y,ids,source_fp,spec=_gnn_eval_vectors(payload)
-    if task.endswith("regression"): raise HTTPException(status_code=400,detail="GNN calibration requires a classification task")
-    metrics,prob=_gnn_metrics(task,pred,y); bins=payload.get("bins",10)
-    if not isinstance(bins,int) or isinstance(bins,bool) or bins<2 or bins>MAX_GNN_CALIBRATION_BINS: raise HTTPException(status_code=400,detail="bins is outside the governed range")
-    if prob is None: raise HTTPException(status_code=400,detail="classification probabilities unavailable")
-    if prob.ndim==2:
-        conf,cls=torch.max(prob,dim=1); correct=(cls==y.to(torch.long).reshape(-1)).to(torch.float32)
-    else:
-        conf=torch.maximum(prob,1-prob); cls=(prob>=0.5).to(torch.long); correct=(cls==y.to(torch.long).reshape(-1)).to(torch.float32)
-    rows=[]; ece=0.0; mce=0.0; n=max(1,int(conf.numel()))
-    for i in range(bins):
-        lo=i/bins; hi=(i+1)/bins; mask=(conf>=lo)&(conf<=hi if i==bins-1 else conf<hi); count=int(mask.sum())
-        if count: c=float(conf[mask].mean()); a=float(correct[mask].mean()); gap=abs(c-a); ece+=gap*count/n; mce=max(mce,gap); rows.append({"bin":i,"lower":lo,"upper":hi,"count":count,"meanConfidence":c,"accuracy":a,"gap":gap})
-    artifact={"schema":GNN_CALIBRATION_ARTIFACT_SCHEMA,"kind":"gnn-calibration","task":task,"modelSpecFingerprint":spec["modelSpecFingerprint"],"sourceGraphFingerprint":source_fp,"itemCount":len(ids),"bins":rows,"expectedCalibrationError":ece,"maximumCalibrationError":mce,"brierScore":metrics.get("brierScore"),"labelsPersisted":False,"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-calibration","task":task,"expectedCalibrationError":ece,"maximumCalibrationError":mce,"bins":rows,"gnnCalibrationArtifact":artifact}
-
-
-def _gnn_target(payload: dict[str, Any], node_count: int, output_count: int) -> tuple[int,int]:
-    node=payload.get("targetNodeIndex",0); out=payload.get("targetOutputIndex",0)
-    if not isinstance(node,int) or isinstance(node,bool) or node<0 or node>=node_count: raise HTTPException(status_code=400,detail="targetNodeIndex is invalid")
-    if not isinstance(out,int) or isinstance(out,bool) or out<0 or out>=output_count: raise HTTPException(status_code=400,detail="targetOutputIndex is invalid")
-    return node,out
-
-
-def _gnn_explain_gradient(payload: dict[str, Any]) -> dict[str, Any]:
-    x0,edges,node_ids,directed=_graph_components(payload); spec=_gnn_validate_model_spec(payload.get("modelSpec")); x=x0.detach().clone().requires_grad_(True); y=_gnn_forward_tensor(x,edges,directed,spec); node,out=_gnn_target(payload,len(node_ids),int(y.shape[1])); y[node,out].backward(); g=x.grad.detach(); vals=g.cpu().tolist(); artifact={"schema":GNN_EXPLAINABILITY_ARTIFACT_SCHEMA,"kind":"gnn-explainability","method":"input-gradient","targetNodeId":node_ids[node],"targetNodeIndex":node,"targetOutputIndex":out,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":_graph_fingerprint(payload["nodeFeatures"],edges,node_ids,directed),"attributionFingerprint":_canonical_sha256(vals),"nodeCount":len(node_ids),"featureCount":int(x.shape[1]),"isObservedEvidence":False,"attributionPolicy":"model-derived-sensitivity-not-causal-evidence"}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-explainability","method":"input-gradient","nodeIds":node_ids,"attributions":vals,"gnnExplainabilityArtifact":artifact}
-
-
-def _gnn_explain_occlusion(payload: dict[str, Any]) -> dict[str, Any]:
-    x,edges,node_ids,directed=_graph_components(payload); spec=_gnn_validate_model_spec(payload.get("modelSpec")); base=_gnn_forward_tensor(x,edges,directed,spec); node,out=_gnn_target(payload,len(node_ids),int(base.shape[1])); baseline=float(payload.get("occlusionValue",0.0));
-    if not math.isfinite(baseline): raise HTTPException(status_code=400,detail="occlusionValue must be finite")
-    scores=[]
-    for f in range(int(x.shape[1])):
-        xx=x.clone(); xx[:,f]=baseline; yy=_gnn_forward_tensor(xx,edges,directed,spec); scores.append(float((base[node,out]-yy[node,out]).detach().cpu().item()))
-    artifact={"schema":GNN_EXPLAINABILITY_ARTIFACT_SCHEMA,"kind":"gnn-explainability","method":"feature-occlusion","targetNodeId":node_ids[node],"targetNodeIndex":node,"targetOutputIndex":out,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":_graph_fingerprint(payload["nodeFeatures"],edges,node_ids,directed),"featureScores":scores,"occlusionValue":baseline,"isObservedEvidence":False,"attributionPolicy":"model-derived-perturbation-not-causal-evidence"}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-explainability","method":"feature-occlusion","featureScores":scores,"gnnExplainabilityArtifact":artifact}
-
-
-def _gnn_embedding_body(payload: dict[str, Any]) -> tuple[torch.Tensor,list[str],dict[str,Any],str]:
-    y,spec,graph_fp,node_ids,_ec,_fc,_dir=_gnn_compute(payload); norm=str(payload.get("normalization") or "none").lower()
-    if norm not in {"none","l2"}: raise HTTPException(status_code=400,detail="normalization must be none or l2")
-    z=y.detach()
-    if norm=="l2": z=torch.nn.functional.normalize(z,p=2,dim=1,eps=1e-12)
-    return z,node_ids,spec,graph_fp
-
-
-def _gnn_embedding_extract(payload: dict[str, Any]) -> dict[str, Any]:
-    z,node_ids,spec,graph_fp=_gnn_embedding_body(payload); nodes=z.cpu().tolist(); pooled=z.mean(dim=0).cpu().tolist(); artifact={"schema":GNN_EMBEDDING_ARTIFACT_SCHEMA,"kind":"gnn-embedding","adapter":spec["adapter"],"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"nodeCount":len(node_ids),"dimensions":int(z.shape[1]),"nodeIdsFingerprint":_canonical_sha256(node_ids),"nodeEmbeddingsFingerprint":_canonical_sha256(nodes),"graphEmbeddingFingerprint":_canonical_sha256(pooled),"normalization":str(payload.get("normalization") or "none").lower(),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding","nodeIds":node_ids,"nodeEmbeddings":nodes,"graphEmbedding":pooled,"gnnEmbeddingArtifact":artifact}
-
-
-def _gnn_similarity_value(a: torch.Tensor,b: torch.Tensor,metric: str) -> float:
-    if metric=="cosine": return float(torch.nn.functional.cosine_similarity(a.reshape(1,-1),b.reshape(1,-1),dim=1,eps=1e-12).item())
-    if metric=="euclidean": return float(torch.linalg.vector_norm(a-b).item())
-    return float(torch.dot(a,b).item())
-
-
-def _gnn_embedding_similarity(payload: dict[str, Any]) -> dict[str, Any]:
-    z,node_ids,spec,graph_fp=_gnn_embedding_body(payload); metric=str(payload.get("metric") or "cosine").lower()
-    if metric not in GNN_EMBEDDING_METRICS: raise HTTPException(status_code=400,detail="unsupported GNN embedding metric")
-    pairs=payload.get("pairs")
-    if not isinstance(pairs,list) or not pairs or len(pairs)>MAX_GNN_EMBEDDING_PAIRS: raise HTTPException(status_code=400,detail="pairs must be a bounded non-empty array")
-    out=[]
-    for p in pairs:
-        if not isinstance(p,list) or len(p)!=2 or not all(isinstance(i,int) and not isinstance(i,bool) and 0<=i<len(node_ids) for i in p): raise HTTPException(status_code=400,detail="each pair must contain two valid node indices")
-        a,b=p; out.append({"leftIndex":a,"rightIndex":b,"leftNodeId":node_ids[a],"rightNodeId":node_ids[b],"value":_gnn_similarity_value(z[a],z[b],metric)})
-    artifact={"schema":GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,"kind":"gnn-embedding-similarity","metric":metric,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"pairCount":len(out),"resultsFingerprint":_canonical_sha256(out),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding-similarity","metric":metric,"results":out,"gnnEmbeddingAnalysisArtifact":artifact}
-
-
-def _gnn_embedding_neighbors(payload: dict[str, Any]) -> dict[str, Any]:
-    z,node_ids,spec,graph_fp=_gnn_embedding_body(payload); metric=str(payload.get("metric") or "cosine").lower()
-    if metric not in GNN_EMBEDDING_METRICS: raise HTTPException(status_code=400,detail="unsupported GNN embedding metric")
-    queries=payload.get("queryNodeIndices"); topk=payload.get("topK",5)
-    if not isinstance(queries,list) or not queries or len(queries)>MAX_GNN_NEIGHBOR_QUERIES or not all(isinstance(i,int) and not isinstance(i,bool) and 0<=i<len(node_ids) for i in queries): raise HTTPException(status_code=400,detail="queryNodeIndices must be a bounded array of valid node indices")
-    if not isinstance(topk,int) or isinstance(topk,bool) or topk<1 or topk>MAX_GNN_NEIGHBORS: raise HTTPException(status_code=400,detail="topK is outside the governed range")
-    results=[]
-    for q in queries:
-        rows=[]
-        for j in range(len(node_ids)):
-            if j==q: continue
-            value=_gnn_similarity_value(z[q],z[j],metric); rows.append({"nodeIndex":j,"nodeId":node_ids[j],"value":value})
-        rows.sort(key=lambda r:r["value"],reverse=(metric!="euclidean")); results.append({"queryNodeIndex":q,"queryNodeId":node_ids[q],"neighbors":rows[:topk]})
-    artifact={"schema":GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,"kind":"gnn-embedding-neighbors","metric":metric,"modelSpecFingerprint":spec["modelSpecFingerprint"],"graphFingerprint":graph_fp,"queryCount":len(results),"topK":topk,"resultsFingerprint":_canonical_sha256(results),"isObservedEvidence":False}; artifact["artifactFingerprint"]=_canonical_sha256(artifact); return {"kind":"gnn-embedding-neighbors","metric":metric,"results":results,"gnnEmbeddingAnalysisArtifact":artifact}
-
-
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {
@@ -3484,7 +3841,7 @@ def health() -> dict[str, Any]:
         "torchDynamoPreloaded": True,
         "optimizerRuntimeWarm": OPTIMIZER_RUNTIME_WARM,
         "optimizerInitializationSerialized": True,
-        "devicePolicy": "governed-explicit-device-orchestration",
+        "devicePolicy": "governed-remote-gpu-execution-broker",
         "tensorDatasetTransformationInterchange": True,
         "tensorContractSchema": "sc-workspace-neural-tensor-contract/1.0",
         "datasetManifestSchema": "sc-workspace-neural-dataset-manifest/1.0",
@@ -3495,6 +3852,21 @@ def health() -> dict[str, Any]:
         "deviceInventorySchema": DEVICE_INVENTORY_SCHEMA,
         "devicePlanSchema": DEVICE_PLAN_SCHEMA,
         "deviceOrchestrationEnabled": True,
+        "remoteGpuExecutionBrokerEnabled": REMOTE_BROKER_ENABLED,
+        "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
+        "remoteWorkerInventorySchema": REMOTE_WORKER_INVENTORY_SCHEMA,
+        "remoteDispatchPlanSchema": REMOTE_DISPATCH_PLAN_SCHEMA,
+        "remoteDispatchEnvelopeSchema": REMOTE_DISPATCH_ENVELOPE_SCHEMA,
+        "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
+        "remoteBrokerOperations": ["remote-worker-inventory", "remote-dispatch-plan", "remote-execute", "remote-receipt-verify"],
+        "productionCertificationEnabled": True,
+        "productionCertificationProfile": PRODUCTION_CERTIFICATION_PROFILE,
+        "productionCertificationPlanSchema": PRODUCTION_CERTIFICATION_PLAN_SCHEMA,
+        "productionCertificationArtifactSchema": PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA,
+        "productionCertificationReportSchema": PRODUCTION_CERTIFICATION_REPORT_SCHEMA,
+        "productionCertificationOperations": ["certification-plan", "certification-execute", "certification-verify", "certification-report"],
+        "clientSuppliedRemoteWorkerUrlsAllowed": False,
         "deviceRequestModes": ["cpu", "auto", "accelerator", "cuda:N"],
         "acceleratorPolicyEnabled": ACCELERATOR_ENABLED,
         "graphNeuralNetworkRuntimeFoundation": True,
@@ -3515,14 +3887,6 @@ def health() -> dict[str, Any]:
         "gnnTrainingTasks": sorted(GNN_TRAINING_TASKS),
         "gnnTrainingOptimizers": sorted(GNN_TRAINING_OPTIMIZERS),
         "gnnCheckpointResumeEnabled": True,
-        "gnnEvaluationExplainabilityEmbeddingsEnabled": True,
-        "gnnEvaluationArtifactSchema": GNN_EVALUATION_ARTIFACT_SCHEMA,
-        "gnnCalibrationArtifactSchema": GNN_CALIBRATION_ARTIFACT_SCHEMA,
-        "gnnExplainabilityArtifactSchema": GNN_EXPLAINABILITY_ARTIFACT_SCHEMA,
-        "gnnEmbeddingArtifactSchema": GNN_EMBEDDING_ARTIFACT_SCHEMA,
-        "gnnEmbeddingAnalysisArtifactSchema": GNN_EMBEDDING_ANALYSIS_ARTIFACT_SCHEMA,
-        "gnnExplainabilityMethods": ["input-gradient", "feature-occlusion"],
-        "gnnEmbeddingMetrics": sorted(GNN_EMBEDDING_METRICS),
         "operations": sorted(OPERATIONS),
         "boundedOperationsOnly": True,
         "arbitraryCodeExecution": False,
@@ -3548,6 +3912,15 @@ def health() -> dict[str, Any]:
         "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
         "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
         "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
+        "remoteGpuExecutionBrokerEnabled": REMOTE_BROKER_ENABLED,
+        "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
+        "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
+        "productionCertificationEnabled": True,
+        "productionCertificationProfile": PRODUCTION_CERTIFICATION_PROFILE,
+        "productionCertificationPlanSchema": PRODUCTION_CERTIFICATION_PLAN_SCHEMA,
+        "productionCertificationArtifactSchema": PRODUCTION_CERTIFICATION_ARTIFACT_SCHEMA,
+        "productionCertificationReportSchema": PRODUCTION_CERTIFICATION_REPORT_SCHEMA,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,
@@ -3646,21 +4019,7 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
     device_plan = _resolve_device_plan(payload)
     device_token = _CURRENT_DEVICE.set(device_plan["selectedDevice"])
     seed = _seed(payload)
-    if operation == "workspace.neural.gnn-evaluate":
-        result = _gnn_evaluate(payload)
-    elif operation == "workspace.neural.gnn-calibration-report":
-        result = _gnn_calibration_report(payload)
-    elif operation == "workspace.neural.gnn-explain-gradient":
-        result = _gnn_explain_gradient(payload)
-    elif operation == "workspace.neural.gnn-explain-occlusion":
-        result = _gnn_explain_occlusion(payload)
-    elif operation == "workspace.neural.gnn-embedding-extract":
-        result = _gnn_embedding_extract(payload)
-    elif operation == "workspace.neural.gnn-embedding-similarity":
-        result = _gnn_embedding_similarity(payload)
-    elif operation == "workspace.neural.gnn-embedding-neighbors":
-        result = _gnn_embedding_neighbors(payload)
-    elif operation == "workspace.neural.gnn-split-plan":
+    if operation == "workspace.neural.gnn-split-plan":
         result = _gnn_split_plan(payload)
     elif operation == "workspace.neural.gnn-training-plan":
         result = _gnn_training_plan(payload)
@@ -3766,8 +4125,24 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         result = _batch_execute(payload)
     elif operation == "workspace.neural.hyperparameter-grid":
         result = _hyperparameter_grid(payload)
-    else:
+    elif operation == "workspace.neural.hyperparameter-random":
         result = _hyperparameter_random(payload)
+    elif operation == "workspace.neural.remote-worker-inventory":
+        result = _remote_worker_inventory(payload)
+    elif operation == "workspace.neural.remote-dispatch-plan":
+        result = _remote_dispatch_plan(payload)
+    elif operation == "workspace.neural.remote-execute":
+        result = _remote_execute(payload)
+    elif operation == "workspace.neural.remote-receipt-verify":
+        result = _remote_receipt_verify(payload)
+    elif operation == "workspace.neural.certification-plan":
+        result = _certification_plan(payload)
+    elif operation == "workspace.neural.certification-execute":
+        result = _certification_execute(payload)
+    elif operation == "workspace.neural.certification-verify":
+        result = _certification_verify(payload)
+    else:
+        result = _certification_report(payload)
     selected_device = _current_device_name()
     _CURRENT_DEVICE.reset(device_token)
     return {
@@ -3805,6 +4180,10 @@ def execute(envelope: dict[str, Any], authorization: str | None = Header(default
         "hyperparameterSearchArtifactSchema": NEURAL_SEARCH_SCHEMA,
         "maxNeuralBatchTrials": MAX_NEURAL_BATCH_TRIALS,
         "maxNeuralSearchEpochs": MAX_NEURAL_SEARCH_EPOCHS,
+        "remoteGpuExecutionBrokerEnabled": REMOTE_BROKER_ENABLED,
+        "remoteGpuWorkerMode": REMOTE_WORKER_MODE,
+        "remoteExecutionReceiptSchema": REMOTE_EXECUTION_RECEIPT_SCHEMA,
+        "remoteExecutionArtifactSchema": REMOTE_EXECUTION_ARTIFACT_SCHEMA,
         "evaluationCalibrationUncertaintyEnabled": True,
         "evaluationArtifactSchema": EVALUATION_ARTIFACT_SCHEMA,
         "calibrationArtifactSchema": CALIBRATION_ARTIFACT_SCHEMA,

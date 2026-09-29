@@ -50,10 +50,10 @@ def sage_spec():
 
 def test_health_and_registry():
     h = service.health()
-    assert tuple(int(x) for x in h["version"].split(".")[:3]) >= (3, 33, 0)
+    assert h["version"] == "3.33.0"
     assert h["graphNeuralNetworkRuntimeFoundation"] is True
     assert h["gnnAdapters"] == ["gcn", "graphsage-mean"]
-    assert isinstance(h["gnnTrainingEnabled"], bool)
+    assert h["gnnTrainingEnabled"] is False
     for op in [
         "workspace.neural.graph-tensor-contract",
         "workspace.neural.graph-dataset-project",

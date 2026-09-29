@@ -1,0 +1,42 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "product": "workspace",
+  "version": "3.35.0",
+  "title": "Workspace v3.35.0 \u2014 GNN Evaluation, Explainability & Graph Embeddings",
+  "rollbackBaseline": "3.34.0",
+  "databaseMigration": false,
+  "neuralOperationCount": 69,
+  "newOperations": [
+    "workspace.neural.gnn-evaluate",
+    "workspace.neural.gnn-calibration-report",
+    "workspace.neural.gnn-explain-gradient",
+    "workspace.neural.gnn-explain-occlusion",
+    "workspace.neural.gnn-embedding-extract",
+    "workspace.neural.gnn-embedding-similarity",
+    "workspace.neural.gnn-embedding-neighbors"
+  ],
+  "schemas": [
+    "sc-workspace-neural-gnn-evaluation-artifact/1.0",
+    "sc-workspace-neural-gnn-calibration-artifact/1.0",
+    "sc-workspace-neural-gnn-explainability-artifact/1.0",
+    "sc-workspace-neural-gnn-embedding-artifact/1.0",
+    "sc-workspace-neural-gnn-embedding-analysis-artifact/1.0"
+  ],
+  "capabilities": [
+    "node/graph/link evaluation",
+    "classification calibration",
+    "input-gradient explainability",
+    "feature-occlusion explainability",
+    "node and pooled graph embeddings",
+    "bounded embedding similarity",
+    "bounded nearest-neighbor search"
+  ],
+  "security": {
+    "arbitraryCode": false,
+    "externalPackages": false,
+    "serializedTorchModules": false,
+    "clientSuppliedRuntimeUrls": false,
+    "explanationsAreObservedEvidence": false
+  },
+  "typedEndpointCountExpected": 291
+}
