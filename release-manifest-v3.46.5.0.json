@@ -1,0 +1,16 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.5.0",
+  "title": "Optional Capability & Module Registry",
+  "predecessor": "3.46.4.0",
+  "rollbackRelease": "3.46.4.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "backendBehaviorChange": false,
+  "moduleRegistry": "app/core/workspace-module-registry-v34650.js",
+  "optionalModuleFailureIsolation": true,
+  "requiredModuleFailureBlocksBoot": true,
+  "capabilityResolution": true,
+  "dependencyAwareLoading": true,
+  "nextPlannedBuild": "3.46.6.0"
+}

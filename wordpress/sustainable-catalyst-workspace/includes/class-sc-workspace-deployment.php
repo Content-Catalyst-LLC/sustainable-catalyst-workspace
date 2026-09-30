@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '3.46.3.0';
-    const ROLLBACK_RELEASE = '3.46.3.0';
+    const PREVIOUS_RELEASE = '3.46.4.0';
+    const ROLLBACK_RELEASE = '3.46.4.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
     const CANONICAL_PLUGIN_ROOT = 'sustainable-catalyst-workspace';
@@ -24,6 +24,7 @@ final class SC_Workspace_Deployment_Hardening {
     const MIN_CURRENT_SCRIPT_BYTES = 5000;
     const MIN_LIFECYCLE_RUNTIME_BYTES = 10000;
     const MIN_APPLICATION_KERNEL_BYTES = 4000;
+    const MIN_MODULE_REGISTRY_BYTES = 6000;
     const MIN_STATE_STORE_RUNTIME_BYTES = 1500;
     const MIN_PERSISTENCE_RUNTIME_BYTES = 4500;
     const MIN_PROJECT_RUNTIME_BYTES = 4500;
@@ -45,9 +46,10 @@ final class SC_Workspace_Deployment_Hardening {
             'current_script' => 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js',
             'current_style' => 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css',
             'typed_client' => 'assets/js/sc-workspace-typed-client-v3100.js',
-            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v34640.js',
+            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v34650.js',
             'host_adapter_contract' => 'assets/js/sc-workspace-host-adapter-contract-v34620.js',
-            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v34640.js',
+            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v34650.js',
+            'module_registry' => 'assets/js/sc-workspace-module-registry-v34650.js',
             'state_store_runtime' => 'assets/js/sc-workspace-state-store-v34640.js',
             'persistence_runtime' => 'assets/js/sc-workspace-persistence-runtime-v34640.js',
             'project_runtime' => 'assets/js/sc-workspace-project-runtime-v34630.js',
@@ -128,16 +130,19 @@ public static function preflight() {
     $current_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js';
     $style_bytes = (is_file($current_style) && is_readable($current_style)) ? (int) filesize($current_style) : 0;
     $script_bytes = (is_file($current_script) && is_readable($current_script)) ? (int) filesize($current_script) : 0;
-    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v34640.js';
+    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v34650.js';
     $lifecycle_runtime_bytes = (is_file($lifecycle_runtime) && is_readable($lifecycle_runtime)) ? (int) filesize($lifecycle_runtime) : 0;
     $lifecycle_runtime_ok = $lifecycle_runtime_bytes >= self::MIN_LIFECYCLE_RUNTIME_BYTES;
-    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v34640.js';
+    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v34650.js';
     $host_adapter_contract = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-host-adapter-contract-v34620.js';
     $wordpress_host_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-host-adapter-v34620.js';
     $application_kernel_bytes = (is_file($application_kernel) && is_readable($application_kernel)) ? (int) filesize($application_kernel) : 0;
     $host_adapter_contract_bytes = (is_file($host_adapter_contract) && is_readable($host_adapter_contract)) ? (int) filesize($host_adapter_contract) : 0;
     $wordpress_host_adapter_bytes = (is_file($wordpress_host_adapter) && is_readable($wordpress_host_adapter)) ? (int) filesize($wordpress_host_adapter) : 0;
     $application_kernel_ok = $application_kernel_bytes >= self::MIN_APPLICATION_KERNEL_BYTES;
+    $module_registry = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-module-registry-v34650.js';
+    $module_registry_bytes = (is_file($module_registry) && is_readable($module_registry)) ? (int) filesize($module_registry) : 0;
+    $module_registry_ok = $module_registry_bytes >= self::MIN_MODULE_REGISTRY_BYTES;
     $state_store_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-state-store-v34640.js';
     $persistence_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-persistence-runtime-v34640.js';
     $state_store_runtime_bytes = (is_file($state_store_runtime) && is_readable($state_store_runtime)) ? (int) filesize($state_store_runtime) : 0;
@@ -170,7 +175,7 @@ public static function preflight() {
     return array(
         'schema' => self::SCHEMA,
         'workspace_version' => SC_WORKSPACE_VERSION,
-        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok && $lifecycle_runtime_ok && $application_kernel_ok && $project_runtime_ok && $state_persistence_boundary_ok && $host_boundary_ok && $transport_auth_api_boundary_ok,
+        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok && $lifecycle_runtime_ok && $application_kernel_ok && $module_registry_ok && $project_runtime_ok && $state_persistence_boundary_ok && $host_boundary_ok && $transport_auth_api_boundary_ok,
         'required_file_count' => count(self::required_files()),
         'missing_required_file_count' => count($missing),
         'missing_required_files' => $missing,
@@ -185,6 +190,8 @@ public static function preflight() {
         'lifecycle_runtime_ok' => $lifecycle_runtime_ok,
         'application_kernel_bytes' => $application_kernel_bytes,
         'application_kernel_ok' => $application_kernel_ok,
+        'module_registry_bytes' => $module_registry_bytes,
+        'module_registry_ok' => $module_registry_ok,
         'state_store_runtime_bytes' => $state_store_runtime_bytes,
         'persistence_runtime_bytes' => $persistence_runtime_bytes,
         'state_persistence_boundary_ok' => $state_persistence_boundary_ok,
