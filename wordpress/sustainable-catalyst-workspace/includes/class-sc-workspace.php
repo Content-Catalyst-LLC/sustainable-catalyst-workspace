@@ -4378,7 +4378,7 @@ public function research_templates_contract() {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.1.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.2.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -5065,7 +5065,7 @@ public function research_templates_contract() {
 
         wp_enqueue_script(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v3.46.1.0.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v3.46.2.0.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
@@ -5233,10 +5233,15 @@ public function research_templates_contract() {
             'transport' => 'wordpress-server-proxy',
             'authenticated' => $authenticated,
             'assetBase' => SC_WORKSPACE_URL . 'assets/js/',
-            'legacyCompatUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-local-project-compat-v34610.js'),
-            'hostAdapterContractUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-host-adapter-contract-v34610.js'),
-            'applicationKernelUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-application-kernel-v34610.js'),
-            'hostAdapterUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-host-adapter-v34610.js'),
+            'legacyCompatUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-local-project-compat-v34620.js'),
+            'hostAdapterContractUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-host-adapter-contract-v34620.js'),
+            'applicationKernelUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-application-kernel-v34620.js'),
+            'transportRuntimeUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-transport-v34620.js'),
+            'authContextRuntimeUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-auth-context-v34620.js'),
+            'apiClientRuntimeUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-api-client-v34620.js'),
+            'transportAdapterUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-transport-adapter-v34620.js'),
+            'authAdapterUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-auth-adapter-v34620.js'),
+            'hostAdapterUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-host-adapter-v34620.js'),
             'hostAdapterMode' => 'explicit-contract',
             'wordpressRequired' => false,
         ));
@@ -5257,7 +5262,7 @@ public function research_templates_contract() {
             'serverProjectStorage' => 'manual-backup-plus-explicit-sync-head',
             'restRoot' => esc_url_raw(rest_url('sc-workspace/v1/')),
             'restNonce' => $authenticated ? wp_create_nonce('wp_rest') : '',
-            'legacyCompatUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-local-project-compat-v34610.js'),
+            'legacyCompatUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-local-project-compat-v34620.js'),
             'frontendMode' => 'standalone-core-with-wordpress-adapter',
         ));
     }

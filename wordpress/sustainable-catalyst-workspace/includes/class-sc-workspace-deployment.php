@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '3.46.0.4';
-    const ROLLBACK_RELEASE = '3.46.0.4';
+    const PREVIOUS_RELEASE = '3.46.1.0';
+    const ROLLBACK_RELEASE = '3.46.1.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
     const CANONICAL_PLUGIN_ROOT = 'sustainable-catalyst-workspace';
@@ -26,6 +26,11 @@ final class SC_Workspace_Deployment_Hardening {
     const MIN_APPLICATION_KERNEL_BYTES = 4000;
     const MIN_HOST_ADAPTER_CONTRACT_BYTES = 1500;
     const MIN_HOST_ADAPTER_BYTES = 1500;
+    const MIN_TRANSPORT_RUNTIME_BYTES = 2000;
+    const MIN_AUTH_CONTEXT_RUNTIME_BYTES = 1200;
+    const MIN_API_CLIENT_RUNTIME_BYTES = 1200;
+    const MIN_TRANSPORT_ADAPTER_BYTES = 700;
+    const MIN_AUTH_ADAPTER_BYTES = 700;
 
     public static function required_files() {
         return array(
@@ -37,10 +42,15 @@ final class SC_Workspace_Deployment_Hardening {
             'current_script' => 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js',
             'current_style' => 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css',
             'typed_client' => 'assets/js/sc-workspace-typed-client-v3100.js',
-            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v34610.js',
-            'host_adapter_contract' => 'assets/js/sc-workspace-host-adapter-contract-v34610.js',
-            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v34610.js',
-            'wordpress_host_adapter' => 'assets/js/sc-workspace-wordpress-host-adapter-v34610.js',
+            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v34620.js',
+            'host_adapter_contract' => 'assets/js/sc-workspace-host-adapter-contract-v34620.js',
+            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v34620.js',
+            'wordpress_host_adapter' => 'assets/js/sc-workspace-wordpress-host-adapter-v34620.js',
+            'transport_runtime' => 'assets/js/sc-workspace-transport-v34620.js',
+            'auth_context_runtime' => 'assets/js/sc-workspace-auth-context-v34620.js',
+            'api_client_runtime' => 'assets/js/sc-workspace-api-client-v34620.js',
+            'wordpress_transport_adapter' => 'assets/js/sc-workspace-wordpress-transport-adapter-v34620.js',
+            'wordpress_auth_adapter' => 'assets/js/sc-workspace-wordpress-auth-adapter-v34620.js',
             'deployment_runtime' => 'assets/js/sc-workspace-wordpress-deployment-hardening-v1.js',
             'deployment_ui' => 'assets/js/sc-workspace-wordpress-deployment-hardening-ui-v1.js',
             'production_certification' => 'includes/class-sc-workspace-production-certification.php',
@@ -112,17 +122,28 @@ public static function preflight() {
     $current_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js';
     $style_bytes = (is_file($current_style) && is_readable($current_style)) ? (int) filesize($current_style) : 0;
     $script_bytes = (is_file($current_script) && is_readable($current_script)) ? (int) filesize($current_script) : 0;
-    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v34610.js';
+    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v34620.js';
     $lifecycle_runtime_bytes = (is_file($lifecycle_runtime) && is_readable($lifecycle_runtime)) ? (int) filesize($lifecycle_runtime) : 0;
     $lifecycle_runtime_ok = $lifecycle_runtime_bytes >= self::MIN_LIFECYCLE_RUNTIME_BYTES;
-    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v34610.js';
-    $host_adapter_contract = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-host-adapter-contract-v34610.js';
-    $wordpress_host_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-host-adapter-v34610.js';
+    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v34620.js';
+    $host_adapter_contract = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-host-adapter-contract-v34620.js';
+    $wordpress_host_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-host-adapter-v34620.js';
     $application_kernel_bytes = (is_file($application_kernel) && is_readable($application_kernel)) ? (int) filesize($application_kernel) : 0;
     $host_adapter_contract_bytes = (is_file($host_adapter_contract) && is_readable($host_adapter_contract)) ? (int) filesize($host_adapter_contract) : 0;
     $wordpress_host_adapter_bytes = (is_file($wordpress_host_adapter) && is_readable($wordpress_host_adapter)) ? (int) filesize($wordpress_host_adapter) : 0;
     $application_kernel_ok = $application_kernel_bytes >= self::MIN_APPLICATION_KERNEL_BYTES;
     $host_boundary_ok = $host_adapter_contract_bytes >= self::MIN_HOST_ADAPTER_CONTRACT_BYTES && $wordpress_host_adapter_bytes >= self::MIN_HOST_ADAPTER_BYTES;
+    $transport_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-transport-v34620.js';
+    $auth_context_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-auth-context-v34620.js';
+    $api_client_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-api-client-v34620.js';
+    $wordpress_transport_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-transport-adapter-v34620.js';
+    $wordpress_auth_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-auth-adapter-v34620.js';
+    $transport_runtime_bytes = (is_file($transport_runtime) && is_readable($transport_runtime)) ? (int) filesize($transport_runtime) : 0;
+    $auth_context_runtime_bytes = (is_file($auth_context_runtime) && is_readable($auth_context_runtime)) ? (int) filesize($auth_context_runtime) : 0;
+    $api_client_runtime_bytes = (is_file($api_client_runtime) && is_readable($api_client_runtime)) ? (int) filesize($api_client_runtime) : 0;
+    $wordpress_transport_adapter_bytes = (is_file($wordpress_transport_adapter) && is_readable($wordpress_transport_adapter)) ? (int) filesize($wordpress_transport_adapter) : 0;
+    $wordpress_auth_adapter_bytes = (is_file($wordpress_auth_adapter) && is_readable($wordpress_auth_adapter)) ? (int) filesize($wordpress_auth_adapter) : 0;
+    $transport_auth_api_boundary_ok = $transport_runtime_bytes >= self::MIN_TRANSPORT_RUNTIME_BYTES && $auth_context_runtime_bytes >= self::MIN_AUTH_CONTEXT_RUNTIME_BYTES && $api_client_runtime_bytes >= self::MIN_API_CLIENT_RUNTIME_BYTES && $wordpress_transport_adapter_bytes >= self::MIN_TRANSPORT_ADAPTER_BYTES && $wordpress_auth_adapter_bytes >= self::MIN_AUTH_ADAPTER_BYTES;
     $asset_continuity_ok = $style_bytes >= self::MIN_CURRENT_STYLE_BYTES && $script_bytes >= self::MIN_CURRENT_SCRIPT_BYTES;
     $previous_style = SC_WORKSPACE_DIR . 'assets/css/workspace-v' . self::PREVIOUS_RELEASE . '.css';
     $previous_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . self::PREVIOUS_RELEASE . '.js';
@@ -135,7 +156,7 @@ public static function preflight() {
     return array(
         'schema' => self::SCHEMA,
         'workspace_version' => SC_WORKSPACE_VERSION,
-        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok && $lifecycle_runtime_ok && $application_kernel_ok && $host_boundary_ok,
+        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok && $lifecycle_runtime_ok && $application_kernel_ok && $host_boundary_ok && $transport_auth_api_boundary_ok,
         'required_file_count' => count(self::required_files()),
         'missing_required_file_count' => count($missing),
         'missing_required_files' => $missing,
@@ -153,6 +174,12 @@ public static function preflight() {
         'host_adapter_contract_bytes' => $host_adapter_contract_bytes,
         'wordpress_host_adapter_bytes' => $wordpress_host_adapter_bytes,
         'host_boundary_ok' => $host_boundary_ok,
+        'transport_runtime_bytes' => $transport_runtime_bytes,
+        'auth_context_runtime_bytes' => $auth_context_runtime_bytes,
+        'api_client_runtime_bytes' => $api_client_runtime_bytes,
+        'wordpress_transport_adapter_bytes' => $wordpress_transport_adapter_bytes,
+        'wordpress_auth_adapter_bytes' => $wordpress_auth_adapter_bytes,
+        'transport_auth_api_boundary_ok' => $transport_auth_api_boundary_ok,
         'asset_continuity_ok' => $asset_continuity_ok,
         'previous_release' => self::PREVIOUS_RELEASE,
         'previous_style_bytes' => $previous_style_bytes,
@@ -333,6 +360,11 @@ public static function preflight() {
             'host_adapter_contract_required' => true,
             'wordpress_required_for_application_kernel' => false,
             'core_wordpress_imports' => 0,
+            'transport_decoupled_from_host_adapter' => true,
+            'authentication_decoupled_from_transport' => true,
+            'api_client_host_neutral' => true,
+            'standalone_direct_transport' => true,
+            'wordpress_proxy_transport_adapter' => true,
             'project_lifecycle_runtime_minimum_bytes' => self::MIN_LIFECYCLE_RUNTIME_BYTES,
             'registry_pending_detection' => true,
             'rollback_release' => self::ROLLBACK_RELEASE,

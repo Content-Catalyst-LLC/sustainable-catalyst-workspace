@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('assert');const path=require('path');const root=path.resolve(__dirname,'../..');
+const contract=require(path.join(root,'app/core/workspace-host-adapter-contract-v11.js'));
+const transportFactory=require(path.join(root,'app/client/workspace-transport-v34620.js'));
+const authFactory=require(path.join(root,'app/client/workspace-auth-context-v34620.js'));
+const apiFactory=require(path.join(root,'app/client/workspace-api-client-v34620.js'));
+const kernelFactory=require(path.join(root,'app/core/workspace-application-kernel-v34620.js'));
+let observed=null;
+const fakeFetch=async(url,init)=>{observed={url,init};return{ok:true,status:200,headers:{get(){return'application/json';}},async json(){return{ok:true,route:url,method:init.method};},async text(){return'';}};};
+const host=contract.create({host:'standalone',workspaceVersion:'3.46.2.0',assetBase:'https://example.invalid/assets/'});
+const transport=transportFactory.createDirect({baseUrl:'https://workspace-api.example.test',fetchImpl:fakeFetch});
+const auth=authFactory.create({name:'test-bearer',mode:'test',authenticated:true,headerProvider:()=>({Authorization:'Bearer test-token'})});
+const api=apiFactory.create({transport,auth});
+const projects=[];const lifecycle={name:'memory-project-lifecycle',version:'3.46.2.0',listProjects(){return projects.map(p=>({...p}));},createProject(input){const p={id:'p1',title:input.title||'Untitled'};projects.push(p);return{...p};},openProject(id){const p=projects.find(x=>x.id===id);return p?{...p}:null;},deleteProject(id){const i=projects.findIndex(x=>x.id===id);if(i<0)return false;projects.splice(i,1);return true;}};
+(async()=>{const kernel=kernelFactory.createKernel({hostConfig:{host:'standalone'}});kernel.registerHostAdapter(host);kernel.registerTransport(transport);kernel.registerAuth(auth);kernel.registerApiClient(api);kernel.registerProjectLifecycle(lifecycle);const state=await kernel.boot();assert.equal(state.booted,true);assert.equal(state.transportRegistered,true);assert.equal(state.authRegistered,true);assert.equal(state.apiClientRegistered,true);assert.equal(state.wordpressRequired,false);const response=await kernel.api().get('/health');assert.equal(response.ok,true);assert.equal(observed.url,'https://workspace-api.example.test/health');assert.equal(observed.init.headers.Authorization,'Bearer test-token');const created=await kernel.createProject({title:'Kernel transport project'});assert.equal(created.id,'p1');assert.equal(await kernel.deleteProject(created.id),true);console.log('WORKSPACE_STANDALONE_BOOT=PASS');console.log('WORKSPACE_BACKEND_DIRECT_TRANSPORT=PASS');console.log('WORKSPACE_AUTH_CONTEXT_HOST_NEUTRAL=PASS');console.log('WORKSPACE_API_CLIENT_HOST_NEUTRAL=PASS');console.log('WORKSPACE_PROJECT_LIFECYCLE_CONTINUITY=PASS');})().catch(e=>{console.error(e);process.exit(1);});

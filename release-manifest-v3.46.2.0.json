@@ -1,0 +1,13 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.2.0",
+  "title": "Transport, Authentication & API Adapter Decoupling",
+  "predecessor": "3.46.1.0",
+  "rollbackRelease": "3.46.1.0",
+  "databaseMigration": false,
+  "hostAdapterOwnsTransport": false,
+  "hostAdapterOwnsAuthentication": false,
+  "apiClientHostNeutral": true,
+  "standaloneDirectTransport": true,
+  "nextPlannedBuild": "3.46.3.0"
+}
