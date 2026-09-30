@@ -1,0 +1,12 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.4.0",
+  "title": "Canonical State & Persistence Boundary Decoupling",
+  "predecessor": "3.46.3.0",
+  "rollbackRelease": "3.46.3.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "canonicalStateStore": "app/state/workspace-state-store-v34640.js",
+  "canonicalPersistenceRuntime": "app/state/workspace-persistence-runtime-v34640.js",
+  "nextPlannedBuild": "3.46.5.0"
+}
