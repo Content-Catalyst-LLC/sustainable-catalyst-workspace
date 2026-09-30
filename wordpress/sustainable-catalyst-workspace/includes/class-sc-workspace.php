@@ -4382,24 +4382,24 @@ public function research_templates_contract() {
 
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.8.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.9.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
 
         wp_enqueue_script(
-            'sc-workspace-wordpress-thin-adapter-v34680',
-            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v34680.js',
+            'sc-workspace-wordpress-thin-adapter-v34690',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v34690.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-wordpress-thin-adapter-v34680', 'SCWorkspaceWordPressBridge', array(
+        wp_localize_script('sc-workspace-wordpress-thin-adapter-v34690', 'SCWorkspaceWordPressBridge', array(
             'schema' => 'sc-workspace-wordpress-thin-bridge/1.1',
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'host' => 'wordpress',
-            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v34680.js'),
+            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v34690.js'),
             'legacyPhpScriptGraphRetired' => true,
             'applicationModuleBoot' => 'javascript-owned',
             'hostAgnosticAssetPipeline' => true,

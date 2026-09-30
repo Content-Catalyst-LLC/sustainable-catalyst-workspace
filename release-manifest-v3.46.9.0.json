@@ -1,0 +1,15 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.9.0",
+  "title": "Standalone Runtime Production Certification",
+  "predecessor": "3.46.8.0",
+  "rollbackRelease": "3.46.8.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "standaloneCertificationHarness": "build/certify_workspace_standalone_v34690.py",
+  "standaloneRuntimeCertification": "app/standalone/workspace-standalone-production-certification-v34690.js",
+  "staticCertificationReport": "standalone/production-certification-v34690.json",
+  "liveBackendProbeOptionalAtBuild": true,
+  "wordpressAbsentCertification": true,
+  "nextPlannedBuild": "3.46.10.0"
+}

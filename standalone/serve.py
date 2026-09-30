@@ -20,7 +20,7 @@ def main():
     root = Path(__file__).resolve().parent
     os.chdir(root)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f"Workspace standalone v3.46.8.0: http://{args.host}:{args.port}")
+    print(f"Workspace standalone v3.46.9.0: http://{args.host}:{args.port}")
     server.serve_forever()
 
 if __name__ == "__main__":

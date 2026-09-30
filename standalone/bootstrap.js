@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const RELEASE = '3.46.8.0';
+  const RELEASE = '3.46.9.0';
   const config = window.SCWorkspaceStandaloneConfig || {};
 
   const status = (message, state = 'loading') => {
@@ -30,7 +30,7 @@
   }
 
   async function loadManifest() {
-    await loadScriptUrl(asset('sc-workspace-runtime-asset-manifest-v34680.js'), 'runtime-manifest');
+    await loadScriptUrl(asset('sc-workspace-runtime-asset-manifest-v34690.js'), 'runtime-manifest');
     const manifest = window.SCWorkspaceRuntimeAssetManifest;
     if (!manifest || manifest.schema !== 'sc-workspace-runtime-asset-manifest/1.0' || manifest.version !== RELEASE || manifest.host !== 'standalone') {
       throw new Error('Standalone Workspace runtime asset manifest is invalid');
