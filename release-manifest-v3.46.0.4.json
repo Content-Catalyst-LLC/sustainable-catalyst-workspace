@@ -1,0 +1,15 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.0.4",
+  "title": "Cache-Busted Project Lifecycle Runtime Repair",
+  "predecessor": "3.46.0.3",
+  "rollbackRelease": "3.46.0.3",
+  "databaseMigration": false,
+  "backendBehaviorChange": false,
+  "projectLifecycleRuntime": "assets/js/sc-workspace-local-project-compat-v346004.js",
+  "projectLifecycleRuntimeVersion": "3.46.0.4",
+  "cacheBustQuery": "ver=3.46.0.4",
+  "staleCompatibilityScriptReplacement": true,
+  "deleteSemanticsChanged": false,
+  "nextPlannedBuild": "3.46.1.0"
+}
