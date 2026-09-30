@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="application-name" content="Sustainable Catalyst Workspace">
+  <title>Sustainable Catalyst Workspace</title>
+  <link rel="stylesheet" href="./workspace-standalone-shell-v34660.css">
+</head>
+<body>
+  <div class="scws-app" data-sc-workspace-standalone data-version="3.46.6.0">
+    <header class="scws-header">
+      <div>
+        <p class="scws-kicker">Sustainable Catalyst</p>
+        <h1>Workspace</h1>
+      </div>
+      <div class="scws-status" data-scws-shell-status data-state="loading">Starting Workspace…</div>
+    </header>
+
+    <div class="scws-layout">
+      <aside class="scws-sidebar">
+        <div class="scws-toolbar">
+          <h2>Projects</h2>
+          <button class="scws-button" type="button" data-scws-new-project>New project</button>
+        </div>
+
+        <form class="scws-form" data-scws-create-form hidden>
+          <label>Title
+            <input name="title" maxlength="120" required>
+          </label>
+          <label>Description
+            <textarea name="description" rows="3" maxlength="600"></textarea>
+          </label>
+          <div class="scws-form-actions">
+            <button class="scws-button" type="submit">Create</button>
+            <button class="scws-button scws-button-secondary" type="button" data-scws-cancel-create>Cancel</button>
+          </div>
+        </form>
+
+        <div class="scws-empty" data-scws-empty>
+          No Workspace Projects yet. Create one to verify the standalone project runtime.
+        </div>
+        <div class="scws-project-list" data-scws-project-list></div>
+      </aside>
+
+      <main class="scws-main">
+        <section class="scws-panel" data-scws-project-detail hidden>
+          <p class="scws-kicker">Active project</p>
+          <h2 data-scws-detail-title></h2>
+          <p data-scws-detail-description></p>
+          <div class="scws-meta">
+            <div><span>Project ID</span><code data-scws-detail-id></code></div>
+            <div><span>Updated</span><strong data-scws-detail-updated></strong></div>
+          </div>
+          <button class="scws-button scws-button-danger" type="button" data-scws-delete>Delete from this browser</button>
+        </section>
+
+        <section class="scws-panel">
+          <p class="scws-kicker">Backend</p>
+          <h2>Direct transport</h2>
+          <p>The standalone shell uses the host-neutral API client and direct backend transport. It does not require a WordPress REST proxy.</p>
+          <div class="scws-backend">
+            <button class="scws-button scws-button-secondary" type="button" data-scws-check-backend>Check backend</button>
+            <strong class="scws-backend-status" data-scws-backend-status>Not checked</strong>
+          </div>
+        </section>
+
+        <section class="scws-panel">
+          <p class="scws-kicker">Runtime</p>
+          <h2>Standalone diagnostics</h2>
+          <pre class="scws-diagnostics" data-scws-diagnostics></pre>
+        </section>
+
+        <p class="scws-footnote">Workspace v3.46.6.0 · standalone host · WordPress not required for application boot.</p>
+      </main>
+    </div>
+  </div>
+
+  <script src="./config.js"></script>
+  <script src="./bootstrap.js"></script>
+</body>
+</html>

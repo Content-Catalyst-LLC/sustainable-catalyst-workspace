@@ -1,0 +1,17 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.6.0",
+  "title": "Standalone Web Application Shell",
+  "predecessor": "3.46.5.0",
+  "rollbackRelease": "3.46.5.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "backendBehaviorChange": false,
+  "standaloneDistribution": "standalone/",
+  "standaloneRuntime": "app/standalone/workspace-standalone-runtime-v34660.js",
+  "standaloneHostAdapter": "adapters/standalone/workspace-standalone-host-adapter-v34660.js",
+  "wordpressRequiredForStandaloneBoot": false,
+  "directBackendTransport": true,
+  "automaticBackendRequestAtBoot": false,
+  "nextPlannedBuild": "3.46.7.0"
+}

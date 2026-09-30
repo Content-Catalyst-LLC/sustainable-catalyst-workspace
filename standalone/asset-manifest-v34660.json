@@ -1,0 +1,24 @@
+{
+  "schema": "sc-workspace-standalone-asset-manifest/1.0",
+  "version": "3.46.6.0",
+  "entry": "index.html",
+  "config": "config.js",
+  "bootstrap": "bootstrap.js",
+  "style": "workspace-standalone-shell-v34660.css",
+  "assets": [
+    "assets/sc-workspace-host-adapter-contract-v34620.js",
+    "assets/sc-workspace-transport-v34620.js",
+    "assets/sc-workspace-auth-context-v34620.js",
+    "assets/sc-workspace-api-client-v34620.js",
+    "assets/sc-workspace-persistence-runtime-v34640.js",
+    "assets/sc-workspace-state-store-v34640.js",
+    "assets/sc-workspace-project-runtime-v34630.js",
+    "assets/sc-workspace-module-registry-v34650.js",
+    "assets/sc-workspace-application-kernel-v34660.js",
+    "assets/sc-workspace-standalone-host-adapter-v34660.js",
+    "assets/sc-workspace-standalone-runtime-v34660.js",
+    "assets/workspace-standalone-shell-v34660.js"
+  ],
+  "wordpressRequired": false,
+  "directBackendTransport": true
+}
