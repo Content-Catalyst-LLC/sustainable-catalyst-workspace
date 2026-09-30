@@ -1,0 +1,16 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.1.0",
+  "title": "Workspace Application Kernel & Host Boundary",
+  "predecessor": "3.46.0.4",
+  "rollbackRelease": "3.46.0.4",
+  "databaseMigration": false,
+  "backendBehaviorChange": false,
+  "applicationKernel": "app/core/workspace-application-kernel-v34610.js",
+  "hostAdapterContract": "app/core/workspace-host-adapter-contract-v1.js",
+  "wordpressAdapter": "adapters/wordpress/workspace-wordpress-host-adapter-v34610.js",
+  "projectLifecycleProvider": "temporary compatibility provider",
+  "wordpressRequiredForKernelBoot": false,
+  "coreWordpressImports": 0,
+  "nextPlannedBuild": "3.46.2.0"
+}
