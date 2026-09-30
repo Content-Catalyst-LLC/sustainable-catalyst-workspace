@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sustainable Catalyst Workspace
  * Plugin URI: https://sustainablecatalyst.com/platform/
- * Version: 3.46.0.1
+ * Version: 3.46.0.2
  * Author: Content Catalyst LLC
  * Text Domain: sustainable-catalyst-workspace
  * Requires at least: 6.4
@@ -15,7 +15,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SC_WORKSPACE_VERSION', '3.46.0.1');
+define('SC_WORKSPACE_VERSION', '3.46.0.2');
 define('SC_WORKSPACE_FILE', __FILE__);
 define('SC_WORKSPACE_DIR', plugin_dir_path(__FILE__));
 define('SC_WORKSPACE_URL', plugin_dir_url(__FILE__));
@@ -118,7 +118,7 @@ function sc_workspace_activate() {
         $reason = !empty($preflight['missing_required_file_count'])
             ? ((int) $preflight['missing_required_file_count']) . ' required release file(s) are missing or unreadable.'
             : 'The declared WordPress/PHP runtime requirements are not satisfied.';
-        wp_die(esc_html('Sustainable Catalyst Workspace v3.2.0 activation preflight failed: ' . $reason));
+        wp_die(esc_html('Sustainable Catalyst Workspace v' . SC_WORKSPACE_VERSION . ' activation preflight failed: ' . $reason));
     }
     SC_Workspace_Registry::activate();
 }

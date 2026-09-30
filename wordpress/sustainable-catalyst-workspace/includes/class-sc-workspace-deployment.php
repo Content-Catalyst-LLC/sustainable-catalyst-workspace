@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '3.45.0';
-    const ROLLBACK_RELEASE = '3.45.0';
+    const PREVIOUS_RELEASE = '3.46.0.1';
+    const ROLLBACK_RELEASE = '3.46.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
     const CANONICAL_PLUGIN_ROOT = 'sustainable-catalyst-workspace';
@@ -92,6 +92,7 @@ final class SC_Workspace_Deployment_Hardening {
     }
 
 public static function preflight() {
+    clearstatcache();
     $missing = array();
     foreach (self::required_files() as $label => $relative) {
         $path = SC_WORKSPACE_DIR . $relative;
@@ -105,13 +106,18 @@ public static function preflight() {
     $style_bytes = (is_file($current_style) && is_readable($current_style)) ? (int) filesize($current_style) : 0;
     $script_bytes = (is_file($current_script) && is_readable($current_script)) ? (int) filesize($current_script) : 0;
     $asset_continuity_ok = $style_bytes >= self::MIN_CURRENT_STYLE_BYTES && $script_bytes >= self::MIN_CURRENT_SCRIPT_BYTES;
+    $previous_style = SC_WORKSPACE_DIR . 'assets/css/workspace-v' . self::PREVIOUS_RELEASE . '.css';
+    $previous_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . self::PREVIOUS_RELEASE . '.js';
+    $previous_style_bytes = (is_file($previous_style) && is_readable($previous_style)) ? (int) filesize($previous_style) : 0;
+    $previous_script_bytes = (is_file($previous_script) && is_readable($previous_script)) ? (int) filesize($previous_script) : 0;
+    $previous_asset_continuity_ok = $previous_style_bytes >= self::MIN_CURRENT_STYLE_BYTES && $previous_script_bytes >= self::MIN_CURRENT_SCRIPT_BYTES;
     global $wp_version;
     $wp_ok = !isset($wp_version) || version_compare((string) $wp_version, self::REQUIRED_WORDPRESS, '>=');
     $php_ok = version_compare(PHP_VERSION, self::REQUIRED_PHP, '>=');
     return array(
         'schema' => self::SCHEMA,
         'workspace_version' => SC_WORKSPACE_VERSION,
-        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok,
+        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok,
         'required_file_count' => count(self::required_files()),
         'missing_required_file_count' => count($missing),
         'missing_required_files' => $missing,
@@ -122,6 +128,10 @@ public static function preflight() {
         'minimum_current_style_bytes' => self::MIN_CURRENT_STYLE_BYTES,
         'minimum_current_script_bytes' => self::MIN_CURRENT_SCRIPT_BYTES,
         'asset_continuity_ok' => $asset_continuity_ok,
+        'previous_release' => self::PREVIOUS_RELEASE,
+        'previous_style_bytes' => $previous_style_bytes,
+        'previous_script_bytes' => $previous_script_bytes,
+        'previous_asset_continuity_ok' => $previous_asset_continuity_ok,
         'wordpress_supported' => $wp_ok,
         'php_supported' => $php_ok,
         'project_data_inspected' => false,
@@ -214,6 +224,9 @@ public static function preflight() {
             'asset_continuity_ok' => !empty($preflight['asset_continuity_ok']),
             'current_style_bytes' => isset($preflight['current_style_bytes']) ? (int) $preflight['current_style_bytes'] : 0,
             'current_script_bytes' => isset($preflight['current_script_bytes']) ? (int) $preflight['current_script_bytes'] : 0,
+            'previous_asset_continuity_ok' => !empty($preflight['previous_asset_continuity_ok']),
+            'previous_style_bytes' => isset($preflight['previous_style_bytes']) ? (int) $preflight['previous_style_bytes'] : 0,
+            'previous_script_bytes' => isset($preflight['previous_script_bytes']) ? (int) $preflight['previous_script_bytes'] : 0,
             'runtime_marker_present' => $marker_version !== '',
             'runtime_marker_version' => $marker_version,
             'runtime_marker_matches' => $marker_matches,
@@ -254,6 +267,9 @@ public static function preflight() {
         if (empty($diagnostics['asset_continuity_ok'])) {
             $message .= ' Current versioned frontend assets are missing or below continuity thresholds.';
         }
+        if (empty($diagnostics['previous_asset_continuity_ok'])) {
+            $message .= ' Previous-release frontend continuity assets are missing or below thresholds.';
+        }
         if (!empty($diagnostics['registry_pending'])) {
             $message .= ' Product Registry registration is still pending.';
         }
@@ -278,6 +294,8 @@ public static function preflight() {
             'server_package_integrity_check' => true,
             'canonical_plugin_root_required' => true,
             'frontend_asset_continuity_check' => true,
+            'previous_release_asset_continuity_required' => true,
+            'previous_release_asset_version' => self::PREVIOUS_RELEASE,
             'minimum_current_style_bytes' => self::MIN_CURRENT_STYLE_BYTES,
             'minimum_current_script_bytes' => self::MIN_CURRENT_SCRIPT_BYTES,
             'mixed_version_browser_detection' => true,

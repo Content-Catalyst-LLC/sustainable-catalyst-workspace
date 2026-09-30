@@ -1,0 +1,21 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.0.2",
+  "title": "Versioned Asset Continuity & Release Package Repair",
+  "predecessor": "3.46.0.1",
+  "rollbackRelease": "3.46.0",
+  "databaseMigration": false,
+  "backendBehaviorChange": false,
+  "currentFrontendAssets": [
+    "assets/css/workspace-v3.46.0.2.css",
+    "assets/js/workspace-v3.46.0.2.js"
+  ],
+  "retainedPredecessorAssets": [
+    "assets/css/workspace-v3.46.0.1.css",
+    "assets/js/workspace-v3.46.0.1.js"
+  ],
+  "minimumCurrentStyleBytes": 100000,
+  "minimumCurrentScriptBytes": 5000,
+  "coreWordpressScriptDependencies": 0,
+  "nextPlannedBuild": "3.46.1.0"
+}
