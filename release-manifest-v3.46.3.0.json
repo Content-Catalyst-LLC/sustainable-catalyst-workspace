@@ -1,0 +1,15 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.3.0",
+  "title": "Core Project Runtime Extraction",
+  "predecessor": "3.46.2.0",
+  "rollbackRelease": "3.46.2.0",
+  "databaseMigration": false,
+  "backendBehaviorChange": false,
+  "canonicalProjectRuntime": "app/projects/workspace-project-runtime-v34630.js",
+  "projectStatePortSchema": "sc-workspace-project-state-port/1.0",
+  "compatibilityBundleOwnsProjectLifecycle": false,
+  "primaryProjectActionsRouteThroughKernel": true,
+  "coreWordpressImports": 0,
+  "nextPlannedBuild": "3.46.4.0"
+}
