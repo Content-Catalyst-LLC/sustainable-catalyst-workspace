@@ -1,4 +1,4 @@
-# Sustainable Catalyst Workspace — Standalone Web Shell v3.46.6.0
+# Sustainable Catalyst Workspace — Standalone Web Shell v3.46.8.0
 
 This directory is a host-independent web distribution of Workspace.
 
@@ -18,6 +18,6 @@ The direct backend URL is configured in `config.js`. No backend request is made 
 
 The browser-local state key defaults to the existing `sc_workspace` namespace. Because browser storage is origin-scoped, a separately hosted standalone application receives its own storage namespace unless it is deployed on the same origin as the current WordPress site.
 
-## Scope of v3.46.6.0
+## Scope of v3.46.8.0
 
 This is the first independent web shell and exposes the canonical project lifecycle: list, create, open and delete. The large historical WordPress-rendered feature surface is not duplicated here. Those capabilities migrate behind the module registry in subsequent builds.

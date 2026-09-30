@@ -1,0 +1,15 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.8.0",
+  "title": "Host-Agnostic Asset & Build Pipeline",
+  "predecessor": "3.46.7.0",
+  "rollbackRelease": "3.46.7.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "canonicalAssetManifest": "build/workspace-runtime-assets-v34680.json",
+  "assetPipeline": "build/build_workspace_assets_v34680.py",
+  "sharedAssetChecksumParity": true,
+  "wordpressRuntimeUrlGraphInPhp": false,
+  "standaloneHardcodedRuntimeList": false,
+  "nextPlannedBuild": "3.46.9.0"
+}

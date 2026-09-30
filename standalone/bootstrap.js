@@ -1,8 +1,9 @@
 (() => {
   'use strict';
 
-  const RELEASE = '3.46.6.0';
+  const RELEASE = '3.46.8.0';
   const config = window.SCWorkspaceStandaloneConfig || {};
+
   const status = (message, state = 'loading') => {
     const node = document.querySelector('[data-scws-shell-status]');
     if (node) {
@@ -16,10 +17,10 @@
     return base + String(path || '').replace(/^\/+/, '') + '?ver=' + encodeURIComponent(RELEASE);
   }
 
-  function loadScript(path, marker) {
+  function loadScriptUrl(url, marker) {
     return new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = asset(path);
+      script.src = String(url);
       script.async = false;
       script.dataset.scwsAsset = marker;
       script.onload = () => resolve(true);
@@ -28,30 +29,28 @@
     });
   }
 
+  async function loadManifest() {
+    await loadScriptUrl(asset('sc-workspace-runtime-asset-manifest-v34680.js'), 'runtime-manifest');
+    const manifest = window.SCWorkspaceRuntimeAssetManifest;
+    if (!manifest || manifest.schema !== 'sc-workspace-runtime-asset-manifest/1.0' || manifest.version !== RELEASE || manifest.host !== 'standalone') {
+      throw new Error('Standalone Workspace runtime asset manifest is invalid');
+    }
+    return manifest;
+  }
+
   async function boot() {
+    status('Loading Workspace runtime manifest…');
+    const manifest = await loadManifest();
+
     status('Loading Workspace application kernel…');
-
-    const assets = [
-      ['sc-workspace-host-adapter-contract-v34620.js', 'host-contract'],
-      ['sc-workspace-transport-v34620.js', 'transport'],
-      ['sc-workspace-auth-context-v34620.js', 'auth'],
-      ['sc-workspace-api-client-v34620.js', 'api-client'],
-      ['sc-workspace-persistence-runtime-v34640.js', 'persistence'],
-      ['sc-workspace-state-store-v34640.js', 'state-store'],
-      ['sc-workspace-project-runtime-v34630.js', 'project-runtime'],
-      ['sc-workspace-module-registry-v34650.js', 'module-registry'],
-      ['sc-workspace-application-kernel-v34660.js', 'application-kernel'],
-      ['sc-workspace-standalone-host-adapter-v34660.js', 'standalone-host-adapter'],
-      ['sc-workspace-standalone-runtime-v34660.js', 'standalone-runtime'],
-      ['workspace-standalone-shell-v34660.js', 'standalone-shell']
-    ];
-
-    for (const [path, marker] of assets) {
-      await loadScript(path, marker);
+    for (const id of manifest.loadOrder) {
+      const entry = manifest.assets[id];
+      if (!entry || !entry.file) throw new Error('Standalone Workspace manifest entry unavailable: ' + id);
+      await loadScriptUrl(asset(entry.file), id);
     }
 
     const runtime = await window.SCWorkspaceStandaloneRuntimeFactory.create({
-      config,
+      config: Object.freeze(Object.assign({}, config, { assetManifest: manifest })),
       storage: window.localStorage,
       hostContract: window.SCWorkspaceHostAdapterContract,
       hostAdapterFactory: window.SCWorkspaceStandaloneHostAdapter,
@@ -93,6 +92,7 @@
       detail: {
         version: RELEASE,
         host: 'standalone',
+        hostAgnosticAssetPipeline: true,
         wordpressRequired: false
       }
     }));

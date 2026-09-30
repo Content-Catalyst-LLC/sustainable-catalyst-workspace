@@ -1,0 +1,95 @@
+{
+  "assets": {
+    "application.kernel": {
+      "file": "sc-workspace-application-kernel-v34680.js",
+      "order": 90,
+      "sha256": "6b9d0ebede5229ccebcbd5adfc0419c1ee02836720b9f52dde3641005fa9e42f",
+      "shared": true
+    },
+    "client.api": {
+      "file": "sc-workspace-api-client-v34620.js",
+      "order": 40,
+      "sha256": "27c14a17daaad168a97110165a0babaf14e92f135f9536f33ce99be445c632ff",
+      "shared": true
+    },
+    "client.auth": {
+      "file": "sc-workspace-auth-context-v34620.js",
+      "order": 30,
+      "sha256": "36b85109b1d42cdc4d63bf9da004d1c2fa8b55c416bd5fb29e95daa7335ad6e0",
+      "shared": true
+    },
+    "client.transport": {
+      "file": "sc-workspace-transport-v34620.js",
+      "order": 20,
+      "sha256": "13c6b2f614eb62d9ba75cca18d28e60ba1738e8e3bd1660546c03bcbb69f9daf",
+      "shared": true
+    },
+    "host.contract": {
+      "file": "sc-workspace-host-adapter-contract-v34620.js",
+      "order": 10,
+      "sha256": "80f2480cfaa902274974a47beb01781aa0ee1a64fbad8b4e8717e6721132c31d",
+      "shared": true
+    },
+    "modules.registry": {
+      "file": "sc-workspace-module-registry-v34650.js",
+      "order": 80,
+      "sha256": "3f8f86699405ead8f1193719a05d545e06ff316f90b5fc962e2ff2669131fe19",
+      "shared": true
+    },
+    "projects.runtime": {
+      "file": "sc-workspace-project-runtime-v34630.js",
+      "order": 70,
+      "sha256": "22da59a3590715b4c31b5479e0c4ef9c2a24bb3b17474206c4461a9dce3d4366",
+      "shared": true
+    },
+    "standalone.host": {
+      "file": "sc-workspace-standalone-host-adapter-v34680.js",
+      "order": 100,
+      "sha256": "2b980e5d69bc5b3de17ef67fff0f157a7b5f7077577fe9a5c476d8878fde0dbe",
+      "shared": false
+    },
+    "standalone.runtime": {
+      "file": "sc-workspace-standalone-runtime-v34680.js",
+      "order": 110,
+      "sha256": "83be95fefcc6408f103b3bb36c4064709079038f5d5470b77388bb59ad6e4712",
+      "shared": false
+    },
+    "standalone.shell": {
+      "file": "workspace-standalone-shell-v34680.js",
+      "order": 120,
+      "sha256": "7dc2101d9d910124880bcc93586633a9dcb3df0185231a297ebaa7e2bf946e3c",
+      "shared": false
+    },
+    "state.persistence": {
+      "file": "sc-workspace-persistence-runtime-v34640.js",
+      "order": 50,
+      "sha256": "0dbb692038f369e02fc3e810a13589431d841d66c93cfed4348ffce19d7eeb42",
+      "shared": true
+    },
+    "state.store": {
+      "file": "sc-workspace-state-store-v34640.js",
+      "order": 60,
+      "sha256": "3c384fa1e1069ef2abbc194e8ccc7026674c9fa6f319bb9f06fada16f3587858",
+      "shared": true
+    }
+  },
+  "generatedFrom": "build/workspace-runtime-assets-v34680.json",
+  "host": "standalone",
+  "loadOrder": [
+    "host.contract",
+    "client.transport",
+    "client.auth",
+    "client.api",
+    "state.persistence",
+    "state.store",
+    "projects.runtime",
+    "modules.registry",
+    "application.kernel",
+    "standalone.host",
+    "standalone.runtime",
+    "standalone.shell"
+  ],
+  "schema": "sc-workspace-runtime-asset-manifest/1.0",
+  "version": "3.46.8.0",
+  "wordpressRequired": false
+}
