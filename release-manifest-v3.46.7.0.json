@@ -1,0 +1,18 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.7.0",
+  "title": "WordPress Thin Adapter",
+  "predecessor": "3.46.6.0",
+  "rollbackRelease": "3.46.6.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "backendBehaviorChange": false,
+  "wordpressThinAdapter": "adapters/wordpress/workspace-wordpress-thin-adapter-v34670.js",
+  "wordpressPhpScriptEnqueueCount": 1,
+  "legacyPhpScriptGraphRetired": true,
+  "historicalAssetsRetained": true,
+  "wordpressOwnsProjectLogic": false,
+  "wordpressOwnsState": false,
+  "applicationModuleBootOwnedByJavaScript": true,
+  "nextPlannedBuild": "3.46.8.0"
+}
