@@ -251,6 +251,16 @@ from .predictive_investigation_workspace import (
     manifest as predictive_investigation_manifest, graph as predictive_investigation_graph, diagnostics as predictive_investigation_diagnostics,
     create_snapshot as create_predictive_investigation_snapshot, list_snapshots as list_predictive_investigation_snapshots)
 
+
+from .multilingual_corpus_runtime import (
+    RUNTIME_SCHEMA as MULTILINGUAL_CORPUS_RUNTIME_SCHEMA,
+    OPERATIONS as MULTILINGUAL_CORPUS_OPERATIONS,
+    MultilingualCorpusRuntimeRequest,
+    profile as multilingual_corpus_runtime_profile,
+    operation_catalog as multilingual_corpus_operation_catalog,
+    execute as execute_multilingual_corpus_operation,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -341,6 +351,14 @@ def health():
         "boundedScientificOperationsOnly": True,
         "polyglotScientificRuntimeFabric": True,
         "polyglotLanguages": ["python", "r", "julia", "ml", "neural", "forecast", "probability", "uncertainty", "optimization", "decision", "reliability", "sql", "wasm"],
+        "multilingualTextCorpusRuntime": True,
+        "multilingualTextCorpusRuntimeSchema": MULTILINGUAL_CORPUS_RUNTIME_SCHEMA,
+        "multilingualTextCorpusBoundedOperations": len(MULTILINGUAL_CORPUS_OPERATIONS),
+        "originalLanguageFirst": True,
+        "translationIsDerivedRepresentation": True,
+        "automaticLanguageDetectionEnabled": False,
+        "automaticTranslationEnabled": False,
+        "multilingualRuntimeArbitraryCodeExecution": False,
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -4064,4 +4082,33 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+# Workspace v3.46.0 — Multilingual Text & Corpus Runtime Foundation
+@app.get("/v1/multilingual-text-corpus-runtime")
+def multilingual_text_corpus_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return multilingual_corpus_runtime_profile()
+
+
+@app.get("/v1/multilingual-text-corpus-runtime/operations")
+def multilingual_text_corpus_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema": "sc-workspace-multilingual-text-corpus-operation-index/1.0",
+        "version": settings.service_version,
+        "items": multilingual_corpus_operation_catalog(),
+        "boundedOperationsOnly": True,
+        "arbitraryCodeExecution": False,
+        "automaticLanguageDetectionEnabled": False,
+        "automaticTranslationEnabled": False,
+    }
+
+
+@app.post("/v1/multilingual-text-corpus-runtime/execute")
+def multilingual_text_corpus_execute_route(
+    payload: MultilingualCorpusRuntimeRequest,
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    try:
+        return execute_multilingual_corpus_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -1,5 +1,17 @@
-export const SCW_TYPED_CONTRACT_VERSION = '3.34.0';
+export const SCW_TYPED_CONTRACT_VERSION = '3.46.0';
 export const SCW_TYPED_ENDPOINTS = {
+  "multilingualTextCorpusRuntime": {
+    "method": "GET",
+    "path": "/v1/multilingual-text-corpus-runtime"
+  },
+  "multilingualTextCorpusOperations": {
+    "method": "GET",
+    "path": "/v1/multilingual-text-corpus-runtime/operations"
+  },
+  "multilingualTextCorpusExecute": {
+    "method": "POST",
+    "path": "/v1/multilingual-text-corpus-runtime/execute"
+  },
   "predictiveInvestigationWorkspace": {
     "method": "GET",
     "path": "/v1/predictive-investigation-workspace"

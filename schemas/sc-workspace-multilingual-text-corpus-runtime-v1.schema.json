@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-multilingual-text-corpus-runtime-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Multilingual Text & Corpus Runtime",
+  "type": "object",
+  "required": ["schema", "operation"],
+  "properties": {
+    "schema": {"const": "sc-workspace-multilingual-text-corpus-runtime-request/1.0"},
+    "operation": {
+      "enum": [
+        "workspace.linguistics.text-identity",
+        "workspace.linguistics.text-normalize",
+        "workspace.linguistics.text-segment",
+        "workspace.linguistics.corpus-profile",
+        "workspace.linguistics.corpus-segment-index",
+        "workspace.linguistics.corpus-lineage"
+      ]
+    },
+    "text": {"type": "string", "maxLength": 200000},
+    "languageTag": {"type": "string", "minLength": 2, "maxLength": 80},
+    "script": {"type": ["string", "null"]},
+    "normalizationForm": {"enum": ["none", "NFC", "NFD", "NFKC", "NFKD"]},
+    "segmentMode": {"enum": ["paragraph", "line", "simple-sentence"]},
+    "documents": {"type": "array", "maxItems": 100}
+  },
+  "additionalProperties": false
+}

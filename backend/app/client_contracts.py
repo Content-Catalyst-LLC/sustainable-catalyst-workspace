@@ -6,6 +6,9 @@ from .utils import sha256_hex
 CLIENT_CONTRACT_SCHEMA = "sc-workspace-typed-client-contract/1.0"
 CLIENT_RUNTIME_SCHEMA = "sc-workspace-typed-client-runtime/1.0"
 TYPED_ENDPOINTS: dict[str, dict[str, str]] = {
+    "multilingualTextCorpusRuntime": {"method":"GET","path":"/v1/multilingual-text-corpus-runtime"},
+    "multilingualTextCorpusOperations": {"method":"GET","path":"/v1/multilingual-text-corpus-runtime/operations"},
+    "multilingualTextCorpusExecute": {"method":"POST","path":"/v1/multilingual-text-corpus-runtime/execute"},
     "predictiveInvestigationWorkspace": {"method":"GET","path":"/v1/predictive-investigation-workspace"},
     "predictiveScenarioStore": {"method":"POST","path":"/v1/predictive-investigation-workspace/scenarios"},
     "predictiveScenarios": {"method":"GET","path":"/v1/predictive-investigation-workspace/scenarios"},
@@ -385,7 +388,7 @@ def profile(openapi: dict[str, Any]) -> dict[str, Any]:
     missing = [key for key, item in projection["paths"].items() if not item.get("operationId")]
     return {
         "schema": CLIENT_CONTRACT_SCHEMA,
-        "workspaceVersion": "3.34.0",
+        "workspaceVersion": "3.46.0",
         "mode": "generated-typescript-backend-native-scientific-workspace-client",
         "backendAuthoritative": True,
         "browserAuthoritativeState": False,
