@@ -1,0 +1,11 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.0.3",
+  "title": "Local Project Deletion & Lifecycle Binding Repair",
+  "predecessor": "3.46.0.2",
+  "rollbackRelease": "3.46.0.2",
+  "databaseMigration": false,
+  "backendBehaviorChange": false,
+  "deleteFromDeviceDeletesCloud": false,
+  "nextPlannedBuild": "3.46.1.0"
+}

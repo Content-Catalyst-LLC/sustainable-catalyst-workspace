@@ -5534,7 +5534,18 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
        This delegated path only acts when initialization has not marked the control bound. */
     root.addEventListener('click', (event) => {
       const target = event.target instanceof Element ? event.target.closest('button, a') : null;
-      if (!target || !root.contains(target) || target.dataset.scwBound === '1' || target.disabled) return;
+      if (!target || !root.contains(target) || target.disabled) return;
+
+      // Project lifecycle actions get an authoritative delegated route as well
+      // as their direct binding. The event marker prevents duplicate execution.
+      if (target.matches('[data-scw-delete]') && !event.__scwProjectLifecycleHandled) {
+        event.preventDefault();
+        event.__scwProjectLifecycleHandled = true;
+        deleteActiveProjectFromDevice();
+        return;
+      }
+
+      if (target.dataset.scwBound === '1') return;
       if (target.matches('[data-scw-workspace-view]')) {
         event.preventDefault();
         setWorkspaceView(target.dataset.scwWorkspaceView || 'start', true);
@@ -5666,10 +5677,42 @@ function renderResearchTemplates(project){const api=researchTemplateApi();if(!ap
       state.activeProjectId = null; persist('Project archived'); render();
     });
 
-    bindControl('[data-scw-delete]', 'click', () => {
-      const project = activeProject(); if (!project) return;
-      if (!window.confirm(`Delete “${project.title}” and its ${project.objects.length} object(s) from this device? This cannot be undone unless you exported a copy.`)) return;
-      cleanKnowledgeProjectReferences(project.id); state.projects = state.projects.filter((item) => item.id !== project.id); state.activeProjectId = null; persist('Project deleted from this device'); render();
+    function deleteActiveProjectFromDevice() {
+      const project = activeProject();
+      if (!project) return false;
+      if (!window.confirm(`Delete “${project.title}” and its ${project.objects.length} object(s) from this device? This cannot be undone unless you exported a copy.`)) return false;
+
+      const projectId = project.id;
+      const previousProjects = state.projects.slice();
+      const previousActiveProjectId = state.activeProjectId;
+
+      // Canonical local removal happens first. Secondary indexes are cleanup,
+      // and must never be able to block deletion.
+      state.projects = state.projects.filter((item) => item.id !== projectId);
+      state.activeProjectId = null;
+
+      try {
+        cleanKnowledgeProjectReferences(projectId);
+      } catch (error) {
+        interactionRuntime.recordIssue('project-delete-reference-cleanup', String(error && error.message || error));
+      }
+
+      const saved = persist('Project deleted from this device');
+      if (!saved) {
+        state.projects = previousProjects;
+        state.activeProjectId = previousActiveProjectId;
+        render();
+        window.alert('Workspace could not verify the local deletion, so the project was restored in memory. Review browser storage availability and try again.');
+        return false;
+      }
+
+      render();
+      return true;
+    }
+
+    bindControl('[data-scw-delete]', 'click', (event) => {
+      event.__scwProjectLifecycleHandled = true;
+      deleteActiveProjectFromDevice();
     });
 
     bindControl('[data-scw-import-project]', 'click', () => { if (importFile) importFile.click(); });

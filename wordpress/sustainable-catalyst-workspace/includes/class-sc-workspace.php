@@ -4378,7 +4378,7 @@ public function research_templates_contract() {
     private function enqueue_assets() {
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.0.2.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.0.3.css',
             array(),
             SC_WORKSPACE_VERSION
         );
@@ -5065,7 +5065,7 @@ public function research_templates_contract() {
 
         wp_enqueue_script(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/js/workspace-v3.46.0.2.js',
+            SC_WORKSPACE_URL . 'assets/js/workspace-v3.46.0.3.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
