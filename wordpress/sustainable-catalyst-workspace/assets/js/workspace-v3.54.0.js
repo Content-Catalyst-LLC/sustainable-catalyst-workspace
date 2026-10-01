@@ -567,3 +567,21 @@
   script.dataset.scWorkspaceModule = 'reproducible-computational-linguistics';
   document.head.appendChild(script);
 })();
+
+
+/* Workspace v3.54.0 — Integrated Global Language Research feature loader */
+(() => {
+  if (window.SCWorkspaceIntegratedGlobalLanguageResearch) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-integrated-global-language-research-v3540.js', current.src).href
+      : 'assets/js/sc-workspace-integrated-global-language-research-v3540.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-integrated-global-language-research-v3540.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'integrated-global-language-research';
+  document.head.appendChild(script);
+})();
