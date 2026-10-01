@@ -61,7 +61,7 @@ final class SC_Workspace_Deployment_Hardening {
             'original_language_corpus_workspace' => 'assets/js/sc-workspace-original-language-corpus-v3470.js',
             'linguistic_annotation_corpus_structure_workspace' => 'assets/js/sc-workspace-linguistic-annotation-corpus-structure-v3480.js',
             'translation_parallel_alignment_workspace' => 'assets/js/sc-workspace-translation-transliteration-parallel-alignment-v3490.js',
-            'historical_language_identity_workspace' => 'assets/js/sc-workspace-historical-language-script-variant-identity-v3510.js',
+            'historical_language_identity_workspace' => 'assets/js/sc-workspace-historical-language-script-variant-identity-v3500.js',
             'decoupled_production_baseline' => 'assets/js/sc-workspace-decoupled-production-baseline-v346100.js',
             'module_registry' => 'assets/js/sc-workspace-module-registry-v34650.js',
             'state_store_runtime' => 'assets/js/sc-workspace-state-store-v34640.js',
@@ -169,7 +169,7 @@ public static function preflight() {
     $translation_parallel_alignment_workspace = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-translation-transliteration-parallel-alignment-v3490.js';
     $translation_parallel_alignment_workspace_bytes = (is_file($translation_parallel_alignment_workspace) && is_readable($translation_parallel_alignment_workspace)) ? (int) filesize($translation_parallel_alignment_workspace) : 0;
     $translation_parallel_alignment_workspace_ok = $translation_parallel_alignment_workspace_bytes >= self::MIN_TRANSLATION_PARALLEL_ALIGNMENT_WORKSPACE_BYTES;
-    $historical_language_identity_workspace = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-historical-language-script-variant-identity-v3510.js';
+    $historical_language_identity_workspace = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-historical-language-script-variant-identity-v3500.js';
     $historical_language_identity_workspace_bytes = (is_file($historical_language_identity_workspace) && is_readable($historical_language_identity_workspace)) ? (int) filesize($historical_language_identity_workspace) : 0;
     $historical_language_identity_workspace_ok = $historical_language_identity_workspace_bytes >= self::MIN_HISTORICAL_LANGUAGE_IDENTITY_WORKSPACE_BYTES;
     $decoupled_production_baseline = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-decoupled-production-baseline-v346100.js';
