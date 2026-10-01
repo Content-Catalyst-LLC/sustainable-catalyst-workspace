@@ -1,0 +1,47 @@
+{
+  "backendProbe": null,
+  "directBackendTransport": true,
+  "gateCount": 7,
+  "gates": [
+    {
+      "detail": "{\"host\": \"standalone\", \"schema\": \"sc-workspace-runtime-asset-manifest/1.0\", \"version\": \"3.52.0\", \"wordpressRequired\": false}",
+      "name": "WORKSPACE_STANDALONE_CERT_MANIFEST",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_STANDALONE_ASSET_COMPLETENESS",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_STANDALONE_ASSET_SHA256_INTEGRITY",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_WORDPRESS_ABSENT_CERTIFICATION",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_STANDALONE_MANIFEST_DRIVEN_BOOT",
+      "ok": true
+    },
+    {
+      "detail": "[[\"/\", 3328], [\"/index.html\", 3328], [\"/config.js\", 4020], [\"/bootstrap.js\", 4109], [\"/asset-manifest-v3520.json\", 5150], [\"/assets/sc-workspace-runtime-asset-manifest-v3520.js\", 4353]]",
+      "name": "WORKSPACE_STANDALONE_STATIC_HTTP_SERVE",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_STANDALONE_DIRECT_BACKEND_CONFIG",
+      "ok": true
+    }
+  ],
+  "hostAgnosticAssetPipeline": true,
+  "passed": true,
+  "schema": "sc-workspace-standalone-production-certification-report/1.0",
+  "version": "3.52.0",
+  "wordpressRequired": false
+}

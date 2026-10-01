@@ -314,6 +314,14 @@ from .cross_language_entity_resolution_runtime import (
     execute as execute_cross_language_entity_resolution_operation,
 )
 from .cross_language_entity_resolution_workspace import (
+
+from .cross_lingual_semantic_evidence_runtime import (
+    CrossLingualSemanticEvidenceRequest,
+    profile as cross_lingual_semantic_evidence_runtime_profile,
+    operation_catalog as cross_lingual_semantic_evidence_operation_catalog,
+    execute as execute_cross_lingual_semantic_evidence_operation,
+)
+from .cross_lingual_semantic_evidence_workspace import profile as cross_lingual_semantic_evidence_workspace_profile
     WORKSPACE_SCHEMA as CROSS_LANGUAGE_ENTITY_RESOLUTION_WORKSPACE_SCHEMA,
     profile as cross_language_entity_resolution_workspace_profile,
 )
@@ -4173,6 +4181,27 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.52.0 — Cross-Lingual Semantic & Evidence Workspace
+@app.get("/v1/cross-lingual-semantic-evidence-workspace")
+def cross_lingual_semantic_evidence_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return cross_lingual_semantic_evidence_workspace_profile()
+
+@app.get("/v1/cross-lingual-semantic-evidence-runtime")
+def cross_lingual_semantic_evidence_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return cross_lingual_semantic_evidence_runtime_profile()
+
+@app.get("/v1/cross-lingual-semantic-evidence-runtime/operations")
+def cross_lingual_semantic_evidence_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-cross-lingual-semantic-evidence-operation-index/1.0","version":settings.service_version,"items":cross_lingual_semantic_evidence_operation_catalog(),"boundedOperationsOnly":True,"arbitraryCodeExecution":False,"automaticSemanticEquivalenceEnabled":False,"automaticTruthDeterminationEnabled":False}
+
+@app.post("/v1/cross-lingual-semantic-evidence-runtime/execute")
+def cross_lingual_semantic_evidence_execute_route(payload: CrossLingualSemanticEvidenceRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_cross_lingual_semantic_evidence_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.51.0 — Cross-Language Entity & Toponym Resolution Workspace
