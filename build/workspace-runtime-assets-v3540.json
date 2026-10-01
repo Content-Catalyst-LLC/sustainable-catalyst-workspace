@@ -1,0 +1,305 @@
+{
+  "schema": "sc-workspace-build-asset-manifest/1.0",
+  "version": "3.54.0",
+  "assets": [
+    {
+      "id": "host.contract",
+      "source": "app/core/workspace-host-adapter-contract-v11.js",
+      "shared": true,
+      "order": 10,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-host-adapter-contract-v34620.js",
+        "standalone": "standalone/assets/sc-workspace-host-adapter-contract-v34620.js"
+      }
+    },
+    {
+      "id": "client.transport",
+      "source": "app/client/workspace-transport-v34620.js",
+      "shared": true,
+      "order": 20,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-transport-v34620.js",
+        "standalone": "standalone/assets/sc-workspace-transport-v34620.js"
+      }
+    },
+    {
+      "id": "client.auth",
+      "source": "app/client/workspace-auth-context-v34620.js",
+      "shared": true,
+      "order": 30,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-auth-context-v34620.js",
+        "standalone": "standalone/assets/sc-workspace-auth-context-v34620.js"
+      }
+    },
+    {
+      "id": "client.api",
+      "source": "app/client/workspace-api-client-v34620.js",
+      "shared": true,
+      "order": 40,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-api-client-v34620.js",
+        "standalone": "standalone/assets/sc-workspace-api-client-v34620.js"
+      }
+    },
+    {
+      "id": "state.persistence",
+      "source": "app/state/workspace-persistence-runtime-v34640.js",
+      "shared": true,
+      "order": 50,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-persistence-runtime-v34640.js",
+        "standalone": "standalone/assets/sc-workspace-persistence-runtime-v34640.js"
+      }
+    },
+    {
+      "id": "state.store",
+      "source": "app/state/workspace-state-store-v34640.js",
+      "shared": true,
+      "order": 60,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-state-store-v34640.js",
+        "standalone": "standalone/assets/sc-workspace-state-store-v34640.js"
+      }
+    },
+    {
+      "id": "projects.runtime",
+      "source": "app/projects/workspace-project-runtime-v34630.js",
+      "shared": true,
+      "order": 70,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-project-runtime-v34630.js",
+        "standalone": "standalone/assets/sc-workspace-project-runtime-v34630.js"
+      }
+    },
+    {
+      "id": "modules.registry",
+      "source": "app/core/workspace-module-registry-v34650.js",
+      "shared": true,
+      "order": 80,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-module-registry-v34650.js",
+        "standalone": "standalone/assets/sc-workspace-module-registry-v34650.js"
+      }
+    },
+    {
+      "id": "application.kernel",
+      "source": "app/core/workspace-application-kernel-v3540.js",
+      "shared": true,
+      "order": 90,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-application-kernel-v3540.js",
+        "standalone": "standalone/assets/sc-workspace-application-kernel-v3530.js"
+      }
+    },
+    {
+      "id": "wordpress.host",
+      "source": "adapters/wordpress/workspace-wordpress-host-adapter-v34620.js",
+      "shared": false,
+      "order": 100,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-wordpress-host-adapter-v34620.js"
+      }
+    },
+    {
+      "id": "wordpress.transport",
+      "source": "adapters/wordpress/workspace-wordpress-transport-adapter-v34620.js",
+      "shared": false,
+      "order": 110,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-wordpress-transport-adapter-v34620.js"
+      }
+    },
+    {
+      "id": "wordpress.auth",
+      "source": "adapters/wordpress/workspace-wordpress-auth-adapter-v34620.js",
+      "shared": false,
+      "order": 120,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-wordpress-auth-adapter-v34620.js"
+      }
+    },
+    {
+      "id": "compatibility.runtime",
+      "source": "app/compat/workspace-local-project-compat-v3540.js",
+      "shared": false,
+      "order": 130,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-local-project-compat-v3540.js"
+      }
+    },
+    {
+      "id": "application.entry",
+      "source": "app/entry/workspace-application-entry-v3540.js",
+      "shared": false,
+      "order": 140,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/workspace-v3.54.0.js"
+      }
+    },
+    {
+      "id": "wordpress.thin",
+      "source": "adapters/wordpress/workspace-wordpress-thin-adapter-v3540.js",
+      "shared": false,
+      "order": 1,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-wordpress-thin-adapter-v3540.js"
+      }
+    },
+    {
+      "id": "wordpress.style",
+      "source": "app/styles/workspace-wordpress-v3530.css",
+      "shared": false,
+      "order": 1,
+      "runtime": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/css/workspace-v3.53.0.css"
+      }
+    },
+    {
+      "id": "standalone.host",
+      "source": "adapters/standalone/workspace-standalone-host-adapter-v3530.js",
+      "shared": false,
+      "order": 100,
+      "targets": {
+        "standalone": "standalone/assets/sc-workspace-standalone-host-adapter-v3530.js"
+      }
+    },
+    {
+      "id": "standalone.runtime",
+      "source": "app/standalone/workspace-standalone-runtime-v3530.js",
+      "shared": false,
+      "order": 110,
+      "targets": {
+        "standalone": "standalone/assets/sc-workspace-standalone-runtime-v3530.js"
+      }
+    },
+    {
+      "id": "standalone.shell",
+      "source": "app/standalone/workspace-standalone-shell-v3530.js",
+      "shared": false,
+      "order": 120,
+      "targets": {
+        "standalone": "standalone/assets/workspace-standalone-shell-v3530.js"
+      }
+    },
+    {
+      "id": "standalone.style",
+      "source": "app/standalone/workspace-standalone-shell-v3530.css",
+      "shared": false,
+      "order": 1,
+      "runtime": false,
+      "targets": {
+        "standalone": "standalone/workspace-standalone-shell-v3530.css"
+      }
+    },
+    {
+      "id": "standalone.certification",
+      "source": "app/standalone/workspace-standalone-production-certification-v3530.js",
+      "shared": false,
+      "order": 130,
+      "autoload": false,
+      "targets": {
+        "standalone": "standalone/assets/sc-workspace-standalone-production-certification-v3530.js"
+      }
+    },
+    {
+      "id": "production.baseline",
+      "source": "app/core/workspace-decoupled-production-baseline-v346100.js",
+      "shared": true,
+      "order": 140,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-decoupled-production-baseline-v346100.js",
+        "standalone": "standalone/assets/sc-workspace-decoupled-production-baseline-v346100.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.original-language-corpus",
+      "source": "app/linguistics/workspace-original-language-corpus-v3470.js",
+      "shared": true,
+      "order": 150,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-original-language-corpus-v3470.js",
+        "standalone": "standalone/assets/sc-workspace-original-language-corpus-v3470.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.annotation-corpus-structure",
+      "source": "app/linguistics/workspace-linguistic-annotation-corpus-structure-v3480.js",
+      "shared": true,
+      "order": 160,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-linguistic-annotation-corpus-structure-v3480.js",
+        "standalone": "standalone/assets/sc-workspace-linguistic-annotation-corpus-structure-v3480.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.translation-parallel-alignment",
+      "source": "app/linguistics/workspace-translation-transliteration-parallel-alignment-v3490.js",
+      "shared": true,
+      "order": 170,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-translation-transliteration-parallel-alignment-v3490.js",
+        "standalone": "standalone/assets/sc-workspace-translation-transliteration-parallel-alignment-v3490.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.historical-language-identity",
+      "source": "app/linguistics/workspace-historical-language-script-variant-identity-v3500.js",
+      "shared": true,
+      "order": 180,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-historical-language-script-variant-identity-v3500.js",
+        "standalone": "standalone/assets/sc-workspace-historical-language-script-variant-identity-v3500.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.cross-language-entity-resolution",
+      "source": "app/linguistics/workspace-cross-language-entity-toponym-resolution-v3510.js",
+      "shared": true,
+      "order": 190,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-cross-language-entity-toponym-resolution-v3510.js",
+        "standalone": "standalone/assets/sc-workspace-cross-language-entity-toponym-resolution-v3510.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.cross-lingual-semantic-evidence",
+      "source": "app/linguistics/workspace-cross-lingual-semantic-evidence-v3520.js",
+      "shared": true,
+      "order": 200,
+      "autoload": false,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-cross-lingual-semantic-evidence-v3520.js",
+        "standalone": "standalone/assets/sc-workspace-cross-lingual-semantic-evidence-v3520.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.reproducible-computational-linguistics",
+      "source": "app/linguistics/workspace-reproducible-computational-linguistics-v3530.js",
+      "shared": true,
+      "order": 210,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-reproducible-computational-linguistics-v3530.js"
+      }
+    },
+    {
+      "id": "workspace.linguistics.integrated-global-language-research",
+      "source": "app/linguistics/workspace-integrated-global-language-research-v3540.js",
+      "shared": true,
+      "order": 220,
+      "targets": {
+        "wordpress": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-integrated-global-language-research-v3540.js"
+      }
+    }
+  ]
+}
