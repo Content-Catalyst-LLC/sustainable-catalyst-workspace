@@ -1,0 +1,23 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.49.0",
+  "title": "Translation, Transliteration & Parallel Alignment Workspace",
+  "predecessor": "3.48.0",
+  "rollbackRelease": "3.48.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "preservesDecoupledProductionBaseline": "3.46.10.0",
+  "moduleId": "workspace.linguistics.translation-parallel-alignment",
+  "moduleSchema": "sc-workspace-translation-transliteration-parallel-alignment-workspace/1.0",
+  "backendRuntimeSchema": "sc-workspace-translation-alignment-runtime/1.0",
+  "dependsOnModules": [
+    "workspace.linguistics.original-language-corpus@3.47.0",
+    "workspace.linguistics.annotation-corpus-structure@3.48.0"
+  ],
+  "boundedBackendOperations": 6,
+  "originalLanguageFirst": true,
+  "automaticTranslationEnabled": false,
+  "automaticTransliterationEnabled": false,
+  "automaticAlignmentEnabled": false,
+  "nextPlannedBuild": "3.50.0"
+}

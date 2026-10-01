@@ -3,7 +3,7 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.48.0',
+    workspaceVersion: '3.49.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     assetBase: './assets/',
@@ -45,6 +45,18 @@
         ],
         source: 'workspace',
         global: 'SCWorkspaceLinguisticAnnotationCorpusStructureWorkspace'
+      },
+      {
+        id: 'workspace.linguistics.translation-parallel-alignment',
+        assetId: 'workspace.linguistics.translation-parallel-alignment',
+        version: '3.49.0',
+        title: 'Translation, Transliteration & Parallel Alignment Workspace',
+        optional: true,
+        enabled: true,
+        dependsOn: ['core.api', 'workspace.linguistics.original-language-corpus', 'workspace.linguistics.annotation-corpus-structure'],
+        capabilities: ['workspace.linguistics.translation-provenance','workspace.linguistics.transliteration-provenance','workspace.linguistics.parallel-text','workspace.linguistics.parallel-alignment'],
+        source: 'workspace',
+        global: 'SCWorkspaceTranslationTransliterationParallelAlignment'
       }
     ],
     automaticBackendHealthCheck: false,

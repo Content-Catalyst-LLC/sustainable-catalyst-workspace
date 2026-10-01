@@ -279,6 +279,19 @@ from .linguistic_annotation_corpus_workspace import (
     profile as linguistic_annotation_workspace_profile,
 )
 
+from .translation_alignment_runtime import (
+    RUNTIME_SCHEMA as TRANSLATION_ALIGNMENT_RUNTIME_SCHEMA,
+    OPERATIONS as TRANSLATION_ALIGNMENT_OPERATIONS,
+    TranslationAlignmentRuntimeRequest,
+    profile as translation_alignment_runtime_profile,
+    operation_catalog as translation_alignment_operation_catalog,
+    execute as execute_translation_alignment_operation,
+)
+from .translation_alignment_workspace import (
+    WORKSPACE_SCHEMA as TRANSLATION_ALIGNMENT_WORKSPACE_SCHEMA,
+    profile as translation_alignment_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -387,6 +400,15 @@ def health():
         "linguisticAnnotationRuntimeBoundedOperations": len(LINGUISTIC_ANNOTATION_OPERATIONS),
         "linguisticAnnotationOffsetUnit": "unicode-code-point",
         "linguisticAnnotationProvenancePreserved": True,
+        "translationAlignmentWorkspace": True,
+        "translationAlignmentWorkspaceSchema": TRANSLATION_ALIGNMENT_WORKSPACE_SCHEMA,
+        "translationAlignmentRuntime": True,
+        "translationAlignmentRuntimeSchema": TRANSLATION_ALIGNMENT_RUNTIME_SCHEMA,
+        "translationAlignmentRuntimeBoundedOperations": len(TRANSLATION_ALIGNMENT_OPERATIONS),
+        "translationAlignmentOriginalLanguageFirst": True,
+        "translationAlignmentAutomaticTranslationEnabled": False,
+        "translationAlignmentAutomaticAlignmentEnabled": False,
+        "translationAlignmentProvenancePreserved": True,
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -4110,6 +4132,26 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+# Workspace v3.49.0 — Translation, Transliteration & Parallel Alignment Workspace
+@app.get("/v1/translation-transliteration-parallel-alignment-workspace")
+def translation_transliteration_parallel_alignment_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return translation_alignment_workspace_profile()
+
+@app.get("/v1/translation-alignment-runtime")
+def translation_alignment_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return translation_alignment_runtime_profile()
+
+@app.get("/v1/translation-alignment-runtime/operations")
+def translation_alignment_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-translation-alignment-operation-index/1.0","version":settings.service_version,"items":translation_alignment_operation_catalog(),"boundedOperationsOnly":True,"arbitraryCodeExecution":False}
+
+@app.post("/v1/translation-alignment-runtime/execute")
+def translation_alignment_execute_route(payload: TranslationAlignmentRuntimeRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_translation_alignment_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 # Workspace v3.48.0 — Linguistic Annotation & Corpus Structure Workspace
 @app.get("/v1/linguistic-annotation-corpus-structure-workspace")
