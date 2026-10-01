@@ -338,6 +338,16 @@ from .reproducible_computational_linguistics_workspace import (
     profile as reproducible_computational_linguistics_workspace_profile,
 )
 
+from .integrated_global_language_research_runtime import (
+    IntegratedGlobalLanguageResearchRequest,
+    profile as integrated_global_language_research_runtime_profile,
+    operation_catalog as integrated_global_language_research_operation_catalog,
+    execute as execute_integrated_global_language_research_operation,
+)
+from .integrated_global_language_research_workspace import (
+    profile as integrated_global_language_research_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4193,6 +4203,35 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.54.0 — Integrated Global Language Research Workspace
+@app.get("/v1/integrated-global-language-research-workspace")
+def integrated_global_language_research_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return integrated_global_language_research_workspace_profile()
+
+@app.get("/v1/integrated-global-language-research-runtime")
+def integrated_global_language_research_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return integrated_global_language_research_runtime_profile()
+
+@app.get("/v1/integrated-global-language-research-runtime/operations")
+def integrated_global_language_research_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-integrated-global-language-research-operation-index/1.0",
+        "version":settings.service_version,
+        "items":integrated_global_language_research_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "arbitraryCodeExecution":False,
+        "automaticTruthDeterminationEnabled":False,
+        "sourceQualitySignalsSeparatedFromUserTrust":True,
+    }
+
+@app.post("/v1/integrated-global-language-research-runtime/execute")
+def integrated_global_language_research_execute_route(payload: IntegratedGlobalLanguageResearchRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_integrated_global_language_research_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.53.0 — Reproducible Computational Linguistics Workspace
