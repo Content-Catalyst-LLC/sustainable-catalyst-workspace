@@ -328,6 +328,16 @@ from .cross_lingual_semantic_evidence_workspace import (
     profile as cross_lingual_semantic_evidence_workspace_profile,
 )
 
+from .reproducible_computational_linguistics_runtime import (
+    ReproducibleComputationalLinguisticsRequest,
+    profile as reproducible_computational_linguistics_runtime_profile,
+    operation_catalog as reproducible_computational_linguistics_operation_catalog,
+    execute as execute_reproducible_computational_linguistics_operation,
+)
+from .reproducible_computational_linguistics_workspace import (
+    profile as reproducible_computational_linguistics_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4183,6 +4193,35 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.53.0 — Reproducible Computational Linguistics Workspace
+@app.get("/v1/reproducible-computational-linguistics-workspace")
+def reproducible_computational_linguistics_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return reproducible_computational_linguistics_workspace_profile()
+
+@app.get("/v1/reproducible-computational-linguistics-runtime")
+def reproducible_computational_linguistics_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return reproducible_computational_linguistics_runtime_profile()
+
+@app.get("/v1/reproducible-computational-linguistics-runtime/operations")
+def reproducible_computational_linguistics_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-reproducible-computational-linguistics-operation-index/1.0",
+        "version":settings.service_version,
+        "items":reproducible_computational_linguistics_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "arbitraryCodeExecution":False,
+        "automaticReproductionExecution":False,
+        "automaticTruthDeterminationEnabled":False,
+    }
+
+@app.post("/v1/reproducible-computational-linguistics-runtime/execute")
+def reproducible_computational_linguistics_execute_route(payload: ReproducibleComputationalLinguisticsRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_reproducible_computational_linguistics_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.52.0 — Cross-Lingual Semantic & Evidence Workspace
