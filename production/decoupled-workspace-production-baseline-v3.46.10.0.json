@@ -1,0 +1,35 @@
+{
+  "schema": "sc-workspace-decoupled-production-baseline-contract/1.0",
+  "version": "3.46.10.0",
+  "productionBaseline": true,
+  "predecessor": "3.46.9.0",
+  "rollbackRelease": "3.46.9.0",
+  "wordpress": {
+    "requiredByCore": false,
+    "role": "thin-host-adapter",
+    "scriptEntrypoints": 1,
+    "ownsProjectLogic": false,
+    "ownsCanonicalState": false,
+    "ownsPersistence": false,
+    "ownsModuleBoot": false
+  },
+  "standalone": {
+    "productionCertified": true,
+    "manifestDrivenBoot": true,
+    "directBackendTransport": true,
+    "wordpressRequired": false
+  },
+  "backend": {
+    "canonicalAuthority": true,
+    "versionAligned": true
+  },
+  "assets": {
+    "canonicalPipeline": true,
+    "sharedChecksumParity": true
+  },
+  "modules": {
+    "optionalFailureIsolation": true
+  },
+  "databaseMigration": false,
+  "storageSchemaMigration": false
+}

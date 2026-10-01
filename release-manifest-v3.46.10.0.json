@@ -1,0 +1,18 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.46.10.0",
+  "title": "Decoupled Workspace Production Baseline",
+  "predecessor": "3.46.9.0",
+  "rollbackRelease": "3.46.9.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "productionBaseline": true,
+  "wordpressCoreDependency": false,
+  "wordpressRole": "thin-host-adapter",
+  "standaloneProductionCertified": true,
+  "canonicalBackendAuthority": true,
+  "canonicalAssetPipeline": true,
+  "sharedAssetChecksumParity": true,
+  "optionalModuleFailureIsolation": true,
+  "decouplingSeriesComplete": true
+}

@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '3.46.8.0';
-    const ROLLBACK_RELEASE = '3.46.8.0';
+    const PREVIOUS_RELEASE = '3.46.9.0';
+    const ROLLBACK_RELEASE = '3.46.9.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
     const CANONICAL_PLUGIN_ROOT = 'sustainable-catalyst-workspace';
@@ -37,6 +37,7 @@ final class SC_Workspace_Deployment_Hardening {
     const MIN_AUTH_ADAPTER_BYTES = 700;
     const MIN_WORDPRESS_THIN_ADAPTER_BYTES = 2500;
     const MIN_RUNTIME_ASSET_MANIFEST_BYTES = 1500;
+    const MIN_DECOUPLED_PRODUCTION_BASELINE_BYTES = 1500;
 
     public static function required_files() {
         return array(
@@ -48,11 +49,12 @@ final class SC_Workspace_Deployment_Hardening {
             'current_script' => 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js',
             'current_style' => 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css',
             'typed_client' => 'assets/js/sc-workspace-typed-client-v3100.js',
-            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v34690.js',
+            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v346100.js',
             'host_adapter_contract' => 'assets/js/sc-workspace-host-adapter-contract-v34620.js',
-            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v34690.js',
-            'wordpress_thin_adapter' => 'assets/js/sc-workspace-wordpress-thin-adapter-v34690.js',
-            'runtime_asset_manifest' => 'assets/js/sc-workspace-runtime-asset-manifest-v34690.js',
+            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v346100.js',
+            'wordpress_thin_adapter' => 'assets/js/sc-workspace-wordpress-thin-adapter-v346100.js',
+            'runtime_asset_manifest' => 'assets/js/sc-workspace-runtime-asset-manifest-v346100.js',
+            'decoupled_production_baseline' => 'assets/js/sc-workspace-decoupled-production-baseline-v346100.js',
             'module_registry' => 'assets/js/sc-workspace-module-registry-v34650.js',
             'state_store_runtime' => 'assets/js/sc-workspace-state-store-v34640.js',
             'persistence_runtime' => 'assets/js/sc-workspace-persistence-runtime-v34640.js',
@@ -134,22 +136,25 @@ public static function preflight() {
     $current_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js';
     $style_bytes = (is_file($current_style) && is_readable($current_style)) ? (int) filesize($current_style) : 0;
     $script_bytes = (is_file($current_script) && is_readable($current_script)) ? (int) filesize($current_script) : 0;
-    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v34690.js';
+    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v346100.js';
     $lifecycle_runtime_bytes = (is_file($lifecycle_runtime) && is_readable($lifecycle_runtime)) ? (int) filesize($lifecycle_runtime) : 0;
     $lifecycle_runtime_ok = $lifecycle_runtime_bytes >= self::MIN_LIFECYCLE_RUNTIME_BYTES;
-    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v34690.js';
+    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v346100.js';
     $host_adapter_contract = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-host-adapter-contract-v34620.js';
     $wordpress_host_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-host-adapter-v34620.js';
     $application_kernel_bytes = (is_file($application_kernel) && is_readable($application_kernel)) ? (int) filesize($application_kernel) : 0;
     $host_adapter_contract_bytes = (is_file($host_adapter_contract) && is_readable($host_adapter_contract)) ? (int) filesize($host_adapter_contract) : 0;
     $wordpress_host_adapter_bytes = (is_file($wordpress_host_adapter) && is_readable($wordpress_host_adapter)) ? (int) filesize($wordpress_host_adapter) : 0;
     $application_kernel_ok = $application_kernel_bytes >= self::MIN_APPLICATION_KERNEL_BYTES;
-    $wordpress_thin_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-thin-adapter-v34690.js';
+    $wordpress_thin_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-thin-adapter-v346100.js';
     $wordpress_thin_adapter_bytes = (is_file($wordpress_thin_adapter) && is_readable($wordpress_thin_adapter)) ? (int) filesize($wordpress_thin_adapter) : 0;
     $wordpress_thin_adapter_ok = $wordpress_thin_adapter_bytes >= self::MIN_WORDPRESS_THIN_ADAPTER_BYTES;
-    $runtime_asset_manifest = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-runtime-asset-manifest-v34690.js';
+    $runtime_asset_manifest = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-runtime-asset-manifest-v346100.js';
     $runtime_asset_manifest_bytes = (is_file($runtime_asset_manifest) && is_readable($runtime_asset_manifest)) ? (int) filesize($runtime_asset_manifest) : 0;
     $runtime_asset_manifest_ok = $runtime_asset_manifest_bytes >= self::MIN_RUNTIME_ASSET_MANIFEST_BYTES;
+    $decoupled_production_baseline = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-decoupled-production-baseline-v346100.js';
+    $decoupled_production_baseline_bytes = (is_file($decoupled_production_baseline) && is_readable($decoupled_production_baseline)) ? (int) filesize($decoupled_production_baseline) : 0;
+    $decoupled_production_baseline_ok = $decoupled_production_baseline_bytes >= self::MIN_DECOUPLED_PRODUCTION_BASELINE_BYTES;
     $module_registry = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-module-registry-v34650.js';
     $module_registry_bytes = (is_file($module_registry) && is_readable($module_registry)) ? (int) filesize($module_registry) : 0;
     $module_registry_ok = $module_registry_bytes >= self::MIN_MODULE_REGISTRY_BYTES;
@@ -185,7 +190,7 @@ public static function preflight() {
     return array(
         'schema' => self::SCHEMA,
         'workspace_version' => SC_WORKSPACE_VERSION,
-        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok && $lifecycle_runtime_ok && $application_kernel_ok && $wordpress_thin_adapter_ok && $runtime_asset_manifest_ok && $module_registry_ok && $project_runtime_ok && $state_persistence_boundary_ok && $host_boundary_ok && $transport_auth_api_boundary_ok,
+        'ok' => empty($missing) && $wp_ok && $php_ok && $canonical_root && $asset_continuity_ok && $previous_asset_continuity_ok && $lifecycle_runtime_ok && $application_kernel_ok && $wordpress_thin_adapter_ok && $runtime_asset_manifest_ok && $decoupled_production_baseline_ok && $module_registry_ok && $project_runtime_ok && $state_persistence_boundary_ok && $host_boundary_ok && $transport_auth_api_boundary_ok,
         'required_file_count' => count(self::required_files()),
         'missing_required_file_count' => count($missing),
         'missing_required_files' => $missing,
@@ -204,6 +209,8 @@ public static function preflight() {
         'wordpress_thin_adapter_ok' => $wordpress_thin_adapter_ok,
         'runtime_asset_manifest_bytes' => $runtime_asset_manifest_bytes,
         'runtime_asset_manifest_ok' => $runtime_asset_manifest_ok,
+        'decoupled_production_baseline_bytes' => $decoupled_production_baseline_bytes,
+        'decoupled_production_baseline_ok' => $decoupled_production_baseline_ok,
         'module_registry_bytes' => $module_registry_bytes,
         'module_registry_ok' => $module_registry_ok,
         'state_store_runtime_bytes' => $state_store_runtime_bytes,

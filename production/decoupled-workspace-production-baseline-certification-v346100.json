@@ -1,0 +1,67 @@
+{
+  "databaseMigration": false,
+  "gateCount": 11,
+  "gates": [
+    {
+      "detail": "",
+      "name": "WORKSPACE_DECOUPLED_BASELINE_CONTRACT",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_DECOUPLED_BASELINE_RELEASE_IDENTITY",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_WORDPRESS_THIN_HOST_BASELINE",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_WORDPRESS_ZERO_APPLICATION_OWNERSHIP",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_STANDALONE_PRODUCTION_CERTIFIED",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_HOST_AGNOSTIC_ASSET_PIPELINE_BASELINE",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_SHARED_ASSET_CHECKSUM_PARITY",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_DECOUPLED_BASELINE_ASSET_PARITY",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_CORE_DECOUPLING_INVARIANTS",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_DECOUPLED_BASELINE_ROLLBACK_CONTINUITY",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_DECOUPLED_BASELINE_NO_MIGRATIONS",
+      "ok": true
+    }
+  ],
+  "passed": true,
+  "productionBaseline": true,
+  "rollbackRelease": "3.46.9.0",
+  "schema": "sc-workspace-decoupled-production-baseline-certification/1.0",
+  "storageSchemaMigration": false,
+  "version": "3.46.10.0"
+}
