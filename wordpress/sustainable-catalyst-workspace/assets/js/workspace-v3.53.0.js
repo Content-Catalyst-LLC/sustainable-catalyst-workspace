@@ -549,3 +549,21 @@
     });
   }
 })();
+
+
+/* Workspace v3.53.0 — Reproducible Computational Linguistics feature loader */
+(() => {
+  if (window.SCWorkspaceReproducibleComputationalLinguistics) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-reproducible-computational-linguistics-v3530.js', current.src).href
+      : 'assets/js/sc-workspace-reproducible-computational-linguistics-v3530.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-reproducible-computational-linguistics-v3530.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'reproducible-computational-linguistics';
+  document.head.appendChild(script);
+})();
