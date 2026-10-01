@@ -1,0 +1,24 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.50.0",
+  "title": "Historical Language, Script & Variant Identity Workspace",
+  "predecessor": "3.49.0",
+  "rollbackRelease": "3.49.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "preservesDecoupledProductionBaseline": "3.46.10.0",
+  "moduleId": "workspace.linguistics.historical-language-identity",
+  "moduleSchema": "sc-workspace-historical-language-script-variant-identity-workspace/1.0",
+  "backendRuntimeSchema": "sc-workspace-historical-language-identity-runtime/1.0",
+  "dependsOnModules": [
+    "workspace.linguistics.original-language-corpus@3.47.0",
+    "workspace.linguistics.annotation-corpus-structure@3.48.0",
+    "workspace.linguistics.translation-parallel-alignment@3.49.0"
+  ],
+  "boundedBackendOperations": 6,
+  "originalLanguageFirst": true,
+  "historicalIdentityPreserved": true,
+  "automaticModernizationEnabled": false,
+  "automaticVariantNormalizationEnabled": false,
+  "nextPlannedBuild": "3.51.0"
+}

@@ -4382,24 +4382,24 @@ public function research_templates_contract() {
 
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.49.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.50.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
 
         wp_enqueue_script(
-            'sc-workspace-wordpress-thin-adapter-v3490',
-            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v3490.js',
+            'sc-workspace-wordpress-thin-adapter-v3500',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v3500.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-wordpress-thin-adapter-v3490', 'SCWorkspaceWordPressBridge', array(
+        wp_localize_script('sc-workspace-wordpress-thin-adapter-v3500', 'SCWorkspaceWordPressBridge', array(
             'schema' => 'sc-workspace-wordpress-thin-bridge/1.1',
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'host' => 'wordpress',
-            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v3490.js'),
+            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v3500.js'),
             'legacyPhpScriptGraphRetired' => true,
             'applicationModuleBoot' => 'javascript-owned',
             'hostAgnosticAssetPipeline' => true,
@@ -4457,6 +4457,24 @@ public function research_templates_contract() {
                         'capabilities' => array('workspace.linguistics.translation-provenance','workspace.linguistics.transliteration-provenance','workspace.linguistics.parallel-text','workspace.linguistics.parallel-alignment'),
                         'source' => 'workspace',
                         'global' => 'SCWorkspaceTranslationTransliterationParallelAlignment',
+                    ),
+                    array(
+                        'id' => 'workspace.linguistics.historical-language-identity',
+                        'assetId' => 'workspace.linguistics.historical-language-identity',
+                        'version' => '3.50.0',
+                        'title' => 'Historical Language, Script & Variant Identity Workspace',
+                        'optional' => true,
+                        'enabled' => true,
+                        'dependsOn' => array('core.api', 'workspace.linguistics.original-language-corpus', 'workspace.linguistics.annotation-corpus-structure', 'workspace.linguistics.translation-parallel-alignment'),
+                        'capabilities' => array(
+                            'workspace.linguistics.historical-language-identity',
+                            'workspace.linguistics.script-identity',
+                            'workspace.linguistics.variant-identity',
+                            'workspace.linguistics.temporal-language-profile',
+                            'workspace.linguistics.identity-lineage',
+                        ),
+                        'source' => 'workspace',
+                        'global' => 'SCWorkspaceHistoricalLanguageScriptVariantIdentity',
                     ),
                 ),
                 'hostAdapterMode' => 'explicit-contract',

@@ -3,7 +3,7 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.49.0',
+    workspaceVersion: '3.50.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     assetBase: './assets/',
@@ -57,6 +57,24 @@
         capabilities: ['workspace.linguistics.translation-provenance','workspace.linguistics.transliteration-provenance','workspace.linguistics.parallel-text','workspace.linguistics.parallel-alignment'],
         source: 'workspace',
         global: 'SCWorkspaceTranslationTransliterationParallelAlignment'
+      },
+      {
+        id: 'workspace.linguistics.historical-language-identity',
+        assetId: 'workspace.linguistics.historical-language-identity',
+        version: '3.50.0',
+        title: 'Historical Language, Script & Variant Identity Workspace',
+        optional: true,
+        enabled: true,
+        dependsOn: ['core.api', 'workspace.linguistics.original-language-corpus', 'workspace.linguistics.annotation-corpus-structure', 'workspace.linguistics.translation-parallel-alignment'],
+        capabilities: [
+          'workspace.linguistics.historical-language-identity',
+          'workspace.linguistics.script-identity',
+          'workspace.linguistics.variant-identity',
+          'workspace.linguistics.temporal-language-profile',
+          'workspace.linguistics.identity-lineage'
+        ],
+        source: 'workspace',
+        global: 'SCWorkspaceHistoricalLanguageScriptVariantIdentity'
       }
     ],
     automaticBackendHealthCheck: false,

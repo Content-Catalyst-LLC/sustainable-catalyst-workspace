@@ -292,6 +292,19 @@ from .translation_alignment_workspace import (
     profile as translation_alignment_workspace_profile,
 )
 
+from .historical_language_identity_runtime import (
+    RUNTIME_SCHEMA as HISTORICAL_LANGUAGE_IDENTITY_RUNTIME_SCHEMA,
+    OPERATIONS as HISTORICAL_LANGUAGE_IDENTITY_OPERATIONS,
+    HistoricalLanguageIdentityRuntimeRequest,
+    profile as historical_language_identity_runtime_profile,
+    operation_catalog as historical_language_identity_operation_catalog,
+    execute as execute_historical_language_identity_operation,
+)
+from .historical_language_identity_workspace import (
+    WORKSPACE_SCHEMA as HISTORICAL_LANGUAGE_IDENTITY_WORKSPACE_SCHEMA,
+    profile as historical_language_identity_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -409,6 +422,15 @@ def health():
         "translationAlignmentAutomaticTranslationEnabled": False,
         "translationAlignmentAutomaticAlignmentEnabled": False,
         "translationAlignmentProvenancePreserved": True,
+        "historicalLanguageIdentityWorkspace": True,
+        "historicalLanguageIdentityWorkspaceSchema": HISTORICAL_LANGUAGE_IDENTITY_WORKSPACE_SCHEMA,
+        "historicalLanguageIdentityRuntime": True,
+        "historicalLanguageIdentityRuntimeSchema": HISTORICAL_LANGUAGE_IDENTITY_RUNTIME_SCHEMA,
+        "historicalLanguageIdentityRuntimeBoundedOperations": len(HISTORICAL_LANGUAGE_IDENTITY_OPERATIONS),
+        "historicalLanguageIdentityPreserved": True,
+        "historicalLanguageAutomaticModernizationEnabled": False,
+        "historicalLanguageAutomaticVariantNormalizationEnabled": False,
+        "historicalLanguageIdentityProvenancePreserved": True,
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -4132,6 +4154,40 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+# Workspace v3.50.0 — Historical Language, Script & Variant Identity Workspace
+@app.get("/v1/historical-language-script-variant-identity-workspace")
+def historical_language_script_variant_identity_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return historical_language_identity_workspace_profile()
+
+
+@app.get("/v1/historical-language-identity-runtime")
+def historical_language_identity_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return historical_language_identity_runtime_profile()
+
+
+@app.get("/v1/historical-language-identity-runtime/operations")
+def historical_language_identity_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema": "sc-workspace-historical-language-identity-operation-index/1.0",
+        "version": settings.service_version,
+        "items": historical_language_identity_operation_catalog(),
+        "boundedOperationsOnly": True,
+        "arbitraryCodeExecution": False,
+        "automaticModernizationEnabled": False,
+    }
+
+
+@app.post("/v1/historical-language-identity-runtime/execute")
+def historical_language_identity_execute_route(
+    payload: HistoricalLanguageIdentityRuntimeRequest,
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    try:
+        return execute_historical_language_identity_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 
 # Workspace v3.49.0 — Translation, Transliteration & Parallel Alignment Workspace
 @app.get("/v1/translation-transliteration-parallel-alignment-workspace")
