@@ -1,0 +1,21 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.47.0",
+  "title": "Original-Language Text & Corpus Workspace Foundation",
+  "predecessor": "3.46.10.0",
+  "rollbackRelease": "3.46.10.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "preservesDecoupledProductionBaseline": "3.46.10.0",
+  "moduleId": "workspace.linguistics.original-language-corpus",
+  "moduleSchema": "sc-workspace-original-language-corpus-workspace/1.0",
+  "backendRuntimeSchema": "sc-workspace-multilingual-text-corpus-runtime/1.0",
+  "originalLanguageFirst": true,
+  "translationIsDerivedRepresentation": true,
+  "transliterationIsDerivedRepresentation": true,
+  "automaticLanguageDetectionEnabled": false,
+  "automaticTranslationEnabled": false,
+  "automaticTransliterationEnabled": false,
+  "boundedBackendOperations": 6,
+  "nextPlannedBuild": "3.48.0"
+}

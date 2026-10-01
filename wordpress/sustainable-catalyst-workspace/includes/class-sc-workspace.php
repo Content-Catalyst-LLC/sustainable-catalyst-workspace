@@ -4382,24 +4382,24 @@ public function research_templates_contract() {
 
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.46.10.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.47.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
 
         wp_enqueue_script(
-            'sc-workspace-wordpress-thin-adapter-v346100',
-            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v346100.js',
+            'sc-workspace-wordpress-thin-adapter-v3470',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v3470.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-wordpress-thin-adapter-v346100', 'SCWorkspaceWordPressBridge', array(
+        wp_localize_script('sc-workspace-wordpress-thin-adapter-v3470', 'SCWorkspaceWordPressBridge', array(
             'schema' => 'sc-workspace-wordpress-thin-bridge/1.1',
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'host' => 'wordpress',
-            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v346100.js'),
+            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v3470.js'),
             'legacyPhpScriptGraphRetired' => true,
             'applicationModuleBoot' => 'javascript-owned',
             'hostAgnosticAssetPipeline' => true,
@@ -4411,7 +4411,24 @@ public function research_templates_contract() {
                 'transport' => 'wordpress-server-proxy',
                 'authenticated' => $authenticated,
                 'assetBase' => SC_WORKSPACE_URL . 'assets/js/',
-                'optionalModules' => array(),
+                'optionalModules' => array(
+                    array(
+                        'id' => 'workspace.linguistics.original-language-corpus',
+                        'assetId' => 'workspace.linguistics.original-language-corpus',
+                        'version' => '3.47.0',
+                        'title' => 'Original-Language Text & Corpus Workspace',
+                        'optional' => true,
+                        'enabled' => true,
+                        'dependsOn' => array('core.api'),
+                        'capabilities' => array(
+                            'workspace.linguistics.original-language',
+                            'workspace.linguistics.corpus',
+                            'workspace.linguistics.transformation-provenance',
+                        ),
+                        'source' => 'workspace',
+                        'global' => 'SCWorkspaceOriginalLanguageCorpusWorkspace',
+                    ),
+                ),
                 'hostAdapterMode' => 'explicit-contract',
                 'wordpressRequired' => false,
                 'wordpressThinAdapter' => true,

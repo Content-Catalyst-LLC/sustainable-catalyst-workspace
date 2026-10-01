@@ -261,6 +261,11 @@ from .multilingual_corpus_runtime import (
     execute as execute_multilingual_corpus_operation,
 )
 
+from .original_language_corpus_workspace import (
+    WORKSPACE_SCHEMA as ORIGINAL_LANGUAGE_CORPUS_WORKSPACE_SCHEMA,
+    profile as original_language_corpus_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -359,6 +364,9 @@ def health():
         "automaticLanguageDetectionEnabled": False,
         "automaticTranslationEnabled": False,
         "multilingualRuntimeArbitraryCodeExecution": False,
+        "originalLanguageCorpusWorkspace": True,
+        "originalLanguageCorpusWorkspaceSchema": ORIGINAL_LANGUAGE_CORPUS_WORKSPACE_SCHEMA,
+        "originalLanguageCorpusWorkspaceBoundedOperations": len(MULTILINGUAL_CORPUS_OPERATIONS),
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -4082,6 +4090,12 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+# Workspace v3.47.0 — Original-Language Text & Corpus Workspace Foundation
+@app.get("/v1/original-language-corpus-workspace")
+def original_language_corpus_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return original_language_corpus_workspace_profile()
+
 
 # Workspace v3.46.0 — Multilingual Text & Corpus Runtime Foundation
 @app.get("/v1/multilingual-text-corpus-runtime")
