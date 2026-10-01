@@ -3,7 +3,7 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.50.0',
+    workspaceVersion: '3.51.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     assetBase: './assets/',
@@ -61,7 +61,7 @@
       {
         id: 'workspace.linguistics.historical-language-identity',
         assetId: 'workspace.linguistics.historical-language-identity',
-        version: '3.50.0',
+        version: '3.51.0',
         title: 'Historical Language, Script & Variant Identity Workspace',
         optional: true,
         enabled: true,
@@ -75,6 +75,14 @@
         ],
         source: 'workspace',
         global: 'SCWorkspaceHistoricalLanguageScriptVariantIdentity'
+      }
+,
+      {
+        id: 'workspace.linguistics.cross-language-entity-resolution',
+        version: '3.51.0',
+        schema: 'sc-workspace-cross-language-entity-toponym-resolution-workspace/1.0',
+        assetId: 'workspace.linguistics.cross-language-entity-resolution',
+        autoload: false
       }
     ],
     automaticBackendHealthCheck: false,

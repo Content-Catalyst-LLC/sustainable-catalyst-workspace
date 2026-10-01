@@ -305,6 +305,19 @@ from .historical_language_identity_workspace import (
     profile as historical_language_identity_workspace_profile,
 )
 
+from .cross_language_entity_resolution_runtime import (
+    RUNTIME_SCHEMA as CROSS_LANGUAGE_ENTITY_RESOLUTION_RUNTIME_SCHEMA,
+    OPERATIONS as CROSS_LANGUAGE_ENTITY_RESOLUTION_OPERATIONS,
+    CrossLanguageEntityResolutionRequest,
+    profile as cross_language_entity_resolution_runtime_profile,
+    operation_catalog as cross_language_entity_resolution_operation_catalog,
+    execute as execute_cross_language_entity_resolution_operation,
+)
+from .cross_language_entity_resolution_workspace import (
+    WORKSPACE_SCHEMA as CROSS_LANGUAGE_ENTITY_RESOLUTION_WORKSPACE_SCHEMA,
+    profile as cross_language_entity_resolution_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -422,6 +435,12 @@ def health():
         "translationAlignmentAutomaticTranslationEnabled": False,
         "translationAlignmentAutomaticAlignmentEnabled": False,
         "translationAlignmentProvenancePreserved": True,
+        "crossLanguageEntityToponymResolutionWorkspace": True,
+        "crossLanguageEntityToponymResolutionWorkspaceSchema": CROSS_LANGUAGE_ENTITY_RESOLUTION_WORKSPACE_SCHEMA,
+        "crossLanguageEntityResolutionRuntime": True,
+        "crossLanguageEntityResolutionRuntimeSchema": CROSS_LANGUAGE_ENTITY_RESOLUTION_RUNTIME_SCHEMA,
+        "crossLanguageEntityResolutionRuntimeBoundedOperations": len(CROSS_LANGUAGE_ENTITY_RESOLUTION_OPERATIONS),
+        "automaticEntityMergeEnabled": False,
         "historicalLanguageIdentityWorkspace": True,
         "historicalLanguageIdentityWorkspaceSchema": HISTORICAL_LANGUAGE_IDENTITY_WORKSPACE_SCHEMA,
         "historicalLanguageIdentityRuntime": True,
@@ -4154,6 +4173,27 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.51.0 — Cross-Language Entity & Toponym Resolution Workspace
+@app.get("/v1/cross-language-entity-toponym-resolution-workspace")
+def cross_language_entity_toponym_resolution_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return cross_language_entity_resolution_workspace_profile()
+
+@app.get("/v1/cross-language-entity-resolution-runtime")
+def cross_language_entity_resolution_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return cross_language_entity_resolution_runtime_profile()
+
+@app.get("/v1/cross-language-entity-resolution-runtime/operations")
+def cross_language_entity_resolution_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"schema":"sc-workspace-cross-language-entity-resolution-operation-index/1.0","version":settings.service_version,"items":cross_language_entity_resolution_operation_catalog(),"boundedOperationsOnly":True,"arbitraryCodeExecution":False,"automaticEntityMergeEnabled":False}
+
+@app.post("/v1/cross-language-entity-resolution-runtime/execute")
+def cross_language_entity_resolution_execute_route(payload: CrossLanguageEntityResolutionRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_cross_language_entity_resolution_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 # Workspace v3.50.0 — Historical Language, Script & Variant Identity Workspace
 @app.get("/v1/historical-language-script-variant-identity-workspace")

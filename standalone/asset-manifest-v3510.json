@@ -1,0 +1,137 @@
+{
+  "assets": {
+    "application.kernel": {
+      "file": "sc-workspace-application-kernel-v3510.js",
+      "order": 90,
+      "sha256": "64ba59eee115fc355090b3fc3c10d361c072579075bfb5266f985c3ad6f06d09",
+      "shared": true
+    },
+    "client.api": {
+      "file": "sc-workspace-api-client-v34620.js",
+      "order": 40,
+      "sha256": "27c14a17daaad168a97110165a0babaf14e92f135f9536f33ce99be445c632ff",
+      "shared": true
+    },
+    "client.auth": {
+      "file": "sc-workspace-auth-context-v34620.js",
+      "order": 30,
+      "sha256": "36b85109b1d42cdc4d63bf9da004d1c2fa8b55c416bd5fb29e95daa7335ad6e0",
+      "shared": true
+    },
+    "client.transport": {
+      "file": "sc-workspace-transport-v34620.js",
+      "order": 20,
+      "sha256": "13c6b2f614eb62d9ba75cca18d28e60ba1738e8e3bd1660546c03bcbb69f9daf",
+      "shared": true
+    },
+    "host.contract": {
+      "file": "sc-workspace-host-adapter-contract-v34620.js",
+      "order": 10,
+      "sha256": "80f2480cfaa902274974a47beb01781aa0ee1a64fbad8b4e8717e6721132c31d",
+      "shared": true
+    },
+    "modules.registry": {
+      "file": "sc-workspace-module-registry-v34650.js",
+      "order": 80,
+      "sha256": "3f8f86699405ead8f1193719a05d545e06ff316f90b5fc962e2ff2669131fe19",
+      "shared": true
+    },
+    "production.baseline": {
+      "file": "sc-workspace-decoupled-production-baseline-v346100.js",
+      "order": 140,
+      "sha256": "003ac1049d12c79d2e7e1e6e5e31e49381111c937853a0cd6ec666ed1d57f4ab",
+      "shared": true
+    },
+    "projects.runtime": {
+      "file": "sc-workspace-project-runtime-v34630.js",
+      "order": 70,
+      "sha256": "22da59a3590715b4c31b5479e0c4ef9c2a24bb3b17474206c4461a9dce3d4366",
+      "shared": true
+    },
+    "standalone.certification": {
+      "file": "sc-workspace-standalone-production-certification-v3510.js",
+      "order": 130,
+      "sha256": "a846d738194b8d304e3b343e38ee00085958e8cffb49f9ae7a66755b74304649",
+      "shared": false
+    },
+    "standalone.host": {
+      "file": "sc-workspace-standalone-host-adapter-v3510.js",
+      "order": 100,
+      "sha256": "496c57204c2c740d8d5c1b807a7cc76c42be2a4d114a4e6343b5a0ed397cbdc2",
+      "shared": false
+    },
+    "standalone.runtime": {
+      "file": "sc-workspace-standalone-runtime-v3510.js",
+      "order": 110,
+      "sha256": "f08677d7b557a4daf229c53b3e9643199e334ed7b729e644083fa32a698be0cc",
+      "shared": false
+    },
+    "standalone.shell": {
+      "file": "workspace-standalone-shell-v3510.js",
+      "order": 120,
+      "sha256": "d8ad4391f3b18fd563ac65dc4aebef7cf39788332cf4e33a1a252b7659e66b8f",
+      "shared": false
+    },
+    "state.persistence": {
+      "file": "sc-workspace-persistence-runtime-v34640.js",
+      "order": 50,
+      "sha256": "0dbb692038f369e02fc3e810a13589431d841d66c93cfed4348ffce19d7eeb42",
+      "shared": true
+    },
+    "state.store": {
+      "file": "sc-workspace-state-store-v34640.js",
+      "order": 60,
+      "sha256": "3c384fa1e1069ef2abbc194e8ccc7026674c9fa6f319bb9f06fada16f3587858",
+      "shared": true
+    },
+    "workspace.linguistics.annotation-corpus-structure": {
+      "file": "sc-workspace-linguistic-annotation-corpus-structure-v3480.js",
+      "order": 160,
+      "sha256": "6c35d678ea014f525526d233c43c26596e4af09ff9bf8b9b53ec64ab20cb601c",
+      "shared": true
+    },
+    "workspace.linguistics.cross-language-entity-resolution": {
+      "file": "sc-workspace-cross-language-entity-toponym-resolution-v3510.js",
+      "order": 190,
+      "sha256": "613fba460e4901a912c09901709d183c6d145dd2dda763a431e2dd70960f697f",
+      "shared": true
+    },
+    "workspace.linguistics.historical-language-identity": {
+      "file": "sc-workspace-historical-language-script-variant-identity-v3500.js",
+      "order": 180,
+      "sha256": "55250100817be937862f25f4e00ebe7d9dee1b81e05a0345a0737fbf78e88d61",
+      "shared": true
+    },
+    "workspace.linguistics.original-language-corpus": {
+      "file": "sc-workspace-original-language-corpus-v3470.js",
+      "order": 150,
+      "sha256": "ec2f9deb7abdc7c049aa52443c37f343ce5c8f381559371631b10ed4617e7211",
+      "shared": true
+    },
+    "workspace.linguistics.translation-parallel-alignment": {
+      "file": "sc-workspace-translation-transliteration-parallel-alignment-v3490.js",
+      "order": 170,
+      "sha256": "428543399a2f51fe98f9a5c2c321bf60179bd37883af5ee97c6f3331874e57c7",
+      "shared": true
+    }
+  },
+  "generatedFrom": "build/workspace-runtime-assets-v3510.json",
+  "host": "standalone",
+  "loadOrder": [
+    "host.contract",
+    "client.transport",
+    "client.auth",
+    "client.api",
+    "state.persistence",
+    "state.store",
+    "projects.runtime",
+    "modules.registry",
+    "application.kernel",
+    "standalone.host",
+    "standalone.runtime",
+    "standalone.shell"
+  ],
+  "schema": "sc-workspace-runtime-asset-manifest/1.0",
+  "version": "3.51.0",
+  "wordpressRequired": false
+}
