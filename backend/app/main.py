@@ -314,6 +314,9 @@ from .cross_language_entity_resolution_runtime import (
     execute as execute_cross_language_entity_resolution_operation,
 )
 from .cross_language_entity_resolution_workspace import (
+    WORKSPACE_SCHEMA as CROSS_LANGUAGE_ENTITY_RESOLUTION_WORKSPACE_SCHEMA,
+    profile as cross_language_entity_resolution_workspace_profile,
+)
 
 from .cross_lingual_semantic_evidence_runtime import (
     CrossLingualSemanticEvidenceRequest,
@@ -321,9 +324,8 @@ from .cross_lingual_semantic_evidence_runtime import (
     operation_catalog as cross_lingual_semantic_evidence_operation_catalog,
     execute as execute_cross_lingual_semantic_evidence_operation,
 )
-from .cross_lingual_semantic_evidence_workspace import profile as cross_lingual_semantic_evidence_workspace_profile
-    WORKSPACE_SCHEMA as CROSS_LANGUAGE_ENTITY_RESOLUTION_WORKSPACE_SCHEMA,
-    profile as cross_language_entity_resolution_workspace_profile,
+from .cross_lingual_semantic_evidence_workspace import (
+    profile as cross_lingual_semantic_evidence_workspace_profile,
 )
 
 @asynccontextmanager
