@@ -3,7 +3,7 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.47.0',
+    workspaceVersion: '3.48.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     assetBase: './assets/',
@@ -27,6 +27,24 @@
         ],
         source: 'workspace',
         global: 'SCWorkspaceOriginalLanguageCorpusWorkspace'
+      },
+      {
+        id: 'workspace.linguistics.annotation-corpus-structure',
+        assetId: 'workspace.linguistics.annotation-corpus-structure',
+        version: '3.48.0',
+        title: 'Linguistic Annotation & Corpus Structure Workspace',
+        optional: true,
+        enabled: true,
+        dependsOn: ['core.api', 'workspace.linguistics.original-language-corpus'],
+        capabilities: [
+          'workspace.linguistics.annotation',
+          'workspace.linguistics.annotation-layers',
+          'workspace.linguistics.document-structure',
+          'workspace.linguistics.corpus-structure',
+          'workspace.linguistics.annotation-lineage'
+        ],
+        source: 'workspace',
+        global: 'SCWorkspaceLinguisticAnnotationCorpusStructureWorkspace'
       }
     ],
     automaticBackendHealthCheck: false,

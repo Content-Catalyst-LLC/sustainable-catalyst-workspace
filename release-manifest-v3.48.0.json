@@ -1,0 +1,21 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "release": "3.48.0",
+  "title": "Linguistic Annotation & Corpus Structure Workspace",
+  "predecessor": "3.47.0",
+  "rollbackRelease": "3.47.0",
+  "databaseMigration": false,
+  "storageSchemaMigration": false,
+  "preservesDecoupledProductionBaseline": "3.46.10.0",
+  "dependsOnModule": "workspace.linguistics.original-language-corpus@3.47.0",
+  "moduleId": "workspace.linguistics.annotation-corpus-structure",
+  "moduleSchema": "sc-workspace-linguistic-annotation-corpus-structure-workspace/1.0",
+  "backendRuntimeSchema": "sc-workspace-linguistic-annotation-runtime/1.0",
+  "boundedBackendOperations": 6,
+  "offsetUnit": "unicode-code-point",
+  "originalLanguageFirst": true,
+  "automaticLanguageDetectionEnabled": false,
+  "automaticTranslationEnabled": false,
+  "provenancePreserved": true,
+  "nextPlannedBuild": "3.49.0"
+}

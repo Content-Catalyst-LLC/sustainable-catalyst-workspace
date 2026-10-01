@@ -4382,24 +4382,24 @@ public function research_templates_contract() {
 
         wp_enqueue_style(
             'sc-workspace-v241',
-            SC_WORKSPACE_URL . 'assets/css/workspace-v3.47.0.css',
+            SC_WORKSPACE_URL . 'assets/css/workspace-v3.48.0.css',
             array(),
             SC_WORKSPACE_VERSION
         );
 
         wp_enqueue_script(
-            'sc-workspace-wordpress-thin-adapter-v3470',
-            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v3470.js',
+            'sc-workspace-wordpress-thin-adapter-v3480',
+            SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v3480.js',
             array(),
             SC_WORKSPACE_VERSION,
             true
         );
 
-        wp_localize_script('sc-workspace-wordpress-thin-adapter-v3470', 'SCWorkspaceWordPressBridge', array(
+        wp_localize_script('sc-workspace-wordpress-thin-adapter-v3480', 'SCWorkspaceWordPressBridge', array(
             'schema' => 'sc-workspace-wordpress-thin-bridge/1.1',
             'workspaceVersion' => SC_WORKSPACE_VERSION,
             'host' => 'wordpress',
-            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v3470.js'),
+            'assetManifestUrl' => add_query_arg('ver', SC_WORKSPACE_VERSION, SC_WORKSPACE_URL . 'assets/js/sc-workspace-runtime-asset-manifest-v3480.js'),
             'legacyPhpScriptGraphRetired' => true,
             'applicationModuleBoot' => 'javascript-owned',
             'hostAgnosticAssetPipeline' => true,
@@ -4427,6 +4427,24 @@ public function research_templates_contract() {
                         ),
                         'source' => 'workspace',
                         'global' => 'SCWorkspaceOriginalLanguageCorpusWorkspace',
+                    ),
+                    array(
+                        'id' => 'workspace.linguistics.annotation-corpus-structure',
+                        'assetId' => 'workspace.linguistics.annotation-corpus-structure',
+                        'version' => '3.48.0',
+                        'title' => 'Linguistic Annotation & Corpus Structure Workspace',
+                        'optional' => true,
+                        'enabled' => true,
+                        'dependsOn' => array('core.api', 'workspace.linguistics.original-language-corpus'),
+                        'capabilities' => array(
+                            'workspace.linguistics.annotation',
+                            'workspace.linguistics.annotation-layers',
+                            'workspace.linguistics.document-structure',
+                            'workspace.linguistics.corpus-structure',
+                            'workspace.linguistics.annotation-lineage',
+                        ),
+                        'source' => 'workspace',
+                        'global' => 'SCWorkspaceLinguisticAnnotationCorpusStructureWorkspace',
                     ),
                 ),
                 'hostAdapterMode' => 'explicit-contract',

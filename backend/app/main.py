@@ -266,6 +266,19 @@ from .original_language_corpus_workspace import (
     profile as original_language_corpus_workspace_profile,
 )
 
+from .linguistic_annotation_runtime import (
+    RUNTIME_SCHEMA as LINGUISTIC_ANNOTATION_RUNTIME_SCHEMA,
+    OPERATIONS as LINGUISTIC_ANNOTATION_OPERATIONS,
+    LinguisticAnnotationRuntimeRequest,
+    profile as linguistic_annotation_runtime_profile,
+    operation_catalog as linguistic_annotation_operation_catalog,
+    execute as execute_linguistic_annotation_operation,
+)
+from .linguistic_annotation_corpus_workspace import (
+    WORKSPACE_SCHEMA as LINGUISTIC_ANNOTATION_WORKSPACE_SCHEMA,
+    profile as linguistic_annotation_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -367,6 +380,13 @@ def health():
         "originalLanguageCorpusWorkspace": True,
         "originalLanguageCorpusWorkspaceSchema": ORIGINAL_LANGUAGE_CORPUS_WORKSPACE_SCHEMA,
         "originalLanguageCorpusWorkspaceBoundedOperations": len(MULTILINGUAL_CORPUS_OPERATIONS),
+        "linguisticAnnotationCorpusStructureWorkspace": True,
+        "linguisticAnnotationCorpusStructureWorkspaceSchema": LINGUISTIC_ANNOTATION_WORKSPACE_SCHEMA,
+        "linguisticAnnotationRuntime": True,
+        "linguisticAnnotationRuntimeSchema": LINGUISTIC_ANNOTATION_RUNTIME_SCHEMA,
+        "linguisticAnnotationRuntimeBoundedOperations": len(LINGUISTIC_ANNOTATION_OPERATIONS),
+        "linguisticAnnotationOffsetUnit": "unicode-code-point",
+        "linguisticAnnotationProvenancePreserved": True,
         "arrowCompatibleInterchange": True,
         "polyglotExecutionReceipts": True,
         "rStatisticalEconometricRuntime": True,
@@ -4090,6 +4110,40 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+# Workspace v3.48.0 — Linguistic Annotation & Corpus Structure Workspace
+@app.get("/v1/linguistic-annotation-corpus-structure-workspace")
+def linguistic_annotation_corpus_structure_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return linguistic_annotation_workspace_profile()
+
+
+@app.get("/v1/linguistic-annotation-runtime")
+def linguistic_annotation_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return linguistic_annotation_runtime_profile()
+
+
+@app.get("/v1/linguistic-annotation-runtime/operations")
+def linguistic_annotation_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema": "sc-workspace-linguistic-annotation-operation-index/1.0",
+        "version": settings.service_version,
+        "items": linguistic_annotation_operation_catalog(),
+        "boundedOperationsOnly": True,
+        "arbitraryCodeExecution": False,
+        "offsetUnit": "unicode-code-point",
+    }
+
+
+@app.post("/v1/linguistic-annotation-runtime/execute")
+def linguistic_annotation_execute_route(
+    payload: LinguisticAnnotationRuntimeRequest,
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    try:
+        return execute_linguistic_annotation_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 
 # Workspace v3.47.0 — Original-Language Text & Corpus Workspace Foundation
 @app.get("/v1/original-language-corpus-workspace")
