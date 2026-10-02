@@ -639,3 +639,21 @@
   script.dataset.scWorkspaceModule = 'dataset-feature-engineering';
   document.head.appendChild(script);
 })();
+
+
+/* Workspace v3.58.0 — Training & Evaluation Experiment loader */
+(() => {
+  if (window.SCWorkspaceTrainingEvaluationExperiment) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-training-evaluation-experiment-v3580.js', current.src).href
+      : 'assets/js/sc-workspace-training-evaluation-experiment-v3580.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-training-evaluation-experiment-v3580.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'training-evaluation-experiment';
+  document.head.appendChild(script);
+})();
