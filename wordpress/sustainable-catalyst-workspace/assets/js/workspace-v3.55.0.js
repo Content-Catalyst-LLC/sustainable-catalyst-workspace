@@ -585,3 +585,21 @@
   script.dataset.scWorkspaceModule = 'integrated-global-language-research';
   document.head.appendChild(script);
 })();
+
+
+/* Workspace v3.55.0 — Language Research Production Certification loader */
+(() => {
+  if (window.SCWorkspaceLanguageResearchProductionCertification) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-language-research-production-certification-v3550.js', current.src).href
+      : 'assets/js/sc-workspace-language-research-production-certification-v3550.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-language-research-production-certification-v3550.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'language-research-production-certification';
+  document.head.appendChild(script);
+})();
