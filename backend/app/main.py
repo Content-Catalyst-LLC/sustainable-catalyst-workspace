@@ -348,6 +348,16 @@ from .integrated_global_language_research_workspace import (
     profile as integrated_global_language_research_workspace_profile,
 )
 
+from .language_research_production_certification_runtime import (
+    LanguageResearchProductionCertificationRequest,
+    profile as language_research_production_certification_runtime_profile,
+    operation_catalog as language_research_production_certification_operation_catalog,
+    execute as execute_language_research_production_certification_operation,
+)
+from .language_research_production_certification_workspace import (
+    profile as language_research_production_certification_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4203,6 +4213,35 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.55.0 — Language Research Production Certification
+@app.get("/v1/language-research-production-certification-workspace")
+def language_research_production_certification_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return language_research_production_certification_workspace_profile()
+
+@app.get("/v1/language-research-production-certification-runtime")
+def language_research_production_certification_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return language_research_production_certification_runtime_profile()
+
+@app.get("/v1/language-research-production-certification-runtime/operations")
+def language_research_production_certification_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-language-research-production-certification-operation-index/1.0",
+        "version":settings.service_version,
+        "items":language_research_production_certification_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "arbitraryCodeExecution":False,
+        "automaticTruthDeterminationEnabled":False,
+        "productionCertification":True,
+    }
+
+@app.post("/v1/language-research-production-certification-runtime/execute")
+def language_research_production_certification_execute_route(payload: LanguageResearchProductionCertificationRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_language_research_production_certification_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.54.0 — Integrated Global Language Research Workspace
