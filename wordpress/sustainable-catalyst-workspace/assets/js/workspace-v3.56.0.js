@@ -603,3 +603,21 @@
   script.dataset.scWorkspaceModule = 'language-research-production-certification';
   document.head.appendChild(script);
 })();
+
+
+/* Workspace v3.56.0 — Research Pipeline Composer loader */
+(() => {
+  if (window.SCWorkspaceResearchPipelineComposer) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-research-pipeline-composer-v3560.js', current.src).href
+      : 'assets/js/sc-workspace-research-pipeline-composer-v3560.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-research-pipeline-composer-v3560.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'research-pipeline-composer';
+  document.head.appendChild(script);
+})();
