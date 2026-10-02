@@ -657,3 +657,21 @@
   script.dataset.scWorkspaceModule = 'training-evaluation-experiment';
   document.head.appendChild(script);
 })();
+
+
+/* Workspace v3.59.0 — Model Registry & Research Model Lineage loader */
+(() => {
+  if (window.SCWorkspaceModelRegistryLineage) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-model-registry-lineage-v3590.js', current.src).href
+      : 'assets/js/sc-workspace-model-registry-lineage-v3590.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-model-registry-lineage-v3590.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'model-registry-lineage';
+  document.head.appendChild(script);
+})();
