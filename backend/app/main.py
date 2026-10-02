@@ -358,6 +358,16 @@ from .language_research_production_certification_workspace import (
     profile as language_research_production_certification_workspace_profile,
 )
 
+from .research_pipeline_composer_runtime import (
+    ResearchPipelineComposerRequest,
+    profile as research_pipeline_composer_runtime_profile,
+    operation_catalog as research_pipeline_composer_operation_catalog,
+    execute as execute_research_pipeline_composer_operation,
+)
+from .research_pipeline_composer_workspace import (
+    profile as research_pipeline_composer_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4213,6 +4223,36 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.56.0 — Research Pipeline Composer
+@app.get("/v1/research-pipeline-composer-workspace")
+def research_pipeline_composer_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return research_pipeline_composer_workspace_profile()
+
+@app.get("/v1/research-pipeline-composer-runtime")
+def research_pipeline_composer_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return research_pipeline_composer_runtime_profile()
+
+@app.get("/v1/research-pipeline-composer-runtime/operations")
+def research_pipeline_composer_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-research-pipeline-composer-operation-index/1.0",
+        "version":settings.service_version,
+        "items":research_pipeline_composer_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "automaticExecutionEnabled":False,
+        "automaticHandoffAcceptanceEnabled":False,
+        "arbitraryCodeExecution":False,
+        "provenancePreserved":True,
+    }
+
+@app.post("/v1/research-pipeline-composer-runtime/execute")
+def research_pipeline_composer_execute_route(payload: ResearchPipelineComposerRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_research_pipeline_composer_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.55.0 — Language Research Production Certification
