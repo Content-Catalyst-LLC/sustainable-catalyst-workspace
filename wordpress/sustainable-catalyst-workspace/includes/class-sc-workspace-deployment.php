@@ -15,8 +15,8 @@ final class SC_Workspace_Deployment_Hardening {
     const STATE_OPTION = 'sc_workspace_deployment_state_v1';
     const HISTORY_OPTION = 'sc_workspace_deployment_history_v1';
     const MAX_HISTORY = 12;
-    const PREVIOUS_RELEASE = '3.53.0';
-    const ROLLBACK_RELEASE = '3.53.0';
+    const PREVIOUS_RELEASE = '3.54.0';
+    const ROLLBACK_RELEASE = '3.54.0';
     const REQUIRED_WORDPRESS = '6.4';
     const REQUIRED_PHP = '8.0';
     const CANONICAL_PLUGIN_ROOT = 'sustainable-catalyst-workspace';
@@ -53,17 +53,18 @@ final class SC_Workspace_Deployment_Hardening {
             'current_script' => 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js',
             'current_style' => 'assets/css/workspace-v' . SC_WORKSPACE_VERSION . '.css',
             'typed_client' => 'assets/js/sc-workspace-typed-client-v3100.js',
-            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v3540.js',
+            'local_compatibility' => 'assets/js/sc-workspace-local-project-compat-v3550.js',
             'host_adapter_contract' => 'assets/js/sc-workspace-host-adapter-contract-v34620.js',
-            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v3540.js',
-            'wordpress_thin_adapter' => 'assets/js/sc-workspace-wordpress-thin-adapter-v3540.js',
-            'runtime_asset_manifest' => 'assets/js/sc-workspace-runtime-asset-manifest-v3540.js',
+            'application_kernel' => 'assets/js/sc-workspace-application-kernel-v3550.js',
+            'wordpress_thin_adapter' => 'assets/js/sc-workspace-wordpress-thin-adapter-v3550.js',
+            'runtime_asset_manifest' => 'assets/js/sc-workspace-runtime-asset-manifest-v3550.js',
             'original_language_corpus_workspace' => 'assets/js/sc-workspace-original-language-corpus-v3470.js',
             'linguistic_annotation_corpus_structure_workspace' => 'assets/js/sc-workspace-linguistic-annotation-corpus-structure-v3480.js',
             'translation_parallel_alignment_workspace' => 'assets/js/sc-workspace-translation-transliteration-parallel-alignment-v3490.js',
             'historical_language_identity_workspace' => 'assets/js/sc-workspace-historical-language-script-variant-identity-v3500.js',
             'reproducible_computational_linguistics_workspace' => 'assets/js/sc-workspace-reproducible-computational-linguistics-v3530.js',
             'integrated_global_language_research_workspace' => 'assets/js/sc-workspace-integrated-global-language-research-v3540.js',
+            'language_research_production_certification' => 'assets/js/sc-workspace-language-research-production-certification-v3550.js',
             'decoupled_production_baseline' => 'assets/js/sc-workspace-decoupled-production-baseline-v346100.js',
             'module_registry' => 'assets/js/sc-workspace-module-registry-v34650.js',
             'state_store_runtime' => 'assets/js/sc-workspace-state-store-v34640.js',
@@ -146,20 +147,20 @@ public static function preflight() {
     $current_script = SC_WORKSPACE_DIR . 'assets/js/workspace-v' . SC_WORKSPACE_VERSION . '.js';
     $style_bytes = (is_file($current_style) && is_readable($current_style)) ? (int) filesize($current_style) : 0;
     $script_bytes = (is_file($current_script) && is_readable($current_script)) ? (int) filesize($current_script) : 0;
-    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v3540.js';
+    $lifecycle_runtime = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-local-project-compat-v3550.js';
     $lifecycle_runtime_bytes = (is_file($lifecycle_runtime) && is_readable($lifecycle_runtime)) ? (int) filesize($lifecycle_runtime) : 0;
     $lifecycle_runtime_ok = $lifecycle_runtime_bytes >= self::MIN_LIFECYCLE_RUNTIME_BYTES;
-    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v3540.js';
+    $application_kernel = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-application-kernel-v3550.js';
     $host_adapter_contract = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-host-adapter-contract-v34620.js';
     $wordpress_host_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-host-adapter-v34620.js';
     $application_kernel_bytes = (is_file($application_kernel) && is_readable($application_kernel)) ? (int) filesize($application_kernel) : 0;
     $host_adapter_contract_bytes = (is_file($host_adapter_contract) && is_readable($host_adapter_contract)) ? (int) filesize($host_adapter_contract) : 0;
     $wordpress_host_adapter_bytes = (is_file($wordpress_host_adapter) && is_readable($wordpress_host_adapter)) ? (int) filesize($wordpress_host_adapter) : 0;
     $application_kernel_ok = $application_kernel_bytes >= self::MIN_APPLICATION_KERNEL_BYTES;
-    $wordpress_thin_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-thin-adapter-v3540.js';
+    $wordpress_thin_adapter = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-wordpress-thin-adapter-v3550.js';
     $wordpress_thin_adapter_bytes = (is_file($wordpress_thin_adapter) && is_readable($wordpress_thin_adapter)) ? (int) filesize($wordpress_thin_adapter) : 0;
     $wordpress_thin_adapter_ok = $wordpress_thin_adapter_bytes >= self::MIN_WORDPRESS_THIN_ADAPTER_BYTES;
-    $runtime_asset_manifest = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-runtime-asset-manifest-v3540.js';
+    $runtime_asset_manifest = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-runtime-asset-manifest-v3550.js';
     $runtime_asset_manifest_bytes = (is_file($runtime_asset_manifest) && is_readable($runtime_asset_manifest)) ? (int) filesize($runtime_asset_manifest) : 0;
     $runtime_asset_manifest_ok = $runtime_asset_manifest_bytes >= self::MIN_RUNTIME_ASSET_MANIFEST_BYTES;
     $original_language_corpus_workspace = SC_WORKSPACE_DIR . 'assets/js/sc-workspace-original-language-corpus-v3470.js';
