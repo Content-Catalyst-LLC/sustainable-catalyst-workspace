@@ -378,6 +378,16 @@ from .dataset_feature_engineering_workspace import (
     profile as dataset_feature_engineering_workspace_profile,
 )
 
+from .training_evaluation_experiment_runtime import (
+    TrainingEvaluationExperimentRequest,
+    profile as training_evaluation_experiment_runtime_profile,
+    operation_catalog as training_evaluation_experiment_operation_catalog,
+    execute as execute_training_evaluation_experiment_operation,
+)
+from .training_evaluation_experiment_workspace import (
+    profile as training_evaluation_experiment_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4233,6 +4243,37 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.58.0 — Training & Evaluation Experiment Workspace
+@app.get("/v1/training-evaluation-experiment-workspace")
+def training_evaluation_experiment_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return training_evaluation_experiment_workspace_profile()
+
+@app.get("/v1/training-evaluation-experiment-runtime")
+def training_evaluation_experiment_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return training_evaluation_experiment_runtime_profile()
+
+@app.get("/v1/training-evaluation-experiment-runtime/operations")
+def training_evaluation_experiment_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-training-evaluation-experiment-operation-index/1.0",
+        "version":settings.service_version,
+        "items":training_evaluation_experiment_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "automaticTrainingExecutionEnabled":False,
+        "automaticWinnerSelectionEnabled":False,
+        "automaticModelPromotionEnabled":False,
+        "arbitraryCodeExecution":False,
+        "provenancePreserved":True,
+    }
+
+@app.post("/v1/training-evaluation-experiment-runtime/execute")
+def training_evaluation_experiment_execute_route(payload: TrainingEvaluationExperimentRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_training_evaluation_experiment_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.57.0 — Dataset & Feature Engineering Workspace
