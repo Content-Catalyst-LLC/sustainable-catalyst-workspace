@@ -621,3 +621,21 @@
   script.dataset.scWorkspaceModule = 'research-pipeline-composer';
   document.head.appendChild(script);
 })();
+
+
+/* Workspace v3.57.0 — Dataset & Feature Engineering loader */
+(() => {
+  if (window.SCWorkspaceDatasetFeatureEngineering) return;
+  const current = document.currentScript;
+  const script = document.createElement('script');
+  try {
+    script.src = current && current.src
+      ? new URL('sc-workspace-dataset-feature-engineering-v3570.js', current.src).href
+      : 'assets/js/sc-workspace-dataset-feature-engineering-v3570.js';
+  } catch (_) {
+    script.src = 'assets/js/sc-workspace-dataset-feature-engineering-v3570.js';
+  }
+  script.defer = true;
+  script.dataset.scWorkspaceModule = 'dataset-feature-engineering';
+  document.head.appendChild(script);
+})();
