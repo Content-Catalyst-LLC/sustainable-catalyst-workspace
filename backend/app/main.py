@@ -368,6 +368,16 @@ from .research_pipeline_composer_workspace import (
     profile as research_pipeline_composer_workspace_profile,
 )
 
+from .dataset_feature_engineering_runtime import (
+    DatasetFeatureEngineeringRequest,
+    profile as dataset_feature_engineering_runtime_profile,
+    operation_catalog as dataset_feature_engineering_operation_catalog,
+    execute as execute_dataset_feature_engineering_operation,
+)
+from .dataset_feature_engineering_workspace import (
+    profile as dataset_feature_engineering_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4223,6 +4233,36 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.57.0 — Dataset & Feature Engineering Workspace
+@app.get("/v1/dataset-feature-engineering-workspace")
+def dataset_feature_engineering_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return dataset_feature_engineering_workspace_profile()
+
+@app.get("/v1/dataset-feature-engineering-runtime")
+def dataset_feature_engineering_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return dataset_feature_engineering_runtime_profile()
+
+@app.get("/v1/dataset-feature-engineering-runtime/operations")
+def dataset_feature_engineering_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-dataset-feature-engineering-operation-index/1.0",
+        "version":settings.service_version,
+        "items":dataset_feature_engineering_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "automaticFeatureSelectionEnabled":False,
+        "automaticTransformationExecutionEnabled":False,
+        "arbitraryCodeExecution":False,
+        "provenancePreserved":True,
+    }
+
+@app.post("/v1/dataset-feature-engineering-runtime/execute")
+def dataset_feature_engineering_execute_route(payload: DatasetFeatureEngineeringRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_dataset_feature_engineering_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.56.0 — Research Pipeline Composer
