@@ -388,6 +388,16 @@ from .training_evaluation_experiment_workspace import (
     profile as training_evaluation_experiment_workspace_profile,
 )
 
+from .model_registry_lineage_runtime import (
+    ModelRegistryLineageRequest,
+    profile as model_registry_lineage_runtime_profile,
+    operation_catalog as model_registry_lineage_operation_catalog,
+    execute as execute_model_registry_lineage_operation,
+)
+from .model_registry_lineage_workspace import (
+    profile as model_registry_lineage_workspace_profile,
+)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
@@ -4243,6 +4253,37 @@ def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveIn
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
     with session_scope() as db:return {"ok":True,"items":list_predictive_investigation_snapshots(db,identity.user_key,project_id,limit)}
+
+
+# Workspace v3.59.0 — Model Registry & Research Model Lineage
+@app.get("/v1/model-registry-lineage-workspace")
+def model_registry_lineage_workspace_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return model_registry_lineage_workspace_profile()
+
+@app.get("/v1/model-registry-lineage-runtime")
+def model_registry_lineage_runtime_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return model_registry_lineage_runtime_profile()
+
+@app.get("/v1/model-registry-lineage-runtime/operations")
+def model_registry_lineage_operations_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {
+        "schema":"sc-workspace-model-registry-lineage-operation-index/1.0",
+        "version":settings.service_version,
+        "items":model_registry_lineage_operation_catalog(),
+        "boundedOperationsOnly":True,
+        "humanReviewRequiredForPromotion":True,
+        "automaticModelPromotionEnabled":False,
+        "automaticApprovalEnabled":False,
+        "arbitraryCodeExecution":False,
+        "provenancePreserved":True,
+    }
+
+@app.post("/v1/model-registry-lineage-runtime/execute")
+def model_registry_lineage_execute_route(payload: ModelRegistryLineageRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    try:
+        return execute_model_registry_lineage_operation(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 # Workspace v3.58.0 — Training & Evaluation Experiment Workspace
