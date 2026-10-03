@@ -4628,3 +4628,6 @@ def multilingual_text_corpus_execute_route(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+# Workspace v3.60.0 — Agentic Research Workflow Runtime router
+from .agentic_research_workflow_workspace import router as agentic_research_workflow_router
+app.include_router(agentic_research_workflow_router)

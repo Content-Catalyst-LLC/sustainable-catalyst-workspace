@@ -1,0 +1,23 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.60.0",
+  "title": "Agentic Research Workflow Runtime",
+  "runtime_schema": "sc-workspace-agentic-research-workflow-runtime/1.0",
+  "backend_modules": [
+    "backend/app/agentic_research_workflow_runtime.py",
+    "backend/app/agentic_research_workflow_workspace.py"
+  ],
+  "backend_test": "backend/tests/test_agentic_research_workflow_runtime_v3600.py",
+  "client_feature": "app/agents/workspace-agentic-research-workflow-v3600.js",
+  "wordpress_feature": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-agentic-research-workflow-v3600.js",
+  "standalone_feature": "standalone/assets/sc-workspace-agentic-research-workflow-v3600.js",
+  "bounded_operations": 7,
+  "database_migration_required": false,
+  "automatic_claim_promotion": false,
+  "automatic_evidence_mutation": false,
+  "automatic_model_approval": false,
+  "automatic_external_side_effects": false,
+  "arbitrary_code_execution": false,
+  "human_review_supported": true,
+  "provenance_preserved": true
+}
