@@ -4639,3 +4639,7 @@ app.include_router(human_governance_approval_intervention_router)
 # Workspace v3.62.0 — Multi-Agent Orchestration & Specialist Coordination Runtime router
 from .multi_agent_orchestration_specialist_coordination_workspace import router as multi_agent_orchestration_specialist_coordination_router
 app.include_router(multi_agent_orchestration_specialist_coordination_router)
+
+# Workspace v3.63.0 — Reproducible Agentic Research Package Runtime router
+from .reproducible_agentic_research_package_workspace import router as reproducible_agentic_research_package_router
+app.include_router(reproducible_agentic_research_package_router)

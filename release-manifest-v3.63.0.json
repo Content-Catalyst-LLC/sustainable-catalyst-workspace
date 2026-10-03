@@ -1,0 +1,22 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.63.0",
+  "title": "Reproducible Agentic Research Package",
+  "runtimeSchema": "sc-workspace-reproducible-agentic-research-package-runtime/1.0",
+  "boundedOperationCount": 8,
+  "databaseMigrationRequired": false,
+  "upstreamVersions": [
+    "3.60.0",
+    "3.61.0",
+    "3.62.0"
+  ],
+  "arbitraryCodeExecution": false,
+  "automaticReplayEnabled": false,
+  "automaticApprovalEnabled": false,
+  "automaticGovernanceBypassEnabled": false,
+  "packageMayGrantAuthority": false,
+  "packageMayModifySourceObjects": false,
+  "provenancePreserved": true,
+  "governanceHistoryPreserved": true,
+  "dissentPreserved": true
+}
