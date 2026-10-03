@@ -1,0 +1,32 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.62.0",
+  "title": "Workspace v3.62.0 \u2014 Multi-Agent Orchestration & Specialist Coordination",
+  "backend": {
+    "runtime": "backend/app/multi_agent_orchestration_specialist_coordination_runtime.py",
+    "router": "backend/app/multi_agent_orchestration_specialist_coordination_workspace.py",
+    "test": "backend/tests/test_multi_agent_orchestration_specialist_coordination_runtime_v3620.py",
+    "migrationRequired": false,
+    "runtimeSchema": "sc-workspace-multi-agent-orchestration-specialist-coordination-runtime/1.0",
+    "boundedOperationCount": 8
+  },
+  "upstream": {
+    "agenticRuntimeVersion": "3.60.0",
+    "humanGovernanceRuntimeVersion": "3.61.0"
+  },
+  "boundaries": {
+    "coordinatorApprovalAuthorityEnabled": false,
+    "specialistApprovalAuthorityEnabled": false,
+    "automaticGovernanceBypassEnabled": false,
+    "automaticExternalSideEffectsEnabled": false,
+    "arbitraryCodeExecution": false,
+    "automaticTruthDeterminationEnabled": false,
+    "automaticEvidenceRankingEnabled": false,
+    "dissentPreserved": true,
+    "provenancePreserved": true
+  },
+  "wordpress": {
+    "feature": "assets/js/sc-workspace-multi-agent-orchestration-specialist-coordination-v3620.js"
+  },
+  "next": "3.63.0 \u2014 Reproducible Agentic Research Package"
+}
