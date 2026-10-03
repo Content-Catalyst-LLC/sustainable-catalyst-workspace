@@ -4631,3 +4631,7 @@ def multilingual_text_corpus_execute_route(
 # Workspace v3.60.0 — Agentic Research Workflow Runtime router
 from .agentic_research_workflow_workspace import router as agentic_research_workflow_router
 app.include_router(agentic_research_workflow_router)
+
+# Workspace v3.61.0 — Human Governance, Approval & Intervention Runtime router
+from .human_governance_approval_intervention_workspace import router as human_governance_approval_intervention_router
+app.include_router(human_governance_approval_intervention_router)

@@ -1,0 +1,25 @@
+{
+  "product": "Sustainable Catalyst Workspace",
+  "version": "3.61.0",
+  "title": "Human Governance, Approval & Intervention Runtime",
+  "runtime_schema": "sc-workspace-human-governance-approval-intervention-runtime/1.0",
+  "backend_modules": [
+    "backend/app/human_governance_approval_intervention_runtime.py",
+    "backend/app/human_governance_approval_intervention_workspace.py"
+  ],
+  "backend_test": "backend/tests/test_human_governance_approval_intervention_runtime_v3610.py",
+  "client_feature": "app/governance/workspace-human-governance-approval-intervention-v3610.js",
+  "wordpress_feature": "wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-human-governance-approval-intervention-v3610.js",
+  "standalone_feature": "standalone/assets/sc-workspace-human-governance-approval-intervention-v3610.js",
+  "bounded_operations": 7,
+  "database_migration_required": false,
+  "automatic_approval": false,
+  "agent_approval_authority": false,
+  "self_approval": false,
+  "approval_bypass": false,
+  "automatic_resume": false,
+  "arbitrary_code_execution": false,
+  "human_intervention_supported": true,
+  "decision_immutability": true,
+  "provenance_preserved": true
+}
