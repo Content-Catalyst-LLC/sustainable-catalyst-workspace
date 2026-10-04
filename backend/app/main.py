@@ -4647,3 +4647,7 @@ app.include_router(reproducible_agentic_research_package_router)
 # Workspace v3.64.0 — Integrated Research OS Runtime router
 from .integrated_research_os_workspace import router as integrated_research_os_router
 app.include_router(integrated_research_os_router)
+
+# Workspace v3.65.0 — Production Certification & Agentic Runtime Consolidation
+from .production_certification_agentic_workspace import router as production_certification_agentic_router
+app.include_router(production_certification_agentic_router)

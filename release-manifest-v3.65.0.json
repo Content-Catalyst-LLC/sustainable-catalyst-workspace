@@ -1,0 +1,29 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.65.0",
+  "title": "Production Certification & Agentic Runtime Consolidation",
+  "runtimeSchema": "sc-workspace-production-certification-agentic-runtime/1.0",
+  "certifiedRuntimeVersions": [
+    "3.60.0",
+    "3.61.0",
+    "3.62.0",
+    "3.63.0",
+    "3.64.0"
+  ],
+  "certifiedRuntimeCount": 5,
+  "boundedOperationCount": 8,
+  "rollbackTarget": "3.64.0",
+  "databaseMigrationRequired": false,
+  "projectMigrationRequired": false,
+  "certificationIsDescriptiveOnly": true,
+  "automaticExecutionEnabled": false,
+  "automaticApprovalEnabled": false,
+  "automaticGovernanceBypassEnabled": false,
+  "automaticPublicationEnabled": false,
+  "automaticExternalSideEffectsEnabled": false,
+  "runtimeMutationEnabled": false,
+  "sourceObjectMutationEnabled": false,
+  "humanGovernancePreserved": true,
+  "provenancePreserved": true,
+  "dissentPreserved": true
+}
