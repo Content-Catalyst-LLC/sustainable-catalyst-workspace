@@ -4651,3 +4651,7 @@ app.include_router(integrated_research_os_router)
 # Workspace v3.65.0 — Production Certification & Agentic Runtime Consolidation
 from .production_certification_agentic_workspace import router as production_certification_agentic_router
 app.include_router(production_certification_agentic_router)
+
+# Workspace v3.66.0 — Unified Research Session & Lifecycle Persistence
+from .unified_research_session_workspace import router as unified_research_session_router
+app.include_router(unified_research_session_router)
