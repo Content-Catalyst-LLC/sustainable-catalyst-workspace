@@ -1,0 +1,35 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.64.0",
+  "title": "Integrated Research OS",
+  "runtimeSchema": "sc-workspace-integrated-research-os-runtime/1.0",
+  "researchLifecycle": [
+    "projects",
+    "sources",
+    "analysis",
+    "models",
+    "agents",
+    "governance",
+    "visualizations",
+    "decisions",
+    "publication"
+  ],
+  "researchStageCount": 9,
+  "boundedOperationCount": 8,
+  "upstreamVersions": [
+    "3.60.0",
+    "3.61.0",
+    "3.62.0",
+    "3.63.0"
+  ],
+  "databaseMigrationRequired": false,
+  "automaticModelExecutionEnabled": false,
+  "automaticAgentExecutionEnabled": false,
+  "automaticApprovalEnabled": false,
+  "automaticPublicationEnabled": false,
+  "automaticDecisionAuthorityEnabled": false,
+  "stageAuthorityPreserved": true,
+  "humanGovernancePreserved": true,
+  "provenancePreserved": true,
+  "dissentPreserved": true
+}
