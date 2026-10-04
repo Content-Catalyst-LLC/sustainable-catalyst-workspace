@@ -4655,3 +4655,7 @@ app.include_router(production_certification_agentic_router)
 # Workspace v3.66.0 — Unified Research Session & Lifecycle Persistence
 from .unified_research_session_workspace import router as unified_research_session_router
 app.include_router(unified_research_session_router)
+
+# Workspace v3.67.0 — Research OS Runtime Registry & Capability Discovery
+from .research_os_runtime_registry_workspace import router as research_os_runtime_registry_router
+app.include_router(research_os_runtime_registry_router)
