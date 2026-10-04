@@ -4659,3 +4659,7 @@ app.include_router(unified_research_session_router)
 # Workspace v3.67.0 — Research OS Runtime Registry & Capability Discovery
 from .research_os_runtime_registry_workspace import router as research_os_runtime_registry_router
 app.include_router(research_os_runtime_registry_router)
+
+# Workspace v3.68.0 — Cross-Product Research Handoff Consolidation
+from .cross_product_research_handoff_consolidation_workspace import router as cross_product_research_handoff_consolidation_router
+app.include_router(cross_product_research_handoff_consolidation_router)
