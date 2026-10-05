@@ -3,7 +3,7 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.76.0',
+    workspaceVersion: '3.77.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     sessionEndpoint: '/v1/session',
@@ -17,6 +17,7 @@
     researchObjectBrowserProfileEndpoint: '/v1/research-objects/profile',
     sourceEvidenceCitationEndpoint: '/v1/source-evidence-citation',
     datasetExplorationEndpoint: '/v1/dataset-exploration',
+    modelRuntimeEndpoint: '/v1/model-runtime',
     assetBase: './assets/',
     storageKey: 'sc_workspace',
     legacyStorageKey: 'sc_workspace_v0_1',
