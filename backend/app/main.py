@@ -2,9 +2,12 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .config import get_settings
+from .user_workspace import profile as user_workspace_profile, bootstrap as user_workspace_bootstrap, project_package as user_workspace_project_package
+from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
     delete_notebook,
@@ -415,6 +418,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# v3.71 standalone authenticated browser transport.
+_allowed_origins = [origin.strip() for origin in settings.cors_allowed_origins.split(",") if origin.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
+)
+app.include_router(session_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
@@ -2678,6 +2691,25 @@ def project_read_model_route(project_id: str, identity: ServiceIdentity = Depend
 def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
         return notebook_read_model(db, identity.user_key, notebook_id)
+
+
+
+@app.get("/v1/user-workspace")
+def unified_user_workspace_profile(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"item":user_workspace_profile()}
+
+@app.get("/v1/user-workspace/bootstrap")
+def unified_user_workspace_bootstrap(identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"item":user_workspace_bootstrap(db,identity.user_key)}
+
+@app.get("/v1/user-workspace/projects/{project_id}")
+def unified_user_workspace_project(project_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item=user_workspace_project_package(db,identity.user_key,project_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Workspace project not found.")
+        return {"ok":True,"item":item}
 
 
 @app.get("/v1/projects")

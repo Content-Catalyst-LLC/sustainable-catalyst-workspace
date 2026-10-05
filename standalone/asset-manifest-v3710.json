@@ -1,0 +1,111 @@
+{
+  "apiBase": "https://workspace-api.sustainablecatalyst.com",
+  "assets": {
+    "application.kernel": {
+      "file": "sc-workspace-application-kernel-v3710.js",
+      "order": 90,
+      "sha256": "84917b3d6e63aff98cf2deadbf8e1342e5360dec0e389cd699cda4a1c4e62312",
+      "shared": true
+    },
+    "client.api": {
+      "file": "sc-workspace-api-client-v34620.js",
+      "order": 40,
+      "sha256": "27c14a17daaad168a97110165a0babaf14e92f135f9536f33ce99be445c632ff",
+      "shared": true
+    },
+    "client.auth": {
+      "file": "sc-workspace-auth-context-v3710.js",
+      "order": 30,
+      "sha256": "56979a9e46f1cd9f1c47f7b2c3156a23c6434842cf78e5fcb7717cfb6b52f2d0",
+      "shared": true
+    },
+    "client.transport": {
+      "file": "sc-workspace-transport-v3710.js",
+      "order": 20,
+      "sha256": "4431b854e7e4d5de33680b5a4e5e1eacf368557361daacfe319fa1f8267dd2d8",
+      "shared": true
+    },
+    "host.contract": {
+      "file": "sc-workspace-host-adapter-contract-v34620.js",
+      "order": 10,
+      "sha256": "80f2480cfaa902274974a47beb01781aa0ee1a64fbad8b4e8717e6721132c31d",
+      "shared": true
+    },
+    "modules.registry": {
+      "file": "sc-workspace-module-registry-v34650.js",
+      "order": 80,
+      "sha256": "3f8f86699405ead8f1193719a05d545e06ff316f90b5fc962e2ff2669131fe19",
+      "shared": true
+    },
+    "projects.runtime": {
+      "file": "sc-workspace-project-runtime-v34630.js",
+      "order": 70,
+      "sha256": "22da59a3590715b4c31b5479e0c4ef9c2a24bb3b17474206c4461a9dce3d4366",
+      "shared": true
+    },
+    "stable.baseline": {
+      "file": "sc-workspace-v3-stable-research-os-baseline-v3700.js",
+      "order": 130,
+      "sha256": "b65cb8db678a9e992cdddba2111e01bca41ecd83a9646a8e2db7d490f546828a",
+      "shared": true
+    },
+    "standalone.host": {
+      "file": "sc-workspace-standalone-host-adapter-v3710.js",
+      "order": 100,
+      "sha256": "31afe67d48f4a5a6dc0318b862c412860803517e1caf5dd115a9565d9060a0d8",
+      "shared": false
+    },
+    "standalone.runtime": {
+      "file": "sc-workspace-standalone-runtime-v3710.js",
+      "order": 110,
+      "sha256": "eee58fd47074bb093b8904b8ca076ad74f8a8d2c0806eeabcbe9db0fb28aeb6d",
+      "shared": false
+    },
+    "standalone.shell": {
+      "file": "workspace-standalone-shell-v3710.js",
+      "order": 120,
+      "sha256": "5a6a21ed7a6ca9e6a7121ddf5fc41d5e48a1c1e90fd58bc9fbe59ca276d39d25",
+      "shared": false
+    },
+    "state.persistence": {
+      "file": "sc-workspace-persistence-runtime-v34640.js",
+      "order": 50,
+      "sha256": "0dbb692038f369e02fc3e810a13589431d841d66c93cfed4348ffce19d7eeb42",
+      "shared": true
+    },
+    "state.store": {
+      "file": "sc-workspace-state-store-v34640.js",
+      "order": 60,
+      "sha256": "3c384fa1e1069ef2abbc194e8ccc7026674c9fa6f319bb9f06fada16f3587858",
+      "shared": true
+    }
+  },
+  "generatedFrom": "Workspace v3.71.0 Standalone Authentication & Session Foundation",
+  "host": "standalone",
+  "loadOrder": [
+    "host.contract",
+    "client.transport",
+    "client.auth",
+    "client.api",
+    "state.persistence",
+    "state.store",
+    "projects.runtime",
+    "modules.registry",
+    "application.kernel",
+    "standalone.host",
+    "standalone.runtime",
+    "standalone.shell",
+    "stable.baseline"
+  ],
+  "schema": "sc-workspace-runtime-asset-manifest/1.0",
+  "sessionAuthentication": {
+    "endpoint": "/v1/session",
+    "legacyWordPressServiceIdentityCompatible": true,
+    "mode": "signed-http-only-cookie",
+    "schema": "sc-workspace-standalone-session/1.0",
+    "serviceCredentialsBrowserVisible": false
+  },
+  "stableBaselinePath": "/v1/workspace-v3-stable-baseline",
+  "version": "3.71.0",
+  "wordpressRequired": false
+}

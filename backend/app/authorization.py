@@ -16,6 +16,8 @@ DECISION_SCHEMA = "sc-workspace-authorization-decision/1.0"
 POLICY_ID = "workspace-authenticated-user-v1"
 POLICY_REVISION = 1
 SERVICE_PRINCIPAL = "wordpress-proxy"
+SESSION_SERVICE_PRINCIPAL = "workspace-session"
+TRUSTED_SERVICE_PRINCIPALS = frozenset({SERVICE_PRINCIPAL, SESSION_SERVICE_PRINCIPAL})
 
 ACTIONS = (
     "workspace.read",
@@ -58,9 +60,9 @@ def profile() -> dict[str, Any]:
         "schema": AUTHORIZATION_SCHEMA,
         "backendAuthoritative": True,
         "browserAuthoritativeAuthorization": False,
-        "identityResolution": "service-credential-plus-wordpress-user-context",
+        "identityResolution": "standalone-session-or-service-credential-user-context",
         "servicePrincipal": SERVICE_PRINCIPAL,
-        "humanPrincipalType": "wordpress-user",
+        "humanPrincipalType": "workspace-user-or-wordpress-user",
         "userIsolationKey": "user_key",
         "policyId": POLICY_ID,
         "policyRevision": POLICY_REVISION,
@@ -115,7 +117,7 @@ def action_for_request(method: str, path: str) -> str:
 def evaluate(identity: Any, action: str, resource_kind: str = "workspace", resource_id: str = "", project_id: str = "", context: dict[str, Any] | None = None) -> dict[str, Any]:
     known_action = action in ACTIONS
     known_resource = resource_kind in RESOURCE_KINDS
-    authenticated = bool(getattr(identity, "user_key", "")) and getattr(identity, "service_principal", "") == SERVICE_PRINCIPAL
+    authenticated = bool(getattr(identity, "user_key", "")) and getattr(identity, "service_principal", "") in TRUSTED_SERVICE_PRINCIPALS
     allowed = authenticated and known_action and known_resource and action in GRANTS
     reason = "authenticated-user-scoped-policy" if allowed else (
         "unknown-action" if not known_action else "unknown-resource-kind" if not known_resource else "principal-not-authorized"
