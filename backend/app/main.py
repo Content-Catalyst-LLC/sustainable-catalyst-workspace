@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .user_workspace import profile as user_workspace_profile, bootstrap as user_workspace_bootstrap, project_package as user_workspace_project_package
+from .workspace_navigation import profile as workspace_navigation_profile, recent as workspace_navigation_recent
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2693,6 +2694,15 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/workspace-navigation")
+def workspace_navigation_contract():
+    return {"ok":True,"item":workspace_navigation_profile()}
+
+@app.get("/v1/workspace-navigation/recent")
+def workspace_navigation_recent_work(limit: int = Query(default=8, ge=1, le=20), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        return {"ok":True,"item":workspace_navigation_recent(db,identity.user_key,limit)}
 
 @app.get("/v1/user-workspace")
 def unified_user_workspace_profile(identity: ServiceIdentity = Depends(require_service_identity)):

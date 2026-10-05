@@ -3,13 +3,16 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.72.0',
+    workspaceVersion: '3.73.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     sessionEndpoint: '/v1/session',
     authenticationMode: 'signed-http-only-session-cookie',
     serverProjectBootstrapEndpoint: '/v1/user-workspace/bootstrap',
     signedInProjectAuthority: 'workspace-backend-postgresql',
+    navigationEndpoint: '/v1/workspace-navigation',
+    recentWorkspaceEndpoint: '/v1/workspace-navigation/recent',
+    commandPaletteShortcut: 'Mod+K',
     assetBase: './assets/',
     storageKey: 'sc_workspace',
     legacyStorageKey: 'sc_workspace_v0_1',
