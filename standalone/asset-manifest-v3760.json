@@ -1,0 +1,198 @@
+{
+  "apiBase": "https://workspace-api.sustainablecatalyst.com",
+  "assets": {
+    "application.kernel": {
+      "file": "sc-workspace-application-kernel-v3760.js",
+      "order": 90,
+      "sha256": "363928e14f7536d36eb03566e0f918d9f1c0b526265c4d80a68a58cf095e4628",
+      "shared": true
+    },
+    "client.api": {
+      "file": "sc-workspace-api-client-v34620.js",
+      "order": 40,
+      "sha256": "27c14a17daaad168a97110165a0babaf14e92f135f9536f33ce99be445c632ff",
+      "shared": true
+    },
+    "client.auth": {
+      "file": "sc-workspace-auth-context-v3710.js",
+      "order": 30,
+      "sha256": "56979a9e46f1cd9f1c47f7b2c3156a23c6434842cf78e5fcb7717cfb6b52f2d0",
+      "shared": true
+    },
+    "client.transport": {
+      "file": "sc-workspace-transport-v3710.js",
+      "order": 20,
+      "sha256": "4431b854e7e4d5de33680b5a4e5e1eacf368557361daacfe319fa1f8267dd2d8",
+      "shared": true
+    },
+    "host.contract": {
+      "file": "sc-workspace-host-adapter-contract-v34620.js",
+      "order": 10,
+      "sha256": "80f2480cfaa902274974a47beb01781aa0ee1a64fbad8b4e8717e6721132c31d",
+      "shared": true
+    },
+    "modules.registry": {
+      "file": "sc-workspace-module-registry-v34650.js",
+      "order": 80,
+      "sha256": "3f8f86699405ead8f1193719a05d545e06ff316f90b5fc962e2ff2669131fe19",
+      "shared": true
+    },
+    "projects.runtime": {
+      "file": "sc-workspace-project-runtime-v34630.js",
+      "order": 70,
+      "sha256": "22da59a3590715b4c31b5479e0c4ef9c2a24bb3b17474206c4461a9dce3d4366",
+      "shared": true
+    },
+    "stable.baseline": {
+      "file": "sc-workspace-v3-stable-research-os-baseline-v3700.js",
+      "order": 130,
+      "sha256": "b65cb8db678a9e992cdddba2111e01bca41ecd83a9646a8e2db7d490f546828a",
+      "shared": true
+    },
+    "standalone.host": {
+      "file": "sc-workspace-standalone-host-adapter-v3760.js",
+      "order": 100,
+      "sha256": "5135a6837a30c2191ded4bc8b8af92c3bde2c44b7b9f1334c041028a6eef2387",
+      "shared": false
+    },
+    "standalone.runtime": {
+      "file": "sc-workspace-standalone-runtime-v3760.js",
+      "order": 110,
+      "sha256": "f3f381710dee58d832870aa8b1be53bce9a0daba497cca5cf36ae96bd4db3302",
+      "shared": false
+    },
+    "standalone.shell": {
+      "file": "workspace-standalone-shell-v3760.js",
+      "order": 120,
+      "sha256": "3d3053b429a5c80e30f6c370d559e9489e536cdee6896a9e49d4a183d6fbbacc",
+      "shared": false
+    },
+    "state.persistence": {
+      "file": "sc-workspace-persistence-runtime-v34640.js",
+      "order": 50,
+      "sha256": "0dbb692038f369e02fc3e810a13589431d841d66c93cfed4348ffce19d7eeb42",
+      "shared": true
+    },
+    "state.store": {
+      "file": "sc-workspace-state-store-v34640.js",
+      "order": 60,
+      "sha256": "3c384fa1e1069ef2abbc194e8ccc7026674c9fa6f319bb9f06fada16f3587858",
+      "shared": true
+    },
+    "workspace.dataset-exploration": {
+      "file": "sc-workspace-dataset-exploration-v3760.js",
+      "order": 109.5,
+      "sha256": "a6059d9946e8ea7380360e9ede130b6e3ad6f7dce1c378ccb710d5349ab6dda3",
+      "shared": true
+    },
+    "workspace.navigation-launcher": {
+      "file": "sc-workspace-navigation-launcher-v3730.js",
+      "order": 107,
+      "sha256": "a536bd2f7bccf063946e85a5641cdb654fc064b56cd8afc291d1c1e21285609a",
+      "shared": true
+    },
+    "workspace.research-object-browser": {
+      "file": "sc-workspace-research-object-browser-v3760.js",
+      "order": 108,
+      "sha256": "708a5b32751ac2354b60cd4e8f222b446bc833649b9201ff45e22b8c1fbb6ce0",
+      "shared": true
+    },
+    "workspace.server-project-bridge": {
+      "file": "sc-workspace-server-project-bridge-v3720.js",
+      "order": 105,
+      "sha256": "69e6845f48a7cf24b1616b8bf0e6ed669cf88572d5f075b21c71fa6d2b068936",
+      "shared": true
+    },
+    "workspace.source-evidence-citation": {
+      "file": "sc-workspace-source-evidence-citation-v3760.js",
+      "order": 109,
+      "sha256": "47634be63fc69fafb24e2e0e972522ab85c469ccf8fbe1e99cd4d08caf04cf9e",
+      "shared": true
+    }
+  },
+  "datasetExploration": {
+    "anonymousInitializationSafe": true,
+    "databaseMigrationRequired": false,
+    "datasetAuthority": "workspace-dataset-registry",
+    "datasetTypeFacets": true,
+    "fingerprintInspection": true,
+    "lineageInspection": true,
+    "projectScopedFiltering": true,
+    "revisionHistory": true,
+    "schema": "sc-workspace-dataset-data-exploration/1.0",
+    "schemaInspection": true,
+    "sourceKindFacets": true,
+    "textSearch": true,
+    "visualizationHandoffReady": true
+  },
+  "generatedFrom": "Workspace v3.76.0 Dataset & Data Exploration Workspace",
+  "host": "standalone",
+  "loadOrder": [
+    "host.contract",
+    "client.transport",
+    "client.auth",
+    "client.api",
+    "state.persistence",
+    "state.store",
+    "projects.runtime",
+    "modules.registry",
+    "application.kernel",
+    "standalone.host",
+    "workspace.server-project-bridge",
+    "workspace.navigation-launcher",
+    "workspace.research-object-browser",
+    "workspace.source-evidence-citation",
+    "workspace.dataset-exploration",
+    "standalone.runtime",
+    "standalone.shell",
+    "stable.baseline"
+  ],
+  "navigationLauncher": {
+    "commandPalette": true,
+    "databaseMigrationRequired": false,
+    "globalNavigation": true,
+    "keyboardShortcut": "Mod+K",
+    "researchLauncher": true,
+    "schema": "sc-workspace-navigation-launcher/1.0"
+  },
+  "researchObjectBrowser": {
+    "anonymousInitializationSafe": true,
+    "databaseMigrationRequired": false,
+    "facets": true,
+    "kindFiltering": true,
+    "projectScopedFiltering": true,
+    "schema": "sc-workspace-unified-research-object-browser/1.0",
+    "textSearch": true,
+    "unauthenticatedServerIndexNonFatal": true,
+    "unifiedDiscovery": true
+  },
+  "schema": "sc-workspace-runtime-asset-manifest/1.0",
+  "sessionAuthentication": {
+    "endpoint": "/v1/session",
+    "legacyWordPressServiceIdentityCompatible": true,
+    "mode": "signed-http-only-cookie",
+    "schema": "sc-workspace-standalone-session/1.0",
+    "serviceCredentialsBrowserVisible": false
+  },
+  "sourceEvidenceCitation": {
+    "anonymousInitializationSafe": true,
+    "databaseMigrationRequired": false,
+    "derivedCitationReferences": true,
+    "fingerprintPinning": true,
+    "locatorPreserving": true,
+    "referenceFirst": true,
+    "schema": "sc-workspace-source-evidence-citation/1.0"
+  },
+  "stableBaselinePath": "/v1/workspace-v3-stable-baseline",
+  "userWorkspace": {
+    "anonymousLocalFirstSupported": true,
+    "automaticDestructiveMerge": false,
+    "crossBrowserContinuity": true,
+    "crossDeviceContinuity": true,
+    "databaseMigrationRequired": false,
+    "schema": "sc-workspace-unified-user-workspace/1.0",
+    "serverAuthoritativeWhenAuthenticated": true
+  },
+  "version": "3.76.0",
+  "wordpressRequired": false
+}

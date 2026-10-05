@@ -10,6 +10,7 @@ from .user_workspace import profile as user_workspace_profile, bootstrap as user
 from .workspace_navigation import profile as workspace_navigation_profile, recent as workspace_navigation_recent
 from .research_object_browser import profile as research_object_browser_profile, browse as browse_research_objects
 from .source_evidence_citation_workspace import profile as source_evidence_citation_profile, project_workspace as build_source_evidence_citation_workspace
+from .dataset_exploration_workspace import profile as dataset_exploration_profile, browse as dataset_exploration_browse, detail as dataset_exploration_detail
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2696,6 +2697,30 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/dataset-exploration/profile")
+def dataset_exploration_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "item": dataset_exploration_profile()}
+
+@app.get("/v1/dataset-exploration")
+def dataset_exploration_index_route(
+    projectId: str | None = Query(default=None, max_length=160),
+    q: str | None = Query(default=None, max_length=500),
+    datasetType: str | None = Query(default=None, max_length=120),
+    sourceKind: str | None = Query(default=None, max_length=120),
+    limit: int = Query(default=250, ge=1, le=500),
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    with session_scope() as db:
+        return dataset_exploration_browse(db, identity.user_key, projectId, q, datasetType, sourceKind, limit)
+
+@app.get("/v1/dataset-exploration/{dataset_id}")
+def dataset_exploration_detail_route(dataset_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        item = dataset_exploration_detail(db, identity.user_key, dataset_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Workspace dataset not found.")
+        return item
 
 @app.get("/v1/source-evidence-citation/profile")
 def source_evidence_citation_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
