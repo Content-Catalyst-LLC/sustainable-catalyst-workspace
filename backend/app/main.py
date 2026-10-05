@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from .config import get_settings
 from .user_workspace import profile as user_workspace_profile, bootstrap as user_workspace_bootstrap, project_package as user_workspace_project_package
 from .workspace_navigation import profile as workspace_navigation_profile, recent as workspace_navigation_recent
+from .research_object_browser import profile as research_object_browser_profile, browse as browse_research_objects
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2694,6 +2695,18 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/research-objects/profile")
+def research_object_browser_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "item": research_object_browser_profile()}
+
+@app.get("/v1/research-objects")
+def research_object_browser_index_route(kind: str | None = None, projectId: str | None = None, q: str | None = None, limit: int = Query(default=100, ge=1, le=500), identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            return browse_research_objects(db, identity.user_key, kind, projectId, q, limit)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail={"code": "unsupported-research-object-kind", "message": str(exc)}) from exc
 
 @app.get("/v1/workspace-navigation")
 def workspace_navigation_contract():
