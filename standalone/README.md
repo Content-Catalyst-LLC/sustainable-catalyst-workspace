@@ -1,23 +1,8 @@
-# Sustainable Catalyst Workspace — Standalone Web Shell v3.50.0
+# Sustainable Catalyst Workspace — Standalone Web Frontend v3.70.0
 
-This directory is a host-independent web distribution of Workspace.
+Production frontend: https://workspace.sustainablecatalyst.com  
+Backend API: https://workspace-api.sustainablecatalyst.com
 
-## Local preview
+This distribution is host-independent and does not require WordPress for application boot.
 
-```bash
-python3 serve.py --port 4173
-```
-
-Open `http://127.0.0.1:4173`.
-
-## Architecture
-
-The shell loads only host-neutral Workspace application modules plus the standalone host adapter. It does not load WordPress, a WordPress REST proxy, WordPress nonces, or WordPress plugin code.
-
-The direct backend URL is configured in `config.js`. No backend request is made automatically at boot; use **Check backend** to exercise the direct API transport.
-
-The browser-local state key defaults to the existing `sc_workspace` namespace. Because browser storage is origin-scoped, a separately hosted standalone application receives its own storage namespace unless it is deployed on the same origin as the current WordPress site.
-
-## Scope of v3.50.0
-
-This is the first independent web shell and exposes the canonical project lifecycle: list, create, open and delete. The large historical WordPress-rendered feature surface is not duplicated here. Those capabilities migrate behind the module registry in subsequent builds.
+The v3.70 promotion aligns the standalone shell with the Workspace 3.x Stable Research OS Baseline while preserving the existing standalone project lifecycle and browser-local persistence model.

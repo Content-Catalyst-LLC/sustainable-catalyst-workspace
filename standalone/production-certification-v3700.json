@@ -1,0 +1,61 @@
+{
+  "apiBase": "https://workspace-api.sustainablecatalyst.com",
+  "backendProbe": {
+    "baselineValid": true,
+    "baselineVersion": "3.70.0",
+    "healthVersion": "3.70.0"
+  },
+  "frontendHost": "https://workspace.sustainablecatalyst.com",
+  "gateCount": 9,
+  "gates": [
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_STANDALONE_MANIFEST",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_STANDALONE_ASSET_COMPLETENESS",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_STANDALONE_ASSET_INTEGRITY",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_WORDPRESS_ABSENT",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_MANIFEST_DRIVEN_BOOT",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_DIRECT_BACKEND_CONFIG",
+      "ok": true
+    },
+    {
+      "detail": "",
+      "name": "WORKSPACE_V3700_FRONTEND_IDENTITY",
+      "ok": true
+    },
+    {
+      "detail": "[[\"/\", 3327], [\"/index.html\", 3327], [\"/config.js\", 4020], [\"/bootstrap.js\", 4109], [\"/asset-manifest-v3700.json\", 3436], [\"/assets/sc-workspace-runtime-asset-manifest-v3700.js\", 2927], [\"/assets/sc-workspace-application-kernel-v3700.js\", 10593], [\"/assets/sc-workspace-v3-stable-research-os-baseline-v3700.js\", 1279]]",
+      "name": "WORKSPACE_V3700_STATIC_HTTP_SERVE",
+      "ok": true
+    },
+    {
+      "detail": "{\"baselineValid\": true, \"baselineVersion\": \"3.70.0\", \"healthVersion\": \"3.70.0\"}",
+      "name": "WORKSPACE_V3700_LIVE_BACKEND",
+      "ok": true
+    }
+  ],
+  "passed": true,
+  "schema": "sc-workspace-standalone-production-certification-report/1.0",
+  "version": "3.70.0",
+  "wordpressRequired": false
+}
