@@ -1,0 +1,17 @@
+{
+  "schema": "sc-workspace-release-manifest/1.0",
+  "version": "3.70.0",
+  "title": "Workspace 3.x Production Consolidation & Stable Research OS Baseline",
+  "runtimeSchema": "sc-workspace-v3-production-consolidation-stable-research-os-baseline/1.0",
+  "previousRelease": "3.69.0",
+  "rollbackTarget": "3.69.0",
+  "databaseMigrationRequired": false,
+  "projectMigrationRequired": false,
+  "stableMajorLine": "3.x",
+  "certifiedRuntimeFrom": "3.60.0",
+  "certifiedRuntimeThrough": "3.69.0",
+  "registeredRuntimeCount": 10,
+  "boundedOperationCount": 8,
+  "newCapabilityFamilyIntroduced": false,
+  "baselineIsCertificationOnly": true
+}

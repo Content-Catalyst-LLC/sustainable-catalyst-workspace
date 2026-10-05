@@ -4667,3 +4667,8 @@ app.include_router(cross_product_research_handoff_consolidation_router)
 # Workspace v3.69.0 — Portable Research Workspace & Recovery Packages
 from .portable_research_workspace_recovery_workspace import router as portable_research_workspace_recovery_router
 app.include_router(portable_research_workspace_recovery_router)
+
+
+# Workspace v3.70.0 — Workspace 3.x Production Consolidation & Stable Research OS Baseline
+from .workspace_v3_stable_research_os_baseline_workspace import router as workspace_v3_stable_research_os_baseline_router
+app.include_router(workspace_v3_stable_research_os_baseline_router)

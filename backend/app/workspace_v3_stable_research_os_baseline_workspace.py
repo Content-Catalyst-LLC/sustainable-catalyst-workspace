@@ -1,0 +1,25 @@
+from __future__ import annotations
+from typing import Any, Dict
+from fastapi import APIRouter
+from .workspace_v3_stable_research_os_baseline import authority_summary, capability_summary, certify, compatibility, operation_index, portability_readiness, runtime_chain, runtime_profile, snapshot, validate
+router=APIRouter(tags=["workspace-v3-stable-research-os-baseline"])
+@router.get("/v1/workspace-v3-stable-baseline")
+def profile()->Dict[str,Any]: return runtime_profile()
+@router.get("/v1/workspace-v3-stable-baseline/runtime-chain")
+def chain()->Dict[str,Any]: return runtime_chain()
+@router.get("/v1/workspace-v3-stable-baseline/capabilities")
+def capabilities()->Dict[str,Any]: return capability_summary()
+@router.get("/v1/workspace-v3-stable-baseline/authority")
+def authority()->Dict[str,Any]: return authority_summary()
+@router.get("/v1/workspace-v3-stable-baseline/portability")
+def portability()->Dict[str,Any]: return portability_readiness()
+@router.get("/v1/workspace-v3-stable-baseline/compatibility")
+def compatible()->Dict[str,Any]: return compatibility()
+@router.get("/v1/workspace-v3-stable-baseline/certification")
+def certification()->Dict[str,Any]: return certify()
+@router.get("/v1/workspace-v3-stable-baseline/operations")
+def operations()->Dict[str,Any]: return operation_index()
+@router.get("/v1/workspace-v3-stable-baseline/snapshot")
+def stable_snapshot()->Dict[str,Any]: return snapshot()
+@router.get("/v1/workspace-v3-stable-baseline/validate")
+def validation()->Dict[str,Any]: return validate()
