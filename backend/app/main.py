@@ -9,6 +9,7 @@ from .config import get_settings
 from .user_workspace import profile as user_workspace_profile, bootstrap as user_workspace_bootstrap, project_package as user_workspace_project_package
 from .workspace_navigation import profile as workspace_navigation_profile, recent as workspace_navigation_recent
 from .research_object_browser import profile as research_object_browser_profile, browse as browse_research_objects
+from .source_evidence_citation_workspace import profile as source_evidence_citation_profile, project_workspace as build_source_evidence_citation_workspace
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2695,6 +2696,18 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/source-evidence-citation/profile")
+def source_evidence_citation_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "item": source_evidence_citation_profile()}
+
+@app.get("/v1/source-evidence-citation/projects/{project_id}")
+def source_evidence_citation_project_route(project_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    with session_scope() as db:
+        try:
+            return {"ok": True, "item": build_source_evidence_citation_workspace(db, identity.user_key, project_id)}
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail={"code":"project-not-found","message":str(exc)}) from exc
 
 @app.get("/v1/research-objects/profile")
 def research_object_browser_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
