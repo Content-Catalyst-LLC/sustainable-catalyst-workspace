@@ -1,0 +1,17 @@
+{
+  "schema":"sc-workspace-release-manifest/1.0",
+  "version":"3.69.0",
+  "title":"Portable Research Workspace & Recovery Packages",
+  "runtimeSchema":"sc-workspace-portable-research-workspace-recovery-package-runtime/1.0",
+  "previousRelease":"3.68.0",
+  "rollbackTarget":"3.68.0",
+  "databaseMigrationRequired":false,
+  "projectMigrationRequired":false,
+  "boundedOperationCount":8,
+  "existingRecoverySnapshotAuthorityPreserved":true,
+  "automaticRestoreEnabled":false,
+  "automaticImportEnabled":false,
+  "automaticProjectMutationEnabled":false,
+  "automaticCredentialExportEnabled":false,
+  "automaticSecretExportEnabled":false
+}

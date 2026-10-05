@@ -4663,3 +4663,7 @@ app.include_router(research_os_runtime_registry_router)
 # Workspace v3.68.0 — Cross-Product Research Handoff Consolidation
 from .cross_product_research_handoff_consolidation_workspace import router as cross_product_research_handoff_consolidation_router
 app.include_router(cross_product_research_handoff_consolidation_router)
+
+# Workspace v3.69.0 — Portable Research Workspace & Recovery Packages
+from .portable_research_workspace_recovery_workspace import router as portable_research_workspace_recovery_router
+app.include_router(portable_research_workspace_recovery_router)
