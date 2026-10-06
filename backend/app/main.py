@@ -12,6 +12,7 @@ from .research_object_browser import profile as research_object_browser_profile,
 from .source_evidence_citation_workspace import profile as source_evidence_citation_profile, project_workspace as build_source_evidence_citation_workspace
 from .dataset_exploration_workspace import profile as dataset_exploration_profile, browse as dataset_exploration_browse, detail as dataset_exploration_detail
 from .model_runtime_workspace import profile as model_runtime_profile, browse as model_runtime_browse, detail as model_runtime_detail
+from .visual_analysis_workspace import profile as visual_analysis_profile, browse as visual_analysis_browse, detail as visual_analysis_detail
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2698,6 +2699,28 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/visual-analysis/profile")
+def visual_analysis_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"item":visual_analysis_profile()}
+
+@app.get("/v1/visual-analysis")
+def visual_analysis_index_route(
+    projectId: str | None = Query(default=None,max_length=160),
+    q: str | None = Query(default=None,max_length=500),
+    limit: int = Query(default=250,ge=1,le=500),
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    with session_scope() as db:
+        return visual_analysis_browse(db,identity.user_key,projectId,q,limit)
+
+@app.get("/v1/visual-analysis/{visualization_id}")
+def visual_analysis_detail_route(visualization_id:str,identity:ServiceIdentity=Depends(require_service_identity)):
+    with session_scope() as db:
+        item=visual_analysis_detail(db,identity.user_key,visualization_id)
+        if item is None:
+            raise HTTPException(status_code=404,detail="Workspace visualization not found.")
+        return item
 
 @app.get("/v1/model-runtime/profile")
 def model_runtime_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
