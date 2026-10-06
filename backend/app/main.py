@@ -13,6 +13,7 @@ from .source_evidence_citation_workspace import profile as source_evidence_citat
 from .dataset_exploration_workspace import profile as dataset_exploration_profile, browse as dataset_exploration_browse, detail as dataset_exploration_detail
 from .model_runtime_workspace import profile as model_runtime_profile, browse as model_runtime_browse, detail as model_runtime_detail
 from .visual_analysis_workspace import profile as visual_analysis_profile, browse as visual_analysis_browse, detail as visual_analysis_detail
+from .session_timeline_workspace import profile as session_timeline_profile, timeline as session_timeline_build
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2699,6 +2700,19 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/session-timeline/profile")
+def session_timeline_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"item":session_timeline_profile()}
+
+@app.get("/v1/session-timeline/projects/{project_id}")
+def session_timeline_project_route(
+    project_id:str,
+    limit:int=Query(default=500,ge=1,le=1000),
+    identity:ServiceIdentity=Depends(require_service_identity),
+):
+    with session_scope() as db:
+        return session_timeline_build(db,identity.user_key,project_id,limit)
 
 @app.get("/v1/visual-analysis/profile")
 def visual_analysis_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
