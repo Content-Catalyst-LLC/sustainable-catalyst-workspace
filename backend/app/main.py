@@ -15,6 +15,7 @@ from .model_runtime_workspace import profile as model_runtime_profile, browse as
 from .visual_analysis_workspace import profile as visual_analysis_profile, browse as visual_analysis_browse, detail as visual_analysis_detail
 from .session_timeline_workspace import profile as session_timeline_profile, timeline as session_timeline_build
 from .integrated_project_workspace import profile as integrated_project_profile, project_workspace as integrated_project_workspace
+from .personal_research_graph_workspace import profile as personal_research_graph_profile, build_graph as build_personal_research_graph
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2701,6 +2702,24 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/research-graph/profile")
+def research_graph_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok": True, "item": personal_research_graph_profile()}
+
+@app.get("/v1/research-graph/projects/{project_id}")
+def research_graph_project_route(
+    project_id: str,
+    lens: str | None = Query(default=None, max_length=32),
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    with session_scope() as db:
+        try:
+            return build_personal_research_graph(db, identity.user_key, project_id, lens)
+        except KeyError:
+            raise HTTPException(status_code=404, detail={"code":"workspace-project-not-found","projectId":project_id})
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail={"code":"unsupported-research-graph-lens","message":str(exc)})
 
 @app.get("/v1/integrated-project/profile")
 def integrated_project_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
