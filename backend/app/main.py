@@ -17,6 +17,7 @@ from .session_timeline_workspace import profile as session_timeline_profile, tim
 from .integrated_project_workspace import profile as integrated_project_profile, project_workspace as integrated_project_workspace
 from .personal_research_graph_workspace import profile as personal_research_graph_profile, build_graph as build_personal_research_graph
 from .shared_research_graph_runtime import profile as shared_research_graph_profile, project_graph as build_shared_research_graph, demo_graph as build_shared_research_graph_demo
+from .shared_research_graph_renderer import renderer_profile as shared_research_graph_renderer_profile
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2703,6 +2704,10 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/shared-research-graph/renderer-profile")
+def shared_research_graph_renderer_profile_route():
+    return {"ok": True, "item": shared_research_graph_renderer_profile()}
 
 @app.get("/v1/shared-research-graph/profile")
 def shared_research_graph_profile_route():
