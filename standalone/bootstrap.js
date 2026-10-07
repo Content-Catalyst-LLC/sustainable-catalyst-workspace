@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const RELEASE = '3.79.0';
+  const RELEASE = '3.80.0';
   const config = window.SCWorkspaceStandaloneConfig || {};
 
   const status = (message, state = 'loading') => {
@@ -30,7 +30,7 @@
   }
 
   async function loadManifest() {
-    await loadScriptUrl(asset('sc-workspace-runtime-asset-manifest-v3790.js'), 'runtime-manifest');
+    await loadScriptUrl(asset('sc-workspace-runtime-asset-manifest-v3800.js'), 'runtime-manifest');
     const manifest = window.SCWorkspaceRuntimeAssetManifest;
     if (!manifest || manifest.schema !== 'sc-workspace-runtime-asset-manifest/1.0' || manifest.version !== RELEASE || manifest.host !== 'standalone') {
       throw new Error('Standalone Workspace runtime asset manifest is invalid');
@@ -70,6 +70,7 @@
       modelRuntimeFactory: window.SCWorkspaceModelRuntimeFactory,
       visualAnalysisFactory: window.SCWorkspaceVisualAnalysisFactory,
       sessionTimelineFactory: window.SCWorkspaceSessionTimelineFactory,
+      integratedProjectFactory: window.SCWorkspaceIntegratedProjectFactory,
       confirmDelete(project) {
         return window.confirm(`Delete “${project.title}” from this browser?`);
       },

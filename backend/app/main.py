@@ -14,6 +14,7 @@ from .dataset_exploration_workspace import profile as dataset_exploration_profil
 from .model_runtime_workspace import profile as model_runtime_profile, browse as model_runtime_browse, detail as model_runtime_detail
 from .visual_analysis_workspace import profile as visual_analysis_profile, browse as visual_analysis_browse, detail as visual_analysis_detail
 from .session_timeline_workspace import profile as session_timeline_profile, timeline as session_timeline_build
+from .integrated_project_workspace import profile as integrated_project_profile, project_workspace as integrated_project_workspace
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2700,6 +2701,21 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/integrated-project/profile")
+def integrated_project_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return {"ok":True,"item":integrated_project_profile()}
+
+@app.get("/v1/integrated-project/projects/{project_id}")
+def integrated_project_workspace_route(
+    project_id:str,
+    identity:ServiceIdentity=Depends(require_service_identity),
+):
+    with session_scope() as db:
+        try:
+            return integrated_project_workspace(db,identity.user_key,project_id)
+        except KeyError:
+            raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
 
 @app.get("/v1/session-timeline/profile")
 def session_timeline_profile_route(identity: ServiceIdentity = Depends(require_service_identity)):
