@@ -18,6 +18,7 @@ from .integrated_project_workspace import profile as integrated_project_profile,
 from .personal_research_graph_workspace import profile as personal_research_graph_profile, build_graph as build_personal_research_graph
 from .shared_research_graph_runtime import profile as shared_research_graph_profile, project_graph as build_shared_research_graph, demo_graph as build_shared_research_graph_demo
 from .shared_research_graph_renderer import renderer_profile as shared_research_graph_renderer_profile
+from .scientific_knowledge_terrain import terrain_profile as scientific_knowledge_terrain_profile
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2704,6 +2705,10 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/shared-research-graph/terrain-profile")
+def scientific_knowledge_terrain_profile_route():
+    return {"ok": True, "item": scientific_knowledge_terrain_profile()}
 
 @app.get("/v1/shared-research-graph/renderer-profile")
 def shared_research_graph_renderer_profile_route():
