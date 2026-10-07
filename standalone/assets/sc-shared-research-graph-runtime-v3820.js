@@ -1,0 +1,43 @@
+(function(root){'use strict';
+const VERSION='3.82.0';
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function unique(xs){return Array.from(new Set(xs.filter(Boolean)))}
+function create(){
+  let state={graph:null,lens:'all',query:'',kindFilters:new Set(),relationFilters:new Set(),selected:null,zoom:1};
+  function filtered(){
+    const g=state.graph||{nodes:[],edges:[]},q=state.query.trim().toLowerCase();
+    const nodes=(g.nodes||[]).filter(n=>{
+      if(state.kindFilters.size&&!state.kindFilters.has(n.group||n.kind))return false;
+      if(q&&!(`${n.label||''} ${n.summary||''} ${n.kind||''} ${n.id||''}`.toLowerCase().includes(q)))return false;
+      return true;
+    });
+    const ids=new Set(nodes.map(n=>n.id));
+    const edges=(g.edges||[]).filter(e=>ids.has(e.source)&&ids.has(e.target)&&(!state.relationFilters.size||state.relationFilters.has(e.relation)));
+    return {nodes,edges};
+  }
+  function layout(nodes,w,h){
+    const pos=new Map(),project=nodes.find(n=>n.group==='project'||n.kind==='project'),cx=w/2,cy=h/2;
+    if(project)pos.set(project.id,{x:cx,y:cy});
+    const groups={};nodes.filter(n=>!project||n.id!==project.id).forEach(n=>(groups[n.group||n.kind]||(groups[n.group||n.kind]=[])).push(n));
+    Object.keys(groups).sort().forEach((kind,ki)=>{const arr=groups[kind],radius=135+(ki%4)*78;arr.forEach((n,i)=>{const a=(i/Math.max(arr.length,1))*Math.PI*2+ki*.63;pos.set(n.id,{x:cx+Math.cos(a)*radius,y:cy+Math.sin(a)*radius})})});
+    return pos;
+  }
+  function render(container,graph,opts={}){
+    state.graph=graph;state.lens=graph.lens||'all';state.query='';state.kindFilters.clear();state.relationFilters.clear();state.selected=null;state.zoom=1;
+    container.innerHTML='';container.classList.add('shared-research-graph');
+    const head=document.createElement('div');head.className='sgr-head';head.innerHTML='<div><span class="sgr-kicker">SHARED RESEARCH GRAPH</span><strong></strong><small></small></div><div class="sgr-head-actions"><input type="search" placeholder="Search graph…" data-sgr-search><button data-sgr-reset>Reset</button></div>';
+    head.querySelector('strong').textContent=(graph.project&&graph.project.title)||'Research graph';head.querySelector('small').textContent=graph.publicDemo?'Interactive public demonstration':'Project-owned research graph';container.appendChild(head);
+    const metrics=document.createElement('div');metrics.className='sgr-metrics';container.appendChild(metrics);
+    const lensbar=document.createElement('div');lensbar.className='sgr-lenses';container.appendChild(lensbar);
+    const body=document.createElement('div');body.className='sgr-body';const left=document.createElement('aside');left.className='sgr-filters';const stage=document.createElement('div');stage.className='sgr-stage';const right=document.createElement('aside');right.className='sgr-inspector';body.append(left,stage,right);container.appendChild(body);
+    const foot=document.createElement('div');foot.className='sgr-foot';foot.innerHTML='<span>Authority preserved</span><span>No automatic truth/evidence ranking</span>';container.appendChild(foot);
+    function renderLens(){lensbar.innerHTML='';['all'].concat(graph.availableLenses||[]).forEach(l=>{const b=document.createElement('button');b.type='button';b.textContent=l;b.className=(state.lens===l?'active':'');b.onclick=()=>opts.onLens&&opts.onLens(l);lensbar.appendChild(b)})}
+    function renderFilters(){left.innerHTML='<h3>LAYERS & FILTERS</h3>';unique((graph.nodes||[]).map(n=>n.group||n.kind)).sort().forEach(k=>{const lab=document.createElement('label');lab.innerHTML='<input type="checkbox" checked> <span></span>';lab.querySelector('span').textContent=k;lab.querySelector('input').onchange=e=>{if(e.target.checked)state.kindFilters.delete(k);else state.kindFilters.add(k);draw()};left.appendChild(lab)});left.appendChild(document.createElement('hr'));const h=document.createElement('h3');h.textContent='RELATIONSHIPS';left.appendChild(h);unique((graph.edges||[]).map(e=>e.relation)).sort().forEach(r=>{const lab=document.createElement('label');lab.innerHTML='<input type="checkbox" checked> <span></span>';lab.querySelector('span').textContent=r;lab.querySelector('input').onchange=e=>{if(e.target.checked)state.relationFilters.delete(r);else state.relationFilters.add(r);draw()};left.appendChild(lab)})}
+    function inspect(n,edges){state.selected=n?n.id:null;if(!n){right.innerHTML='<h3>RESEARCH INSPECTOR</h3><p>Select a node to inspect context, provenance and relationships.</p>';return}const direct=edges.filter(e=>e.source===n.id||e.target===n.id);right.innerHTML='<h3>RESEARCH INSPECTOR</h3><span class="sgr-type"></span><h4></h4><p class="sgr-summary"></p><hr><h3>PROVENANCE</h3><p class="sgr-prov"></p><hr><h3>DIRECT TRACE</h3><div class="sgr-trace"></div>';right.querySelector('.sgr-type').textContent=(n.group||n.kind||'object').toUpperCase();right.querySelector('h4').textContent=n.label||n.id;right.querySelector('.sgr-summary').textContent=n.summary||'Research object in the current graph.';right.querySelector('.sgr-prov').textContent=`${n.sourceProduct||graph.sourceProduct||'workspace'} · ${n.authority||'project authority'} · ${n.provenanceInspectable===false?'limited':'inspectable'}`;const trace=right.querySelector('.sgr-trace');if(!direct.length)trace.textContent='No visible direct relationships.';direct.forEach(e=>{const other=e.source===n.id?e.target:e.source,x=(graph.nodes||[]).find(z=>z.id===other),d=document.createElement('button');d.type='button';d.textContent=`${e.relation} → ${(x&&x.label)||other}`;d.onclick=()=>{if(x){inspect(x,filtered().edges);draw()}};trace.appendChild(d)})}
+    function draw(){const {nodes,edges}=filtered();metrics.innerHTML='';[['NODES',nodes.length],['RELATIONSHIPS',edges.length],['LENS',state.lens.toUpperCase()],['SOURCE',graph.sourceProduct||'workspace'],['MODE',graph.publicDemo?'DEMO':'PROJECT']].forEach(([a,b])=>{const d=document.createElement('span');d.innerHTML='<b></b><small></small>';d.querySelector('b').textContent=b;d.querySelector('small').textContent=a;metrics.appendChild(d)});stage.innerHTML='';if(!nodes.length){stage.textContent='No nodes match the current graph filters.';return}const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 1000 650');const pos=layout(nodes,1000,650);edges.forEach(e=>{const a=pos.get(e.source),b=pos.get(e.target);if(!a||!b)return;const l=document.createElementNS(svg.namespaceURI,'line');l.setAttribute('x1',a.x);l.setAttribute('y1',a.y);l.setAttribute('x2',b.x);l.setAttribute('y2',b.y);l.setAttribute('class','sgr-edge');svg.appendChild(l)});nodes.forEach(n=>{const p=pos.get(n.id);if(!p)return;const g=document.createElementNS(svg.namespaceURI,'g');g.setAttribute('class','sgr-node group-'+String(n.group||n.kind).replace(/[^a-z0-9_-]/gi,'-')+(state.selected===n.id?' selected':''));g.setAttribute('tabindex','0');const c=document.createElementNS(svg.namespaceURI,'circle');c.setAttribute('cx',p.x);c.setAttribute('cy',p.y);c.setAttribute('r',(n.group==='project'||n.kind==='project')?26:14);const t=document.createElementNS(svg.namespaceURI,'text');t.setAttribute('x',p.x+19);t.setAttribute('y',p.y+4);t.textContent=String(n.label||n.id).slice(0,45);g.append(c,t);g.onclick=()=>{inspect(n,edges);draw()};g.onkeydown=e=>{if(e.key==='Enter'){inspect(n,edges);draw()}};svg.appendChild(g)});svg.style.transform=`scale(${state.zoom})`;svg.style.transformOrigin='center';stage.appendChild(svg);const zoom=document.createElement('div');zoom.className='sgr-zoom';zoom.innerHTML='<button>+</button><button>−</button><button>⌗</button>';const bs=zoom.querySelectorAll('button');bs[0].onclick=()=>{state.zoom=Math.min(1.8,state.zoom+.15);draw()};bs[1].onclick=()=>{state.zoom=Math.max(.65,state.zoom-.15);draw()};bs[2].onclick=()=>{state.zoom=1;draw()};stage.appendChild(zoom)}
+    head.querySelector('[data-sgr-search]').oninput=e=>{state.query=e.target.value;draw()};head.querySelector('[data-sgr-reset]').onclick=()=>{state.query='';head.querySelector('[data-sgr-search]').value='';state.kindFilters.clear();state.relationFilters.clear();state.selected=null;state.zoom=1;renderFilters();draw();inspect(null,[])};renderLens();renderFilters();inspect(null,[]);draw();
+  }
+  return Object.freeze({version:VERSION,render,state:()=>({...state})});
+}
+root.SCSharedResearchGraphRuntime=Object.freeze({version:VERSION,create});
+})(globalThis);
