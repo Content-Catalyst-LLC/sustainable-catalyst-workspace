@@ -3,7 +3,7 @@
 
   const config = Object.freeze({
     schema: 'sc-workspace-standalone-config/1.0',
-    workspaceVersion: '3.82.3',
+    workspaceVersion: '3.83.0',
     host: 'standalone',
     apiBase: 'https://workspace-api.sustainablecatalyst.com',
     sessionEndpoint: '/v1/session',
@@ -23,6 +23,9 @@
     integratedProjectEndpoint: '/v1/integrated-project',
     researchGraphEndpoint: '/v1/research-graph',
     sharedResearchGraphEndpoint: '/v1/shared-research-graph',
+    libraryBridgeProfileEndpoint: '/v1/library-bridge/profile',
+    libraryBridgeReferenceEndpoint: '/v1/library-bridge/reference',
+    libraryBridgeContextEndpoint: '/v1/library-bridge/context',
     sharedResearchGraphRendererProfileEndpoint: '/v1/shared-research-graph/renderer-profile',
     scientificKnowledgeTerrainProfileEndpoint: '/v1/shared-research-graph/terrain-profile',
     sharedResearchSurfaceProfileEndpoint: '/v1/shared-research-surface/profile',

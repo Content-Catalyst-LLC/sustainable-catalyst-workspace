@@ -1,0 +1,9 @@
+/* Workspace v3.83.0 — Public Surface Consolidation */
+.scws-public-surface-consolidated{--scws-gap:clamp(14px,2vw,24px)}
+.scws-public-controls{margin:14px 0;border:1px solid rgba(20,25,29,.18);background:#f6f4ef}
+.scws-public-controls>summary{cursor:pointer;padding:12px 14px;font-weight:750;letter-spacing:.02em;list-style:none}
+.scws-public-controls>summary:after{content:'+';float:right;font-size:18px}.scws-public-controls[open]>summary:after{content:'–'}
+.scws-public-controls-body{padding:0 14px 14px;display:grid;gap:12px}
+.scws-public-landscape{min-height:clamp(520px,68vh,860px)!important;width:100%;overflow:hidden;border:1px solid rgba(20,25,29,.2);background:#071217}
+.scws-public-surface-consolidated .research-graph-detail{max-height:260px;overflow:auto}
+@media(max-width:760px){.scws-public-landscape{min-height:520px!important}.scws-public-controls-body{padding:0 10px 10px}}

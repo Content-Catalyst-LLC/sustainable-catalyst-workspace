@@ -20,6 +20,7 @@ from .shared_research_graph_runtime import profile as shared_research_graph_prof
 from .shared_research_graph_renderer import renderer_profile as shared_research_graph_renderer_profile
 from .scientific_knowledge_terrain import terrain_profile as scientific_knowledge_terrain_profile
 from .shared_research_surface import profile as shared_research_surface_profile, context as shared_research_surface_context
+from .library_workspace_bridge import profile as library_bridge_profile, reference as library_bridge_reference, handoff_context as library_bridge_context
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
@@ -2706,6 +2707,48 @@ def notebook_read_model_route(notebook_id: str, identity: ServiceIdentity = Depe
         return notebook_read_model(db, identity.user_key, notebook_id)
 
 
+
+@app.get("/v1/library-bridge/profile")
+def library_bridge_profile_route():
+    return {"ok": True, "item": library_bridge_profile()}
+
+@app.get("/v1/library-bridge/reference")
+def library_bridge_reference_route(
+    library_id: str = Query(..., max_length=240),
+    kind: str = Query(default="research-object", max_length=120),
+    title: str = Query(default="", max_length=500),
+    citation: str = Query(default="", max_length=3000),
+    canonical_url: str = Query(default="", max_length=2000),
+    fingerprint: str = Query(default="", max_length=256),
+    revision: str = Query(default="", max_length=240),
+    source_authority: str = Query(default="library", max_length=120),
+    locator: str = Query(default="", max_length=1000),
+    provenance_url: str = Query(default="", max_length=2000),
+):
+    try:
+        return {"ok": True, "item": library_bridge_reference(library_id=library_id, kind=kind, title=title, citation=citation, canonical_url=canonical_url, fingerprint=fingerprint, revision=revision, source_authority=source_authority, locator=locator, provenance_url=provenance_url)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code":"invalid-library-reference","message":str(exc)})
+
+@app.get("/v1/library-bridge/context")
+def library_bridge_context_route(
+    library_id: str = Query(..., max_length=240),
+    project_id: str = Query(default="", max_length=240),
+    kind: str = Query(default="research-object", max_length=120),
+    title: str = Query(default="", max_length=500),
+    citation: str = Query(default="", max_length=3000),
+    canonical_url: str = Query(default="", max_length=2000),
+    fingerprint: str = Query(default="", max_length=256),
+    revision: str = Query(default="", max_length=240),
+    source_authority: str = Query(default="library", max_length=120),
+    locator: str = Query(default="", max_length=1000),
+    provenance_url: str = Query(default="", max_length=2000),
+    return_url: str = Query(default="", max_length=2000),
+):
+    try:
+        return {"ok": True, "item": library_bridge_context(project_id=project_id, return_url=return_url, library_id=library_id, kind=kind, title=title, citation=citation, canonical_url=canonical_url, fingerprint=fingerprint, revision=revision, source_authority=source_authority, locator=locator, provenance_url=provenance_url)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={"code":"invalid-library-handoff","message":str(exc)})
 
 @app.get("/v1/shared-research-surface/profile")
 def shared_research_surface_profile_route():
