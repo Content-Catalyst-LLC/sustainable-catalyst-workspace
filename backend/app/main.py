@@ -20,6 +20,7 @@ from .shared_research_graph_runtime import profile as shared_research_graph_prof
 from .shared_research_graph_renderer import renderer_profile as shared_research_graph_renderer_profile
 from .scientific_knowledge_terrain import terrain_profile as scientific_knowledge_terrain_profile
 from .shared_research_surface import profile as shared_research_surface_profile, context as shared_research_surface_context
+from .library_discovery_v3841 import discover as library_discover_v3841, verified_public_reference as library_public_record_v3841
 from .library_workspace_bridge import profile as library_bridge_profile, reference as library_bridge_reference, handoff_context as library_bridge_context
 from .session_auth import router as session_router
 from .db import initialize_schema, ping_database, session_scope
@@ -2749,6 +2750,28 @@ def library_bridge_context_route(
         return {"ok": True, "item": library_bridge_context(project_id=project_id, return_url=return_url, library_id=library_id, kind=kind, title=title, citation=citation, canonical_url=canonical_url, fingerprint=fingerprint, revision=revision, source_authority=source_authority, locator=locator, provenance_url=provenance_url)}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code":"invalid-library-handoff","message":str(exc)})
+
+@app.get("/v1/library-bridge/v3841/public-search")
+def library_public_search_v3841(
+    q: str = Query(..., min_length=2, max_length=120),
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    # Auth is required even for public Library search; no document bytes returned.
+    return library_discover_v3841(q)
+
+@app.get("/v1/library-bridge/v3841/projects/{project_id}/public-reference/{record_id}")
+def library_project_public_reference_v3841(
+    project_id: str,
+    record_id: str,
+    identity: ServiceIdentity = Depends(require_service_identity),
+):
+    with session_scope() as db:
+        if get_project(db, identity.user_key, project_id) is None:
+            raise HTTPException(404, detail="Project unavailable")
+    item = library_public_record_v3841(record_id)
+    return {"schema":"sc-workspace-library-project-reference/1.0",
+            "projectId":project_id,"reference":item,"readOnly":True,
+            "acceptedIntoProject":False,"mutationPerformed":False}
 
 @app.get("/v1/shared-research-surface/profile")
 def shared_research_surface_profile_route():
