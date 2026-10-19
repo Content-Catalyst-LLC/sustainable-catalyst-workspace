@@ -4980,3 +4980,7 @@ app.include_router(portable_research_workspace_recovery_router)
 # Workspace v3.70.0 — Workspace 3.x Production Consolidation & Stable Research OS Baseline
 from .workspace_v3_stable_research_os_baseline_workspace import router as workspace_v3_stable_research_os_baseline_router
 app.include_router(workspace_v3_stable_research_os_baseline_router)
+
+# Workspace v3.84.2 — additive read-only Lab reporting preview; disabled by default
+from .lab_figure_reporting_v3842 import router as lab_figure_reporting_v3842_router
+app.include_router(lab_figure_reporting_v3842_router, dependencies=[Depends(require_service_identity)])
