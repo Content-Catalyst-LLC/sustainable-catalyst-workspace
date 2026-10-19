@@ -37,7 +37,7 @@ def render(payload: Envelope) -> dict:
     # A source fingerprint supplied by a caller is a reference, not attestation.
     if src.get('ok') is not True or not isinstance(src.get('fingerprint'), str) or not src['fingerprint']:
         raise HTTPException(422,'Missing Lab figure response marker or fingerprint')
-    if src.get('graphic_type') != 'distribution' or not isinstance(src.get('spec'),dict):
+    if src.get('graphic_type') not in ('distribution','ecdf') or not isinstance(src.get('spec'),dict):
         raise HTTPException(422,'Unsupported Lab graphic type')
     spec=src['spec']
     if spec.get('kind') != 'ecdf':

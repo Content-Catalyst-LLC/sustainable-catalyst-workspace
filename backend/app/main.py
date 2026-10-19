@@ -4988,3 +4988,7 @@ app.include_router(lab_figure_reporting_v3842_router, dependencies=[Depends(requ
 # Workspace v3.84.3: service-authenticated, flag-disabled-by-default Lab publication adapter
 from .lab_publication_adapter_v3843 import router as lab_publication_v3843_router
 app.include_router(lab_publication_v3843_router, dependencies=[Depends(require_service_identity)])
+
+# v3.84.4: explicit-approval Lab ECDF acceptance; existing Workspace service auth
+from .lab_live_figure_acceptance_v3844 import router as lab_live_v3844_router
+app.include_router(lab_live_v3844_router, dependencies=[Depends(require_service_identity)])
