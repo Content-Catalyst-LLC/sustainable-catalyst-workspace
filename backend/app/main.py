@@ -4984,3 +4984,7 @@ app.include_router(workspace_v3_stable_research_os_baseline_router)
 # Workspace v3.84.2 — additive read-only Lab reporting preview; disabled by default
 from .lab_figure_reporting_v3842 import router as lab_figure_reporting_v3842_router
 app.include_router(lab_figure_reporting_v3842_router, dependencies=[Depends(require_service_identity)])
+
+# Workspace v3.84.3: service-authenticated, flag-disabled-by-default Lab publication adapter
+from .lab_publication_adapter_v3843 import router as lab_publication_v3843_router
+app.include_router(lab_publication_v3843_router, dependencies=[Depends(require_service_identity)])
