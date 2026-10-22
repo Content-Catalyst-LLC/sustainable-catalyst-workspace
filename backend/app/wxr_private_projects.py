@@ -21,7 +21,7 @@ from . import repository, object_store
 from .schemas import ProjectStoreRequest, ArtifactStoreRequest
 from .session_auth import session_payload_from_request
 
-router = APIRouter(prefix="/v1/private-research/projects", tags=["Private Research"])
+router = APIRouter(prefix="/v1/private-research/persistent-projects", tags=["Private Research"])
 ORIGIN = "https://workspace.sustainablecatalyst.com"
 HEADERS = {
     "Cache-Control": "private, no-store",
@@ -215,7 +215,7 @@ def download_private_file(project_id: str, artifact_id: str, request: Request):
 
 
 SCRIPT = r"""
-const root='/v1/private-research/projects';
+const root='/v1/private-research/persistent-projects';
 const status=document.getElementById('status');
 const projects=document.getElementById('projects');
 const files=document.getElementById('files');
