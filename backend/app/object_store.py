@@ -73,7 +73,7 @@ def artifact_account_bytes(db: Session, user_key: str, replacing_artifact_id: st
     return int(db.scalar(stmt) or 0)
 
 
-def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest) -> ArtifactHead:
+def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest, *, commit: bool = True) -> ArtifactHead:
     settings = get_settings()
     content = _decode(payload.contentBase64)
     byte_count = len(content)
@@ -134,8 +134,11 @@ def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest) ->
         metadata_json=payload.metadata,
         created_at=now,
     ))
-    db.commit()
-    db.refresh(existing)
+    if commit:
+        db.commit()
+        db.refresh(existing)
+    else:
+        db.flush()
     return existing
 
 
@@ -149,7 +152,7 @@ def read_artifact_content(row: ArtifactHead) -> bytes:
     return content
 
 
-def delete_artifact(db: Session, user_key: str, artifact_id: str) -> bool:
+def delete_artifact(db: Session, user_key: str, artifact_id: str, *, commit: bool = True) -> bool:
     row = get_artifact(db, user_key, artifact_id)
     if row is None:
         return False
@@ -157,7 +160,10 @@ def delete_artifact(db: Session, user_key: str, artifact_id: str) -> bool:
     for revision in revisions:
         db.delete(revision)
     db.delete(row)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     # Blob garbage collection is deliberately deferred because content-addressed blobs may be shared by revisions/users.
     return True
 

@@ -74,7 +74,7 @@ def store_project(db: Session, user_key: str, payload: ProjectStoreRequest) -> t
         raise HTTPException(status_code=413, detail="Workspace project exceeds the configured backend project limit.")
 
     project_id = payload.sourceProjectId.strip()
-    existing = get_project(db, user_key, project_id)
+    existing = db.scalar(select(ProjectHead).where(ProjectHead.user_key == user_key, ProjectHead.project_id == project_id).with_for_update())
     current_revision = existing.revision if existing else 0
     is_sync = payload.schema_ == "sc-workspace-sync-push/1.0"
     storage_mode = "sync-head" if is_sync else "manual-backup"

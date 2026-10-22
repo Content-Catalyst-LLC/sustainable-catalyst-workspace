@@ -24,6 +24,7 @@ from .library_discovery_v3841 import discover as library_discover_v3841, verifie
 from .library_workspace_bridge import profile as library_bridge_profile, reference as library_bridge_reference, handoff_context as library_bridge_context
 from .session_auth import router as session_router
 from .wxr_recovery_review import router as wxr_recovery_review_router
+from .controlled_recovery import router as controlled_recovery_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
     delete_notebook,
@@ -445,6 +446,7 @@ app.add_middleware(
 )
 app.include_router(session_router)
 app.include_router(wxr_recovery_review_router)
+app.include_router(controlled_recovery_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
