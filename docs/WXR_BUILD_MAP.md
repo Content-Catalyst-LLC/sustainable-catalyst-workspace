@@ -1,6 +1,6 @@
 # Wexford Research (WXR) — Build Map and Continuity Handoff
 
-**Updated:** 2026-10-22  
+**Updated:** 2026-10-22 (complete-project delivery roadmap)  
 **Scope:** Sustainable Catalyst Workspace / Workbench private Wexford enhanced rock weathering (ERW) worked example and reusable research notebooks.  
 **Status rule:** Distinguish *built*, *unit-tested*, *Contabo-tested*, *deployed*, and *authenticated production-accepted*. A standalone PASS does not imply live integration.
 
@@ -81,8 +81,84 @@ Production publication requires (a) authenticated ownership, (b) trusted authori
 - No fabricated PASS markers, modeled observations, carbon-credit claims or unsupported CDR effectiveness claims.
 - Maintain versioned release source, test totals, deploy markers, backups, rollback, and precise links to the relevant commit in future updates.
 
-## Immediate next handoff
 
-**Start by closing WXR-08.3.0 authenticated original-project mapping.** Then build the trusted Workspace adapter for WXR-08.4.5's universal service. **Do not** deploy execution merely because 78 unit tests passed.
+## Full project definition of done
 
-_This is a documentation-only continuity update. It does not deploy code or change VPS state._
+**This project is not complete at WXR-08.5.4.** That release would certify the initial notebook integration, not the entire Wexford research/reporting effort. Declare the project finished only after ALL of these demonstrably pass:
+
+1. **Original-project continuity:** the *same* pre-existing Wexford ERW project appears and opens in the authenticated private Workspace; Workbench data, source PDFs, calculations, original figures, history and editor access remain intact. No duplicate/replacement or unnecessary registration.
+2. **Scientific completeness:** actual research question, source inventory, assumptions, soil/basalt scenarios, constraints, units, stoichiometry, additionality/baseline, sensitivity/Monte Carlo, measurement/MRV limits, carbon-removal durability, uncertainty and Ireland/Wexford applicability are reconciled and reviewed. Derived estimates are not represented as field observations.
+3. **Reference and claim audit:** every material claim, data series, equation, figure and table has a resolvable provenance link, document/version hash and review disposition; missing/contradictory evidence blocks scientific sign-off.
+4. **Workspace capability:** a permitted user can use the integrated Workspace/Workbench/Lab/Library/Site Intelligence functionality to investigate, update, save, version, rerun and export the project without terminal intervention.
+5. **Notebook reproduction:** genuine project-bound notebook and environment manifest can be downloaded; isolated execution, independent replay, tolerance checks and certificate state are truthful; no secrets/private PDF bytes in public packages.
+6. **Manuscript and publication assets:** editable report (DOCX or suitable editable format), print-ready PDF, tables, citations/bibliography, source-attributed original figures and permitted visual addendum are delivered, with reviewed page, citation and figure conventions. Document exports must be individually inspected. Deliverables must reflect the *actual* current research and any assignment/publication specifications verified at final review.
+7. **Secure production acceptance:** authenticated owner, anonymous, unauthorized and cross-project checks; backup/restore; rollback drill; trusted execution isolation; replay/export; service health and browser end-to-end tests PASS with captured evidence.
+8. **Reusable platform template:** start a second *synthetic* non-Wexford research project and demonstrate the same notebook, evidence binding and report pipeline without Wexford-specific hardcoding.
+9. **GitHub and operator continuity:** code, migrations, scripts, non-sensitive fixtures, scientific method documentation, release notes, test evidence indexes, architecture and final build map committed; deployed commit SHAs/tags recorded; no confidential papers, user records or credentials committed.
+10. **Final owner acceptance:** user reviews the Wexford scientific report and integrated Workspace experience; unresolved exceptions explicitly documented and no false completion labels.
+
+## End-to-end roadmap through final completion
+
+This extends the existing committed 08.5.x notebook-integration plan. **08.6.x–08.12.x are proposed release identifiers and acceptance scopes, not verified builds or guaranteed build counts.** Consolidate releases only where gates and rollback stay independent.
+
+| Phase / build | Deliverable and acceptance evidence | Prerequisite | Status |
+| --- | --- | --- | --- |
+| **G0: WXR-08.3.1** | Owner/project identity reconciliation; canonical Workbench project ID, Workspace identity and no-duplicate listing; authenticated browser PASS; preserve source, session and prior backups | Existing 08.3.0 | **BLOCKED / next critical gate** |
+| WXR-08.5.0 | Trusted authority adapter for real project revisions, evidence, equations and notebook service; server-side identity enforcement, read-only first | G0 | Planned / no live acceptance |
+| WXR-08.5.1 | Notebook Workspace UI: generate, inspect, list, verify, download, versions, user-visible certification limits | 08.5.0 | Planned |
+| WXR-08.5.2 | Hardened execution queue, least-privilege worker, network and data restrictions, quotas, timeout, independent replay | 08.5.1 | Planned |
+| WXR-08.5.3 | Bind real Wexford evidence/manuscript revisions and import provenance to notebook context | 08.5.0 | Planned |
+| **G1: WXR-08.5.4** | Notebook service production audit, identity and cross-project security, backup/rollback and browser acceptance | 08.5.0–.3 | Planned **intermediate gate** |
+| WXR-08.6.0 | Authoritative Wexford project manifest, all private literature source references, dataset inventories, duplicate/missing-content audit, content hashes and explicit licensing/access classes | G0/G1 | Planned |
+| WXR-08.6.1 | Claim-to-source and figure/table/equation lineage reconciliation, independent citation validation and review log | 08.6.0 | Planned |
+| **G2: WXR-08.6.2** | Evidence freeze: versioned reviewed data/claims, unexplained gaps documented, no false attribution | 08.6.1 | Planned |
+| WXR-08.7.0 | ERW geochemical model review: basalt/mineral composition, stoichiometric theoretical maximum, mass balances, alkalinity/carbonate accounting, units | G2 | Planned |
+| WXR-08.7.1 | Wexford agricultural baseline and scenario reconciliation: soils, application rate, transport/input emissions, additionality and boundary assumptions | 08.7.0 | Planned |
+| WXR-08.7.2 | Uncertainty and sensitivity audit: ranges, correlations, Monte Carlo seeds/convergence, parameter provenance and calibration limits | 08.7.1 | Planned |
+| **G3: WXR-08.7.3** | Scientific calculation independent replay and specialist/manual review; theoretical potential clearly separated from measured durable net removal | 08.7.0–.2 | Planned |
+| WXR-08.8.0 | Wexford geospatial/time data bindings and observation timestamps; authoritative provenance, boundary and resolution controls | G2 | Planned |
+| WXR-08.8.1 | Original figures, maps, diagnostics, uncertainty plots and 4D visual scene exports; static accessible outputs and image integrity | 08.8.0, G3 | Planned |
+| **G4: WXR-08.8.2** | All report figures map to traceable analytic objects and declared input datasets; visual QA | 08.8.1 | Planned |
+| WXR-08.9.0 | Manuscript reconciliation and section-level evidence links; limitations, additionality, MRV, permanence and policy interpretations accurately represented | G2–G4 | Planned |
+| WXR-08.9.1 | Editorial export: editable DOCX, print-ready PDF, figures/addendum, footnotes or required citation style and bibliography | 08.9.0 | Planned |
+| **G5: WXR-08.9.2** | Human proofread and scientific-report acceptance: pages, captions, evidence, source attributions, citation consistency, PDF and editable export QA | 08.9.1 | Planned |
+| WXR-08.10.0 | End-to-end Wexford private Workspace journey: open existing project, reproduce analysis, update revision, view figures, generate notebook and report, export | G1–G5 | Planned |
+| WXR-08.10.1 | Cross-module integration tests and no-hardcode generalization to a separate synthetic research project | 08.10.0 | Planned |
+| **G6: WXR-08.10.2** | Research workflow completion test with real authorized owner and independent fresh browser session | 08.10.1 | Planned |
+| WXR-08.11.0 | Deployment/security hardening, CI checks, GitHub reconciliation, backup/restore exercise, least privilege, logs and negative tests | G6 | Planned |
+| WXR-08.11.1 | Production release/rollback drill, release manifest with image/commit hashes, user-facing acceptance package | 08.11.0 | Planned |
+| **G7: WXR-08.11.2** | Full cross-service production certification after independent test environment verification; no unresolved critical defects | 08.11.1 | Planned |
+| **WXR-08.12.0** | Final research deliverables, reproducibility archive, scientific caveats, runbook and operational handoff; owner review | G7 | Planned |
+| **G8: WXR-08.12.1** | FINAL PROJECT ACCEPTANCE: all definition-of-done criteria checked, proof links stored, deviations waived explicitly; only then close WXR research project | 08.12.0 | Planned |
+
+**Planning estimate:** 5 currently planned 08.5.x releases, plus 19 proposed 08.6.x–08.12.x releases, and a separate 08.3.1 identity remediation gate. These are an **initial scope estimate rather than a promised fixed build count**. Actual releases can be merged/added following audited acceptance without changing the final definition of done. No development is deemed complete based solely on unit-test totals.
+
+## Workstreams and sequencing
+
+- **Critical sequential path:** G0 identity → G1 notebook live → G2 evidence freeze → G3 scientific math → G4 visuals → G5 manuscript → G6 full research workflow → G7 production → G8 final approval.
+- **Parallel when safe:** documentation, optional figures, literature inventory and draft manuscript review can advance while identity is pending, but cannot certify the integrated private project without verified ownership.
+- **Dependencies outside the release engine:** access to the original authenticated research records, licensed reference PDFs, third-party observation provenance, actual report specifications, and human scientific judgment. Record blockers rather than synthesize substitute data.
+- **Change management:** Each build must document prerequisite release SHA, source revision, migrations (if any), test commands and counts, signed-off acceptance evidence, backup, rollback and impact on original data; include `BLOCKED`/ `NOT_ASSESSED` where appropriate.
+
+## Consolidated final acceptance matrix
+
+| Gate | Evidence required | Blocking failure |
+| --- | --- | --- |
+| Ownership and session | Authenticated Wexford opens, exact original Workbench/Workspace mapping; unauthorized/cross-owner deny | Any unverified identity, duplicate project or unauthorized retrieval |
+| Data preservation | Pre/post checksums, original evidence/figures/outputs and database restore rehearsal | Unintended deletion, overwrite or missing originals |
+| Scientific integrity | Reviewed equations, units, baselines, assumptions, sources, uncertainty and independent recomputation | Unexplained or fabricated result, citation, dataset or figure |
+| Reproducibility | Notebook with versioned environment, source metadata and at least two independent replay runs with documented tolerances | Any invented 'scientifically validated' designation |
+| Reporting | Editable manuscript, final PDF, tables and figures pass human visual/editorial checks | Broken exports, unresolved citation or visual mismatch |
+| Universal feature | Second synthetic project exercises same service without Wexford-specific branches | Wexford-only implementation |
+| Security | Auth, tenant isolation, resource limits, negative tests, secrets scanning and auditability | Any critical vulnerability |
+| Operations | Rollback, backups, deployment artifact hashes, uptime/health, release docs, GitHub commits | No recovery path or non-reproducible deployment |
+| Owner sign-off | Final walkthrough and explicit completion record | Missing approval |
+
+## Next operator instruction (single-entry handoff)
+
+1. **Do not begin more isolated notebook builds.** The 08.4.x foundation is complete.
+2. Resolve **G0 / WXR-08.3.1**, using a single non-destructive inspection and authenticated test runner to identify the genuine Workbench project row and owner. Avoid guessing schemas or generating an approval record from synthetic identity assertions.
+3. Advance **WXR-08.5.0** only with a trusted actual Workspace identity contract and fail-closed evidence binding. Its development can be tested without production mutation; keep live activation disabled until G0 PASS.
+4. After each phase, update **this same GitHub build map** with actual statuses, independent acceptance logs, blockers and exact commit references. Do not replace the master map with a separate ambiguous tracker.
+
+_This roadmap is a planning/documentation artifact. It does not itself deploy code, certify scientific conclusions, or imply an already-live notebook UI._
