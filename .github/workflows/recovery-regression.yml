@@ -61,3 +61,8 @@ jobs:
           backend/tests/test_cross_product_research_handoff_consolidation_v3680.py
           backend/tests/test_portable_research_workspace_recovery_v3690.py
           backend/tests/test_integrated_project_workspace_v3800.py
+
+      - name: WXR-09.3 signed-session project and upload integration
+        env:
+          PYTHONPATH: backend
+        run: python -m pytest -q backend/tests/test_wxr_private_projects.py
