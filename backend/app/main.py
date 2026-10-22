@@ -23,6 +23,7 @@ from .shared_research_surface import profile as shared_research_surface_profile,
 from .library_discovery_v3841 import discover as library_discover_v3841, verified_public_reference as library_public_record_v3841
 from .library_workspace_bridge import profile as library_bridge_profile, reference as library_bridge_reference, handoff_context as library_bridge_context
 from .session_auth import router as session_router
+from .controlled_recovery import router as controlled_recovery_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
     delete_notebook,
@@ -453,6 +454,7 @@ from .private_research import router as private_research_router
 app.include_router(private_research_router)
 from .private_research_ui import router as private_research_ui_router
 app.include_router(private_research_ui_router)
+app.include_router(controlled_recovery_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):

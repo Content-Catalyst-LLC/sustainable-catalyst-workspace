@@ -2962,3 +2962,12 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER workspace_research_approval_final BEFORE UPDATE OR DELETE ON workspace_research_approval_requests
     FOR EACH ROW EXECUTE FUNCTION workspace_research_approval_final();
 """).execute_if(dialect="postgresql"))
+class RecoveryRestorationReceipt(Base):
+    """Server-owned recovery audit; never authorized from client-editable project JSON."""
+    __tablename__ = 'workspace_recovery_restoration_receipts'
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    batch_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    manifest_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
