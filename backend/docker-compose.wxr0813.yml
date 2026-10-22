@@ -1,0 +1,8 @@
+# Supplemental override for an already deployed, reviewed ERW identity bridge.
+# Apply alongside the production Compose file; both services must share sc-internal.
+# This connects the existing account verifier and does not grant research ownership.
+services:
+  sc-workspace-backend:
+    environment:
+      WXR0813_ERW_INTERNAL_URL: http://sc-workbench:8088
+      WXR0813_RATE_DB: /data/wxr0813_rate_limit.sqlite
