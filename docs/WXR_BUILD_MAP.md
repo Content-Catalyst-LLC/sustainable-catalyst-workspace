@@ -131,7 +131,7 @@ This extends the existing committed 08.5.x notebook-integration plan. **08.6.x�
 | **WXR-08.12.0** | Final research deliverables, reproducibility archive, scientific caveats, runbook and operational handoff; owner review | G7 | Planned |
 | **G8: WXR-08.12.1** | FINAL PROJECT ACCEPTANCE: all definition-of-done criteria checked, proof links stored, deviations waived explicitly; only then close WXR research project | 08.12.0 | Planned |
 
-**Planning estimate:** 5 currently planned 08.5.x releases, plus 19 proposed 08.6.x–08.12.x releases, and a separate 08.3.1 identity remediation gate. These are an **initial scope estimate rather than a promised fixed build count**. Actual releases can be merged/added following audited acceptance without changing the final definition of done. No development is deemed complete based solely on unit-test totals.
+**Planning estimate:** 5 currently planned 08.5.x releases, plus 21 proposed 08.6.x–08.12.x releases, and a separate 08.3.1 identity remediation gate. These are an **initial scope estimate rather than a promised fixed build count**. Actual releases can be merged/added following audited acceptance without changing the final definition of done. No development is deemed complete based solely on unit-test totals.
 
 ## Workstreams and sequencing
 
