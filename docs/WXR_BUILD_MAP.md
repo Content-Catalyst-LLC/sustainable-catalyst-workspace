@@ -162,3 +162,29 @@ This extends the existing committed 08.5.x notebook-integration plan. **08.6.xâ€
 4. After each phase, update **this same GitHub build map** with actual statuses, independent acceptance logs, blockers and exact commit references. Do not replace the master map with a separate ambiguous tracker.
 
 _This roadmap is a planning/documentation artifact. It does not itself deploy code, certify scientific conclusions, or imply an already-live notebook UI._
+
+## Production identity configuration repair â€” 2026-10-22
+
+A read-only inspection found that the deployed ERW identity bridge was present in the running image, but the active Compose invocation omitted the existing `docker-compose.wxr0813.yml` override. Consequently, `WXR0813_ERW_INTERNAL_URL` was empty even though the existing Workbench identity verifier was reachable on the shared internal network. The registered ERW account store already contained one identity; no account creation was needed.
+
+The existing override was activated for **only** `sc-workspace-backend`, pointing the bridge to `http://sc-workbench:8088`. The prior container configuration, Compose files, image ID, source digests and rollback command were saved in a restricted server-side backup before recreation. The image ID and four deployed source-file digests were verified unchanged. No source patch, image rebuild, Workbench restart, ownership transfer, grant provisioning or research staging was performed.
+
+Verification evidence:
+
+- 15 local tests exercise the unchanged deployed bridge using explicitly synthetic fixtures: secure native cookie issuance, verifier configuration gating, mismatched/invalid identities, Origin/header checks, forged-header rejection and durable rate limiting. These are not real-user authentication certification.
+- Seven production HTTP checks pass: public homepage/session/login `200`, both private Wexford endpoints anonymous `401`, forged-identity headers still `401`, and an untrusted-Origin login attempt `403`.
+- The current rate-limit directory is persistent and writable; the internal ERW verifier reports durable signing configured.
+- Twelve Wexford project candidates exist under different historical owner subjects. Only one candidate matches the currently registered ERW account, and that candidate is the newer onboarding record. The canonical recovered project and historical ownership must **not** be inferred from the shared research key or from successful login alone.
+- The expected private consolidated recovery directory exists. The runtime has neither an operator digest nor an operator grant-file configuration.
+
+**G0 gates remaining immediately after the configuration repair (superseded by the authenticated acceptance below):** a real existing-account browser login, exact owner/project reconciliation and genuine cross-owner denial evidence. Operator authorization and isolated staging remain blocked; no approval flags or identities were fabricated. Keep the existing-login page as the next user action and preserve all historical project records.
+
+### Authenticated acceptance and explicitly approved recovery review
+
+The existing account holder completed the real ERW browser login. Native `/v1/session` reported authenticated signed-cookie access, its upstream owner digest matched the existing ERW identity record, and the protected Wexford UI opened. The general private Workspace list correctly contained zero attached projects. This closes the **real login/session check only**, not historical ownership reconciliation.
+
+The human account holder separately approved time-limited private review of the recovery catalog, explicitly preserving all historical owners. The `wxr_recovery_review` adapter implements this narrower scope with an expiring, exact-subject, exact-catalog-digest administrative grant. It provides only GET inventory/status/UI endpoints, strips server source paths and unrelated internal fields, and grants no artifact-byte downloads, staging initialization, import, owner changes or publication. Missing/expired/mismatched grants deny access. The catalog is mounted read-only. Approval is not presented as scientific validation or an independent staging approval.
+
+Twenty-four synthetic local tests cover granted access, other signed subjects, anonymous/forged identities, grant expiry/scope/permissions/symlinks, source-integrity changes, response privacy and UI script restrictions. Deployment and real browser acceptance passed on 2026-10-22: the signed-in account loaded the actual catalog and expanded both calculation and artifact inventories. The live view reports 20 projects, 85 calculations, 56 artifact occurrences and 50 unique artifact files. All 52 recovery checksum entries still pass. Anonymous UI/catalog/status and forged-identity requests are denied; the catalog mount is read-only and the grant file has mode 0600. The grant expires 2026-10-23 at 19:53:23 UTC (14:53 Central). The resolved production Compose override validates without shell-only variables. A prior immutable image and source/configuration backups provide rollback.
+
+G0 historical mapping and the staging grant remain unresolved. Only one real account exists, so production cross-account isolation has not been certified; denial for a second signed subject is covered by synthetic local tests. The public repository contains generic adapter/configuration/tests only, never the private catalog, live grant or recovered artifact data.
