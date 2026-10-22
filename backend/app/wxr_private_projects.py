@@ -122,6 +122,20 @@ def create_private_project(request: Request, body: ProjectCreate):
         return JSONResponse(repository.project_metadata(row), status_code=201, headers=HEADERS)
 
 
+@router.get("/ui", response_class=HTMLResponse)
+def private_projects_ui(request: Request):
+    _subject(request)
+    script_hash = base64.b64encode(hashlib.sha256(SCRIPT.encode()).digest()).decode()
+    return HTMLResponse(HTML, headers={
+        **HEADERS,
+        "Content-Security-Policy": (
+            "default-src 'none'; script-src 'sha256-" + script_hash
+            + "'; style-src 'unsafe-inline'; connect-src 'self';"
+              " base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+        ),
+    })
+
+
 @router.get("/{project_id}")
 def open_private_project(project_id: str, request: Request):
     subject = _subject(request)
@@ -154,7 +168,7 @@ def upload_private_file(project_id: str, body: ResearchUpload, request: Request)
         raise HTTPException(413, "Research upload exceeds the configured limit.")
     try:
         raw = base64.b64decode(body.contentBase64, validate=True)
-    except (ValueError, Exception) as exc:
+    except Exception as exc:
         # The native object store independently verifies base64.
         raise HTTPException(400, "Invalid research-file encoding.") from exc
     if not raw:
@@ -259,15 +273,3 @@ section{border:1px solid #555;padding:18px;margin:20px 0}#status{min-height:30px
 <script>""" + SCRIPT + """</script></body></html>"""
 
 
-@router.get("/ui", response_class=HTMLResponse)
-def private_projects_ui(request: Request):
-    _subject(request)
-    script_hash = base64.b64encode(hashlib.sha256(SCRIPT.encode()).digest()).decode()
-    return HTMLResponse(HTML, headers={
-        **HEADERS,
-        "Content-Security-Policy": (
-            "default-src 'none'; script-src 'sha256-" + script_hash
-            + "'; style-src 'unsafe-inline'; connect-src 'self';"
-              " base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
-        ),
-    })
