@@ -2766,3 +2766,14 @@ class PredictiveInvestigationSnapshot(Base):
     issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class RecoveryRestorationReceipt(Base):
+    """Server-owned recovery audit; never authorized from client-editable project JSON."""
+    __tablename__ = 'workspace_recovery_restoration_receipts'
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    batch_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    manifest_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
