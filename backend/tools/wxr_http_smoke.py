@@ -75,6 +75,9 @@ def verify(state_path: Path) -> None:
         assert hashlib.sha256(content).hexdigest() == item["sha256"]
         assert headers.get("X-Research-SHA256") == item["sha256"]
         assert headers.get("Content-Disposition", "").startswith("attachment;")
+    status, _, _ = call(f"/v1/artifacts/{state['files'][0]['artifactId']}",
+                        method="DELETE", origin=True)
+    assert status == 409
     for subject in (None, "bob"):
         status, _, _ = call(f"{ROOT}/{project_id}", subject=subject)
         assert status == (401 if subject is None else 404)
