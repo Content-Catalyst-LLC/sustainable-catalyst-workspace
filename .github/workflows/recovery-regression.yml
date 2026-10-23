@@ -130,10 +130,10 @@ jobs:
           test "$table_count" -eq 0
           echo 'Container startup passed with schema creation disabled and zero tables created.' >> "$GITHUB_STEP_SUMMARY"
           docker run --rm -v "$PWD/deploy/wxr094/Caddyfile.isolated:/etc/caddy/Caddyfile:ro" \
-            caddy:2.10-alpine validate --config /etc/caddy/Caddyfile --adapter caddyfile
+            caddy:2.10-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
           docker run -d --rm --name wxr-caddy-check --network host \
             -v "$PWD/deploy/wxr094/Caddyfile.isolated:/etc/caddy/Caddyfile:ro" \
-            caddy:2.10-alpine run --config /etc/caddy/Caddyfile --adapter caddyfile
+            caddy:2.10-alpine caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
           trap 'docker stop wxr-caddy-check wxr-startup-check >/dev/null 2>&1 || true' EXIT
           for attempt in $(seq 1 20); do
             if curl --silent http://127.0.0.1:18080/ >/dev/null; then break; fi

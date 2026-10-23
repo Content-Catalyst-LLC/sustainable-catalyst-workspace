@@ -5,6 +5,30 @@ production deployment, backup, migration, or service restart.
 
 ## Startup and schema
 
+For local Docker Desktop, first confirm `docker context inspect` identifies a
+local Unix socket. The development stack is `compose.dev.yml` under the
+dedicated project `wxr-dev`; it creates only `wxr-dev` containers/network and
+the disposable `wxr-dev_pg_data` and `wxr-dev_objects` volumes. It mounts no
+production path. `compose.restore.dev.yml` is an optional override targeting a
+new local restore database and an explicitly supplied isolated object
+directory. Do not use either file with another Compose project or server.
+
+```sh
+docker context show
+docker context inspect --format '{{(index .Endpoints "docker").Host}}'
+docker compose -p wxr-dev -f deploy/wxr094/compose.dev.yml up --build -d
+docker compose -p wxr-dev -f deploy/wxr094/compose.dev.yml exec -T postgres \
+  psql -U wxr_dev -d sc_wxr094_dev -tAc \
+  "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"
+docker compose -p wxr-dev -f deploy/wxr094/compose.dev.yml exec -T backend \
+  python -m app.init_db
+```
+
+The table-count check must print `0` before the explicit CI/development-only
+initialization. Stop the backend before a paired backup; this is the synthetic
+writer-quiescence step. To clean up **only this project** after recording test
+evidence: `docker compose -p wxr-dev -f deploy/wxr094/compose.dev.yml down --volumes`.
+
 `backend/Dockerfile` starts `uvicorn` directly. `python -m app.init_db` is a
 separate explicit schema-maintenance command; never run it against production
 under the current no-migration authorization. Keep
