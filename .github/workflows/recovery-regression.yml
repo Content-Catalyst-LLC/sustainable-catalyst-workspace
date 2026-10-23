@@ -28,6 +28,8 @@ jobs:
           --health-interval 5s --health-timeout 5s --health-retries 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -72,7 +74,8 @@ jobs:
           node tests/node/wxr093_same_origin.js
       - name: Build immutable candidate image without publishing or deploying
         run: |
-          docker build --pull --file backend/Dockerfile --tag wxr-09-3-candidate:${GITHUB_SHA} backend
-          image_id=$(docker image inspect --format='{{.Id}}' wxr-09-3-candidate:${GITHUB_SHA})
-          echo "Source commit: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
-          echo "CI-built image ID: ${image_id}" >> "$GITHUB_STEP_SUMMARY"
+          source_commit=$(git rev-parse HEAD)
+          docker build --pull --file backend/Dockerfile --tag wxr-09-3-candidate:${source_commit} backend
+          image_id=$(docker image inspect --format='{{.Id}}' wxr-09-3-candidate:${source_commit})
+          echo "Source commit: ${source_commit}" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "CI-built image ID: ${image_id}" | tee -a "$GITHUB_STEP_SUMMARY"
