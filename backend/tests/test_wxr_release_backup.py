@@ -13,6 +13,7 @@ RESTORE_URL = "postgresql+psycopg://synthetic:synthetic@127.0.0.1/sc_wxr094_rest
 
 
 def test_paired_capture_verify_restore_and_tamper_detection(tmp_path, monkeypatch):
+    monkeypatch.delenv("SC_WXR_PG_CONTAINER", raising=False)
     calls = []
 
     def fake_pg(args, **kwargs):
@@ -44,6 +45,7 @@ def test_paired_capture_verify_restore_and_tamper_detection(tmp_path, monkeypatc
 
 
 def test_symlink_and_existing_destination_rejected(tmp_path, monkeypatch):
+    monkeypatch.delenv("SC_WXR_PG_CONTAINER", raising=False)
     monkeypatch.setattr(backup.subprocess, "run", lambda args, **kw: (
         Path(args[args.index("-f") + 1]).write_bytes(b"synthetic")
         if args[0] == "pg_dump" else None
