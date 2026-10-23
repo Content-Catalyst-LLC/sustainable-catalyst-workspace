@@ -115,6 +115,7 @@ jobs:
             -e SC_WORKSPACE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_startup_empty' \
             -e SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
             -e SC_WORKSPACE_SESSION_SIGNING_SECRET=synthetic-ci-only \
+            -e SC_WORKSPACE_SERVICE_TOKEN=synthetic-ci-service-only \
             -e SC_WORKSPACE_OBJECT_STORAGE_ROOT=/data/objects \
             -v "$RUNNER_TEMP/wxr-startup-objects:/data" \
             wxr-09-3-candidate:${source_commit}
@@ -164,6 +165,7 @@ jobs:
             -e SC_WORKSPACE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_wxr094_restore_http' \
             -e SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
             -e SC_WORKSPACE_SESSION_SIGNING_SECRET=synthetic-ci-only \
+            -e SC_WORKSPACE_SERVICE_TOKEN=synthetic-ci-service-only \
             -e SC_WORKSPACE_OBJECT_STORAGE_ROOT=/data/objects \
             -v "$RUNNER_TEMP/wxr-http-restored-objects:/data/objects" \
             wxr-09-3-candidate:${source_commit}

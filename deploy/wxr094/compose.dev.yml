@@ -21,6 +21,7 @@ services:
       SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://wxr_dev:synthetic-local-only@postgres:5432/sc_wxr094_dev
       SC_WORKSPACE_AUTO_CREATE_SCHEMA: "false"
       SC_WORKSPACE_SESSION_SIGNING_SECRET: synthetic-local-only
+      SC_WORKSPACE_SERVICE_TOKEN: synthetic-local-service-only
       SC_WORKSPACE_OBJECT_STORAGE_ROOT: /data/objects
     ports:
       - "127.0.0.1:18089:8089"
