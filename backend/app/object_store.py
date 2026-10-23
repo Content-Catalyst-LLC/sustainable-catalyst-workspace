@@ -73,6 +73,13 @@ def artifact_account_bytes(db: Session, user_key: str, replacing_artifact_id: st
     return int(db.scalar(stmt) or 0)
 
 
+# Decode and hash content before storing it under a digest-derived path, then
+# commit the user-scoped metadata/revision. expectedRevision prevents stale
+# replacement; size/account quotas and malformed base64 return 4xx errors.
+# projectId is copied from the request without a project-owner lookup here:
+# callers must not treat this association as proof of project authorization.
+# The PID-named temporary file and DB/filesystem ordering need concurrency and
+# crash-recovery verification before this path is certified for shared writes.
 def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest) -> ArtifactHead:
     settings = get_settings()
     content = _decode(payload.contentBase64)
@@ -139,6 +146,8 @@ def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest) ->
     return existing
 
 
+# The caller must have loaded row through a user-scoped lookup. Recheck both
+# byte length and SHA-256 on every read; missing/corrupt objects return 503.
 def read_artifact_content(row: ArtifactHead) -> bytes:
     path = _path_for_key(row.storage_key)
     if not path.is_file():
