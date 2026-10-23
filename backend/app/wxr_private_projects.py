@@ -285,5 +285,3 @@ section{border:1px solid #555;padding:18px;margin:20px 0}#status{min-height:30px
 <section><h2 id="selected">Select a project</h2><div id="files"></div>
 <div id="uploader" hidden><form id="upload"><input id="file" type="file" required><button>Upload file</button></form></div></section>
 <script>""" + SCRIPT + """</script></body></html>"""
-
-
