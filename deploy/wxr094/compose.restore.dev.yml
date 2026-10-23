@@ -1,0 +1,7 @@
+# Overlay only for the disposable wxr-dev restore rehearsal.
+services:
+  backend:
+    environment:
+      SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://wxr_dev:synthetic-local-only@postgres:5432/sc_wxr094_restore_local
+    volumes:
+      - ${WXR_DEV_RESTORED_OBJECT_DIR:?Set an isolated restored-object directory}:/data/objects

@@ -23,8 +23,11 @@ from .shared_research_surface import profile as shared_research_surface_profile,
 from .library_discovery_v3841 import discover as library_discover_v3841, verified_public_reference as library_public_record_v3841
 from .library_workspace_bridge import profile as library_bridge_profile, reference as library_bridge_reference, handoff_context as library_bridge_context
 from .session_auth import router as session_router
+from .private_research import router as private_research_router
+from .private_research_ui import router as private_research_ui_router
 from .wxr_recovery_review import router as wxr_recovery_review_router
 from .controlled_recovery import router as controlled_recovery_router
+from .wxr_private_projects import router as wxr_private_projects_router
 from .db import initialize_schema, ping_database, session_scope
 from .repository import (
     delete_notebook,
@@ -445,8 +448,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
 )
 app.include_router(session_router)
+app.include_router(private_research_router)
+app.include_router(private_research_ui_router)
 app.include_router(wxr_recovery_review_router)
 app.include_router(controlled_recovery_router)
+app.include_router(wxr_private_projects_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
@@ -4984,6 +4990,14 @@ app.include_router(portable_research_workspace_recovery_router)
 # Workspace v3.70.0 — Workspace 3.x Production Consolidation & Stable Research OS Baseline
 from .workspace_v3_stable_research_os_baseline_workspace import router as workspace_v3_stable_research_os_baseline_router
 app.include_router(workspace_v3_stable_research_os_baseline_router)
+
+# Preserve the v3.83.0 production ERW login and legacy link routes. The
+# wxr083835 overlay is an alias of wxr_recovery_review.router already mounted
+# above, so mounting it again would duplicate all three recovery endpoints.
+from .erw_identity_bridge import router as erw_identity_bridge_router
+from .wxr083_legacy import router as wxr083_legacy_router
+app.include_router(erw_identity_bridge_router)
+app.include_router(wxr083_legacy_router)
 
 # Workspace v3.84.2 — additive read-only Lab reporting preview; disabled by default
 from .lab_figure_reporting_v3842 import router as lab_figure_reporting_v3842_router

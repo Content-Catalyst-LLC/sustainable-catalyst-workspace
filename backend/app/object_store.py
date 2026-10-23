@@ -4,6 +4,7 @@ import base64
 import binascii
 import hashlib
 import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -84,6 +85,8 @@ def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest, *,
     existing = get_artifact(db, user_key, artifact_id)
     current_revision = existing.revision if existing else 0
     if existing is not None:
+        if isinstance(existing.metadata_json, dict) and existing.metadata_json.get("source") == "private-research":
+            raise HTTPException(status_code=409, detail="Private research files cannot be replaced.")
         if payload.expectedRevision is None or payload.expectedRevision != current_revision:
             raise HTTPException(status_code=409, detail={"message": "Workspace artifact revision conflict.", "currentRevision": current_revision, "current": artifact_metadata(existing)})
     elif payload.expectedRevision not in (None, 0):
@@ -101,10 +104,18 @@ def store_artifact(db: Session, user_key: str, payload: ArtifactStoreRequest, *,
     path = _path_for_key(key)
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        temp = path.with_name(path.name + f".tmp-{os.getpid()}")
-        temp.write_bytes(content)
-        os.replace(temp, path)
-    elif path.stat().st_size != byte_count:
+        # A unique temporary file avoids concurrent writers sharing a PID-based
+        # name. The final rename remains atomic for readers of this blob.
+        temp = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name + ".tmp-", delete=False) as handle:
+                temp = Path(handle.name)
+                handle.write(content)
+            os.replace(temp, path)
+        finally:
+            if temp is not None:
+                temp.unlink(missing_ok=True)
+    if path.stat().st_size != byte_count or hashlib.sha256(path.read_bytes()).hexdigest() != digest:
         raise HTTPException(status_code=500, detail="Content-addressed object collision detected.")
 
     revision = current_revision + 1
@@ -156,6 +167,8 @@ def delete_artifact(db: Session, user_key: str, artifact_id: str, *, commit: boo
     row = get_artifact(db, user_key, artifact_id)
     if row is None:
         return False
+    if isinstance(row.metadata_json, dict) and row.metadata_json.get("source") == "private-research":
+        raise HTTPException(status_code=409, detail="Private research files cannot be deleted.")
     revisions = db.scalars(select(ArtifactRevision).where(ArtifactRevision.user_key == user_key, ArtifactRevision.artifact_id == artifact_id)).all()
     for revision in revisions:
         db.delete(revision)
