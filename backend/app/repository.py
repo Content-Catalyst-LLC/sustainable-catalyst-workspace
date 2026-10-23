@@ -60,6 +60,11 @@ def _account_bytes(db: Session, user_key: str, replacing_project_id: str | None 
     return int(db.scalar(stmt) or 0)
 
 
+# Store a client project under the resolved user_key, retaining a revision and
+# mutation receipt. Sync writes require an expected revision and may replay an
+# operation ID; manual backups cannot replace a sync head. Returns (head,
+# replayed). Validation/limits raise HTTP 400/413/409; a concurrent insert
+# rolls back and returns 409. This is not a historical-owner reassignment.
 def store_project(db: Session, user_key: str, payload: ProjectStoreRequest) -> tuple[ProjectHead, bool]:
     settings = get_settings()
     package = payload.model_dump(mode="json", exclude_none=True)

@@ -71,6 +71,11 @@ def parse_level(p):
     if not 0.5 < level < 0.9999: raise HTTPException(status_code=400,detail="intervalLevel must be between 0.5 and 0.9999")
     return level
 
+# Return one draw in the same units as the supplied parameters. Normal uses
+# mean/sd; uniform and triangular use bounds; beta uses shape parameters and
+# rescales [0,1] to [min,max]. The caller owns rng/seed, so reproducibility
+# depends on preserving it and the complete input spec. Invalid bounds and
+# unsupported kinds raise HTTP 400; these priors are assumptions, not data.
 def sample_distribution(spec,rng):
     if not isinstance(spec,dict): raise HTTPException(status_code=400,detail="distribution must be an object")
     kind=str(spec.get("kind") or "normal").lower()
@@ -121,6 +126,13 @@ def cholesky(a):
                 L[i][j]=(a[i][j]-s)/L[j][j]
     return L
 
+# A local seeded generator makes repeated calls with identical inputs stable.
+# Operations include Monte Carlo sums, bootstrap intervals, Latin hypercube,
+# correlated normals, empirical summaries and sensitivity/scenario summaries.
+# Their intervals are empirical/model summaries, not verified carbon removal
+# or calibrated forecast coverage.
+# Input quantities must share the caller's intended units: this module does
+# not perform dimensional analysis. Invalid shapes/bounds/levels raise 400.
 def execute(op,p):
     level=parse_level(p); seed=int(p.get("seed",202620)); rng=random.Random(seed)
     if op=="workspace.uncertainty.monte-carlo-weighted-sum":
