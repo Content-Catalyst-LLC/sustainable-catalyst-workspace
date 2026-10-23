@@ -73,6 +73,27 @@ jobs:
         run: |
           python -m pytest -q backend/tests/test_wxr_private_projects.py
           node tests/node/wxr093_same_origin.js
+      - name: WXR-09.4 backup safety and real PostgreSQL 18 restore
+        env:
+          SC_WXR_PG_CONTAINER: ${{ job.services.postgres.id }}
+          SC_WXR_RELEASE_DATABASE_URL: postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_recovery_test
+          PYTHONPATH: backend
+        run: |
+          set -eu
+          python -m pytest -q backend/tests/test_wxr_release_backup.py
+          docker exec "$SC_WXR_PG_CONTAINER" createdb -U recovery_test sc_wxr094_restore_ci
+          mkdir -p "$RUNNER_TEMP/wxr094-objects/a"
+          printf 'synthetic research object' > "$RUNNER_TEMP/wxr094-objects/a/hash"
+          python backend/tools/wxr_release_backup.py capture \
+            --object-root "$RUNNER_TEMP/wxr094-objects" \
+            --destination "$RUNNER_TEMP/wxr094-backup" --confirm-writes-quiesced
+          python backend/tools/wxr_release_backup.py verify --source "$RUNNER_TEMP/wxr094-backup"
+          SC_WXR_RELEASE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_wxr094_restore_ci' \
+            python backend/tools/wxr_release_backup.py restore \
+              --source "$RUNNER_TEMP/wxr094-backup" \
+              --object-destination "$RUNNER_TEMP/wxr094-restored-objects"
+          cmp "$RUNNER_TEMP/wxr094-objects/a/hash" "$RUNNER_TEMP/wxr094-restored-objects/a/hash"
+          echo 'Synthetic paired backup, SHA-256 verification and PostgreSQL 18 restore passed.' >> "$GITHUB_STEP_SUMMARY"
       - name: Build immutable candidate image without publishing or deploying
         run: |
           source_commit=$(git rev-parse HEAD)
@@ -80,3 +101,44 @@ jobs:
           image_id=$(docker image inspect --format='{{.Id}}' wxr-09-3-candidate:${source_commit})
           echo "Source commit: ${source_commit}" | tee -a "$GITHUB_STEP_SUMMARY"
           echo "CI-built image ID: ${image_id}" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Prove image startup does not create schema
+        env:
+          PG_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -eu
+          docker exec "$PG_CONTAINER" createdb -U recovery_test sc_startup_empty
+          mkdir -p "$RUNNER_TEMP/wxr-startup-objects"
+          source_commit=$(git rev-parse HEAD)
+          docker run -d --rm --name wxr-startup-check --network host \
+            -e SC_WORKSPACE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_startup_empty' \
+            -e SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
+            -e SC_WORKSPACE_OBJECT_STORAGE_ROOT=/data/objects \
+            -v "$RUNNER_TEMP/wxr-startup-objects:/data" \
+            wxr-09-3-candidate:${source_commit}
+          trap 'docker stop wxr-startup-check >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8089/health >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          table_count=$(docker exec "$PG_CONTAINER" psql -U recovery_test -d sc_startup_empty -tAc \
+            "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+          test "$table_count" -eq 0
+          echo 'Container startup passed with schema creation disabled and zero tables created.' >> "$GITHUB_STEP_SUMMARY"
+          docker run --rm -v "$PWD/deploy/wxr094/Caddyfile.isolated:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10-alpine validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker run -d --rm --name wxr-caddy-check --network host \
+            -v "$PWD/deploy/wxr094/Caddyfile.isolated:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10-alpine run --config /etc/caddy/Caddyfile --adapter caddyfile
+          trap 'docker stop wxr-caddy-check wxr-startup-check >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --silent http://127.0.0.1:18080/ >/dev/null; then break; fi
+            sleep 1
+          done
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/)" = 200
+          for path in /v1/user-workspace/bootstrap /v1/projects /v1/artifacts /v1/private-research/persistent-projects; do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:18080$path")
+            test "$status" = 401 || test "$status" = 403
+          done
+          echo 'Isolated Caddy routes preserved path and denied unauthenticated project/artifact access.' >> "$GITHUB_STEP_SUMMARY"

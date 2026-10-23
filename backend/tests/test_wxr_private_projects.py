@@ -52,6 +52,7 @@ def env(tmp_path, monkeypatch):
     ))
     monkeypatch.setattr(__import__("app.config", fromlist=["get_settings"]), "get_settings", lambda: settings)
     app = FastAPI()
+    app.include_router(session_auth.router)
     app.include_router(erw_identity_bridge.router)
     app.include_router(research.router)
     client = TestClient(app, base_url="https://workspace.sustainablecatalyst.com")
@@ -117,6 +118,11 @@ def test_existing_erw_login_creates_private_project(env, monkeypatch):
     ("figure.png", b"\x89PNG\r\n\x1a\nsynthetic"),
     ("data.csv", b"x,y\n1,2\n"),
     ("manifest.json", b'{"synthetic":true}'),
+    ("area.geojson", b'{"type":"FeatureCollection","features":[]}'),
+    ("methods.html", b"<html><body>Synthetic</body></html>"),
+    ("model.py", b"# synthetic model\n"),
+    ("model.pyc", b"synthetic compiled fixture"),
+    ("references.ris", b"TY  - JOUR\nER  -\n"),
 ])
 def test_supported_research_files_round_trip(env, filename, data):
     client, _, _ = env
@@ -215,6 +221,41 @@ def test_origin_filename_and_session_guards(env):
     assert client.get(ROOT).status_code == 401
     assert client.get(ROOT+"/ui").status_code == 401
     assert client.post(ROOT, json={"title": "Denied"}, headers=ORIGIN).status_code == 401
+
+
+def test_logout_expiry_and_unauthenticated_download(env, monkeypatch):
+    client, _, _ = env
+    client.cookies.clear()
+    client.cookies.set("sc_workspace_session", session_auth.issue_session_token("alice"),
+                       domain="workspace.sustainablecatalyst.com", path="/")
+    pid = client.post(ROOT, json={"title": "Wexford"}, headers=ORIGIN).json()["projectId"]
+    data = b"synthetic evidence"
+    item = client.post(f"{ROOT}/{pid}/files", json={
+        "filename": "evidence.txt", "contentBase64": base64.b64encode(data).decode(),
+    }, headers=ORIGIN).json()
+    aid = item["artifactId"]
+    assert client.delete("/v1/session").status_code == 200
+    assert client.get(f"{ROOT}/{pid}/files/{aid}/download").status_code == 401
+    assert client.post(f"{ROOT}/{pid}/files", json={
+        "filename": "new.txt", "contentBase64": base64.b64encode(data).decode(),
+    }, headers=ORIGIN).status_code == 401
+    token = session_auth.issue_session_token("alice")
+    client.cookies.set("sc_workspace_session", token)
+    monkeypatch.setattr(session_auth.time, "time", lambda: 2**40)
+    assert client.get(f"{ROOT}/{pid}").status_code == 401
+
+
+def test_malformed_upload_rejected_without_new_artifact(env):
+    client, engine, _ = env
+    pid = client.post(ROOT, json={"title": "Wexford"}, headers=ORIGIN).json()["projectId"]
+    for payload in (
+        {"filename": "bad.csv", "contentBase64": "!!invalid-base64!!"},
+        {"filename": "empty.csv", "contentBase64": ""},
+        {"filename": "unexpected.exe", "contentBase64": base64.b64encode(b"x").decode()},
+    ):
+        assert client.post(f"{ROOT}/{pid}/files", json=payload, headers=ORIGIN).status_code in (400, 415, 422)
+    with Session(engine) as db:
+        assert object_store.list_artifacts(db, "alice") == []
 
 
 @pytest.mark.skipif(not os.getenv("SC_RECOVERY_TEST_DATABASE_URL"), reason="Requires isolated PostgreSQL CI")

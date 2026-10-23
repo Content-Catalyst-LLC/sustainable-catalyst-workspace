@@ -36,12 +36,17 @@ SUPPORTED = {
     ".ipynb": "application/x-ipynb+json",
     ".csv": "text/csv",
     ".json": "application/json",
+    ".geojson": "application/geo+json",
     ".svg": "image/svg+xml",
     ".png": "image/png",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".txt": "text/plain",
     ".md": "text/markdown",
+    ".html": "text/html",
+    ".py": "text/x-python",
+    ".pyc": "application/octet-stream",
+    ".ris": "application/x-research-info-systems",
     ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 MAX_ENCODED_LENGTH = 35_000_000  # resource guard; configured artifact limits also apply
