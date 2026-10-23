@@ -28,6 +28,12 @@ database** with schema creation disabled and verifies it creates zero tables.
 It then validates and exercises `Caddyfile.isolated` against the candidate
 backend. This fixture mirrors the existing session/private-research matchers
 plus the proposed narrow project/artifact routes; it is not the live Caddyfile.
+Only after the zero-DDL assertion does CI explicitly initialize the empty
+synthetic schema. `backend/tools/wxr_http_smoke.py` then creates a private
+project and uploads synthetic report, notebook, figure, data and map files
+through Caddy. CI stops the backend, captures the database/object pair,
+restores to a **different isolated database and object directory**, restarts
+the same image and verifies every download hash and cross-user denial.
 
 ## Paired backup tool
 

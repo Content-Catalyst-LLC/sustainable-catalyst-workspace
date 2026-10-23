@@ -104,6 +104,8 @@ jobs:
       - name: Prove image startup does not create schema
         env:
           PG_CONTAINER: ${{ job.services.postgres.id }}
+          SC_WORKSPACE_SESSION_SIGNING_SECRET: synthetic-ci-only
+          PYTHONPATH: backend
         run: |
           set -eu
           docker exec "$PG_CONTAINER" createdb -U recovery_test sc_startup_empty
@@ -112,6 +114,7 @@ jobs:
           docker run -d --rm --name wxr-startup-check --network host \
             -e SC_WORKSPACE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_startup_empty' \
             -e SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
+            -e SC_WORKSPACE_SESSION_SIGNING_SECRET=synthetic-ci-only \
             -e SC_WORKSPACE_OBJECT_STORAGE_ROOT=/data/objects \
             -v "$RUNNER_TEMP/wxr-startup-objects:/data" \
             wxr-09-3-candidate:${source_commit}
@@ -142,3 +145,33 @@ jobs:
             test "$status" = 401 || test "$status" = 403
           done
           echo 'Isolated Caddy routes preserved path and denied unauthenticated project/artifact access.' >> "$GITHUB_STEP_SUMMARY"
+          # Explicit initialization is allowed only in this empty CI database.
+          docker exec wxr-startup-check python -m app.init_db
+          python backend/tools/wxr_http_smoke.py create --state "$RUNNER_TEMP/wxr-http-state.json"
+          docker stop wxr-startup-check >/dev/null
+          docker exec "$PG_CONTAINER" createdb -U recovery_test sc_wxr094_restore_http
+          SC_WXR_PG_CONTAINER="$PG_CONTAINER" \
+          SC_WXR_RELEASE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_startup_empty' \
+            python backend/tools/wxr_release_backup.py capture \
+              --object-root "$RUNNER_TEMP/wxr-startup-objects/objects" \
+              --destination "$RUNNER_TEMP/wxr-http-backup" --confirm-writes-quiesced
+          SC_WXR_PG_CONTAINER="$PG_CONTAINER" \
+          SC_WXR_RELEASE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_wxr094_restore_http' \
+            python backend/tools/wxr_release_backup.py restore \
+              --source "$RUNNER_TEMP/wxr-http-backup" \
+              --object-destination "$RUNNER_TEMP/wxr-http-restored-objects"
+          docker run -d --rm --name wxr-startup-check --network host \
+            -e SC_WORKSPACE_DATABASE_URL='postgresql+psycopg://recovery_test:synthetic-ci-only@127.0.0.1:5432/sc_wxr094_restore_http' \
+            -e SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
+            -e SC_WORKSPACE_SESSION_SIGNING_SECRET=synthetic-ci-only \
+            -e SC_WORKSPACE_OBJECT_STORAGE_ROOT=/data/objects \
+            -v "$RUNNER_TEMP/wxr-http-restored-objects:/data/objects" \
+            wxr-09-3-candidate:${source_commit}
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8089/health >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          python backend/tools/wxr_http_smoke.py verify --state "$RUNNER_TEMP/wxr-http-state.json"
+          echo 'HTTP project/file workflow persisted through backup, isolated database/object restore and backend restart.' >> "$GITHUB_STEP_SUMMARY"
