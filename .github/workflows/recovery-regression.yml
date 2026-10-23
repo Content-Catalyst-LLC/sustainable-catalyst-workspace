@@ -149,6 +149,9 @@ jobs:
           # Explicit initialization is allowed only in this empty CI database.
           docker exec wxr-startup-check python -m app.init_db
           python backend/tools/wxr_http_smoke.py create --state "$RUNNER_TEMP/wxr-http-state.json"
+          # The synthetic container writes root-owned blobs; let the CI runner
+          # read its dedicated bind mount before the quiesced backup.
+          docker exec wxr-startup-check chmod -R a+rX /data/objects
           docker stop wxr-startup-check >/dev/null
           docker exec "$PG_CONTAINER" createdb -U recovery_test sc_wxr094_restore_http
           SC_WXR_PG_CONTAINER="$PG_CONTAINER" \
