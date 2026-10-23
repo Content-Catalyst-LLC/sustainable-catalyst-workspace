@@ -167,6 +167,8 @@ def delete_artifact(db: Session, user_key: str, artifact_id: str, *, commit: boo
     row = get_artifact(db, user_key, artifact_id)
     if row is None:
         return False
+    if isinstance(row.metadata_json, dict) and row.metadata_json.get("source") == "private-research":
+        raise HTTPException(status_code=409, detail="Private research files cannot be deleted.")
     revisions = db.scalars(select(ArtifactRevision).where(ArtifactRevision.user_key == user_key, ArtifactRevision.artifact_id == artifact_id)).all()
     for revision in revisions:
         db.delete(revision)

@@ -205,6 +205,9 @@ def test_cross_project_download_and_generic_replacement_are_denied(env):
         with pytest.raises(HTTPException) as caught:
             object_store.store_artifact(db, "alice", attempted)
         assert caught.value.status_code == 409
+        with pytest.raises(HTTPException) as deletion:
+            object_store.delete_artifact(db, "alice", artifact_id)
+        assert deletion.value.status_code == 409
     downloaded = client.get(f"{ROOT}/{first}/files/{artifact_id}/download")
     assert downloaded.content == data
     assert downloaded.headers["x-research-sha256"] == artifact["sha256"]
