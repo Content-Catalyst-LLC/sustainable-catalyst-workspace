@@ -4,6 +4,7 @@ import hashlib
 import os
 import shutil
 import sqlite3
+import subprocess
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -267,4 +268,34 @@ def test_postgres_concurrent_duplicate_upload_serializes(tmp_path, monkeypatch):
     assert statuses == [201, 409]
     with Session(engine) as db:
         assert len([item for item in object_store.list_artifacts(db, "concurrent-test") if item["projectId"] == pid]) == 1
+    if container := os.getenv("SC_RECOVERY_PG_CONTAINER"):
+        backup = tmp_path / "research.backup"
+        with backup.open("wb") as stream:
+            subprocess.run(
+                ["docker", "exec", container, "pg_dump", "-U", "recovery_test", "-d", "sc_recovery_test", "-Fc"],
+                stdout=stream, check=True,
+            )
+        blob_backup = tmp_path / "blob-backup"
+        shutil.copytree(settings.object_storage_root, blob_backup)
+        subprocess.run(
+            ["docker", "exec", "-i", container, "pg_restore", "-U", "recovery_test", "--clean", "--if-exists", "--no-owner", "-d", "sc_recovery_rehearsal"],
+            input=backup.read_bytes(), capture_output=True, check=True,
+        )
+        shutil.rmtree(settings.object_storage_root)
+        shutil.copytree(blob_backup, settings.object_storage_root)
+        restored_url = url.rsplit("/", 1)[0] + "/sc_recovery_rehearsal"
+        restarted = create_engine(restored_url)
+        monkeypatch.setattr(research, "session_scope", lambda: Session(restarted, expire_on_commit=False))
+        reopened_app = FastAPI()
+        reopened_app.include_router(research.router)
+        with TestClient(reopened_app, base_url="https://workspace.sustainablecatalyst.com") as reopened:
+            reopened.cookies.set("sc_workspace_session", session_auth.issue_session_token("concurrent-test"))
+            project = reopened.get(f"{ROOT}/{pid}")
+            assert project.status_code == 200
+            artifact_id = project.json()["files"][0]["artifactId"]
+            downloaded = reopened.get(f"{ROOT}/{pid}/files/{artifact_id}/download")
+            assert downloaded.status_code == 200
+            assert downloaded.content == b"%PDF synthetic race"
+            assert downloaded.headers["x-research-sha256"] == hashlib.sha256(downloaded.content).hexdigest()
+        restarted.dispose()
     engine.dispose()
