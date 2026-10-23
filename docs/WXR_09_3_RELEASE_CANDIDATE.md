@@ -1,0 +1,31 @@
+# WXR-09.3 private research persistence release candidate
+
+**Status: review candidate; production deployment and migration are not authorized.**
+
+## Source and deployed baseline
+
+The source is the head of the WXR-09.3 pull request, stacked on Workspace PRs #2–#4. Record its exact commit and CI-built image ID from the pull request checks before approval. The observed production Workspace v3.83.0 image ID is `sha256:f764de0bbb28d009c352d900d6676e51366855d072255db4e44a5818e39dea72`; it is not a reproducible build of GitHub `main`. The deployed `main.py` capture has SHA-256 `d4b03523a093dcc8540df9f76c07aa71b3b50096a1ffe730c91e3208cd7be81f`. Its signed-session identity bridge and legacy private-research/recovery routes have been added byte-for-byte from the verified live-source capture, while retaining the newer Workspace source and the distinct `/v1/private-research/persistent-projects` namespace. Verify the source capture against a fresh read-only production copy immediately before any deployment.
+
+## Behavior and API
+
+The new private UI is `GET /v1/private-research/persistent-projects/ui`; list/create/open are `GET/POST /v1/private-research/persistent-projects` and `GET /v1/private-research/persistent-projects/{project_id}`. Files use `POST/GET /{project_id}/files` and `GET /{project_id}/files/{artifact_id}/download` under that prefix. All operations require the signed Workspace browser cookie. Writes require the exact `https://workspace.sustainablecatalyst.com` Origin. Project and artifact lookups are scoped to the session subject; filenames and extensions are restricted. Duplicate content or filenames return 409; existing private-research artifact replacement through the generic store also returns 409. Downloads use attachment disposition, `nosniff`, and verified SHA-256 content.
+
+The existing ERW login at `POST /v1/private-research/auth/login` is retained. It verifies the established Workbench identity and issues the existing signed Workspace session; it does not register a new user. The legacy `/v1/private-research/projects` registry and recovery routes remain separate from the new persistent-project endpoints. Historical recovery ownership and records are not changed by this feature.
+
+## Configuration and migration boundary
+
+The standalone browser config uses a relative API base, so API calls carry the host-only session cookie. The production reverse proxy must route **all `/v1/*` requests** on `workspace.sustainablecatalyst.com` to the existing backend at localhost:8094 before the static file handler, while preserving existing `/erw` forward-auth and sibling API routes. This is a deployment configuration change requiring separate approval. Validate the exact live Caddyfile and test it with `caddy validate --config <staged-Caddyfile>` before an approved reload. No Caddyfile has been modified in production.
+
+Keep existing values of `SC_WORKSPACE_DATABASE_URL`, `SC_WORKSPACE_OBJECT_STORAGE_ROOT`, `SC_WORKSPACE_SESSION_SIGNING_SECRET` (or existing service-token fallback), `SC_WORKSPACE_CORS_ALLOWED_ORIGINS`, `WXR0813_ERW_INTERNAL_URL`, and `WXR0813_RATE_DB`; never print their values. The new route reuses `workspace_project_heads`, `workspace_project_revisions`, `workspace_artifact_heads`, and `workspace_artifact_revisions` plus the existing object volume. See `backend/app/models.py`, `backend/app/db.py`, `backend/app/repository.py`, and `backend/app/object_store.py`. The live legacy private-research router also references `workspace_private_research_*` tables; their deployed schema and migration origin must be verified before rollout. There is no new WXR-09.3 schema migration in this PR. Do not use `python -m app.init_db` against production without separate migration approval: it calls `Base.metadata.create_all`.
+
+## Isolated verification
+
+Run `PYTHONPATH=backend python -m pytest -q backend/tests/test_wxr_private_projects.py backend/tests/test_existing_erw_identity_bridge.py` and `node tests/node/wxr093_same_origin.js`. The recovery regression GitHub workflow also runs existing identity/recovery/project suites, a PostgreSQL concurrent duplicate test, and a Docker image build. Synthetic tests cover existing-login issuance, private project and all supported research formats, logout/relogin, a recreated app/DB engine, DB-plus-blob backup/restore, SHA-256 downloads, wrong-owner/project denial, and path/extension guards. A passing CI image ID is a build identity, not proof of production provenance or a registry-pushed image.
+
+## Deployment, backup, rollback, acceptance
+
+Before seeking production approval, obtain a fresh read-only inventory of image ID, source/config hashes, existing `workspace_private_research_*` schema, Compose mounts and Caddyfile. Take and independently verify a full PostgreSQL logical backup **and** the complete persistent object volume including `private-research/`; rehearse restoration in an isolated environment and record hashes and recovery time. Keep the current image, static assets, Compose/Caddy configuration and volumes as rollback inputs. Since WXR-09.3 has no intended migration, rollback restores the previous image/assets/config while leaving newly created data intact; test compatibility with the previous image. If data rollback is necessary, restore the paired database and object-volume backup together in an isolated rehearsal first, and separately approve any production restore.
+
+After explicit deployment approval, check the existing signed-in account can create/open a Wexford project; upload synthetic PDF, DOCX, IPYNB, CSV, JSON, SVG and PNG; download with matching SHA-256; sign out/in; refresh; restart the service; reopen and download again. Confirm an unrelated account gets 404, duplicate uploads get 409, and existing identity/recovery routes still work. Only then upload authorized Wexford scientific files. Wexford historical restoration and public publication remain separate approval gates.
+
+**Release blockers until verified:** CI PostgreSQL/backup checks and image build; fresh production source/config/schema comparison; independently verified production backup and isolated restore; approved Caddy/config and deployment change; post-deployment acceptance. This document authorizes none of those production actions.

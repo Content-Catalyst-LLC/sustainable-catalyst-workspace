@@ -61,8 +61,18 @@ jobs:
           backend/tests/test_cross_product_research_handoff_consolidation_v3680.py
           backend/tests/test_portable_research_workspace_recovery_v3690.py
           backend/tests/test_integrated_project_workspace_v3800.py
+          backend/tests/test_existing_erw_identity_bridge.py
 
       - name: WXR-09.3 signed-session project and upload integration
         env:
+          SC_RECOVERY_TEST_DATABASE_URL: postgresql+psycopg://recovery_test:synthetic-ci-only@localhost:5432/sc_recovery_test
           PYTHONPATH: backend
-        run: python -m pytest -q backend/tests/test_wxr_private_projects.py
+        run: |
+          python -m pytest -q backend/tests/test_wxr_private_projects.py
+          node tests/node/wxr093_same_origin.js
+      - name: Build immutable candidate image without publishing or deploying
+        run: |
+          docker build --pull --file backend/Dockerfile --tag wxr-09-3-candidate:${GITHUB_SHA} backend
+          image_id=$(docker image inspect --format='{{.Id}}' wxr-09-3-candidate:${GITHUB_SHA})
+          echo "Source commit: ${GITHUB_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          echo "CI-built image ID: ${image_id}" >> "$GITHUB_STEP_SUMMARY"

@@ -15,9 +15,11 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
+from sqlalchemy import select
 
 from .db import session_scope
 from . import repository, object_store
+from .models import ProjectHead
 from .schemas import ProjectStoreRequest, ArtifactStoreRequest
 from .session_auth import session_payload_from_request
 
@@ -72,6 +74,18 @@ def _write(request: Request) -> None:
 
 def _project(db, subject: str, project_id: str):
     row = repository.get_project(db, subject, project_id)
+    if row is None:
+        raise HTTPException(404, "Private project was not found.")
+    return row
+
+
+def _locked_project(db, subject: str, project_id: str):
+    # Serialize uploads for one owned project before scanning existing names
+    # and hashes. PostgreSQL holds this row lock until the artifact commits.
+    row = db.scalar(select(ProjectHead).where(
+        ProjectHead.user_key == subject,
+        ProjectHead.project_id == project_id,
+    ).with_for_update())
     if row is None:
         raise HTTPException(404, "Private project was not found.")
     return row
@@ -175,7 +189,7 @@ def upload_private_file(project_id: str, body: ResearchUpload, request: Request)
         raise HTTPException(400, "Empty file.")
     digest = hashlib.sha256(raw).hexdigest()
     with session_scope() as db:
-        _project(db, subject, project_id)
+        _locked_project(db, subject, project_id)
         existing = _files(db, subject, project_id)
         for item in existing:
             if item["sha256"] == digest:

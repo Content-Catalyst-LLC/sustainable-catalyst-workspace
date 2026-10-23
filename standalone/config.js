@@ -5,7 +5,9 @@
     schema: 'sc-workspace-standalone-config/1.0',
     workspaceVersion: '3.83.0',
     host: 'standalone',
-    apiBase: 'https://workspace-api.sustainablecatalyst.com',
+    // The signed host-only session cookie belongs to this origin. Keep API
+    // requests relative so the browser sends it through the same-origin proxy.
+    apiBase: '',
     sessionEndpoint: '/v1/session',
     authenticationMode: 'signed-http-only-session-cookie',
     serverProjectBootstrapEndpoint: '/v1/user-workspace/bootstrap',
