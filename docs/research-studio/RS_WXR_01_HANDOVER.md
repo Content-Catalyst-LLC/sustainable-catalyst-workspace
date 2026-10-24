@@ -20,7 +20,7 @@ Changed code: backend/app/research_reporting.py, reporting_composition.py, repor
 
 ## Verification
 
-Workspace selected regression: **168 passed, 4 PostgreSQL-only skipped**; 30 focused reporting tests included, do not double-count. Existing selected Lab scene/composer tests: **22 passed**. Exact commands and warnings are recorded in TESTING.md. The strengthened rollback test flushes pending SQL writes before injecting commit failure and confirms no durable project revision is added. Optional dependency audit: zero known npm vulnerabilities on the locked runtime. New exact-head CI workflow awaits its own result; local success is not CI or deployment certification.
+Workspace selected regression: **168 passed, 4 PostgreSQL-only skipped**; 30 focused reporting tests included, do not double-count. Existing selected Lab scene/composer tests: **22 passed**. Exact commands and warnings are recorded in TESTING.md. The strengthened rollback test flushes pending SQL writes before injecting commit failure and confirms no durable project revision is added. Optional dependency audit: zero known npm vulnerabilities on the locked runtime. Exact implementation-head GitHub CI passed: Private research reporting regression run 40058973052 and Controlled recovery regression run 40058972937, both on commit 58bf2eb189ad53ff08131615261441a84fd7db5a. This is not deployment certification.
 
 EMP075 ZIP SHA256 `708949c511eef5b70023048a9601ce43a0858295e7eb08c919ed9c4f722f4e08`; 18/18 manifest files and byte sizes matched, duplicate ZIP identical. Original DOCX SHA256 `1718d45de0ef103e762925fd000ab942553b162b02dfc3f86dff4ac08a319b27`, PDF `6c9357c84e1991575ec97bbe3abe7cdb9c00cdf494a89daecdb14b9a007e5d24`; unchanged. All 13 EMP03G4 input-manifest files matched. EMP071 intentionally excludes an internal-map member; original code was separately pinned by SHA256. Three statistical CSVs and three spatial summary/design tables reproduced at 1e-12 tolerance. All 36 new noncentral-t grid cells passed n/n-1 checks; assumed SD/effect inputs are not measured Wexford parameters. Rainfall grid preserves 2,363 source values; no interpolation or invented missing dimensions.
 
@@ -46,4 +46,10 @@ Explicit owner approval remains required for merges, production proxy/image/depl
 
 ## Publication identities
 
-Review publication is completed after the implementation tree is checked. Exact implementation commit, review PRs and documentation/data commits are recorded by the final publication update; no completion is claimed from an unpublished local change.
+Implementation commit: `58bf2eb189ad53ff08131615261441a84fd7db5a`; tree `0c2cc80daf34cfa57c5f50117339902393477d87` equals the local implementation tree. Draft review: https://github.com/Content-Catalyst-LLC/sustainable-catalyst-workspace/pull/7 (base PR #6 branch).
+
+Central tracker, active handoff and architecture specification: documentation commit `77aa2158824cdb58e30f6e6f047a5e74b56ce365`, draft https://github.com/Content-Catalyst-LLC/documentation/pull/9, based on `87158990a0c62e045c4aa297bcbbb113e47c320b`.
+
+Private metadata registry and dataset queue: data commit `62201e53de03166b922ad2c5846ddd56f0983b80`, draft https://github.com/Content-Catalyst-LLC/data/pull/1, based on `6b3bec7d8a47b47355f6311bbdfc1ba024725835`. No source data uploaded.
+
+This documentation-only reconciliation follows the implementation commit. Its exact head is recorded in the external publication manifest to avoid a self-referential commit hash. No PR was merged. All review PRs are attached to this chat.
