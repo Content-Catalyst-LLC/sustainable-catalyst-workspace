@@ -10,6 +10,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
     SC_WORKSPACE_REPORTING_STUDIO_ENABLED=false
 WORKDIR /app
+# The Node 26 binary copied from the Node image requires libatomic.so.1.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
 COPY backend/requirements.txt backend/requirements-reporting.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-reporting.txt
 COPY backend/app ./app
