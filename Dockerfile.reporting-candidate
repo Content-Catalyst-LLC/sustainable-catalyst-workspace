@@ -1,0 +1,28 @@
+# Isolated Reporting Studio release-candidate image.
+# Does not replace the existing production Dockerfile or authorize deployment.
+FROM node:26-bookworm-slim AS reporting-math
+WORKDIR /math
+COPY backend/reporting_math/package.json backend/reporting_math/package-lock.json ./
+RUN npm ci --ignore-scripts --omit=dev && npm cache clean --force
+
+FROM python:3.12-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
+    SC_WORKSPACE_REPORTING_STUDIO_ENABLED=false
+WORKDIR /app
+# The Node 26 binary copied from the Node image requires libatomic.so.1.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
+COPY backend/requirements.txt backend/requirements-reporting.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-reporting.txt
+COPY backend/app ./app
+COPY backend/reporting_math ./reporting_math
+COPY --from=reporting-math /usr/local/bin/node /usr/local/bin/node
+COPY --from=reporting-math /math/node_modules ./reporting_math/node_modules
+RUN python -c "import reportlab, svglib, fastapi; print('reporting-python-dependencies-ok')" \
+    && node --version \
+    && node -e "require('./reporting_math/node_modules/mathjax-full/js/mathjax.js');console.log('reporting-math-dependencies-ok')"
+EXPOSE 8089
+# Schema changes are explicit maintenance operations only.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8089", "--proxy-headers", "--forwarded-allow-ips=*"]
