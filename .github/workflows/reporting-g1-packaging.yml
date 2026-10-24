@@ -1,0 +1,21 @@
+name: Reporting Studio G1 packaging
+on:
+  push:
+    branches:
+      - codex/rs-wxr-02-g0-g1-packaging
+  workflow_dispatch:
+jobs:
+  isolated-renderer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build candidate
+        run: docker build -f Dockerfile.reporting-candidate -t reporting-g1 .
+      - name: Smoke Python and math rendering
+        run: |
+          docker run --rm --entrypoint python reporting-g1 -c "import reportlab, svglib; from app.reporting_composition import render_math; assert render_math('x^2','display').tag.endswith('svg')"
+      - name: Verify safe defaults
+        run: |
+          docker run --rm --entrypoint python reporting-g1 -c "import os; assert os.getenv('SC_WORKSPACE_REPORTING_STUDIO_ENABLED')=='false'; assert os.getenv('SC_WORKSPACE_AUTO_CREATE_SCHEMA')=='false'"
