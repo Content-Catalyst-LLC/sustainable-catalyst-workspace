@@ -1,0 +1,18 @@
+{
+  "present_hash_verified": [
+    "soil_class_areas_km2.csv",
+    "wexford_rivers_clipped.gpkg",
+    "EMP03G4_Wexford_Environmental_Baseline.png",
+    "wexford_hydrometric_clipped.gpkg",
+    "README.md",
+    "EMP03G4_Integrated_Baseline.ipynb",
+    "wexford_boundary.gpkg",
+    "wexford_rainfall_temperature_2025.csv",
+    "summary.json",
+    "EMP03G4_Wexford_Environmental_Baseline.pdf",
+    "Wexford_ERW_Scientific_Paper_EMP03G4.docx",
+    "hydrometric_area_km2.csv",
+    "wexford_soil_clipped.gpkg"
+  ],
+  "missing_manifest_entries": []
+}

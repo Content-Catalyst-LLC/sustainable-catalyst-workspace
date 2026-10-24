@@ -1,0 +1,3 @@
+# Optional offline SVG-to-PDF export; no scientific computation.
+reportlab==5.1.0
+svglib==2.3.2

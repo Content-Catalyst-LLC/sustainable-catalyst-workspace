@@ -283,7 +283,7 @@ HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name=
 <style>body{font:16px/1.5 system-ui;max-width:900px;margin:40px auto;padding:0 20px;background:#111;color:#eee}
 a{display:block;color:#9edac4;margin:10px 0}button,input{padding:10px;margin:8px 0}#projects button{display:block}
 section{border:1px solid #555;padding:18px;margin:20px 0}#status{min-height:30px}</style></head><body>
-<h1>Sustainable Catalyst — Private Research</h1><p>Signed-session Workspace projects. Research stays private.</p>
+<h1>Sustainable Catalyst — Private Research</h1><p><a href="/v1/private-research/reporting-studio">Open Reporting Studio</a></p><p>Signed-session Workspace projects. Research stays private.</p>
 <p id="status" role="status"></p>
 <section><h2>Create project</h2><form id="create"><input id="title" required maxlength="160" placeholder="Project title"><button>Create</button></form></section>
 <section><h2>My projects</h2><div id="projects"></div></section>
