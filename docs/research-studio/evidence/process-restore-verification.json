@@ -1,0 +1,22 @@
+{
+  "pass": true,
+  "new_process": true,
+  "new_database_and_object_path": true,
+  "reports": [
+    {
+      "report_id": "report-0cd973c8c1bd4b3bb010a88713b8087b",
+      "revision": "2",
+      "source_sha256": "9b04b80d09f883a2ea1ef103cba9c5967ade6311e5b425dd59fd2534ecda1942",
+      "saved_svg_identical": true,
+      "pdf_bytes_identical": true
+    },
+    {
+      "report_id": "report-ca7262ecda434a1099de0608fcd0555e",
+      "revision": "3",
+      "source_sha256": "88b574bc9c1a7c47b54055c0e1a6749b9d0b81b077aa7c577797b5ae37433a64",
+      "saved_svg_identical": true,
+      "pdf_bytes_identical": true
+    }
+  ],
+  "production_access": false
+}

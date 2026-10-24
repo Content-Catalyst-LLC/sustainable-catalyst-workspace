@@ -1,0 +1,25 @@
+{
+  "sample_size_sensitivity.csv": "numeric parity at 1e-12",
+  "minimum_detectable_effects.csv": "numeric parity at 1e-12",
+  "pseudoreplication_design_effect.csv": "numeric parity at 1e-12",
+  "EMP071_strata_grid_summary.csv": "parity with original EMP07.1 outputs",
+  "EMP071_mapped_soil_setting_area.csv": "parity with original EMP07.1 outputs",
+  "EMP072_verification_design_matrix.csv": "parity with original EMP07.1 outputs",
+  "detectability_grid": {
+    "cells": 36,
+    "central_n": 24,
+    "minimum_and_power_checks": "all cells passed",
+    "status": "design sensitivity, not empirical variance"
+  },
+  "environmental_grid": {
+    "cells": 2363,
+    "rainfall_mean_mm": 1218.5677528565384,
+    "temperature_mean_c": 11.301874515214582,
+    "status": "source-grid descriptive values; no field weathering inference"
+  },
+  "source_files": {
+    "work/research/emp03g4/wexford_rainfall_temperature_2025.csv": "0a7fc2d322c4728abd7fde6128a89f7fb81d347c2dad50ef3fd9536db30ac1d0",
+    "work/research/emp075/02_REPRODUCIBILITY/analysis.py": "006d8e12fb1f48c8b78dfde54e970ac3837e033806b4b693c40c25e98d6f0220",
+    "work/research/emp071/EMP071_raw_spatial.py": "898bac9b3d4aa7619c588f74548a6090b94c5760b32fdff863ff0df5b41bf58a"
+  }
+}

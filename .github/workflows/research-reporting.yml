@@ -1,0 +1,50 @@
+name: Private research reporting regression
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'schemas/sc-research-visual-asset-1.0.schema.json'
+      - '.github/workflows/research-reporting.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-reporting:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+          cache-dependency-path: backend/reporting_math/package-lock.json
+      - name: Install isolated test and optional export dependencies
+        run: |
+          python -m pip install -r backend/requirements.txt -r backend/requirements-reporting.txt pytest==9.0.2 jsonschema==4.26.0
+          npm ci --prefix backend/reporting_math --ignore-scripts
+      - name: Native reporting and existing identity persistence regressions
+        working-directory: backend
+        env:
+          PYTHONPATH: .
+        run: >-
+          python -m pytest -q
+          tests/test_research_reporting.py
+          tests/test_wxr_private_projects.py
+          tests/test_existing_erw_identity_bridge.py
+          tests/test_standalone_auth_session_foundation_v3710.py
+          tests/test_wxr_recovery_review.py
+          tests/test_controlled_recovery.py
+          tests/test_recovery_reconciliation.py
+          tests/test_lab_figure_reporting_v3842.py
+          tests/test_lab_publication_adapter_v3843.py
+          tests/test_lab_live_figure_acceptance_v3844.py
+      - name: Optional runtime audit and editor syntax
+        run: |
+          npm audit --prefix backend/reporting_math --omit=dev
+          node --check backend/app/research_reporting_ui.js

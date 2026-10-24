@@ -1,0 +1,113 @@
+{
+  "verified": 18,
+  "results": [
+    {
+      "path": "01_SUBMIT/Wexford_ERW_Final_Manuscript.docx",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "01_SUBMIT/Wexford_ERW_Final_Manuscript.pdf",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/EMP071_results.json",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/EMP072_reproduced_design_profile.png",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/EMP072_verification_design_matrix.csv",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/EMP073_Detectability.ipynb",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/EMP073_Detectability_EXECUTED.ipynb",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/EMP07_1_2_Design_Reproduction.ipynb",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/F10_minimum_detectable_effect.png",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/F11_design_comparison.png",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/INTEGRATION_AUDIT.md",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/analysis.py",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/minimum_detectable_effects.csv",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/pseudoreplication_design_effect.csv",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "02_REPRODUCIBILITY/sample_size_sensitivity.csv",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "03_AUDIT/FINAL_CERTIFICATION_REPORT.md",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "03_AUDIT/RELEASE_NOTES.md",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    },
+    {
+      "path": "README_FIRST.md",
+      "present": true,
+      "bytes_match": true,
+      "sha256_match": true
+    }
+  ]
+}

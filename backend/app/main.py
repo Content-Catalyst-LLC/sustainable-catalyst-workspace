@@ -454,6 +454,10 @@ app.include_router(wxr_recovery_review_router)
 app.include_router(controlled_recovery_router)
 app.include_router(wxr_private_projects_router)
 
+# RS-MIG-01: private opt-in reporting, native session/project persistence.
+from .research_reporting import router as research_reporting_router
+app.include_router(research_reporting_router)
+
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     request_id = request.headers.get(settings.request_id_header) or str(uuid4())
