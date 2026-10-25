@@ -18,8 +18,8 @@ The image defaults G1 off. An isolated deployment must explicitly use `SC_WORKSP
 
 ## Next executable actions
 
-1. Run the new integrated G1 test in exact-head CI and retain its result. Add a disposable PostgreSQL 18 test for concurrent saves plus paired DB/object restore; include `test_g1_reporting_postgres.py` in the CI selection and capture the results.
+1. SC-RI-01 added a disposable PostgreSQL 18 CI job running `test_g1_reporting_postgres.py` and a new concurrent-save plus paired DB/object-restore test. Retain exact-head CI output and fix any failures before marking that gate PASS. Local Docker daemon access is currently denied by the execution sandbox; the test has not yet been run against PostgreSQL here.
 2. In a separately approved isolated environment, build the exact reviewed image, retain its digest, mount a durable `/data` volume, set `SC_WORKSPACE_REPORTING_STUDIO_ENABLED=1`, and prove replacement/restart, backup/restore, browser PDF/PNG export, same-origin proxy behavior and a real existing-account login. Keep production credentials and data out of that environment unless separately authorized.
 3. Perform a fresh **read-only** production source/image/auth/proxy/storage inventory, compare with the complete PR #6→#7→#9 chain, document any migration and older-image compatibility, then present the resulting release/rollback dossier for owner approval. No merge, deployment, migration, Caddy change or production restart is authorized by this documentation task.
 
-The local G1 documentation branch touches only Markdown, the root index, one isolated test and the reporting CI test list. It does not modify application routes, data, production configuration, research files or historical documents.
+The SC-RI-01 continuation touches Markdown, isolated tests and reporting CI selection. It does not modify application routes, data, production configuration, research files or historical documents.
