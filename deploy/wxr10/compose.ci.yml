@@ -30,10 +30,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:18089:8089"
     volumes:
       - object-data:/data
+      - ../../tests/integration/wxr10_image_acceptance.py:/test/wxr10_image_acceptance.py:ro
     networks: [isolated]
 networks:
   isolated:

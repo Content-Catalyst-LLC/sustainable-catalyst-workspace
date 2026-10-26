@@ -44,20 +44,25 @@ jobs:
         run: |
           ready=0
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:18089/health >/dev/null; then ready=1; break; fi
+            if docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T app python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8089/health', timeout=2)" >/dev/null 2>&1; then ready=1; break; fi
             sleep 1
           done
           test "$ready" -eq 1
-          python tests/integration/wxr10_image_acceptance.py create --state "$RUNNER_TEMP/wxr10-state.json"
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T app python /test/wxr10_image_acceptance.py create --base http://127.0.0.1:8089 --state /data/acceptance-state.json
           docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml up -d --force-recreate --no-deps app
           ready=0
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:18089/health >/dev/null; then ready=1; break; fi
+            if docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T app python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8089/health', timeout=2)" >/dev/null 2>&1; then ready=1; break; fi
             sleep 1
           done
           test "$ready" -eq 1
-          python tests/integration/wxr10_image_acceptance.py verify --state "$RUNNER_TEMP/wxr10-state.json"
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T app python /test/wxr10_image_acceptance.py verify --base http://127.0.0.1:8089 --state /data/acceptance-state.json
           docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T app sh -c 'test -d /data/objects'
+      - name: Show synthetic-only container status on failure
+        if: failure()
+        run: |
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml ps
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml logs --tail 40 app
       - name: Retain loadable exact-source image and integrity manifest
         run: |
           docker save "wxr10-candidate:${WXR10_SOURCE_SHA}" | gzip -1 > "$RUNNER_TEMP/wxr10-image.tar.gz"
