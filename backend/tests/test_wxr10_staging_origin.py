@@ -13,7 +13,8 @@ def test_default_origin_preserves_production():
 
 @pytest.mark.parametrize('origin', ['*', 'http://localhost:18443', 'https://user:pass@localhost',
     'https://localhost/path', 'https://localhost/', 'https://localhost?q=1',
-    'https://localhost#x', 'https://*.example.com', 'https://'])
+    'https://localhost#x', 'https://*.example.com', 'https://',
+    'https://localhost:bad', 'https://localhost:99999', 'https://local\nhost'])
 def test_invalid_public_origins_rejected(origin):
     with pytest.raises(ValueError):
         config.Settings(public_origin=origin, _env_file=None)

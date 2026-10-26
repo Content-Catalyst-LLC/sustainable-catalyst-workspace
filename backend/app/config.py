@@ -25,9 +25,11 @@ class Settings(BaseSettings):
     @classmethod
     def validate_public_origin(cls, value: str) -> str:
         parsed = urlsplit(value)
+        _ = parsed.port  # Reject malformed or out-of-range explicit ports.
         if (parsed.scheme != "https" or not parsed.hostname or parsed.username
                 or parsed.password or parsed.path or parsed.query or parsed.fragment
-                or "*" in value or parsed.netloc != value.removeprefix("https://")):
+                or "*" in value or any(char.isspace() for char in value)
+                or parsed.netloc != value.removeprefix("https://")):
             raise ValueError("public_origin must be one exact HTTPS origin without a path")
         return value
 
