@@ -2,6 +2,7 @@ from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 from urllib.parse import urlsplit
+from typing import Literal
 
 
 class Settings(BaseSettings):
@@ -19,6 +20,9 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = 28800
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     public_origin: str = "https://workspace.sustainablecatalyst.com"
+    private_research_landing_path: Literal[
+        "/v1/private-research/ui", "/v1/private-research/persistent-projects/ui"
+    ] = "/v1/private-research/ui"
     auto_create_schema: bool = False
 
     @field_validator("public_origin")

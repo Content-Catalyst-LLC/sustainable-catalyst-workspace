@@ -43,3 +43,23 @@ def test_bridge_existing_login_uses_configured_origin(client, monkeypatch):
     assert 'secure' in result.headers['set-cookie'].lower()
     headers['Origin'] = research.ORIGIN
     assert client.post('/v1/private-research/auth/login', headers=headers, json=CREDS).status_code == 403
+
+
+def test_existing_login_default_landing_is_preserved(client):
+    response = client.get('/v1/private-research/login')
+    assert 'location.assign("/v1/private-research/ui")' in response.text
+
+
+def test_staging_login_lands_in_existing_persistent_workspace(client, monkeypatch):
+    from app import erw_identity_bridge as bridge
+    settings = bridge.get_settings()
+    monkeypatch.setattr(bridge, 'get_settings', lambda: SimpleNamespace(
+        **vars(settings), private_research_landing_path='/v1/private-research/persistent-projects/ui'))
+    response = client.get('/v1/private-research/login')
+    assert 'location.assign("/v1/private-research/persistent-projects/ui")' in response.text
+
+
+@pytest.mark.parametrize('target', ['https://attacker.invalid', '//attacker.invalid', '/unknown'])
+def test_login_destination_cannot_be_an_open_redirect(target):
+    with pytest.raises(ValueError):
+        config.Settings(private_research_landing_path=target, _env_file=None)
