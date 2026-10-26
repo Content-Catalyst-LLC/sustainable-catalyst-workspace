@@ -1,0 +1,7 @@
+{
+    admin off
+}
+https://localhost {
+    tls internal
+    reverse_proxy app:8089
+}

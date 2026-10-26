@@ -1,0 +1,58 @@
+# Private acceptance only. No production networks, data volumes or credentials.
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: wxr10_staging
+      POSTGRES_PASSWORD: isolated-staging-only
+      POSTGRES_DB: wxr10_staging
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U wxr10_staging -d wxr10_staging']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes: [postgres-data:/var/lib/postgresql]
+    networks: [isolated]
+  verifier:
+    image: ${WXR10_IDENTITY_IMAGE:?existing pinned Workbench image required}
+    entrypoint: [uvicorn, 'app.main:app', --host, 0.0.0.0, --port, '8088']
+    env_file: ["${WXR10_IDENTITY_ENV:?private isolated identity env required}"]
+    environment:
+      SCWB_IDENTITY_DB_PATH: /data/scwb-identity-v121.sqlite3
+    volumes: ["${WXR10_ACCOUNT_DIRECTORY:?single account clone required}:/data"]
+    networks: [isolated]
+  app:
+    image: ${WXR10_STAGING_IMAGE:?exact reviewed candidate image required}
+    env_file: ["${WXR10_WORKSPACE_ENV:?private isolated Workspace env required}"]
+    environment:
+      SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://wxr10_staging:isolated-staging-only@postgres:5432/wxr10_staging
+      SC_WORKSPACE_PUBLIC_ORIGIN: https://localhost:18443
+      SC_WORKSPACE_CORS_ALLOWED_ORIGINS: https://localhost:18443
+      SC_WORKSPACE_SESSION_ISSUER: sustainable-catalyst-workspace-wxr10-staging
+      SC_WORKSPACE_SESSION_AUDIENCE: localhost
+      SC_WORKSPACE_AUTO_CREATE_SCHEMA: 'false'
+      SC_WORKSPACE_ENVIRONMENT: staging
+      SC_WORKSPACE_REPORTING_STUDIO_ENABLED: '1'
+      SC_WORKSPACE_OBJECT_STORAGE_ROOT: /data/objects
+      WXR0813_ERW_INTERNAL_URL: http://verifier:8088
+      WXR0813_RATE_DB: /data/isolated-login-rate.sqlite
+    volumes: [object-data:/data]
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [isolated]
+  proxy:
+    image: caddy:2.10-alpine
+    ports: ['127.0.0.1:19443:443']
+    volumes:
+      - ./Caddyfile.staging:/etc/caddy/Caddyfile:ro
+      - tls-data:/data
+      - tls-config:/config
+    networks: [isolated, ingress]
+networks:
+  isolated: {internal: true}
+  ingress: {}
+volumes:
+  postgres-data:
+  object-data:
+  tls-data:
+  tls-config:
