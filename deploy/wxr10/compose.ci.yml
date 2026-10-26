@@ -27,6 +27,7 @@ services:
       SC_WORKSPACE_REPORTING_STUDIO_ENABLED: "1"
       SC_WORKSPACE_AUTO_CREATE_SCHEMA: "false"
       SC_WORKSPACE_OBJECT_STORAGE_ROOT: /data/objects
+      PYTHONPATH: /app
     depends_on:
       postgres:
         condition: service_healthy
