@@ -6,6 +6,8 @@ COPY backend/reporting_math/package.json backend/reporting_math/package-lock.jso
 RUN npm ci --ignore-scripts --omit=dev && npm cache clean --force
 
 FROM python:3.12-slim-bookworm
+ARG WXR_SOURCE_SHA=unverified
+LABEL org.opencontainers.image.revision="${WXR_SOURCE_SHA}"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     SC_WORKSPACE_AUTO_CREATE_SCHEMA=false \
     SC_WORKSPACE_REPORTING_STUDIO_ENABLED=false

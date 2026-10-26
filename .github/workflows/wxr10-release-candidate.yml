@@ -1,0 +1,78 @@
+name: WXR-10 isolated release-candidate image
+on:
+  pull_request:
+    paths:
+      - 'Dockerfile.reporting-candidate'
+      - 'backend/**'
+      - 'deploy/wxr10/**'
+      - 'tests/integration/wxr10_image_acceptance.py'
+      - '.github/workflows/wxr10-release-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-pinned-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      WXR10_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      WXR10_RUN_ID: ${{ github.run_id }}
+      SC_WORKSPACE_SESSION_SIGNING_SECRET: synthetic-wxr10-ci-only
+      PYTHONPATH: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate isolated configuration and prepare test client
+        run: |
+          test "$(git rev-parse HEAD)" = "$WXR10_SOURCE_SHA"
+          docker context inspect --format '{{json .Endpoints.docker.Host}}' | grep -q '^"unix:///'
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml config --quiet
+          python -m pip install -r backend/requirements.txt
+          python -m py_compile tests/integration/wxr10_image_acceptance.py
+      - name: Build one source-labeled image and start disposable PostgreSQL 18
+        run: |
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml up -d --build
+          test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "wxr10-candidate:${WXR10_SOURCE_SHA}")" = "$WXR10_SOURCE_SHA"
+          table_count=$(docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T postgres psql -U wxr10_test -d wxr10_test -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+          test "$table_count" -eq 0
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml run --rm --no-deps app python -m app.init_db
+      - name: Signed-session research and report acceptance before and after replacement
+        run: |
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18089/health >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          python tests/integration/wxr10_image_acceptance.py create --state "$RUNNER_TEMP/wxr10-state.json"
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml up -d --force-recreate --no-deps app
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18089/health >/dev/null; then ready=1; break; fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          python tests/integration/wxr10_image_acceptance.py verify --state "$RUNNER_TEMP/wxr10-state.json"
+          docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml exec -T app sh -c 'test -d /data/objects'
+      - name: Retain loadable exact-source image and integrity manifest
+        run: |
+          docker save "wxr10-candidate:${WXR10_SOURCE_SHA}" | gzip -1 > "$RUNNER_TEMP/wxr10-image.tar.gz"
+          image_id=$(docker image inspect --format '{{.Id}}' "wxr10-candidate:${WXR10_SOURCE_SHA}")
+          archive_sha=$(sha256sum "$RUNNER_TEMP/wxr10-image.tar.gz" | cut -d ' ' -f 1)
+          printf 'source_commit=%s\nimage_id=%s\narchive_sha256=%s\n' "$WXR10_SOURCE_SHA" "$image_id" "$archive_sha" > "$RUNNER_TEMP/wxr10-image-manifest.txt"
+          cat "$RUNNER_TEMP/wxr10-image-manifest.txt" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wxr10-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/wxr10-image.tar.gz
+            ${{ runner.temp }}/wxr10-image-manifest.txt
+          compression-level: 0
+          retention-days: 14
+      - name: Remove only dedicated disposable Compose resources
+        if: always()
+        run: docker compose -p wxr-dev -f deploy/wxr10/compose.ci.yml down --volumes || true
