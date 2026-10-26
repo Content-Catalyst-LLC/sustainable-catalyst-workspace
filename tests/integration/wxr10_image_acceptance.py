@@ -40,9 +40,9 @@ def request(base, path, subject=None, payload=None, origin=True):
                                  method="POST" if body is not None else "GET")
     try:
         with urllib.request.urlopen(req, timeout=20) as response:
-            return response.status, dict(response.headers), response.read()
+            return response.status, {key.lower(): value for key, value in response.headers.items()}, response.read()
     except urllib.error.HTTPError as error:
-        return error.code, dict(error.headers), error.read()
+        return error.code, {key.lower(): value for key, value in error.headers.items()}, error.read()
 
 
 def expected(status, result, label):
@@ -90,7 +90,7 @@ def verify(base, state_path):
     assert view["source_sha256"] == state["source_sha256"] and view["svg"]
     status, headers, data = expected(200, request(base, f"{ROOT}/{pid}/files/{state['artifact_id']}/download", "wxr10-owner"), "download source")
     assert hashlib.sha256(data).hexdigest() == state["source_sha256"]
-    assert headers.get("X-Research-SHA256", headers.get("X-research-sha256")) == state["source_sha256"]
+    assert headers.get("x-research-sha256") == state["source_sha256"]
     status, _, data = expected(200, request(base, report_path + "/export.pdf", "wxr10-owner"), "export PDF")
     assert data.startswith(b"%PDF-")
     expected(401, request(base, report_path), "anonymous denial")
