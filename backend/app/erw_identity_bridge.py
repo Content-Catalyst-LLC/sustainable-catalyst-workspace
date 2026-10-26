@@ -93,7 +93,7 @@ def login_page():
 @router.post('/auth/login')
 def login(req:Login,request:Request,response:Response):
     origin=request.headers.get('origin','')
-    if origin!=PUBLIC_ORIGIN: raise HTTPException(403,'Invalid origin')
+    if origin!=getattr(get_settings(),'public_origin',PUBLIC_ORIGIN): raise HTTPException(403,'Invalid origin')
     if request.headers.get('content-type','').split(';')[0].strip().lower()!='application/json':
         raise HTTPException(415,'JSON content type required')
     if request.headers.get('x-wxr-login')!='1':

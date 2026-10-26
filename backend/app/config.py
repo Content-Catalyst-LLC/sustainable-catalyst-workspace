@@ -1,5 +1,7 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from urllib.parse import urlsplit
 
 
 class Settings(BaseSettings):
@@ -16,7 +18,18 @@ class Settings(BaseSettings):
     session_audience: str = "workspace.sustainablecatalyst.com"
     session_ttl_seconds: int = 28800
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
+    public_origin: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False
+
+    @field_validator("public_origin")
+    @classmethod
+    def validate_public_origin(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+                or parsed.password or parsed.path or parsed.query or parsed.fragment
+                or "*" in value or parsed.netloc != value.removeprefix("https://")):
+            raise ValueError("public_origin must be one exact HTTPS origin without a path")
+        return value
 
     max_projects_per_account: int = 100
     max_project_bytes: int = 10 * 1024 * 1024

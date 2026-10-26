@@ -22,6 +22,7 @@ from . import repository, object_store
 from .models import ProjectHead
 from .schemas import ProjectStoreRequest, ArtifactStoreRequest
 from .session_auth import session_payload_from_request
+from . import config
 
 router = APIRouter(prefix="/v1/private-research/persistent-projects", tags=["Private Research"])
 ORIGIN = "https://workspace.sustainablecatalyst.com"
@@ -73,7 +74,7 @@ def _subject(request: Request) -> str:
 
 def _write(request: Request) -> None:
     # The signed HttpOnly cookie authenticates; strict Origin protects writes.
-    if request.headers.get("origin") != ORIGIN:
+    if request.headers.get("origin") != getattr(config.get_settings(), "public_origin", ORIGIN):
         raise HTTPException(403, "Research write origin is not authorized.")
 
 
