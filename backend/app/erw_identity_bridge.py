@@ -88,12 +88,14 @@ LOGIN_HTML='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="v
 
 @router.get('/login',response_class=HTMLResponse)
 def login_page():
-    return HTMLResponse(LOGIN_HTML,headers={'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'})
+    landing = getattr(get_settings(), 'private_research_landing_path', '/v1/private-research/ui')
+    html = LOGIN_HTML.replace("location.assign('/v1/private-research/ui')", "location.assign(" + json.dumps(landing) + ")")
+    return HTMLResponse(html,headers={'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'})
 
 @router.post('/auth/login')
 def login(req:Login,request:Request,response:Response):
     origin=request.headers.get('origin','')
-    if origin!=PUBLIC_ORIGIN: raise HTTPException(403,'Invalid origin')
+    if origin!=getattr(get_settings(),'public_origin',PUBLIC_ORIGIN): raise HTTPException(403,'Invalid origin')
     if request.headers.get('content-type','').split(';')[0].strip().lower()!='application/json':
         raise HTTPException(415,'JSON content type required')
     if request.headers.get('x-wxr-login')!='1':

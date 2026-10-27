@@ -18,6 +18,8 @@ Workspace combines persistent research state, scientific notebooks, computationa
 
 Workspace remains the execution and persistent-work-state authority for its workloads; it does not replace Platform Core's governance role or Lab's scientific experimentation role.
 
+The opt-in [Reporting Studio G1 documentation](docs/reporting-studio/G1/README.md) records the current isolated candidate, acceptance evidence, and production gates.
+
 ## Repository layout
 
 - `backend/` — FastAPI/backend services, migrations, workers, and computational runtimes.

@@ -1,0 +1,45 @@
+name: wxr-dev
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: wxr10_test
+      POSTGRES_PASSWORD: synthetic-ci-only
+      POSTGRES_DB: wxr10_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wxr10_test -d wxr10_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks: [isolated]
+  app:
+    image: wxr10-candidate:${WXR10_SOURCE_SHA}
+    build:
+      context: ../..
+      dockerfile: Dockerfile.reporting-candidate
+      args:
+        WXR_SOURCE_SHA: ${WXR10_SOURCE_SHA}
+    environment:
+      SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://wxr10_test:synthetic-ci-only@postgres:5432/wxr10_test
+      SC_WORKSPACE_SESSION_SIGNING_SECRET: synthetic-wxr10-ci-only
+      SC_WORKSPACE_REPORTING_STUDIO_ENABLED: "1"
+      SC_WORKSPACE_AUTO_CREATE_SCHEMA: "false"
+      SC_WORKSPACE_OBJECT_STORAGE_ROOT: /data/objects
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - object-data:/data
+      - ../../tests/integration/wxr10_image_acceptance.py:/test/wxr10_image_acceptance.py:ro
+    networks: [isolated]
+networks:
+  isolated:
+    internal: true
+volumes:
+  postgres-data:
+    name: wxr-dev-${WXR10_RUN_ID}-postgres
+  object-data:
+    name: wxr-dev-${WXR10_RUN_ID}-objects
