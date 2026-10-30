@@ -2,6 +2,7 @@
 import hashlib
 from copy import deepcopy
 from fastapi import HTTPException
+from test_wxr_private_projects import env  # pytest fixture dependency for setup
 from test_research_reporting import setup, stage, save, url, REPORTING, ORIGIN
 from app.reporting_workbench_bridge import adapt_workbench_handoff
 
