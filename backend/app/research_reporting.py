@@ -173,10 +173,17 @@ def _view(db, subject, project_id, ref):
                 tick.text = format(i/4,'.2g')
         # Existing renderers have fixed-height legend layouts. Make room for every
         # legend and scientific boundary instead of clipping publication exports.
-        footer_y = (float(tree.attrib['viewBox'].split()[3])+30 if metadata['render_type'] == 'heatmap' else (570 if metadata['render_type'] == 'ecdf' else 690))
-        tree.set('viewBox', f'0 0 860 {footer_y+130}')
-        tree.set('width','860'); tree.set('height',str(footer_y+130))
-        ET.SubElement(tree, ns+'rect', {'x':'0','y':str(footer_y),'width':'860','height':'130','fill':'white'})
+        is_workbench = metadata['render_type'] == 'workbench-graph'
+        source_box = tree.attrib.get('viewBox', '').split()
+        if is_workbench and len(source_box) != 4:
+            raise HTTPException(422, 'Workbench SVG viewBox required.')
+        canvas_width = float(source_box[2]) if is_workbench else 860
+        footer_y = (float(source_box[3])+30 if is_workbench else
+            (float(tree.attrib['viewBox'].split()[3])+30 if metadata['render_type'] == 'heatmap'
+             else (570 if metadata['render_type'] == 'ecdf' else 690)))
+        tree.set('viewBox', f'0 0 {canvas_width:g} {footer_y+130:g}')
+        tree.set('width',f'{canvas_width:g}'); tree.set('height',f'{footer_y+130:g}')
+        ET.SubElement(tree, ns+'rect', {'x':'0','y':str(footer_y),'width':f'{canvas_width:g}','height':'130','fill':'white'})
         label = ET.SubElement(tree, ns+'text', {'x':'24','y':str(footer_y+30),'font-family':'sans-serif','font-size':'12'})
         label.text = 'Evidence: '+metadata['scientific_status']+' (source declaration; not independently certified)'
         for y, text in [(footer_y+54,metadata['projection'] or 'Display changes only; scientific source unchanged.'),
