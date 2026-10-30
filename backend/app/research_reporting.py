@@ -29,6 +29,7 @@ from .lab_live_figure_acceptance_v3844 import _verify_lab
 from .lab_figure_reporting_v3842 import Figure, Scene, _result, _svg
 from .reporting_composition import Binding, Composition, compose, resolve_binding
 from .reporting_heatmaps import render_heatmap
+from .reporting_workbench_bridge import adapt_workbench_handoff
 
 SCHEMA = 'sc-research-visual-asset/1.0'
 LAB_REVISION = 'sc-lab-4d-computational-workspace-revision/0.153.0'
@@ -92,6 +93,8 @@ def _source(db, subject, project_id, ref):
 def _adapt(obj, ref):
     """Reuse existing renderers; no normalization is written back to source."""
     try:
+        if isinstance(obj.get('manifest'), dict) and obj['manifest'].get('schema') == 'sc-workbench-report-figure-handoff/1.0':
+            return adapt_workbench_handoff(obj)
         if obj.get('schema') == 'sc-lab-scientific-visualization/1.0':
             return render_heatmap(obj,ref)
         if obj.get('schema') == 'sc-lab-advanced-statistical-figure/0.115.0':
