@@ -21,6 +21,8 @@ from sqlalchemy import String, Integer, select, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+if not (ROOT / 'backend' / 'app' / 'rd014_publication_records.py').exists():
+    ROOT = ROOT.parent
 ORIGIN = 'https://workspace.sustainablecatalyst.com'
 ROOT_API = '/v1/private-research/persistent-projects'
 
