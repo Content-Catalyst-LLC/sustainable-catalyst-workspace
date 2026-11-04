@@ -8,7 +8,7 @@ if [[ ! -d "$STAGE" ]]; then
   echo 'PB05_PREVIOUS_STAGE=NOT_FOUND'
   exit 0
 fi
-for name in sc-pb05-browser-app sc-pb05-browser-db; do
+for name in sc-pb05-browser-app sc-pb05-browser-db sc-pb05-browser-proxy; do
   if docker container inspect "$name" >/dev/null 2>&1; then
     echo "PB05_RESTART_HOLD_CONTAINER_PRESENT=$name" >&2; exit 3
   fi
@@ -18,7 +18,7 @@ for name in sc-pb05-browser-objects sc-pb05-browser-pgdata; do
     echo "PB05_RESTART_HOLD_VOLUME_PRESENT=$name" >&2; exit 3
   fi
 done
-if docker network inspect sc-pb05-browser-net >/dev/null 2>&1; then
+if docker network inspect sc-pb05-browser-net >/dev/null 2>&1 || docker network inspect sc-pb05-browser-edge-net >/dev/null 2>&1; then
   echo 'PB05_RESTART_HOLD_NETWORK_PRESENT=YES' >&2; exit 3
 fi
 if [[ -f "$STAGE/secrets/stage-names" ]]; then
