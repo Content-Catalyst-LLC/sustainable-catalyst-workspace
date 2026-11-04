@@ -115,6 +115,17 @@ trap cleanup_on_failure EXIT
 docker network create --internal --label sc.purpose=pb05-isolated-test "$NET" >/dev/null
 docker volume create --label sc.purpose=pb05-isolated-test "$DBVOL" >/dev/null
 docker volume create --label sc.purpose=pb05-isolated-test "$OBJVOL" >/dev/null
+# TLS key and source overlays remain mode 0600; run only the test app as their host owner.
+PB05_APP_UID="$(id -u)"
+PB05_APP_GID="$(id -g)"
+# Prepare the PB05-only object volume for the same UID/GID, never a production mount.
+docker run --rm --network none --user 0 --entrypoint /bin/chown \
+  --mount "type=volume,src=$OBJVOL,dst=/data/objects" \
+  postgres:16-alpine "${PB05_APP_UID}:${PB05_APP_GID}" /data/objects
+[[ -r "$STAGE/tls/localhost.key" ]] || { echo 'PB05_TLS_KEY_OWNER_READABLE=FAIL' >&2; exit 5; }
+[[ "$(stat -c '%a' "$STAGE/tls/localhost.key")" == '600' ]] || { echo 'PB05_TLS_KEY_MODE=FAIL' >&2; exit 5; }
+echo 'PB05_TLS_PRIVATE_KEY_MODE_0600=PASS'
+echo 'PB05_APP_UID_MATCHES_TLS_OWNER=PASS'
 docker run -d --name "$DB" --label sc.purpose=pb05-isolated-test --network "$NET" --network-alias pb05-db \
   --env-file "$STAGE/secrets/db.env" \
   --mount "type=volume,src=$DBVOL,dst=/var/lib/postgresql/data" \
@@ -136,6 +147,7 @@ docker run --rm --network "$NET" --read-only --cap-drop ALL \
 # IMPORTANT: only publish on loopback. No production volumes, source, cookie or DB.
 docker run -d --name "$APP" --label sc.purpose=pb05-isolated-test --network "$NET" \
   -p 127.0.0.1:18443:8443 \
+  --user "${PB05_APP_UID}:${PB05_APP_GID}" \
   --read-only --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 128 --memory 1024m \
   --tmpfs /tmp:rw,nosuid,size=96m,mode=1777 \
