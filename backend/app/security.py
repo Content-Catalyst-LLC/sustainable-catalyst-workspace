@@ -30,6 +30,11 @@ def _session_identity(request: Request) -> ServiceIdentity | None:
         authentication_method="signed-http-only-session-cookie",
     )
 
+# The session cookie and the legacy service bearer are separate trust paths. A
+# bearer alone never selects a tenant: the trusted proxy must also supply a
+# bounded user ID. Every route using this dependency receives that user_key;
+# repositories must still scope each project/object lookup to it. Denials are
+# HTTP 401/403, or 503 when the service credential is unconfigured.
 def require_service_identity(
     request: Request,
     authorization: str | None = Header(default=None),
@@ -63,6 +68,9 @@ def require_service_identity(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code":"authorization-denied","decision":decision})
     return identity
 
+# Runtime-attestation routes require a second server-side credential after the
+# ordinary identity decision. This proves possession of the configured token,
+# not ownership of an arbitrary project ID supplied by a caller.
 def require_runtime_attestation_identity(
     request: Request,
     authorization: str | None = Header(default=None),

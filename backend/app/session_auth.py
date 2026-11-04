@@ -81,6 +81,9 @@ def issue_session_token(user_key: str, display_name: str = "") -> str:
     signature = _b64e(hmac.new(secret.encode("utf-8"), encoded.encode("ascii"), hashlib.sha256).digest())
     return encoded + "." + signature
 
+# Verify the signature, issuer, audience, expiry and bounded subject before
+# treating a cookie as identity. ValueError signals an unusable token; the
+# request adapter intentionally turns it into an anonymous request.
 def decode_session_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     secret = _secret()
@@ -152,6 +155,10 @@ def get_session(request: Request):
         "expiresAt": int(payload.get("exp") or 0),
     }
 
+# Only a trusted service bearer plus a supplied user ID can exchange for the
+# browser's Secure/HttpOnly/SameSite session. Cookie origin/proxy routing must
+# still be checked in deployment; issuing a cookie does not establish that the
+# main Workspace UI sends it to the backend API origin.
 @router.post("/exchange")
 def exchange_session(
     response: Response,

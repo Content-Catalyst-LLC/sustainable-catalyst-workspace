@@ -138,6 +138,11 @@ def _base() -> str:
     return value
 
 
+# This server-to-server adapter uses a Core write key for mutations and records
+# references, not Workspace object content. Core does not authenticate the
+# initiating human user; callers must verify the Workspace project and local
+# object ownership before sending any binding. Transport/configuration errors
+# are converted to PlatformCoreRuntimeError without exposing the credential.
 def _request(method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
     settings = get_settings()
     method = method.upper()
