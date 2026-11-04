@@ -8,6 +8,8 @@ cd "$STAGE"
 APP=sc-pb05-browser-app
 DB=sc-pb05-browser-db
 NET=sc-pb05-browser-net
+EDGE_NET=sc-pb05-browser-edge-net
+PROXY=sc-pb05-browser-proxy
 DBVOL=sc-pb05-browser-pgdata
 OBJVOL=sc-pb05-browser-objects
 SRC="$STAGE/rd014_publication_records.py"
@@ -15,7 +17,7 @@ ORIG="$STAGE/source/wxr_private_projects.original.py"
 LOG_DIR="$STAGE/logs"
 mkdir -p "$LOG_DIR" "$STAGE/source" "$STAGE/tls" "$STAGE/overlays" "$STAGE/secrets"
 
-for name in "$APP" "$DB"; do
+for name in "$APP" "$DB" "$PROXY"; do
   if docker container inspect "$name" >/dev/null 2>&1; then
     echo 'PB05_EXISTING_STAGE=YES; do not overwrite a previous test stack' >&2
     exit 3
@@ -31,7 +33,7 @@ for vol in "$DBVOL" "$OBJVOL"; do
     exit 3
   fi
 done
-if docker network inspect "$NET" >/dev/null 2>&1; then
+if docker network inspect "$NET" >/dev/null 2>&1 || docker network inspect "$EDGE_NET" >/dev/null 2>&1; then
   echo 'PB05_EXISTING_NETWORK=YES; manual review required' >&2
   exit 3
 fi
@@ -103,8 +105,8 @@ chmod 600 "$STAGE/secrets/db.env"
 created=0
 cleanup_on_failure() {
   if [[ "$created" != 1 ]]; then
-    docker rm -f "$APP" "$DB" >/dev/null 2>&1 || true
-    docker network rm "$NET" >/dev/null 2>&1 || true
+    docker rm -f "$PROXY" "$APP" "$DB" >/dev/null 2>&1 || true
+    docker network rm "$EDGE_NET" "$NET" >/dev/null 2>&1 || true
     # Stage startup failure: remove only newly created, uniquely named test volumes.
     docker volume rm "$OBJVOL" "$DBVOL" >/dev/null 2>&1 || true
     echo 'PB05_STAGE_STARTUP=FAIL_TEST_RESOURCES_CLEANED' >&2
@@ -113,6 +115,7 @@ cleanup_on_failure() {
 trap cleanup_on_failure EXIT
 
 docker network create --internal --label sc.purpose=pb05-isolated-test "$NET" >/dev/null
+docker network create --driver bridge --label sc.purpose=pb05-isolated-test "$EDGE_NET" >/dev/null
 docker volume create --label sc.purpose=pb05-isolated-test "$DBVOL" >/dev/null
 docker volume create --label sc.purpose=pb05-isolated-test "$OBJVOL" >/dev/null
 # TLS key and source overlays remain mode 0600; run only the test app as their host owner.
@@ -146,7 +149,7 @@ docker run --rm --network "$NET" --read-only --cap-drop ALL \
 
 # IMPORTANT: only publish on loopback. No production volumes, source, cookie or DB.
 docker run -d --name "$APP" --label sc.purpose=pb05-isolated-test --network "$NET" \
-  -p 127.0.0.1:18443:8443 \
+  --network-alias pb05-app \
   --user "${PB05_APP_UID}:${PB05_APP_GID}" \
   --read-only --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 128 --memory 1024m \
@@ -162,14 +165,48 @@ docker run -d --name "$APP" --label sc.purpose=pb05-isolated-test --network "$NE
      --ssl-certfile /run/pb05/localhost.crt --ssl-keyfile /run/pb05/localhost.key \
   >/dev/null
 
+# Forward encrypted TLS over a sidecar with NO credentials or volumes.
+# APP and DB stay on the internal-only network with no published ports.
+[[ -r "$STAGE/source/pb05_tcp_forward.py" ]] || { echo 'PB05_TCP_FORWARD_SOURCE_MISSING=YES' >&2; exit 6; }
+docker run -d --name "$PROXY" --label sc.purpose=pb05-isolated-test \
+  --network "$EDGE_NET" -p '127.0.0.1:18443:8443' \
+  --user "${PB05_APP_UID}:${PB05_APP_GID}" \
+  --read-only --cap-drop ALL --security-opt no-new-privileges \
+  --pids-limit 96 --memory 192m \
+  --tmpfs /tmp:rw,nosuid,size=8m,mode=1777 \
+  -e PB05_PROXY_ENABLED=ISOLATED_TEST_ONLY -e PYTHONDONTWRITEBYTECODE=1 \
+  --mount "type=bind,src=$STAGE/source/pb05_tcp_forward.py,dst=/app/pb05_tcp_forward.py,readonly" \
+  --entrypoint python "$IMAGE" /app/pb05_tcp_forward.py >/dev/null
+docker network connect "$NET" "$PROXY"
+MAP="$(docker port "$PROXY" 8443/tcp 2>/dev/null || true)"
+if [[ "$MAP" != '127.0.0.1:18443' ]]; then
+  echo 'PB05_FORWARDER_LOOPBACK_ONLY=FAIL' >&2
+  echo "PB05_FORWARDER_MAPPING=${MAP:-NONE}" >&2
+  exit 6
+fi
+echo 'PB05_FORWARDER_LOOPBACK_ONLY=PASS'
+if [[ -n "$(docker port "$APP" 8443/tcp 2>/dev/null || true)" ]]; then
+  echo 'PB05_PRIVATE_APP_PORT_PUBLICATION=FAIL' >&2; exit 6
+fi
+if docker inspect --format '{{json .NetworkSettings.Networks}}' "$APP" | grep -Fq 'sc-pb05-browser-edge-net'; then
+  echo 'PB05_PRIVATE_APP_ATTACHED_TO_EDGE=FAIL' >&2; exit 6
+fi
+if docker inspect --format '{{json .NetworkSettings.Networks}}' "$DB" | grep -Fq 'sc-pb05-browser-edge-net'; then
+  echo 'PB05_PRIVATE_DB_ATTACHED_TO_EDGE=FAIL' >&2; exit 6
+fi
+echo 'PB05_APP_NO_HOST_PORT=PASS'
+echo 'PB05_FORWARDER_ENCRYPTED_TCP_PASSTHROUGH=YES'
+
 for _ in $(seq 1 25); do
-  code="$(curl -sk --connect-timeout 2 --max-time 3 -o /dev/null -w '%{http_code}' \
-    -H 'Host: localhost:18443' https://127.0.0.1:18443/__pb05__/status || true)"
+  code="$(curl --noproxy '*' -sk --connect-timeout 2 --max-time 3 -o /dev/null -w '%{http_code}' \
+    --resolve 'localhost:18443:127.0.0.1' https://localhost:18443/__pb05__/status || true)"
   if [[ "$code" == '200' ]]; then created=1; break; fi
   sleep 1
 done
 if [[ "$created" != 1 ]]; then
   echo 'PB05_STAGE_HTTPS_READY=FAIL' >&2
+  echo "PB05_HEALTH_HTTP_STATUS=${code:-NONE}" >&2
+  docker logs --tail 25 "$PROXY" >&2 || true
   docker logs --tail 25 "$APP" >&2 || true
   exit 6
 fi
@@ -178,10 +215,13 @@ cat > "$STAGE/secrets/stage-names" <<EOF
 APP=$APP
 DB=$DB
 NETWORK=$NET
+EDGE_NETWORK=$EDGE_NET
+PROXY=$PROXY
 DB_VOLUME=$DBVOL
 OBJECT_VOLUME=$OBJVOL
 EOF
 chmod 600 "$STAGE/secrets/stage-names"
+echo 'PB05_FORWARDER_READY=PASS'
 echo 'PB05_STAGE_HTTPS_READY=PASS'
 echo 'PB05_PRIVATE_PROJECT_ROUTER=MOUNTED_IN_ISOLATED_APP_ONLY'
 echo 'PB05_PUBLICATION_ROUTER=MOUNTED_IN_ISOLATED_APP_ONLY'
