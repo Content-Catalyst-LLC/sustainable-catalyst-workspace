@@ -14,8 +14,25 @@
  for(const node of svg.querySelectorAll('line,path')){node.setAttribute('stroke','#60766c');node.setAttribute('stroke-width','0.7');}
  const cells=svg.querySelectorAll('.sc-sve0440-heat');
  for(let i=0;i<cells.length;i++){const cell=cells[i],value=input.spec.cells[i].z,domain=input.spec.domain.z;const cv=v=>input.transform==='log10'?Math.log10(v):v;const t=domain[0]===domain[1]?0.5:(cv(value)-cv(domain[0]))/(cv(domain[1])-cv(domain[0]));cell.setAttribute('fill',colors[Math.max(0,Math.min(colors.length-1,Math.round(t*(colors.length-1))))]);
-  if(cells.length<=100&&!input.geospatial){const c=input.spec.cells[i],pw=748,ph=height-172,cw=pw/input.spec.xValues.length,ch=ph/input.spec.yValues.length;const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x',String(82+(c.xIndex+0.5)*cw));label.setAttribute('y',String(86+ph-(c.yIndex+0.5)*ch+5));label.setAttribute('text-anchor','middle');label.setAttribute('font-size','15');label.setAttribute('font-family','sans-serif');label.setAttribute('fill',t<0.55?'white':'#10251e');label.textContent=String(c.z);svg.appendChild(label);}}
+  if(cells.length<=100&&!input.geospatial){const c=input.spec.cells[i],pw=748,ph=height-172,cw=pw/input.spec.xValues.length,ch=ph/input.spec.yValues.length;const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x',String(82+(c.xIndex+0.5)*cw));label.setAttribute('y',String(86+ph-(c.yIndex+0.5)*ch+5));label.setAttribute('text-anchor','middle');label.setAttribute('font-size','15');label.setAttribute('font-family','sans-serif');label.setAttribute('fill',t<0.55?'white':'#10251e');label.textContent=c.standardError===undefined?String(c.z):`${c.z} ± ${c.standardError} SE`;svg.appendChild(label);}}
 
+ // Category coordinates are ordinal positions, never physical depth spacing.
+ if(input.spec.axisLabels){
+  for(const tick of svg.querySelectorAll('.sc-sve0440-tick'))tick.remove();
+  const plot=svg.querySelector('.sc-sve0440-heat').parentNode;
+  for(const [axis,labels] of Object.entries(input.spec.axisLabels))labels.forEach((value,i)=>{
+   const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+   label.setAttribute('x',axis==='x'?String((i+.5)*748/labels.length):'-10');
+   label.setAttribute('y',axis==='x'?String(height-172+23):String(height-172-(i+.5)*(height-172)/labels.length+4));
+   label.setAttribute('text-anchor',axis==='x'?'middle':'end');label.setAttribute('font-family','sans-serif');label.setAttribute('font-size','12');label.textContent=value;plot.appendChild(label);
+  });
+ }
+ for(let i=0;i<cells.length;i++){
+  const c=input.spec.cells[i],title=document.createElementNS('http://www.w3.org/2000/svg','title');
+  const labels=input.spec.axisLabels;
+  title.textContent=`${labels?labels.x[c.xIndex]:c.x}, ${labels?labels.y[c.yIndex]:c.y}: ${c.z}${c.standardError===undefined?'':` ± ${c.standardError} SE`}`;
+  cells[i].appendChild(title);cells[i].setAttribute('role','img');cells[i].setAttribute('aria-label',title.textContent);
+ }
  // Freeze the SVG; executable DOM handlers never enter the export.
  svg.removeAttribute('xmlns');svg.setAttribute('width','860');svg.setAttribute('height',String(height));
  process.stdout.write(new XMLSerializer().serializeToString(svg));

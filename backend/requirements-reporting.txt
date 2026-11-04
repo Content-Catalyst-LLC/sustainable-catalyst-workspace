@@ -1,3 +1,7 @@
 # Optional offline SVG-to-PDF export; no scientific computation.
 reportlab==5.1.0
 svglib==2.3.2
+
+# Optional source-bound heatmap Word export.
+python-docx==1.2.0
+pypdfium2==5.14.0
