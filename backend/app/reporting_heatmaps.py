@@ -8,6 +8,8 @@ import math
 import os
 from pathlib import Path
 import subprocess
+import textwrap
+from .reporting_scientific_heatmap import scientific_metadata
 from xml.etree import ElementTree as ET
 from fastapi import HTTPException
 
@@ -46,6 +48,7 @@ def render_heatmap(obj,ref):
         seen.add((xi,yi));clean.append({k:cell[k] for k in ('x','y','z','xIndex','yIndex')})
     unit=ref.get('heatmap_unit')
     if not unit:raise HTTPException(422,'Declare scientific heatmap units; no inferred unit.')
+    labels,context=scientific_metadata(obj,unit)
     palette=ref['display']['palette']
     lo,hi=min(c['z'] for c in clean),max(c['z'] for c in clean)
     declared=ref['display'].get('color_domain')
@@ -61,6 +64,9 @@ def render_heatmap(obj,ref):
         'xValues':xs,'yValues':ys,'cells':clean,'domain':{'x':xd,'y':yd,'z':[lo,hi]},
         'publication':{'showGrid':False,'showLegend':False},
         'interaction':{'tooltip':False,'focusablePoints':False,'zoom':False,'pan':False,'crosshair':False}}
+    if labels: spec['axisLabels']=labels
+    if context:
+        for cell,original in zip(clean,cells):cell['standardError']=original['standardError']
     worker=Path(__file__).resolve().parent.parent/'reporting_math'/'heatmap.cjs'
     try:
         result=subprocess.run([os.getenv('SC_REPORTING_NODE_BIN','node'),'--max-old-space-size=256',str(worker)],
@@ -80,12 +86,20 @@ def render_heatmap(obj,ref):
         ET.SubElement(tree,ns+'text',{'x':str(x),'y':str(height+33),'text-anchor':anchor,'font-family':'sans-serif','font-size':'12'}).text=f'{value:.6g} {unit}'
     if transform=='log10':ET.SubElement(tree,ns+'text',{'x':'100','y':str(height+52),'font-family':'sans-serif','font-size':'11'}).text='Logarithmic color scale; labels and cell annotations retain original values.'
     tree.set('viewBox',f'0 0 860 {height+65}');tree.set('height',str(height+65))
+    if context:
+        y=height+88
+        for line in textwrap.wrap('Values +/- SE ('+unit+'). '+context['warning'],110)+textwrap.wrap(context['source']['citation'],110):
+            ET.SubElement(tree,ns+'text',{'x':'24','y':str(y),'font-family':'sans-serif','font-size':'12'}).text=line
+            y+=18
+        tree.set('viewBox',f'0 0 860 {y+12}');tree.set('height',str(y+12))
+        ET.SubElement(tree,ns+'metadata').text=json.dumps({'scientificContext':context,'axisLabels':labels,'cells':clean},sort_keys=True,allow_nan=False)
     ET.SubElement(tree,ns+'desc').text='Missing cells remain unfilled. Values are source results; scale changes do not recalculate them.'
     return ET.tostring(tree,encoding='unicode'),{'owner_module':'lab','source_schema':obj['schema'],
         'source_identity':{'artifact_id':ref['artifact_id'],'sha256':ref['sha256']},
         'source_provenance':{'description':obj.get('description'),'unit':unit,
             'spatial_reference':obj.get('spatialReference'), 'axis_labels':{'x':spec['xLabel'],'y':spec['yLabel']}, 'cell_count':len(clean),
-            'missing_cells':len(xs)*len(ys)-len(clean),'axes_centers':{'x':xs,'y':ys}},
+            'missing_cells':len(xs)*len(ys)-len(clean),'axes_centers':{'x':xs,'y':ys},'category_labels':labels,'scientific_context':context,
+            'cells':clean},
         'scientific_status':ref.get('evidence_classification','unverified'),
-        'uncertainty':'not inferred','render_type':'heatmap','source_fingerprint_verified':False,
+        'uncertainty':'SE (source-declared; not a confidence interval)' if context else 'not inferred','render_type':'heatmap','source_fingerprint_verified':False,
         'projection':'2D source grid; no interpolation, reprojection, temporal or volumetric inference'}

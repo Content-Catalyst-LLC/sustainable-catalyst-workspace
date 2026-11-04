@@ -1,0 +1,125 @@
+{
+  "schema": "sc-lab-scientific-visualization/1.0",
+  "kind": "heatmap",
+  "title": "National non-peat soil organic carbon",
+  "description": "Published model-based stock estimates; not measured Wexford removal.",
+  "xLabel": "Land use",
+  "yLabel": "Cumulative depth (cm)",
+  "xValues": [
+    0,
+    1
+  ],
+  "yValues": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "axisLabels": {
+    "x": [
+      "Grassland + rough grazing",
+      "Arable lands"
+    ],
+    "y": [
+      "0-10",
+      "0-30",
+      "0-50",
+      "0-100"
+    ]
+  },
+  "scientificContext": {
+    "unit": "t C/ha",
+    "uncertainty_kind": "SE",
+    "depth_semantics": "cumulative",
+    "status": "published-model-estimate",
+    "warning": "Cumulative depths overlap; do not sum. SOC stock is not an ERW removal estimate.",
+    "source": {
+      "publisher": "Environmental Protection Agency, Ireland",
+      "author": "Khalil, M.I.",
+      "report_number": 136,
+      "isbn": "978-1-84095-558-3",
+      "pdf_copyright_year": 2014,
+      "catalog_year": 2015,
+      "citation": "Khalil, M.I. (2014) Development of Methodologies and Modelling for Accounting Greenhouse Gases and Organic Carbon Stocks in Agricultural Soils of Ireland. EPA Research Report 136. Environmental Protection Agency, Ireland, Table 2.4, p. 19. Catalog lists 2015.",
+      "url": "https://www.epa.ie/publications/research/reports/30217-Research-Report-136-Web.pdf",
+      "sha256": "9cc7ef390d6b19bd4d1a89d3b1d9c9d8c1c81e1adf8e40b6c4267d4fb93ae27a",
+      "table": "2.4",
+      "printed_page": 19,
+      "pdf_page": 26,
+      "extraction_review": {
+        "method": "manual transcription checked against PDF text and rendered page by Codex",
+        "human_review": "pending",
+        "checked_on": "2026-11-04"
+      },
+      "rights": "PDF p. ii permits reproduction with source acknowledgment.",
+      "library_binding": null,
+      "core_binding": null
+    }
+  },
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "xIndex": 0,
+      "yIndex": 0,
+      "z": 52.2,
+      "standardError": 0.6
+    },
+    {
+      "x": 1,
+      "y": 0,
+      "xIndex": 1,
+      "yIndex": 0,
+      "z": 29.9,
+      "standardError": 1.6
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "xIndex": 0,
+      "yIndex": 1,
+      "z": 127.1,
+      "standardError": 1.7
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "xIndex": 1,
+      "yIndex": 1,
+      "z": 81.3,
+      "standardError": 4.5
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "xIndex": 0,
+      "yIndex": 2,
+      "z": 170.9,
+      "standardError": 2.7
+    },
+    {
+      "x": 1,
+      "y": 2,
+      "xIndex": 1,
+      "yIndex": 2,
+      "z": 117.6,
+      "standardError": 7.2
+    },
+    {
+      "x": 0,
+      "y": 3,
+      "xIndex": 0,
+      "yIndex": 3,
+      "z": 213.8,
+      "standardError": 4.5
+    },
+    {
+      "x": 1,
+      "y": 3,
+      "xIndex": 1,
+      "yIndex": 3,
+      "z": 167.5,
+      "standardError": 12.2
+    }
+  ]
+}
