@@ -236,9 +236,10 @@ def save_report(project_id: str, body: Reference, request: Request):
             for axis in report['axes'][:2]:
                 key=axis['key'];axis['availability']='declared'
                 axis['definition']={'label':provenance['axis_labels'][key],
-                    'kind':'space' if crs else 'analytical','crs':crs,
+                    'kind':'space' if crs else ('categorical' if provenance.get('category_labels') else 'analytical'),'crs':crs,
                     'unit':'m' if crs in ('EPSG:29903','EPSG:2157') else None,
-                    'centers':provenance['axes_centers'][key]}
+                    'centers':provenance['axes_centers'][key],
+                    'categories':(provenance.get('category_labels') or {}).get(key)}
             if crs:
                 report['spatial_coverage']={'crs':crs,'basis':'explicit source cell centers',
                     'x':[min(provenance['axes_centers']['x']),max(provenance['axes_centers']['x'])],
@@ -308,4 +309,42 @@ def export_pdf(project_id: str, revision: int, report_id: str, request: Request)
     data = renderPDF.drawToString(drawing, invariant=1)
     return Response(data, media_type='application/pdf', headers={**HEADERS,
         'Content-Disposition':f'attachment; filename="{report_id}.pdf"',
+        'X-Research-SHA256':result['view']['source_sha256']})
+
+
+@router.get('/projects/{project_id}/revisions/{revision}/reports/{report_id}/export.csv')
+def export_csv(project_id: str, revision: int, report_id: str, request: Request):
+    from .reporting_scientific_exports import csv_bytes
+    result = json.loads(open_report(project_id, revision, report_id, request).body)
+    if (result['view']['source']['render_type'] != 'heatmap'
+            or not result['view']['source']['source_provenance'].get('cells')):
+        raise HTTPException(422, 'CSV export requires a heatmap revision that preserves source cells.')
+    return Response(csv_bytes(result['view']['source']), media_type='text/csv', headers={**HEADERS,
+        'Content-Disposition':f'attachment; filename="{report_id}.csv"',
+        'X-Research-SHA256':result['view']['source_sha256']})
+
+
+@router.get('/projects/{project_id}/revisions/{revision}/reports/{report_id}/export.docx')
+def export_docx(project_id: str, revision: int, report_id: str, request: Request):
+    from .reporting_scientific_exports import docx_bytes
+    result = json.loads(open_report(project_id, revision, report_id, request).body)
+    provenance = result['view']['source']
+    if provenance['render_type'] != 'heatmap' or not provenance['source_provenance'].get('scientific_context'):
+        raise HTTPException(422, 'Scientific DOCX export requires a heatmap with declared context and uncertainty.')
+    subject = _subject(request)
+    with session_scope() as db:
+        _, obj = _source(db, subject, project_id, result['report']['reference'])
+    return Response(docx_bytes(result, obj), media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        headers={**HEADERS, 'Content-Disposition':f'attachment; filename="{report_id}.docx"',
+                 'X-Research-SHA256':result['view']['source_sha256']})
+
+
+@router.get('/projects/{project_id}/revisions/{revision}/reports/{report_id}/export.png')
+def export_png(project_id: str, revision: int, report_id: str, request: Request):
+    from .reporting_scientific_exports import png_bytes
+    result = json.loads(open_report(project_id, revision, report_id, request).body)
+    if not result['view']['svg']:
+        raise HTTPException(422, 'A saved SVG is required for PNG export.')
+    return Response(png_bytes(result['view']['svg']), media_type='image/png', headers={**HEADERS,
+        'Content-Disposition':f'attachment; filename="{report_id}.png"',
         'X-Research-SHA256':result['view']['source_sha256']})

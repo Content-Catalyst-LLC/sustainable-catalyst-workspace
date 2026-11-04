@@ -1,0 +1,47 @@
+{
+  "core": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-platform-core",
+    "main": "16ffc6585ee0def6f3005ce024dd92eb8ae7db7c",
+    "error": ""
+  },
+  "library": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-library",
+    "main": "81c3ad7e1a19d7cdfa0f58032b98925e3ca96402",
+    "error": ""
+  },
+  "librarian": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-research-librarian",
+    "main": "f08b3d4407f58ee9edb91fbf3052c6bcb892b014",
+    "error": ""
+  },
+  "librarian-ai": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-research-librarian-ai",
+    "main": "f7f9f37ad152d743498b780e995613adc7dd0ba5",
+    "error": ""
+  },
+  "lab": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-lab",
+    "main": "39fdefb3ff9cc73262b7d748cb44d2599094ae5a",
+    "error": ""
+  },
+  "workbench": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-workbench",
+    "main": "7f7c23fd609386619f95ba9a4f932bbdca097b3b",
+    "error": ""
+  },
+  "site": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-site-intelligence",
+    "main": "43660fb002e7d892442473dfd323dbab4f6fd68e",
+    "error": ""
+  },
+  "workspace": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-workspace",
+    "main": "54e4ddf63abcca5e0d46f71f7505f03650e4aefe",
+    "error": ""
+  },
+  "decision": {
+    "repository": "Content-Catalyst-LLC/sustainable-catalyst-decision-studio",
+    "main": "8c6c02be3993a9460269c8161e6505ca1bfe54a2",
+    "error": ""
+  }
+}
