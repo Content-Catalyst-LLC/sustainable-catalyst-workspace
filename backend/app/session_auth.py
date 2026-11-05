@@ -108,7 +108,7 @@ def decode_session_token(token: str) -> dict[str, Any]:
     # The signed token is necessary but not sufficient once revocation is enabled.
     # Every authorization path, including service-identity fallback, must consult
     # this authoritative store instead of accepting a copied signed cookie.
-    if settings.session_revocation_enforced:
+    if getattr(settings, 'session_revocation_enforced', False):
         try:
             with session_scope() as db:
                 if is_revoked(db, token):
@@ -205,7 +205,7 @@ def exchange_session(
 def clear_session(request: Request, response: Response):
     # With revocation enabled, logout requires a same-origin browser request.
     # Deleting a cookie does NOT revoke a token without the durable insert.
-    if get_settings().session_revocation_enforced:
+    if getattr(get_settings(), 'session_revocation_enforced', False):
         origin = request.headers.get("origin", "")
         allowed = {v.strip() for v in get_settings().cors_allowed_origins.split(",") if v.strip()}
         if not origin or origin not in allowed:
