@@ -30,6 +30,7 @@ from .lab_figure_reporting_v3842 import Figure, Scene, _result, _svg
 from .reporting_composition import Binding, Composition, compose, resolve_binding
 from .reporting_heatmaps import render_heatmap
 from .reporting_workbench_bridge import adapt_workbench_handoff
+from .reporting_scientific_handoff import ScientificHandoff, import_workbench_figure
 
 SCHEMA = 'sc-research-visual-asset/1.0'
 LAB_REVISION = 'sc-lab-4d-computational-workspace-revision/0.153.0'
@@ -40,6 +41,10 @@ def enabled():
 
 router = APIRouter(prefix='/v1/private-research/reporting-studio',
                    tags=['Private Reporting Studio'], dependencies=[Depends(enabled)])
+
+@router.post('/projects/{project_id}/workbench-figures',status_code=201)
+def import_scientific_figure(project_id:str,body:ScientificHandoff,request:Request):
+    return import_workbench_figure(project_id,body,request)
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -149,8 +154,10 @@ def _adapt(obj, ref):
 
 
 def _view(db, subject, project_id, ref):
-    _, obj = _source(db, subject, project_id, ref)
+    artifact, obj = _source(db, subject, project_id, ref)
     svg, metadata = _adapt(obj, ref)
+    if artifact.metadata_json.get('scientificHandoff'):
+        metadata['authenticated_handoff'] = artifact.metadata_json['scientificHandoff']
     if svg:
         ns = '{http://www.w3.org/2000/svg}'
         tree = ET.fromstring(svg)

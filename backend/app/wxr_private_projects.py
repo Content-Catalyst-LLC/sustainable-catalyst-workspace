@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
+from urllib.parse import urlsplit
 import re
 from pathlib import PurePath
 from urllib.parse import quote
@@ -71,9 +73,21 @@ def _subject(request: Request) -> str:
     return sub
 
 
+def private_research_origin() -> str:
+    origin = os.getenv("SC_WORKSPACE_PRIVATE_RESEARCH_ORIGIN", ORIGIN)
+    if origin != ORIGIN:
+        parsed = urlsplit(origin)
+        if (os.getenv("SC_WORKSPACE_ENVIRONMENT", "production") not in {"development", "staging", "test"}
+                or parsed.scheme not in {"http", "https"} or not parsed.hostname
+                or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment
+                or (parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1"})):
+            raise HTTPException(503, "Invalid isolated research origin configuration.")
+    return origin
+
+
 def _write(request: Request) -> None:
-    # The signed HttpOnly cookie authenticates; strict Origin protects writes.
-    if request.headers.get("origin") != ORIGIN:
+    # Keep production's default; isolated development uses one explicit origin.
+    if request.headers.get("origin") != private_research_origin():
         raise HTTPException(403, "Research write origin is not authorized.")
 
 
@@ -177,6 +191,10 @@ def list_private_files(project_id: str, request: Request):
 
 @router.post("/{project_id}/files", status_code=201)
 def upload_private_file(project_id: str, body: ResearchUpload, request: Request):
+    return store_private_file(project_id, body, request)
+
+
+def store_private_file(project_id: str, body: ResearchUpload, request: Request, handoff: dict | None = None):
     subject = _subject(request)
     _write(request)
     filename, media_type = _filename(body.filename)
@@ -210,7 +228,8 @@ def upload_private_file(project_id: str, body: ResearchUpload, request: Request)
             "mediaType": media_type,
             "contentBase64": body.contentBase64,
             "expectedRevision": 0,
-            "metadata": {"source": "private-research", "researchProjectId": project_id},
+            "metadata": {"source": "private-research", "researchProjectId": project_id,
+                         **({"scientificHandoff": handoff} if handoff else {})},
         })
         row = object_store.store_artifact(db, subject, payload)
         return JSONResponse(object_store.artifact_metadata(row), status_code=201, headers=HEADERS)
