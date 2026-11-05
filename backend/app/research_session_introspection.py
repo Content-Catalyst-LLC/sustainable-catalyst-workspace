@@ -41,6 +41,10 @@ def introspect_workspace_session(
     from .config import get_settings
     expected = getattr(get_settings(), "research_introspection_token", "")
     verify_service_credential(authorization, expected=expected)
+    # Never report an active session while the Workspace's ordinary
+    # authorization paths still accept revoked cookies.
+    if not get_settings().session_revocation_enforced:
+        raise HTTPException(status_code=503, detail="Session revocation enforcement unavailable")
     try:
         with session_scope() as db:
             claims = validate_session_for_service(
