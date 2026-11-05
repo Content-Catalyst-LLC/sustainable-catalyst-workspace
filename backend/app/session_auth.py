@@ -12,6 +12,8 @@ from uuid import uuid4
 from fastapi import APIRouter, Header, HTTPException, Request, Response, status
 
 from .config import get_settings
+from .db import session_scope
+from .session_revocation import SessionVerificationUnavailable, is_revoked, revoke_session
 
 SESSION_SCHEMA = "sc-workspace-standalone-session/1.0"
 SESSION_PROFILE_SCHEMA = "sc-workspace-standalone-session-profile/1.0"
@@ -103,6 +105,20 @@ def decode_session_token(token: str) -> dict[str, Any]:
     user_key = str(payload.get("sub") or "").strip()
     if not user_key or len(user_key) > 128:
         raise ValueError("invalid-session-subject")
+    # The signed token is necessary but not sufficient once revocation is enabled.
+    # Every authorization path, including service-identity fallback, must consult
+    # this authoritative store instead of accepting a copied signed cookie.
+    if settings.session_revocation_enforced:
+        try:
+            with session_scope() as db:
+                if is_revoked(db, token):
+                    raise ValueError("revoked-session")
+        except SessionVerificationUnavailable:
+            raise
+        except Exception as exc:
+            if isinstance(exc, ValueError):
+                raise
+            raise SessionVerificationUnavailable("Session verification unavailable") from None
     return payload
 
 def session_payload_from_request(request: Request) -> dict[str, Any] | None:
@@ -111,6 +127,10 @@ def session_payload_from_request(request: Request) -> dict[str, Any] | None:
         return None
     try:
         return decode_session_token(token)
+    except SessionVerificationUnavailable:
+        # No fallback to anonymous or weaker service identity when a cookie
+        # was presented but revocation storage is offline.
+        raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
     except Exception:
         return None
 
@@ -182,6 +202,29 @@ def exchange_session(
     }
 
 @router.delete("")
-def clear_session(response: Response):
+def clear_session(request: Request, response: Response):
+    # With revocation enabled, logout requires a same-origin browser request.
+    # Deleting a cookie does NOT revoke a token without the durable insert.
+    if get_settings().session_revocation_enforced:
+        origin = request.headers.get("origin", "")
+        allowed = {v.strip() for v in get_settings().cors_allowed_origins.split(",") if v.strip()}
+        if not origin or origin not in allowed:
+            raise HTTPException(status_code=403, detail="Logout origin not authorized")
+        token = request.cookies.get(session_cookie_name(), "")
+        if token:
+            try:
+                claims = decode_session_token(token)
+            except SessionVerificationUnavailable:
+                raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
+            except ValueError:
+                # Bad/expired cookie has no authenticated claims to revoke.
+                claims = None
+            if claims is not None:
+                try:
+                    with session_scope() as db:
+                        revoke_session(db, token, subject=claims["sub"], expires_at=int(claims["exp"]))
+                        db.commit()
+                except (SessionVerificationUnavailable, Exception):
+                    raise HTTPException(status_code=503, detail="Workspace session revocation unavailable") from None
     response.delete_cookie(key=session_cookie_name(), path="/", secure=True, httponly=True, samesite="lax")
     return {"schema": SESSION_SCHEMA, "version": "3.71.0", "authenticated": False, "sessionCleared": True}
