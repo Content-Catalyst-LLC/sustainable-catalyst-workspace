@@ -1,0 +1,113 @@
+{
+  "schema": "sc-lab-source-bound-scientific-figure/1.0",
+  "title": "Separate scientific endpoints",
+  "description": "Synthetic source-bound renderer regression",
+  "spec": {
+    "title": "Separate scientific endpoints",
+    "description": "Synthetic source-bound renderer regression",
+    "project_id": "synthetic-project",
+    "revision": 1,
+    "family": "evidence-comparison",
+    "status": "simulation",
+    "sources": [
+      {
+        "id": "published-example",
+        "citation": "Synthetic citation for renderer testing",
+        "uri": "https://example.org/synthetic",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_kind": "simulation",
+        "locator": "Synthetic fixture",
+        "review": "pending",
+        "review_ref": null,
+        "rights_ref": "Synthetic test data"
+      }
+    ],
+    "panels": [
+      {
+        "label": "Separate endpoint",
+        "source_id": "published-example",
+        "material": "Synthetic material",
+        "time_window": "4 years",
+        "denominator": "per experimental hectare over four years",
+        "endpoint": "potential",
+        "value": 10.5,
+        "lower": null,
+        "upper": null,
+        "plus_minus": 3.8,
+        "uncertainty_type": "reported +/-; interval type not inferred",
+        "unit": "t CO2/ha",
+        "finding": "Synthetic test only; never pooled or transferred to a site."
+      }
+    ],
+    "nodes": [],
+    "edges": [],
+    "protocol": [],
+    "limitations": [
+      "No pooled estimate or site-specific removal."
+    ]
+  },
+  "figure_reference": {
+    "schema": "sc-lab-narrative-figure-reference/0.118.0",
+    "id": "figure-1",
+    "figure_ref": "urn:sha256:bcecdb58402f9d5b267543fed03cd183d61a26d492434dedf89e127d1c168318",
+    "figure_kind": "small-multiples",
+    "title": "Separate scientific endpoints",
+    "caption": "Synthetic source-bound renderer regression",
+    "short_caption": null,
+    "alt_text": null,
+    "source_refs": [
+      "https://example.org/synthetic"
+    ],
+    "method_refs": [],
+    "finding_refs": [],
+    "evidence_refs": [],
+    "citation_refs": [],
+    "provenance": {
+      "scientific_spec_sha256": "bcecdb58402f9d5b267543fed03cd183d61a26d492434dedf89e127d1c168318",
+      "renderer_version": "sc-lab-figure-composer-scientific/1.0",
+      "status": "simulation"
+    },
+    "immutable_underlying_figure": true,
+    "fingerprint": "a60031576dcf5d985ad80340cbc1384700d47c12ba9a9588539e9e613752d9cc"
+  },
+  "spec_sha256": "bcecdb58402f9d5b267543fed03cd183d61a26d492434dedf89e127d1c168318",
+  "renderer_version": "sc-lab-figure-composer-scientific/1.0",
+  "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"860\" height=\"433\" viewBox=\"0 0 860 433\" role=\"img\"><title>Separate scientific endpoints</title><desc>Synthetic source-bound renderer regression</desc><rect width=\"860\" height=\"433\" fill=\"white\"/><text x=\"24\" y=\"32\" font-family=\"Helvetica\" font-size=\"20\" font-weight=\"bold\">Separate scientific endpoints</text><text x=\"24\" y=\"58\" font-family=\"Helvetica\" font-size=\"12\">Synthetic source-bound renderer regression</text><g tabindex=\"0\"><title>Separate endpoint</title><rect x=\"24\" y=\"100\" width=\"812\" height=\"211\" rx=\"4\" fill=\"#f2f6f8\" stroke=\"#546a78\"/><text x=\"40\" y=\"125\" font-family=\"Helvetica\" font-size=\"15\" font-weight=\"bold\">Separate endpoint</text><text x=\"40\" y=\"148\" font-family=\"Helvetica\" font-size=\"13\">10.5 +/- 3.8 t CO2/ha</text><text x=\"40\" y=\"166\" font-family=\"Helvetica\" font-size=\"13\">potential; reported +/-; interval type not inferred</text><text x=\"40\" y=\"184\" font-family=\"Helvetica\" font-size=\"13\">Synthetic material; 4 years</text><text x=\"40\" y=\"202\" font-family=\"Helvetica\" font-size=\"13\">Denominator: per experimental hectare over four years</text><text x=\"40\" y=\"220\" font-family=\"Helvetica\" font-size=\"13\">Synthetic test only; never pooled or transferred to a site.</text><text x=\"40\" y=\"238\" font-family=\"Helvetica\" font-size=\"13\">Source: published-example</text><line x1=\"80\" y1=\"281\" x2=\"780\" y2=\"281\" stroke=\"#82919b\"/><line x1=\"378.1564\" y1=\"281\" x2=\"716.3636\" y2=\"281\" stroke=\"#176c62\" stroke-width=\"8\"/><circle cx=\"547.2600\" cy=\"281\" r=\"5\" fill=\"#111111\"/><text x=\"80\" y=\"301\" font-family=\"Helvetica\" font-size=\"10\">0</text><text x=\"650\" y=\"301\" font-family=\"Helvetica\" font-size=\"10\">15.73 t CO2/ha</text></g><text x=\"24\" y=\"345\" font-family=\"Helvetica\" font-size=\"11\">Status: simulation. Net removal: NOT_QUANTIFIED. No certification is asserted.</text><text x=\"24\" y=\"361\" font-family=\"Helvetica\" font-size=\"11\">No pooled estimate or site-specific removal.</text><text x=\"24\" y=\"387\" font-family=\"Helvetica\" font-size=\"11\">published-example: Synthetic citation for renderer testing | https://example.org/synthetic | Synthetic fixture |</text><text x=\"24\" y=\"403\" font-family=\"Helvetica\" font-size=\"11\">source review: pending</text></svg>",
+  "svg_sha256": "9470b49c73b217661329377639d060de121e1adc2a1452ba9d175805f35dfee0",
+  "table": {
+    "columns": [
+      "Panel",
+      "Material",
+      "Window",
+      "Denominator",
+      "Endpoint",
+      "Value",
+      "Lower",
+      "Upper",
+      "Reported +/-",
+      "Uncertainty",
+      "Unit",
+      "Finding",
+      "Source"
+    ],
+    "rows": [
+      [
+        "Separate endpoint",
+        "Synthetic material",
+        "4 years",
+        "per experimental hectare over four years",
+        "potential",
+        10.5,
+        null,
+        null,
+        3.8,
+        "reported +/-; interval type not inferred",
+        "t CO2/ha",
+        "Synthetic test only; never pooled or transferred to a site.",
+        "published-example"
+      ]
+    ]
+  },
+  "net_removal_status": "NOT_QUANTIFIED",
+  "scientific_verification_performed": false
+}
