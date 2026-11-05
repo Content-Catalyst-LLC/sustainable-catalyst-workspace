@@ -224,7 +224,7 @@ def clear_session(request: Request, response: Response):
                     with session_scope() as db:
                         revoke_session(db, token, subject=claims["sub"], expires_at=int(claims["exp"]))
                         db.commit()
-                except (SessionVerificationUnavailable, Exception):
+                except Exception:
                     raise HTTPException(status_code=503, detail="Workspace session revocation unavailable") from None
     response.delete_cookie(key=session_cookie_name(), path="/", secure=True, httponly=True, samesite="lax")
     return {"schema": SESSION_SCHEMA, "version": "3.71.0", "authenticated": False, "sessionCleared": True}
