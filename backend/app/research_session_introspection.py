@@ -9,7 +9,7 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from .db import session_scope
@@ -34,6 +34,7 @@ def verify_service_credential(authorization: str | None, *, expected: str) -> No
 @router.post("/session/introspect")
 def introspect_workspace_session(
     payload: IntrospectionRequest,
+    response: Response,
     authorization: str | None = Header(default=None),
 ):
     # Independent Research service credential. Never reuse browser login,
@@ -55,6 +56,8 @@ def introspect_workspace_session(
     except SessionVerificationUnavailable:
         raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
 
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     now = datetime.now(timezone.utc)
     settings = get_settings()
     return {
