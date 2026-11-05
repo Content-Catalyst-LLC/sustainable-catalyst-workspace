@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import time
 from typing import Any
@@ -109,6 +110,18 @@ def decode_session_token(token: str) -> dict[str, Any]:
     # Every authorization path, including service-identity fallback, must consult
     # this authoritative store instead of accepting a copied signed cookie.
     if getattr(settings, 'session_revocation_enforced', False):
+        # Both a bounded issued-at and unique server-issued session ID are
+        # required for the revocable-token profile. Legacy malformed claims
+        # must not pass into the private identity bridge.
+        try:
+            issued = int(payload.get("iat"))
+            session_id = str(payload.get("jti") or "")
+            if issued <= 0 or issued > int(time.time()) + 5:
+                raise ValueError("invalid-session-issued-at")
+            if not re.fullmatch(r"[0-9a-f]{32}", session_id):
+                raise ValueError("invalid-session-identifier")
+        except (TypeError, ValueError):
+            raise ValueError("invalid-session-claims") from None
         try:
             with session_scope() as db:
                 if is_revoked(db, token):
