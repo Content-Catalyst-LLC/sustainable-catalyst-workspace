@@ -15,6 +15,39 @@ class ScientificHandoff(BaseModel):
     figureId:str=Field(pattern=r'^[a-f0-9-]{36}$')
     workbenchToken:SecretStr=Field(min_length=20,max_length=20000)
 
+class WorkbenchConnection(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    workbenchToken:SecretStr=Field(min_length=20,max_length=20000)
+
+def workbench_catalog(project_id:str,body:WorkbenchConnection,request:Request):
+    subject=_subject(request);_write(request)
+    with session_scope() as db:_project(db,subject,project_id)
+    url=get_settings().route_workbench_url.rstrip('/')
+    if not url:raise HTTPException(503,'Workbench integration is not configured.')
+    try:
+        with httpx.Client(timeout=15,follow_redirects=False,trust_env=False) as client:
+            def get(path):
+                with client.stream('GET',url+path,headers={'Authorization':'Bearer '+body.workbenchToken.get_secret_value()}) as r:
+                    if r.status_code in (401,403):raise HTTPException(401,'Workbench authorization is unavailable or expired.')
+                    if r.status_code!=200:raise HTTPException(502,'Workbench catalog is unavailable.')
+                    chunks=[];size=0
+                    for chunk in r.iter_bytes():
+                        size+=len(chunk)
+                        if size>1_000_000:raise HTTPException(413,'Workbench catalog exceeds the limit.')
+                        chunks.append(chunk)
+                    return json.loads(b''.join(chunks))
+            figures=[]
+            for project in get('/standalone/v1/projects')['projects'][:20]:
+                if project.get('metadata',{}).get('workspaceProjectId')!=project_id:continue
+                for session in get('/standalone/v1/projects/'+project['id']+'/research-sessions')['researchSessions'][:20]:
+                    if session.get('metadata',{}).get('workspaceProjectId')!=project_id:continue
+                    for figure in get('/standalone/v1/research-sessions/'+session['id']+'/scientific-figures')['figures']:
+                        figures.append({'sessionId':session['id'],'figureId':figure['id'],'label':figure['label'],'sha256':figure['sha256']})
+                        if len(figures)>=100:return {'figures':figures,'truncated':True}
+            return {'figures':figures,'truncated':False}
+    except httpx.HTTPError as exc:raise HTTPException(502,'Workbench is unavailable.') from exc
+    except (KeyError,ValueError,TypeError) as exc:raise HTTPException(502,'Invalid Workbench catalog.') from exc
+
 def import_workbench_figure(project_id:str,body:ScientificHandoff,request:Request):
     subject=_subject(request);_write(request)
     with session_scope() as db:_project(db,subject,project_id)
@@ -40,7 +73,9 @@ def import_workbench_figure(project_id:str,body:ScientificHandoff,request:Reques
         if digest!=metadata['sha256'] or metadata['libraryArtifactId']!='artifact:sha256:'+digest:
             raise HTTPException(409,'Scientific source bytes failed SHA256 verification.')
         obj=json.loads(raw)
-        if obj.get('schema')!='sc-lab-scientific-visualization/1.0':raise ValueError()
+        if obj.get('schema') not in {'sc-lab-scientific-visualization/1.0','sc-lab-source-bound-scientific-figure/1.0'}:raise ValueError()
+        if obj.get('schema')=='sc-lab-source-bound-scientific-figure/1.0' and obj['spec']['project_id']!=project_id:
+            raise HTTPException(409,'Scientific source project binding mismatch.')
         # Preserve canonical Lab bytes. The native adapter validates on insertion.
         return store_private_file(project_id,ResearchUpload(filename='lab-figure-'+body.figureId+'.json',contentBase64=metadata['contentBase64']),request,
             handoff={'workbenchSessionId':body.sessionId,'workbenchFigureId':body.figureId,

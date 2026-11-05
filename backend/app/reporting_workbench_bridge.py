@@ -7,7 +7,20 @@ from fastapi import HTTPException
 
 SCHEMA = "sc-workbench-report-figure-handoff/1.0"
 SVG_NS = "{http://www.w3.org/2000/svg}"
-FORBIDDEN = {"script", "foreignObject", "iframe", "image", "use", "animate", "set", "animateMotion", "animateTransform"}
+FORBIDDEN = {"script", "style", "link", "foreignObject", "iframe", "image", "use", "animate", "set", "animateMotion", "animateTransform"}
+
+def validate_inert_svg(svg):
+    if not isinstance(svg,str) or len(svg.encode())>1_000_000:
+        raise HTTPException(413,'Scientific SVG exceeds the limit.')
+    try:tree=ET.fromstring(svg)
+    except ET.ParseError as exc:raise HTTPException(422,'Malformed scientific SVG.') from exc
+    if tree.tag!=SVG_NS+'svg':raise HTTPException(422,'Expected SVG root.')
+    for element in tree.iter():
+        if element.tag.rsplit('}',1)[-1] in FORBIDDEN:raise HTTPException(422,'Active SVG elements are unsupported.')
+        for key,value in element.attrib.items():
+            attr=key.rsplit('}',1)[-1].lower()
+            if attr.startswith('on') or attr=='href' or 'url(' in value.lower():raise HTTPException(422,'Active SVG references are unsupported.')
+    return tree
 
 def adapt_workbench_handoff(obj):
     manifest = obj.get("manifest")

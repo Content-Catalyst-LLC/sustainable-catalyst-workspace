@@ -24,9 +24,10 @@ def table_rows(source):
 def csv_bytes(source):
     output = StringIO(newline='')
     writer = csv.writer(output)
-    writer.writerow(['x', 'y', 'value', 'standard_error', 'unit'])
+    generic=source['source_provenance'].get('table')
+    writer.writerow(generic['columns'] if generic else ['x', 'y', 'value', 'standard_error', 'unit'])
     # Prevent spreadsheet formulas in user-supplied categorical labels.
-    for row in table_rows(source):
+    for row in (generic['rows'] if generic else table_rows(source)):
         writer.writerow(["'"+v if isinstance(v, str) and v.lstrip().startswith(('=', '+', '-', '@')) else v for v in row])
     return output.getvalue().encode('utf-8')
 
@@ -77,15 +78,45 @@ def docx_bytes(result, obj):
     doc.styles['Title'].font.color.rgb = RGBColor(0, 0, 0)
     doc.add_paragraph(obj.get('title', 'Scientific reference figure'), 'Title')
     doc.add_paragraph(obj.get('description', 'Source-bound scientific figure.'))
-    doc.add_picture(BytesIO(png), width=Inches(6.3))
-    doc.add_paragraph('Figure 1. '+obj.get('title', 'Scientific heatmap'), 'Caption')
+    from PIL import Image
+    with Image.open(BytesIO(png)) as image:
+        fitted_width=min(6.3,(7.0 if source['render_type']=='scientific-composer' else 7.5)*image.width/image.height)
+    doc.add_picture(BytesIO(png), width=Inches(fitted_width))
+    doc.paragraphs[-1].paragraph_format.keep_with_next=True
+    caption=doc.add_paragraph('Figure 1. '+obj.get('title', 'Scientific heatmap'), 'Caption')
+    caption.paragraph_format.keep_with_next=False
+    caption.paragraph_format.keep_together=True
     doc.add_page_break()
     doc.add_heading('Source data and uncertainty', level=1)
-    table = doc.add_table(rows=1, cols=5)
-    table.style = 'Light Shading Accent 1'
-    for cell, text in zip(table.rows[0].cells, ['Category X', 'Category Y', 'Value', 'SE', 'Unit']): cell.text = text
-    for row in table_rows(source):
-        for cell, value in zip(table.add_row().cells, row): cell.text = str(value)
+    generic=source['source_provenance'].get('table')
+    if generic:
+        # Long scientific denominators and protocol fields remain editable and
+        # readable; avoid squeezing thirteen columns into a portrait page.
+        for index,row in enumerate(generic['rows']):
+            doc.add_heading('Record '+str(index+1),level=2)
+            table=doc.add_table(rows=0,cols=2);table.style='Light Shading Accent 1';table.autofit=False
+            table.columns[0].width=Inches(1.4);table.columns[1].width=Inches(4.9)
+            for label,value in zip(generic['columns'],row):
+                cells=table.add_row().cells;cells[0].width=Inches(1.4);cells[1].width=Inches(4.9);cells[0].text=str(label);cells[1].text='' if value is None else str(value)
+            from docx.oxml import OxmlElement
+            for row_index,table_row in enumerate(table.rows):
+                table_row._tr.get_or_add_trPr().append(OxmlElement('w:cantSplit'))
+                for cell in table_row.cells:
+                    for paragraph in cell.paragraphs:
+                        paragraph.paragraph_format.keep_with_next=row_index<len(table.rows)-1
+                        paragraph.paragraph_format.keep_together=True
+        doc.add_heading('Sources and limitations',level=1)
+        for note in source['source_provenance']['limitations']:doc.add_paragraph(note)
+        for reference in source['source_provenance']['sources']:
+            doc.add_paragraph(reference['citation'])
+            doc.add_paragraph(reference['uri']+' | '+reference['locator'])
+            doc.add_paragraph('Source SHA256: '+reference['sha256']+' | Review: '+reference['review'])
+    else:
+        table = doc.add_table(rows=1, cols=5)
+        table.style = 'Light Shading Accent 1'
+        for cell, text in zip(table.rows[0].cells, ['Category X', 'Category Y', 'Value', 'SE', 'Unit']): cell.text = text
+        for row in table_rows(source):
+            for cell, value in zip(table.add_row().cells, row): cell.text = str(value)
     if context:
         doc.add_paragraph(context['warning'])
         review = context['source'].get('extraction_review', {}).get('human_review', 'undeclared')
@@ -94,8 +125,9 @@ def docx_bytes(result, obj):
         doc.add_paragraph(context['source']['citation'])
         doc.add_paragraph('Source URL: '+context['source']['url'])
         doc.add_paragraph('Publisher PDF SHA256: '+context['source']['sha256'])
-    doc.add_paragraph('Figure source SHA256: '+result['view']['source_sha256'])
-    doc.add_paragraph('Saved SVG SHA256: '+hashlib.sha256(svg).hexdigest())
+    integrity=doc.add_paragraph('Figure source SHA256: '+result['view']['source_sha256']+'\nSaved SVG SHA256: '+hashlib.sha256(svg).hexdigest())
+    integrity.paragraph_format.keep_together=True
+    for run in integrity.runs:run.font.size=Pt(8)
     doc.core_properties.created = doc.core_properties.modified = datetime(2000, 1, 1)
     doc.core_properties.author = 'Sustainable Catalyst'
     output = BytesIO(); doc.save(output)

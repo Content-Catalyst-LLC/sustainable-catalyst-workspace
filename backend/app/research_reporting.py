@@ -30,7 +30,8 @@ from .lab_figure_reporting_v3842 import Figure, Scene, _result, _svg
 from .reporting_composition import Binding, Composition, compose, resolve_binding
 from .reporting_heatmaps import render_heatmap
 from .reporting_workbench_bridge import adapt_workbench_handoff
-from .reporting_scientific_handoff import ScientificHandoff, import_workbench_figure
+from .reporting_scientific_handoff import ScientificHandoff, import_workbench_figure, WorkbenchConnection, workbench_catalog
+from .reporting_composer_figures import adapt_composer_figure
 
 SCHEMA = 'sc-research-visual-asset/1.0'
 LAB_REVISION = 'sc-lab-4d-computational-workspace-revision/0.153.0'
@@ -45,6 +46,10 @@ router = APIRouter(prefix='/v1/private-research/reporting-studio',
 @router.post('/projects/{project_id}/workbench-figures',status_code=201)
 def import_scientific_figure(project_id:str,body:ScientificHandoff,request:Request):
     return import_workbench_figure(project_id,body,request)
+
+@router.post('/projects/{project_id}/workbench-catalog')
+def connected_workbench_figures(project_id:str,body:WorkbenchConnection,request:Request):
+    return workbench_catalog(project_id,body,request)
 
 class Strict(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -98,6 +103,8 @@ def _source(db, subject, project_id, ref):
 def _adapt(obj, ref):
     """Reuse existing renderers; no normalization is written back to source."""
     try:
+        if obj.get('schema') == 'sc-lab-source-bound-scientific-figure/1.0':
+            return adapt_composer_figure(obj)
         if isinstance(obj.get('manifest'), dict) and obj['manifest'].get('schema') == 'sc-workbench-report-figure-handoff/1.0':
             return adapt_workbench_handoff(obj)
         if obj.get('schema') == 'sc-lab-scientific-visualization/1.0':
@@ -180,7 +187,7 @@ def _view(db, subject, project_id, ref):
                 tick.text = format(i/4,'.2g')
         # Existing renderers have fixed-height legend layouts. Make room for every
         # legend and scientific boundary instead of clipping publication exports.
-        is_workbench = metadata['render_type'] == 'workbench-graph'
+        is_workbench = metadata['render_type'] in {'workbench-graph','scientific-composer'}
         source_box = tree.attrib.get('viewBox', '').split()
         if is_workbench and len(source_box) != 4:
             raise HTTPException(422, 'Workbench SVG viewBox required.')
@@ -323,8 +330,7 @@ def export_pdf(project_id: str, revision: int, report_id: str, request: Request)
 def export_csv(project_id: str, revision: int, report_id: str, request: Request):
     from .reporting_scientific_exports import csv_bytes
     result = json.loads(open_report(project_id, revision, report_id, request).body)
-    if (result['view']['source']['render_type'] != 'heatmap'
-            or not result['view']['source']['source_provenance'].get('cells')):
+    if (result['view']['source']['render_type'] not in {'heatmap','scientific-composer'}):
         raise HTTPException(422, 'CSV export requires a heatmap revision that preserves source cells.')
     return Response(csv_bytes(result['view']['source']), media_type='text/csv', headers={**HEADERS,
         'Content-Disposition':f'attachment; filename="{report_id}.csv"',
@@ -336,7 +342,7 @@ def export_docx(project_id: str, revision: int, report_id: str, request: Request
     from .reporting_scientific_exports import docx_bytes
     result = json.loads(open_report(project_id, revision, report_id, request).body)
     provenance = result['view']['source']
-    if provenance['render_type'] != 'heatmap' or not provenance['source_provenance'].get('scientific_context'):
+    if provenance['render_type'] not in {'heatmap','scientific-composer'}:
         raise HTTPException(422, 'Scientific DOCX export requires a heatmap with declared context and uncertainty.')
     subject = _subject(request)
     with session_scope() as db:
