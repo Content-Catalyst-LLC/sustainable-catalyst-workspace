@@ -36,6 +36,8 @@ jobs:
           python -m pytest -q
           tests/test_research_reporting.py
           tests/test_sc_rvf_01_heatmap.py
+          tests/test_scientific_composer_reporting.py
+          tests/test_scientific_handoff.py
           tests/test_uvr_0139_workbench_reporting.py
           tests/test_wxr_private_projects.py
           tests/test_existing_erw_identity_bridge.py
