@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     session_issuer: str = "sustainable-catalyst-workspace"
     session_audience: str = "workspace.sustainablecatalyst.com"
     session_ttl_seconds: int = 28800
+    # Separate secret for gated Research-to-Workspace introspection; never browser-facing.
+    research_introspection_token: str = ""
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False
 
