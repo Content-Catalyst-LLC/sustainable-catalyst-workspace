@@ -34,3 +34,9 @@ The existing backend authority is `backend/app/session_auth.py`; the current def
 - Implemented gated `decode_session_token` revocation checks and gated `DELETE /v1/session` same-origin enforcement + transactional revocation before clearing a browser cookie.
 - Private introspection explicitly returns 503 while global revocation enforcement is disabled; router remains unmounted regardless.
 - Added `backend/tests/test_rhprod05_logout_replay.py` with mocked isolated database cases. No test run or PostgreSQL acceptance has been performed by this implementation turn.
+
+## Consolidated isolated security acceptance (2026-11-05)
+
+**PASS — GitHub Actions run 42123812986** at commit `1a09e7e279ddc45ed874fae15950bb0e63f59cd4` successfully ran the single `.github/workflows/rh-prod-05-1-isolated-security.yml` job. It installed isolated test dependencies, compiled changed modules, executed legacy plus new authentication/regression suites, applied migration 051 to a disposable PostgreSQL 16 CI service, tested original cookie rejection following logout and acceptance of a newly issued cookie, and asserted the local-only test DB target. Job steps all succeeded.
+
+**Still HOLD for deployment:** introspection route remains unmounted and no production credentials, service networks, revocation migration, or real-account staging were changed. Broader Workspace regression suite, verified end-to-end real-account staging, owner map, private transport, and populated recovery remain outstanding. CI success is not production security certification.
