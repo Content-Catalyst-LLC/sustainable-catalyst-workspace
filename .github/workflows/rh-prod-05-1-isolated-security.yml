@@ -13,6 +13,8 @@ on:
       - 'backend/migrations/051_workspace_session_revocation.sql'
       - 'backend/tests/test_rhprod05_*.py'
       - 'backend/tests/test_standalone_auth_session_foundation_v3710.py'
+      - 'scripts/rhprod05_compare_pytest_junit.py'
+      - 'scripts/tests/test_rhprod05_compare_pytest_junit.py'
       - '.github/workflows/rh-prod-05-1-isolated-security.yml'
   workflow_dispatch:
 
@@ -63,6 +65,9 @@ jobs:
             backend/tests/test_rhprod05_introspection_auth.py \
             backend/tests/test_rhprod05_logout_replay.py \
             backend/tests/test_rhprod05_postgres_acceptance.py
+      - name: Test baseline/candidate regression classifier
+        run: |
+          python -m unittest discover -s scripts/tests -p 'test_rhprod05_compare_pytest_junit.py' -v
       - name: Verify isolated database is the only test target
         run: |
           python - <<'PY'
