@@ -6,6 +6,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from app import session_auth,config,research_session_introspection as service
 from app.research_introspection_entry import app
+from app.research_bridge_proof import request_proof, verify_response
+
+
+def signed_request(token,project_id=None):
+    payload={'schema_version':'rh-prod-05.1/1.0','session_token':token,'project_id':project_id}
+    nonce='c'*64  # Fixed synthetic nonce only in fixture; real Research uses secrets.token_hex.
+    return payload,{'X-SC-Request-Nonce':nonce,'X-SC-Request-Proof':request_proof('s'*64,nonce,payload)}
+
 
 @pytest.fixture
 def authority(monkeypatch,tmp_path):
@@ -25,27 +33,33 @@ def authority(monkeypatch,tmp_path):
 
 def test_project_membership_is_authoritative_and_owner_scoped(authority):
     client,token,engine=authority
-    headers={'Authorization':'Bearer '+'s'*64}
-    good=client.post('/internal/v1/workspace/session/introspect',headers=headers,json={'session_token':token,'project_id':'a'})
+    payload,headers=signed_request(token,'a')
+    good=client.post('/internal/v1/workspace/session/introspect',headers=headers,json=payload)
     assert good.status_code==200
+    assert verify_response('s'*64,headers['X-SC-Request-Nonce'],good.json(),good.headers.get('X-SC-Response-Proof'))
     assert good.json()['authorized_projects']==['a']
     assert 'owner_scope' not in good.json()
-    bad=client.post('/internal/v1/workspace/session/introspect',headers=headers,json={'session_token':token,'project_id':'b'})
+    bad_payload,bad_headers=signed_request(token,'b')
+    bad=client.post('/internal/v1/workspace/session/introspect',headers=bad_headers,json=bad_payload)
     assert bad.status_code==404
     assert bad.headers['cache-control']=='no-store'
-    assert client.post('/internal/v1/workspace/session/introspect',headers=headers,json={'session_token':token,'owner_scope':'owner-b'}).status_code==422
+    assert client.post('/internal/v1/workspace/session/introspect',headers=headers,json=dict(payload,owner_scope='owner-b')).status_code==422
+    # Grant replacement cannot be hidden behind a valid proof for the original request.
+    assert client.post('/internal/v1/workspace/session/introspect',headers=headers,json=dict(payload,project_id='b')).status_code==401
 
 
 def test_revocation_and_credentials_fail_closed(authority):
     client,token,engine=authority
     path='/internal/v1/workspace/session/introspect'
     assert client.post(path,json={'session_token':token}).status_code==401
-    assert client.post(path,headers={'Authorization':'Bearer '+'x'*64},json={'session_token':token}).status_code==401
+    valid,h=signed_request(token)
+    assert client.post(path,headers={'X-SC-Request-Nonce':h['X-SC-Request-Nonce'],
+                                     'X-SC-Request-Proof':'0'*64},json=valid).status_code==401
     from app.session_revocation import revoke_session
     import time
     with Session(engine) as s:
         revoke_session(s,token,subject='owner-a',expires_at=int(time.time())+600);s.commit()
-    assert client.post(path,headers={'Authorization':'Bearer '+'s'*64},json={'session_token':token}).status_code==401
+    assert client.post(path,headers=h,json=valid).status_code==401
 
 
 def test_private_entry_has_no_public_surface_and_bounded_body(authority):
