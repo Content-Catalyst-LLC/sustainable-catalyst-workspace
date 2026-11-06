@@ -28,7 +28,7 @@ jobs:
         shell: bash
         run: |
           owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
-          echo "name=ghcr.io/${owner/sustainable-catalyst-workspace-research-introspection" >> "$GITHUB_OUTPUT"
+          echo "name=ghcr.io/${owner}/sustainable-catalyst-workspace-research-introspection" >> "$GITHUB_OUTPUT"
       - name: Authenticate private registry (push only)
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
