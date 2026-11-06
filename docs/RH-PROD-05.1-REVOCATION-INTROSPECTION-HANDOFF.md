@@ -40,3 +40,39 @@ The existing backend authority is `backend/app/session_auth.py`; the current def
 **PASS — GitHub Actions run 42123812986** at commit `1a09e7e279ddc45ed874fae15950bb0e63f59cd4` successfully ran the single `.github/workflows/rh-prod-05-1-isolated-security.yml` job. It installed isolated test dependencies, compiled changed modules, executed legacy plus new authentication/regression suites, applied migration 051 to a disposable PostgreSQL 16 CI service, tested original cookie rejection following logout and acceptance of a newly issued cookie, and asserted the local-only test DB target. Job steps all succeeded.
 
 **Still HOLD for deployment:** introspection route remains unmounted and no production credentials, service networks, revocation migration, or real-account staging were changed. Broader Workspace regression suite, verified end-to-end real-account staging, owner map, private transport, and populated recovery remain outstanding. CI success is not production security certification.
+
+## Updated private service proof and credential isolation (2026-11-05)
+
+This section supersedes the earlier draft bearer-credential transport instructions:
+
+- The separately started `app.research_introspection_entry:app` accepts only
+  `POST /internal/v1/workspace/session/introspect` on a dedicated private
+  service network; it is **not** mounted on public `app.main`.
+- The caller supplies `X-SC-Request-Nonce` (64 lowercase hex digits) and
+  `X-SC-Request-Proof` (canonical-JSON HMAC-SHA256 with domain-separated
+  request tag). The shared proof key is never sent as a bearer or query value.
+- Workspace checks proof, signed cookie validity and durable revocation, then
+  loads authorized project IDs by `(user_key,project_id)` from persisted
+  `workspace_project_heads`. It signs the full response in
+  `X-SC-Response-Proof` with the nonce and a separate response HMAC domain.
+  Research checks this proof before trusting ownership grants.
+- `backend/Dockerfile` includes the `migrations` folder for the separately
+  authorized migration runner. The private ASGI lifespan refuses startup
+  without enforced revocation, migration/schema verification, and an explicit
+  original Workspace session signing key. A generic Workspace service token
+  is **not** an acceptable private cookie-signing fallback.
+- Optional `SC_WORKSPACE_DATABASE_URL_FILE` and
+  `SC_WORKSPACE_SESSION_SIGNING_SECRET_FILE` settings allow a separately
+  provisioned SELECT-only authority DB credential and the **existing** cookie
+  signer to be supplied via protected runtime files. Do not silently rotate
+  the live cookie signer.
+- Identical synthetic HMAC known-vector tests in both repositories guard
+  against protocol drift. Workspace's isolated security CI passes.
+- The companion Research draft now has an explicit immutable source
+  project binding and migration `0007_reader_isolation` for restricted
+  anonymous SQL-reader policies; see its private bridge implementation doc.
+
+**No activation was performed.** The specific deployed Workspace session
+signer/role/network, real-account browser acceptance, populated backup and
+rollback, and complete scientific regressions remain release blockers.
+Existing Wexford and Metrics records are not imported or modified.
