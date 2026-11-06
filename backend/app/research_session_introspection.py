@@ -6,7 +6,6 @@ real-account security acceptance are verified.
 """
 from __future__ import annotations
 
-import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Header, HTTPException, Response
@@ -19,6 +18,7 @@ from .models import ProjectHead
 from .db import session_scope
 from .session_auth import decode_session_token
 from .session_revocation import SessionVerificationUnavailable, validate_session_for_service
+from .research_bridge_proof import verify_request, response_proof
 
 router = APIRouter(prefix="/internal/v1/workspace", include_in_schema=False)
 
@@ -30,10 +30,12 @@ class IntrospectionRequest(BaseModel):
     session_token: str = Field(min_length=10, max_length=8192)
 
 
-def verify_service_credential(authorization: str | None, *, expected: str) -> None:
+def verify_service_proof(nonce: str | None, proof: str | None,
+                         payload: dict, *, expected: str) -> None:
+    """Authenticate a fresh, request-bound service proof; never transmit key."""
     if not expected or len(expected) < 32:
         raise HTTPException(status_code=503, detail="Service introspection not configured")
-    if not authorization or not secrets.compare_digest(authorization, "Bearer " + expected):
+    if not verify_request(expected, nonce, payload, proof):
         raise HTTPException(status_code=401, detail="Service authentication required")
 
 
@@ -41,7 +43,8 @@ def verify_service_credential(authorization: str | None, *, expected: str) -> No
 def introspect_workspace_session(
     payload: IntrospectionRequest,
     response: Response,
-    authorization: str | None = Header(default=None),
+    x_sc_request_nonce: str | None = Header(default=None),
+    x_sc_request_proof: str | None = Header(default=None),
 ):
     # Independent Research service credential. Never reuse browser login,
     # accept X-SC-User-ID, or fall back to Workspace's legacy service token.
@@ -54,7 +57,8 @@ def introspect_workspace_session(
         raise HTTPException(status_code=503, detail="Service introspection unavailable") from None
     if expected and expected == getattr(settings,"service_token",""):
         raise HTTPException(status_code=503, detail="Dedicated service credential required")
-    verify_service_credential(authorization, expected=expected)
+    verify_service_proof(x_sc_request_nonce, x_sc_request_proof,
+                         payload.model_dump(mode='json'), expected=expected)
     # Never report an active session while the Workspace's ordinary
     # authorization paths still accept revoked cookies.
     if not get_settings().session_revocation_enforced:
@@ -88,7 +92,7 @@ def introspect_workspace_session(
     response.headers["Pragma"] = "no-cache"
     now = datetime.now(timezone.utc)
     settings = get_settings()
-    return {
+    result = {
         "schema": "sc-workspace-research-session-introspection/1.0",
         "issuer": settings.session_issuer,
         "audience": "research-private",
@@ -104,3 +108,5 @@ def introspect_workspace_session(
         # Owner scope is intentionally OMITTED. Research must resolve an
         # authorized server-side owner map; subject alone is not permission.
     }
+    response.headers["X-SC-Response-Proof"] = response_proof(expected, x_sc_request_nonce, result)
+    return result
