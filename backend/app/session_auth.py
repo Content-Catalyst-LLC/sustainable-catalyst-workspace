@@ -7,6 +7,7 @@ import json
 import re
 import secrets
 import time
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -31,6 +32,13 @@ def _b64d(value: str) -> bytes:
 
 def _secret() -> str:
     settings = get_settings()
+    secret_file = getattr(settings, "session_signing_secret_file", "").strip()
+    if secret_file:
+        try:
+            value = Path(secret_file).read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""  # A configured but unavailable key never falls back.
+        return value if len(value) >= 32 else ""
     explicit = (settings.session_signing_secret or "").strip()
     return explicit or settings.service_token.strip()
 
