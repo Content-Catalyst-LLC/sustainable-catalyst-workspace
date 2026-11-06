@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     service_version: str = "3.83.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
+    database_url_file: str = ""  # Optional least-privilege authority DSN Docker secret path.
     service_token: str = ""
     session_signing_secret: str = ""
     session_signing_secret_file: str = ""  # Optional shared Workspace cookie-signing key, Docker secret path.
