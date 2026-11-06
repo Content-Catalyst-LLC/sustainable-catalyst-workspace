@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
     service_token: str = ""
     session_signing_secret: str = ""
+    session_signing_secret_file: str = ""  # Optional shared Workspace cookie-signing key, Docker secret path.
     session_cookie_name: str = "sc_workspace_session"
     session_issuer: str = "sustainable-catalyst-workspace"
     session_audience: str = "workspace.sustainablecatalyst.com"
