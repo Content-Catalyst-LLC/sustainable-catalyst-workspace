@@ -8,8 +8,19 @@ from .migrate_security import require_schema
 
 @asynccontextmanager
 async def lifespan(app):
-    if not get_settings().session_revocation_enforced:
+    settings = get_settings()
+    if not settings.session_revocation_enforced:
         raise RuntimeError("Private introspection requires enforced revocation")
+    # The private service must validate the original Workspace cookie with
+    # the original dedicated signing key; never bootstrap an identity from
+    # a generic service token fallback.
+    from pathlib import Path
+    from .session_auth import _secret
+    if not (getattr(settings, "session_signing_secret", "").strip() or
+            getattr(settings, "session_signing_secret_file", "").strip()):
+        raise RuntimeError("Private introspection requires the Workspace signing key")
+    if len(_secret()) < 32:
+        raise RuntimeError("Private introspection signing key unavailable")
     require_schema()
     yield
 
