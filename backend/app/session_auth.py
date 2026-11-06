@@ -86,6 +86,8 @@ def issue_session_token(user_key: str, display_name: str = "") -> str:
 
 def decode_session_token(token: str) -> dict[str, Any]:
     settings = get_settings()
+    if not isinstance(token, str) or not 10 <= len(token) <= 8192:
+        raise ValueError("invalid-session-size")
     secret = _secret()
     if not secret:
         raise ValueError("session-secret-unavailable")
@@ -97,6 +99,8 @@ def decode_session_token(token: str) -> dict[str, Any]:
     if not secrets.compare_digest(supplied, expected):
         raise ValueError("invalid-session-signature")
     payload = json.loads(_b64d(encoded).decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("invalid-session-payload")
     if payload.get("schema") != SESSION_SCHEMA:
         raise ValueError("invalid-session-schema")
     if payload.get("iss") != settings.session_issuer or payload.get("aud") != settings.session_audience:

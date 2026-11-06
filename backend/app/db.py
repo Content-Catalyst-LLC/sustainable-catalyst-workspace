@@ -29,6 +29,9 @@ def session_scope():
 
 def initialize_schema() -> None:
     Base.metadata.create_all(bind=get_engine())
+    if get_settings().session_revocation_enforced:
+        from .migrate_security import require_schema
+        require_schema(get_engine())
 
 
 def ping_database() -> None:

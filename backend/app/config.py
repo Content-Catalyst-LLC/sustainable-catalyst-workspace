@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = 28800
     # Separate secret for gated Research-to-Workspace introspection; never browser-facing.
     research_introspection_token: str = ""
+    research_introspection_token_file: str = ""
     session_revocation_enforced: bool = False  # Enable only after migration + staging acceptance.
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False

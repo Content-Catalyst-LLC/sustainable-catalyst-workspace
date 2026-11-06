@@ -74,3 +74,12 @@ def test_real_postgres_revocation_survives_new_session(database):
             "SELECT count(*) FROM workspace_revoked_sessions WHERE user_key=:sub"
         ), {"sub": "staging-synthetic-user-2"}).scalar_one() == 1
     assert session_auth.get_session(req)["authenticated"] is False
+
+
+def test_additive_migration_runner_is_idempotent(database):
+    from app.migrate_security import migrate, require_schema
+    migrate(database)
+    migrate(database)
+    require_schema(database)
+    with database.connect() as c:
+        assert c.scalar(text("SELECT count(*) FROM workspace_security_migrations WHERE migration_id='051_workspace_session_revocation'")) == 1
