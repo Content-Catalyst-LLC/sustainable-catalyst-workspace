@@ -9,12 +9,18 @@ class Settings(BaseSettings):
     service_version: str = "3.83.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
+    database_url_file: str = ""  # Optional least-privilege authority DSN Docker secret path.
     service_token: str = ""
     session_signing_secret: str = ""
+    session_signing_secret_file: str = ""  # Optional shared Workspace cookie-signing key, Docker secret path.
     session_cookie_name: str = "sc_workspace_session"
     session_issuer: str = "sustainable-catalyst-workspace"
     session_audience: str = "workspace.sustainablecatalyst.com"
     session_ttl_seconds: int = 28800
+    # Separate secret for gated Research-to-Workspace introspection; never browser-facing.
+    research_introspection_token: str = ""
+    research_introspection_token_file: str = ""
+    session_revocation_enforced: bool = False  # Enable only after migration + staging acceptance.
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False
 

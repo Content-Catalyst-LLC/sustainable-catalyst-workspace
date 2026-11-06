@@ -4,14 +4,18 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import time
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response, status
 
 from .config import get_settings
+from .db import session_scope
+from .session_revocation import SessionVerificationUnavailable, is_revoked, revoke_session
 
 SESSION_SCHEMA = "sc-workspace-standalone-session/1.0"
 SESSION_PROFILE_SCHEMA = "sc-workspace-standalone-session-profile/1.0"
@@ -28,6 +32,13 @@ def _b64d(value: str) -> bytes:
 
 def _secret() -> str:
     settings = get_settings()
+    secret_file = getattr(settings, "session_signing_secret_file", "").strip()
+    if secret_file:
+        try:
+            value = Path(secret_file).read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""  # A configured but unavailable key never falls back.
+        return value if len(value) >= 32 else ""
     explicit = (settings.session_signing_secret or "").strip()
     return explicit or settings.service_token.strip()
 
@@ -83,6 +94,8 @@ def issue_session_token(user_key: str, display_name: str = "") -> str:
 
 def decode_session_token(token: str) -> dict[str, Any]:
     settings = get_settings()
+    if not isinstance(token, str) or not 10 <= len(token) <= 8192:
+        raise ValueError("invalid-session-size")
     secret = _secret()
     if not secret:
         raise ValueError("session-secret-unavailable")
@@ -94,6 +107,8 @@ def decode_session_token(token: str) -> dict[str, Any]:
     if not secrets.compare_digest(supplied, expected):
         raise ValueError("invalid-session-signature")
     payload = json.loads(_b64d(encoded).decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("invalid-session-payload")
     if payload.get("schema") != SESSION_SCHEMA:
         raise ValueError("invalid-session-schema")
     if payload.get("iss") != settings.session_issuer or payload.get("aud") != settings.session_audience:
@@ -103,6 +118,32 @@ def decode_session_token(token: str) -> dict[str, Any]:
     user_key = str(payload.get("sub") or "").strip()
     if not user_key or len(user_key) > 128:
         raise ValueError("invalid-session-subject")
+    # The signed token is necessary but not sufficient once revocation is enabled.
+    # Every authorization path, including service-identity fallback, must consult
+    # this authoritative store instead of accepting a copied signed cookie.
+    if getattr(settings, 'session_revocation_enforced', False):
+        # Both a bounded issued-at and unique server-issued session ID are
+        # required for the revocable-token profile. Legacy malformed claims
+        # must not pass into the private identity bridge.
+        try:
+            issued = int(payload.get("iat"))
+            session_id = str(payload.get("jti") or "")
+            if issued <= 0 or issued > int(time.time()) + 5:
+                raise ValueError("invalid-session-issued-at")
+            if not re.fullmatch(r"[0-9a-f]{32}", session_id):
+                raise ValueError("invalid-session-identifier")
+        except (TypeError, ValueError):
+            raise ValueError("invalid-session-claims") from None
+        try:
+            with session_scope() as db:
+                if is_revoked(db, token):
+                    raise ValueError("revoked-session")
+        except SessionVerificationUnavailable:
+            raise
+        except Exception as exc:
+            if isinstance(exc, ValueError):
+                raise
+            raise SessionVerificationUnavailable("Session verification unavailable") from None
     return payload
 
 def session_payload_from_request(request: Request) -> dict[str, Any] | None:
@@ -111,6 +152,10 @@ def session_payload_from_request(request: Request) -> dict[str, Any] | None:
         return None
     try:
         return decode_session_token(token)
+    except SessionVerificationUnavailable:
+        # No fallback to anonymous or weaker service identity when a cookie
+        # was presented but revocation storage is offline.
+        raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
     except Exception:
         return None
 
@@ -182,6 +227,29 @@ def exchange_session(
     }
 
 @router.delete("")
-def clear_session(response: Response):
+def clear_session(request: Request, response: Response):
+    # With revocation enabled, logout requires a same-origin browser request.
+    # Deleting a cookie does NOT revoke a token without the durable insert.
+    if getattr(get_settings(), 'session_revocation_enforced', False):
+        origin = request.headers.get("origin", "")
+        allowed = {v.strip() for v in get_settings().cors_allowed_origins.split(",") if v.strip()}
+        if not origin or origin not in allowed:
+            raise HTTPException(status_code=403, detail="Logout origin not authorized")
+        token = request.cookies.get(session_cookie_name(), "")
+        if token:
+            try:
+                claims = decode_session_token(token)
+            except SessionVerificationUnavailable:
+                raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
+            except ValueError:
+                # Bad/expired cookie has no authenticated claims to revoke.
+                claims = None
+            if claims is not None:
+                try:
+                    with session_scope() as db:
+                        revoke_session(db, token, subject=claims["sub"], expires_at=int(claims["exp"]))
+                        db.commit()
+                except Exception:
+                    raise HTTPException(status_code=503, detail="Workspace session revocation unavailable") from None
     response.delete_cookie(key=session_cookie_name(), path="/", secure=True, httponly=True, samesite="lax")
     return {"schema": SESSION_SCHEMA, "version": "3.71.0", "authenticated": False, "sessionCleared": True}

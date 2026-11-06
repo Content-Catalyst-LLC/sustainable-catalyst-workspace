@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -9,8 +10,14 @@ from .models import Base
 @lru_cache
 def get_engine():
     settings = get_settings()
+    database_url = settings.database_url
+    secret_file = getattr(settings, "database_url_file", "").strip()
+    if secret_file:
+        database_url = Path(secret_file).read_text(encoding="utf-8").strip()
+        if not database_url.startswith("postgresql+psycopg://"):
+            raise RuntimeError("Private Workspace database credential invalid")
     return create_engine(
-        settings.database_url,
+        database_url,
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
@@ -29,6 +36,9 @@ def session_scope():
 
 def initialize_schema() -> None:
     Base.metadata.create_all(bind=get_engine())
+    if get_settings().session_revocation_enforced:
+        from .migrate_security import require_schema
+        require_schema(get_engine())
 
 
 def ping_database() -> None:

@@ -1,0 +1,66 @@
+name: RH-PROD-05.1 immutable Workspace authority image
+on:
+  push:
+    branches: [feature/rh-prod-05-1-session-revocation-introspection]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/rh-prod-05-1-candidate-image.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/rh-prod-05-1-candidate-image.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Construct private immutable image name
+        id: image-name
+        shell: bash
+        run: |
+          owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "name=ghcr.io/${owner}/sustainable-catalyst-workspace-research-introspection" >> "$GITHUB_OUTPUT"
+      - name: Authenticate private registry (push only)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build source-authority candidate
+        uses: docker/build-push-action@v6
+        id: build
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.image-name.outputs.name }}:sha-${{ github.sha }}
+          provenance: mode=min
+      - name: Store digest-pinned candidate reference
+        if: github.event_name != 'pull_request'
+        shell: bash
+        env:
+          IMAGE: ${{ steps.image-name.outputs.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          case "$DIGEST" in sha256:*) ;; *) exit 1 ;; esac
+          printf '%s@%s\n' "$IMAGE" "$DIGEST" > workspace-introspection.image
+          echo "Candidate source SHA: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Private digest-pinned candidate: %s@%s\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+          echo 'IMAGE PUBLICATION ONLY. No Contabo deployment, shared database migration, or production route change.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload immutable authority image reference
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rh-prod-05-1-workspace-introspection-digest
+          path: workspace-introspection.image
+          retention-days: 14
