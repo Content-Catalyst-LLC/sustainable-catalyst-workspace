@@ -68,3 +68,25 @@ def test_private_entry_has_no_public_surface_and_bounded_body(authority):
     assert client.get('/v1/session').status_code==404
     assert client.get('/internal/v1/workspace/session/introspect').status_code==405
     assert client.post('/internal/v1/workspace/session/introspect',content='x'*13000,headers={'content-type':'application/json'}).status_code==413
+
+
+def test_rhpub01a_large_portfolio_uses_exact_authoritative_project_scope(authority):
+    """A selected publication parent project works without enumerating >100 grants."""
+    client,token,engine=authority
+    with Session(engine) as s:
+        s.execute(text("INSERT INTO workspace_project_heads(user_key,project_id) VALUES "+
+                       ",".join("('owner-a','extra-"+str(n)+"')" for n in range(115))))
+        s.commit()
+    whole,h=signed_request(token)
+    bounded=client.post('/internal/v1/workspace/session/introspect',headers=h,json=whole)
+    assert bounded.status_code==409
+    scoped,scoped_headers=signed_request(token,'a')
+    good=client.post('/internal/v1/workspace/session/introspect',
+                     headers=scoped_headers,json=scoped)
+    assert good.status_code==200
+    assert good.json()['authorized_projects']==['a']
+    assert verify_response('s'*64,scoped_headers['X-SC-Request-Nonce'],
+                           good.json(),good.headers['X-SC-Response-Proof'])
+    other,other_headers=signed_request(token,'b')
+    assert client.post('/internal/v1/workspace/session/introspect',
+                       headers=other_headers,json=other).status_code==404
