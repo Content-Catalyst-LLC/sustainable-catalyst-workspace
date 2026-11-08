@@ -66,7 +66,8 @@ jobs:
             backend/tests/test_rhprod05_session_revocation.py \
             backend/tests/test_rhprod05_introspection_auth.py \
             backend/tests/test_rhprod05_logout_replay.py \
-            backend/tests/test_rhprod05_postgres_acceptance.py
+            backend/tests/test_rhprod05_postgres_acceptance.py \
+            backend/tests/test_rhprod05_private_activation.py
       - name: Test baseline/candidate regression classifier
         run: |
           python -m unittest discover -s scripts/tests -p 'test_rhprod05_*.py' -v
