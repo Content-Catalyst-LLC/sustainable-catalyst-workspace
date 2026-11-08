@@ -1,0 +1,26 @@
+name: WS-UX-01 Project Desk candidate
+on:
+  push:
+    branches:
+      - feature/ws-project-desk-unified-research
+  pull_request:
+    paths:
+      - standalone/project-desk.js
+      - standalone/project-desk.css
+      - standalone/index.html
+      - tests/test_project_desk_wsux01.cjs
+      - .github/workflows/wsux01-project-desk.yml
+jobs:
+  standalone-project-desk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: node --check standalone/project-desk.js
+      - name: Project Desk source and state tests
+        run: node --test tests/test_project_desk_wsux01.cjs
