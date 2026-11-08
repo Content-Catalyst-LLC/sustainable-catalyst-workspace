@@ -40,7 +40,14 @@ def _secret() -> str:
             return ""  # A configured but unavailable key never falls back.
         return value if len(value) >= 32 else ""
     explicit = (settings.session_signing_secret or "").strip()
-    return explicit or settings.service_token.strip()
+    if explicit:
+        return explicit
+    # After durable revocation is enabled, the general legacy service token
+    # must never become the authority for issuing or validating browser sessions.
+    # Fail closed until the existing dedicated cookie signer is provisioned.
+    if getattr(settings, "session_revocation_enforced", False):
+        return ""
+    return settings.service_token.strip()
 
 def session_cookie_name() -> str:
     settings = get_settings()
@@ -48,7 +55,8 @@ def session_cookie_name() -> str:
 
 def session_profile() -> dict[str, Any]:
     settings = get_settings()
-    explicit_secret = bool((settings.session_signing_secret or "").strip())
+    explicit_secret = bool((settings.session_signing_secret or "").strip() or
+                           getattr(settings, "session_signing_secret_file", "").strip())
     return {
         "schema": SESSION_PROFILE_SCHEMA,
         "version": "3.71.0",
@@ -65,7 +73,10 @@ def session_profile() -> dict[str, Any]:
         "legacyWordPressServiceIdentityCompatible": True,
         "standaloneSessionIdentity": True,
         "explicitSessionSigningSecretConfigured": explicit_secret,
-        "serviceTokenFallbackActive": bool(not explicit_secret and settings.service_token.strip()),
+        "serviceTokenFallbackActive": bool(
+            not explicit_secret and not getattr(settings, "session_revocation_enforced", False)
+            and settings.service_token.strip()
+        ),
         "globalIdentityProviderConfigured": False,
         "automaticAccountCreation": False,
         "arbitraryCodeExecution": False,
