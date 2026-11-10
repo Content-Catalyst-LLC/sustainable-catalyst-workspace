@@ -1,0 +1,16 @@
+# Apply with the existing production Compose configuration and identity override.
+# The image must contain app.wxr_recovery_review, mounted exactly once in main.
+# Provision the separately approved grant inside the existing /data volume (0600).
+services:
+  sc-workspace-backend:
+    image: ${WXR_REVIEW_IMAGE:?Set the reviewed image tag}
+    environment:
+      WXR_REVIEW_GRANT_FILE: /data/wxr-review/grant.json
+      WXR_REVIEW_CATALOG_FILE: /run/wxr-recovery/consolidated-catalog.json
+    volumes:
+      - type: bind
+        source: ${WXR_REVIEW_CATALOG_HOST_PATH:?Set the verified private catalog path}
+        target: /run/wxr-recovery/consolidated-catalog.json
+        read_only: true
+        bind:
+          create_host_path: false
