@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text
+from sqlalchemy import DDL, BigInteger, DateTime, Integer, String, Text, event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -2800,3 +2800,60 @@ class ResearchExportWithdrawal(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
     notice_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     withdrawn_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ResearchApprovalGrant(Base):
+    """SC-ED-01: a project owner grants another Workspace user an editor or per-dimension approver role."""
+    __tablename__ = "workspace_research_approval_grants"
+
+    grant_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    owner_user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    grantee_user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(48), nullable=False)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    granted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ResearchApprovalRequest(Base):
+    """SC-ED-01: one persisted human-governance approval request and, once decided, its signed record."""
+    __tablename__ = "workspace_research_approval_requests"
+
+    approval_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    owner_user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    requester_user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    requester_auth: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    dimension: Mapped[str] = mapped_column(String(32), nullable=False)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject_ref: Mapped[str] = mapped_column(String(320), nullable=False, index=True)
+    subject_title: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    approval_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    decision_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    record_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    record_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    decider_user_key: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    decider_auth: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    grant_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# The SQL migration installs the same trigger for databases managed by migrations; deployments that
+# initialise with create_all get it when the table is created.
+event.listen(ResearchApprovalRequest.__table__, "after_create", DDL("""
+CREATE OR REPLACE FUNCTION workspace_research_approval_final() RETURNS trigger AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        RAISE EXCEPTION 'research approval requests are append-only';
+    END IF;
+    IF OLD.status <> 'pending' THEN
+        RAISE EXCEPTION 'research approval request %% is %%, and final', OLD.approval_id, OLD.status;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER workspace_research_approval_final BEFORE UPDATE OR DELETE ON workspace_research_approval_requests
+    FOR EACH ROW EXECUTE FUNCTION workspace_research_approval_final();
+""").execute_if(dialect="postgresql"))

@@ -5000,3 +5000,6 @@ from .notebook_export import router as notebook_export_router
 app.include_router(research_export_router)
 # SC-NB-01: portable exports of immutable notebook revisions (owner-scoped).
 app.include_router(notebook_export_router)
+# SC-ED-01: authenticated, persisted, signed approvals for Research publication.
+from .research_approvals import router as research_approval_router
+app.include_router(research_approval_router)
