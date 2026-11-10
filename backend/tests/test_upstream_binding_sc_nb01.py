@@ -247,12 +247,16 @@ def test_caller_supplied_intermediates_are_refused(client, monkeypatch):
 
 
 @pg
-def test_undeclared_upstream_is_refused_at_plan_time(client, monkeypatch):
+def test_undeclared_upstream_is_refused_before_execution(client, monkeypatch):
+    # Refused when the notebook is stored (strict cell validation); compile_plan repeats the check
+    # (test_upstream_spec_is_validated_at_plan_time) for revisions stored before validation existed.
     fake_runtimes(monkeypatch)
-    ctx = setup_chain(client, depends=("fit",))
-    r = client.post("/v1/notebook-execution-plans", headers=hdr(ctx.user), json={
-        "schema": "sc-workspace-notebook-execution-plan-request/1.0", "notebookId": ctx.nb_id})
-    assert r.status_code == 400 and r.json()["code"] == "upstream-input-not-declared-dependency"
+    sfx = uuid4().hex[:8]
+    r = client.post("/v1/notebooks", headers=hdr("nb-owner-a"), json={
+        "schema": "sc-workspace-notebook-sync-push/1.0", "sourceNotebookId": f"ub-{sfx}", "sourceProjectId": "nb-proj",
+        "expectedRevision": 0, "operationId": uuid4().hex, "notebook": chain_notebook("ds-1", depends=("fit",))})
+    assert r.status_code == 400 and r.json()["code"] == "invalid-notebook-cell"
+    assert r.json()["path"] == "notebook.cells[2].execution.payload.upstreamInput"
 
 
 @pg
