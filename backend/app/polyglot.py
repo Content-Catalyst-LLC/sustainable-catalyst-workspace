@@ -215,6 +215,13 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
     RuntimeSpec("wasm", "wasm-sandbox-adapter", "server-configured-http", (
         "workspace.polyglot.wasm.invoke",),
         "Server-configured WebAssembly adapter for portable, capability-bounded compute modules."),
+    # SC-SIM-01 G7/G8: Workspace orchestrates and issues the receipt; the calculation stays in its product.
+    RuntimeSpec("workbench", "workbench-calculation-engine", "server-configured-http", (
+        "workspace.workbench.uncertainty-propagation", "workspace.workbench.dynamical-simulation",
+    ), "Governed adapter into existing Workbench uncertainty propagation and dynamical simulation."),
+    RuntimeSpec("decision-studio", "decision-studio-analysis", "server-configured-http", (
+        "workspace.decision-studio.scenario-comparison", "workspace.decision-studio.sensitivity-analysis",
+    ), "Governed adapter into existing Decision Studio scenario comparison and sensitivity analysis; no decision objects change."),
 )
 
 RUNTIME_BY_LANGUAGE = {r.language: r for r in RUNTIMES}
@@ -235,6 +242,8 @@ def _runtime_route(language: str) -> tuple[str, str]:
         "decision": (s.runtime_decision_url, s.runtime_decision_token),
         "reliability": (s.runtime_reliability_url, s.runtime_reliability_token),
         "wasm": (s.runtime_wasm_url, s.runtime_wasm_token),
+        "workbench": (s.runtime_workbench_url, s.runtime_workbench_token),
+        "decision-studio": (s.runtime_decision_studio_url, s.runtime_decision_studio_token),
     }.get(language, ("", ""))
 
 

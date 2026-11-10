@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     runtime_reliability_token: str = ""
     runtime_wasm_url: str = ""
     runtime_wasm_token: str = ""
+    # SC-SIM-01 G7/G8: governed adapters into existing Workbench and Decision Studio calculations.
+    runtime_workbench_url: str = ""
+    runtime_workbench_token: str = ""
+    runtime_decision_studio_url: str = ""
+    runtime_decision_studio_token: str = ""
     polyglot_timeout_seconds: float = 45.0
     polyglot_max_exchange_rows: int = 50000
     polyglot_max_exchange_columns: int = 256
