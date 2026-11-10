@@ -39,6 +39,7 @@ from .config import get_settings
 from .db import session_scope
 from .execution_provenance import run_provenance
 from .input_integrity import VERIFIED as INPUT_VERIFIED
+from .notebook_orchestration import verified_cell_run
 from .models import (
     ExecutionRun, ExecutionRunOutput, PolyglotExecutionReceipt, ResearchExportGrant,
     ResearchExportWithdrawal, ScientificStudyPackage,
@@ -273,6 +274,7 @@ def build_export(db, claims: dict[str, Any]) -> dict[str, Any]:
         "projectId": project_id, "runId": run_id, "exportedAt": now.isoformat(),
         "provenance": provenance, "verification": verification, "resultValues": values,
         "studyPackages": _study_packages(db, user_key, run),
+        "notebookCell": verified_cell_run(db, user_key, run),
         "boundaries": {"artifactBytesIncluded": False, "dispatchPerformed": False,
                        "publicationAuthorityGranted": False, "approvalAuthorityGranted": False},
     }
