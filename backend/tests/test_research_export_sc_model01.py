@@ -81,6 +81,69 @@ def test_declared_result_value_mappings():
     assert "error" in rx.extract_result_values({"kind": "vector", "key": "solution", "names": ["a"]}, j_doc)
 
 
+def _runtime_doc(service_dir: str, op: str, payload: dict) -> dict:
+    """Run a real bounded runtime operation in-process and wrap it in the polyglot envelope."""
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / service_dir / "service.py"
+    spec = importlib.util.spec_from_file_location(f"svc_{service_dir.replace('-', '_')}", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return {"result": {"remote": {"result": mod.execute(op, payload)}}}
+
+
+def test_scalar_path_mapping_on_seeded_monte_carlo():
+    payload = {"seed": 7, "draws": 2000, "terms": [
+        {"name": "a", "coefficient": 2.0, "distribution": {"kind": "normal", "mean": 1.0, "sd": 0.1}}]}
+    doc = _runtime_doc("uncertainty-runtime", "workspace.uncertainty.monte-carlo-weighted-sum", payload)
+    mapping = {"kind": "scalar-paths", "paths": {"mean": "summary.mean", "lower": "interval.lower", "upper": "interval.upper"},
+               "uncertaintyPaths": {"mean": "summary.sd"}, "uncertaintySemantics": "monte-carlo-sample-sd"}
+    out = rx.extract_result_values(mapping, doc)
+    assert set(out["values"]) == {"mean", "lower", "upper"}
+    assert abs(out["values"]["mean"] - 2.0) < 0.05 and out["values"]["lower"] < out["values"]["mean"] < out["values"]["upper"]
+    assert out["uncertainty"] == {"semantics": "monte-carlo-sample-sd", "values": {"mean": doc["result"]["remote"]["result"]["summary"]["sd"]}}
+    # A declared seed makes a replay byte-identical.
+    again = rx.extract_result_values(mapping, _runtime_doc("uncertainty-runtime", "workspace.uncertainty.monte-carlo-weighted-sum", payload))
+    assert again["values"] == out["values"]
+    assert out["stochastic"] == {"seed": 7}
+
+
+def test_scalar_path_mapping_on_bayesian_posterior():
+    doc = _runtime_doc("probability-runtime", "workspace.probability.beta-binomial-update",
+                       {"alpha": 1, "beta": 1, "successes": 7, "trials": 10, "seed": 3, "draws": 1000})
+    out = rx.extract_result_values({"kind": "scalar-paths", "paths": {"posteriorMean": "posterior.mean", "alpha": "posterior.alpha"}}, doc)
+    assert out["values"] == {"posteriorMean": 8 / 12, "alpha": 8.0}
+    assert out["stochastic"] == {"seed": 3}  # conservative: any seeded runtime result is marked
+
+
+def test_deterministic_results_are_not_marked_stochastic():
+    r_doc = {"result": {"remote": {"result": {"coefficients": [{"term": "x", "estimate": 1.0}]}}}}
+    assert "stochastic" not in rx.extract_result_values({"kind": "coefficient-table"}, r_doc)
+    marked = rx.extract_result_values({"kind": "coefficient-table", "stochastic": True}, r_doc)
+    assert marked["stochastic"] == {"seed": None}
+    flagged = {"result": {"remote": {"result": {"seed": True, "solution": [1.0]}}}}
+    assert "stochastic" not in rx.extract_result_values({"kind": "vector", "key": "solution", "names": ["a"]}, flagged)
+
+
+def test_scalar_path_mapping_is_strict():
+    doc = {"result": {"remote": {"result": {"summary": {"mean": 1.0, "flag": True, "rows": [{"v": 2.5}], "nan": float("nan")}}}}}
+    ok = rx.extract_result_values({"kind": "scalar-paths", "paths": {"m": "summary.mean", "v": "summary.rows.0.v"}}, doc)
+    assert ok["values"] == {"m": 1.0, "v": 2.5}
+    for paths in ({"m": "summary.missing"}, {"m": "summary.flag"}, {"m": "summary.nan"}, {"m": "summary.rows.5.v"},
+                  {"m": "summary..mean"}, {"m": "summary.__class__"}, {"m": "a/b"}, {"m": 3}, {}, {"m": ".".join(["x"] * 17)}):
+        out = rx.extract_result_values({"kind": "scalar-paths", "paths": paths}, doc)
+        assert out["values"] == {} and out["error"], paths
+    # One unresolved path fails the whole mapping; there is no silently shorter value set.
+    out = rx.extract_result_values({"kind": "scalar-paths", "paths": {"m": "summary.mean", "x": "summary.missing"}}, doc)
+    assert out["values"] == {} and "'x'" in out["error"]
+    out = rx.extract_result_values({"kind": "scalar-paths", "paths": {"m": "summary.mean"}, "uncertaintyPaths": {"other": "summary.mean"}}, doc)
+    assert out["values"] == {} and "uncertainty" in out["error"]
+    too_many = {f"v{i}": "summary.mean" for i in range(rx.MAX_VALUES + 1)}
+    assert rx.extract_result_values({"kind": "scalar-paths", "paths": too_many}, doc)["error"] == "too many result values"
+    # Paths resolve against the runtime result, not the envelope.
+    assert "error" in rx.extract_result_values({"kind": "scalar-paths", "paths": {"m": "result.remote.result.summary.mean"}}, doc)
+
+
 # ---------------------------------------------------------------------------
 # PostgreSQL integration (real Workspace routes and tables)
 

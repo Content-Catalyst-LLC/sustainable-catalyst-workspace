@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -155,11 +156,59 @@ def _finite(value: Any) -> float | None:
     return value if value == value and abs(value) != float("inf") else None
 
 
+_PATH_SEGMENT = re.compile(r"[A-Za-z0-9_-]{1,64}")
+MAX_PATH_SEGMENTS = 16
+
+
+def _runtime_root(result_doc: Any) -> Any:
+    """The runtime's own result inside the polyglot envelope (``result.remote.result``)."""
+    node = result_doc
+    for key in ("result", "remote", "result"):
+        if not isinstance(node, dict) or key not in node:
+            return result_doc
+        node = node[key]
+    return node
+
+
+def _resolve_path(root: Any, path: Any) -> float | None:
+    if not isinstance(path, str):
+        return None
+    segments = path.split(".")
+    if not 0 < len(segments) <= MAX_PATH_SEGMENTS or not all(_PATH_SEGMENT.fullmatch(s) for s in segments):
+        return None
+    node = root
+    for seg in segments:
+        if isinstance(node, dict) and seg in node:
+            node = node[seg]
+        elif isinstance(node, list) and seg.isdigit() and int(seg) < len(node):
+            node = node[int(seg)]
+        else:
+            return None
+    return _finite(node)
+
+
+def _scalar_paths(paths: Any, root: Any) -> dict[str, float] | str:
+    if not isinstance(paths, dict) or not paths:
+        return "scalar-paths requires a non-empty name-to-path mapping"
+    if len(paths) > MAX_VALUES:
+        return "too many result values"
+    out: dict[str, float] = {}
+    for name, path in paths.items():
+        v = _resolve_path(root, path)
+        if v is None:
+            # Strict: a missing or non-numeric declared value is an error, never a silently shorter set.
+            return f"declared path for {str(name)[:64]!r} does not resolve to a finite number"
+        out[str(name)] = v
+    return out
+
+
 def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str, Any]:
     """Apply the model revision's declared ``researchResultValues`` mapping to its own result.
 
     Supported kinds: ``coefficient-table`` (rows with a name field and value field, e.g. the
-    R linear-model coefficients) and ``vector`` (a list located by key, with declared names).
+    R linear-model coefficients), ``vector`` (a list located by key, with declared names) and
+    ``scalar-paths`` (named dotted paths into the runtime result, e.g. a posterior mean or a
+    Monte Carlo interval bound; every declared path must resolve to a finite number).
     """
     kind = mapping.get("kind")
     values: dict[str, float] = {}
@@ -186,6 +235,19 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
             fv = _finite(v)
             if fv is not None:
                 values[str(name)] = fv
+    elif kind == "scalar-paths":
+        root = _runtime_root(result_doc)
+        resolved = _scalar_paths(mapping.get("paths"), root)
+        if isinstance(resolved, str):
+            return {"values": {}, "error": resolved}
+        values = resolved
+        if mapping.get("uncertaintyPaths"):
+            unc = _scalar_paths(mapping["uncertaintyPaths"], root)
+            if isinstance(unc, str):
+                return {"values": {}, "error": f"uncertainty: {unc}"}
+            if not set(unc) <= set(values):
+                return {"values": {}, "error": "uncertainty names must be declared result values"}
+            uncertainty = unc
     else:
         return {"values": {}, "error": "no researchResultValues mapping declared on the model revision"}
     if len(values) > MAX_VALUES:
@@ -193,6 +255,13 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
     out: dict[str, Any] = {"values": values}
     if uncertainty:
         out["uncertainty"] = {"semantics": mapping.get("uncertaintySemantics", "standard-error"), "values": uncertainty}
+    # Seeded runtimes echo their seed. Such values are pseudo-random draws: a same-seed replay
+    # shows determinism, not reproduction, and Research must be told so.
+    root = _runtime_root(result_doc)
+    seed = root.get("seed") if isinstance(root, dict) else None
+    seed = seed if isinstance(seed, int) and not isinstance(seed, bool) else None
+    if seed is not None or mapping.get("stochastic") is True:
+        out["stochastic"] = {"seed": seed}
     return out
 
 
