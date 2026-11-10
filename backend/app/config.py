@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     max_compliance_waivers_per_account: int = 1000
     max_attestation_verifications_per_account: int = 5000
     runtime_attestation_token: str = ""
+    # SC-MODEL-01 Research export: disabled unless explicitly configured.
+    research_export_enabled: bool = False
+    research_export_client_token: str = ""
+    research_export_signing_key_file: str = ""
+    research_export_grant_ttl_seconds: int = 900
 
     compute_max_rows: int = 50000
     compute_max_columns: int = 256

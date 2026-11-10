@@ -4992,3 +4992,8 @@ app.include_router(lab_publication_v3843_router, dependencies=[Depends(require_s
 # v3.84.4: explicit-approval Lab ECDF acceptance; existing Workspace service auth
 from .lab_live_figure_acceptance_v3844 import router as lab_live_v3844_router
 app.include_router(lab_live_v3844_router, dependencies=[Depends(require_service_identity)])
+
+# SC-MODEL-01: owner-granted, signed execution exports for Research (disabled unless configured).
+from .research_exports import router as research_export_router
+
+app.include_router(research_export_router)

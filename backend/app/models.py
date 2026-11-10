@@ -2766,3 +2766,31 @@ class PredictiveInvestigationSnapshot(Base):
     issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     context_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ResearchExportGrant(Base):
+    """SC-MODEL-01: owner-issued, single-run, short-lived grant for Research to read one export."""
+    __tablename__ = "workspace_research_export_grants"
+
+    grant_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    run_id: Mapped[str] = mapped_column(String(96), nullable=False)
+    audience: Mapped[str] = mapped_column(String(64), nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    export_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_export_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+
+
+class ResearchExportWithdrawal(Base):
+    """SC-MODEL-01: the owner withdrew a run from Research; exports are refused afterwards."""
+    __tablename__ = "workspace_research_export_withdrawals"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notice_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    withdrawn_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
