@@ -279,3 +279,74 @@ def test_julia_receipt_keeps_reported_library_identity(client, monkeypatch):
     (r,) = doc["verification"]["runtimeReceipts"]
     assert r["runtimeVersion"] == "1.11.5" and r["numericalLibraries"] == libs
     assert doc["resultValues"]["values"] == {"d0": 9.0} and doc["resultValues"]["identityCheck"]["proof"] is False
+
+
+# ---------------------------------------------------------------------------
+# SC-NB-01: a ParameterSet-bound symbolic check and its Julia replay as verified notebook cells
+
+
+def identity_notebook(ps, m_sym, m_jl):
+    pin = {"parameterInput": {"parameterSetId": ps["parameterSetId"], "parameterSetRevision": ps["revision"]}}
+    return {"schema": "sc-workspace-notebook/3.0", "title": "Symbolic identity check (synthetic)", "cells": [
+        {"id": "sympy", "type": "code", "language": "python", "source": "diff(f, x) evaluated at the declared points",
+         "execution": {"operation": "workspace.compute.symbolic", "modelRef": {"modelId": m_sym}, "maxAttempts": 1, "payload": pin}},
+        {"id": "julia", "type": "code", "language": "julia", "source": "forward-mode dual evaluation of f'",
+         "execution": {"operation": "workspace.polyglot.julia.expression-evaluate", "modelRef": {"modelId": m_jl},
+                       "maxAttempts": 1, "dependsOnCellIds": ["sympy"], "payload": pin}},
+    ]}
+
+
+def test_notebook_steps_declare_the_bound_parameter_revision():
+    from app import notebook_orchestration as nbo
+    ps = {"parameterSetId": "ps-1", "revision": 2}
+    steps = nbo.compile_plan(identity_notebook(ps, "m-s", "m-j"))["steps"]
+    assert [s["parameterSetRef"] for s in steps] == [{"parameterSetId": "ps-1", "revision": 2}] * 2
+    for bad in ({"parameterSetId": "ps-1"}, {"parameterSetId": "", "parameterSetRevision": 1}, {"parameterSetId": "p", "parameterSetRevision": True}, "ps-1"):
+        doc = identity_notebook(ps, "m-s", "m-j")
+        doc["cells"][0]["execution"]["payload"] = {"parameterInput": bad}
+        with pytest.raises(HTTPException) as e:
+            nbo.compile_plan(doc)
+        assert e.value.detail["code"] == "cell-parameter-ref-requires-revision"
+
+
+@pg
+def test_identity_check_runs_as_verified_notebook_cells(client, monkeypatch):
+    import app.polyglot as polyglot
+    import tests.test_notebook_cell_runs_sc_nb01 as cells
+    sfx = uuid4().hex[:8]
+    paths = {f"d{i}": f"result.values.{i}" for i in range(3)}
+    m_s = math_model(client, f"nb-sym-{sfx}", "workspace.compute.symbolic", {"kind": "scalar-paths", "paths": paths})
+    m_j = math_model(client, f"nb-jl-{sfx}", "workspace.polyglot.julia.expression-evaluate",
+                     {"kind": "scalar-paths", "paths": {k: v.replace("result.", "") for k, v in paths.items()}})
+    params = {"expression": EXPR, "variables": ["x", "y"], "action": "differentiate", "variable": "x", "evaluateAt": POINTS}
+    ps = sim.post(client, "/v1/parameter-sets", {"schema": "sc-workspace-parameter-set/1.0", "parameterSetId": f"nb-ps-{sfx}",
+                                                 "projectId": "nb-proj", "modelId": "", "name": "Identity check points",
+                                                 "parameters": params, "metadata": {"scientificClassification": "synthetic"}})
+    expected = symbolic()["values"]
+    seen = {}
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        seen["payload"] = json["payload"]
+        return SimpleNamespace(status_code=200, text="", json=lambda: {
+            "result": {"kind": "expression-evaluation", "values": expected,
+                       "identityCheck": {"method": c.IDENTITY_METHOD, "proof": False, "action": "differentiate",
+                                         "pointCount": 3, "variable": "x"}},
+            "numericalLibraries": {"source": "runtime-loaded", "julia": "1.11.5"}})
+
+    monkeypatch.setattr(polyglot.httpx, "post", fake_post)
+    nb_id = f"nb-math-{sfx}"
+    cells.store_notebook(client, USER, nb_id, identity_notebook(ps, m_s["modelId"], m_j["modelId"]))
+    plan = cells.plan_and_dispatch(client, USER, nb_id)
+    cells.run_job(plan["steps"][0]["jobId"], USER)
+    plan = cells.get_plan(client, USER, plan["planId"])
+    cells.run_job(plan["steps"][1]["jobId"], USER)
+    plan = cells.get_plan(client, USER, plan["planId"])
+    assert plan["status"] == "succeeded", plan
+    assert seen["payload"] == params  # Julia received exactly the attested revision
+    for step, language in zip(plan["steps"], ("python", "julia")):
+        doc = cells.export(client, USER, step["runId"])
+        assert doc["verification"]["status"] == "executed-verified" and doc["verification"]["inputLineage"] == VERIFIED
+        assert doc["notebookCell"]["verified"] is True and doc["notebookCell"]["cellId"] == step["cellId"]
+        assert doc["verification"]["runtimeReceipts"][0]["language"] == language
+        assert doc["resultValues"]["identityCheck"]["proof"] is False
+        assert [doc["resultValues"]["values"][f"d{i}"] for i in range(3)] == expected
