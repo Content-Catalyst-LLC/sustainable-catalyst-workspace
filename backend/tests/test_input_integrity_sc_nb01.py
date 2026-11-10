@@ -281,6 +281,9 @@ def test_worker_reports_integrity_refusal_code(client):
     job_id = r.json()["item"]["jobId"]
     with session_scope() as db:
         row = db.get(JobRecord, {"user_key": "nb-owner-a", "job_id": job_id})
+        row.status, row.attempt = "running", 1  # as claim_next_job leaves it
+        db.commit()
+        db.refresh(row)
         db.expunge(row)
     worker.process_job(row)
     item = client.get(f"/v1/jobs/{job_id}", headers=hdr("nb-owner-a")).json()["item"]
