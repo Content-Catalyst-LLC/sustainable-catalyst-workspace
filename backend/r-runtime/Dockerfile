@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp
 RUN apt-get update \
@@ -10,7 +11,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
 COPY vendor/catalystanalyticsr /opt/catalystanalyticsr
 RUN R CMD INSTALL --preclean /opt/catalystanalyticsr \
     && Rscript --vanilla -e 'library(catalystanalyticsr); p <- catalyst_core_provider_manifest(); stopifnot(as.character(packageVersion("catalystanalyticsr")) == "2.2.0", p$provider_key == "catalystanalyticsr", p$core_contract == "sc.core.analytical-runtime-provider.v1", p$runtime == "r", p$execution_host == "workspace", p$diagnostics_contract == "sc.analytics-r.statistical-diagnostics-validation.v1"); cat("Catalyst Analytics R v2.2.0 image contract PASS\n")' \
