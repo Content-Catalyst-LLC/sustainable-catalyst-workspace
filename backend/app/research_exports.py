@@ -38,6 +38,7 @@ from sqlalchemy import select
 from .config import get_settings
 from .db import session_scope
 from .execution_provenance import run_provenance
+from .cell_bindings import KIND as UPSTREAM_KIND
 from .input_integrity import VERIFIED as INPUT_VERIFIED
 from .notebook_orchestration import verified_cell_run
 from .models import (
@@ -195,6 +196,18 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
     return out
 
 
+DATASET_BINDING_KEYS = ("datasetId", "datasetRevision", "datasetFingerprint", "artifactId", "artifactRevision",
+                        "artifactSha256", "format", "rowCount", "rowsSha256", "transform", "derivedPayloadSha256")
+UPSTREAM_BINDING_KEYS = ("schema", "kind", "lineage", "planId", "notebookId", "notebookRevision", "notebookPackageSha256",
+                         "cellId", "cellSha256", "upstream", "crossChecks", "transform", "upstreamValues",
+                         "derivedPayloadSha256", "datasets", "chainSha256")
+
+
+def project_binding(b: dict[str, Any]) -> dict[str, Any]:
+    """The exported view of a receipt's input binding: a pinned dataset, or an upstream-cell chain."""
+    return {k: b.get(k) for k in (UPSTREAM_BINDING_KEYS if b.get("kind") == UPSTREAM_KIND else DATASET_BINDING_KEYS)}
+
+
 def _verification(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionRunOutput]) -> dict[str, Any]:
     """Executed-verified only for a succeeded, job-linked run whose output matches a runtime receipt.
 
@@ -220,9 +233,7 @@ def _verification(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionR
     return {
         "status": status, "runStatus": run.status, "jobId": run.job_id,
         "inputLineage": input_lineage,
-        "inputBindings": [{k: b.get(k) for k in ("datasetId", "datasetRevision", "datasetFingerprint", "artifactId",
-                                                 "artifactRevision", "artifactSha256", "format", "rowCount", "rowsSha256",
-                                                 "transform", "derivedPayloadSha256")} for b in bindings],
+        "inputBindings": [project_binding(b) for b in bindings],
         "runtimeReceipts": [{"receiptId": r.receipt_id, "language": r.language, "runtime": r.runtime,
                              "operation": r.operation, "requestFingerprint": r.request_fingerprint,
                              "resultArtifactId": r.result_artifact_id, "resultSha256": r.result_sha256,
