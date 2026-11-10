@@ -20,7 +20,7 @@ The approval and decision bodies are produced by the existing human-governance r
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -36,6 +36,8 @@ from .security import ServiceIdentity, require_service_identity
 from .utils import sha256_hex
 
 RECORD_SCHEMA = "sc-workspace-research-approval-record/1.0"
+ATTESTATION_SCHEMA = "sc-workspace-research-role-attestation/1.0"
+ATTESTATION_TTL_SECONDS = 3600
 POLICY_ID = "sc-ed-01-research-publication-approval/1"
 ACTIONS = {
     "scientific": "research_scientific_review",
@@ -187,6 +189,22 @@ def revoke_grant_route(grant_id: str, identity: ServiceIdentity = Depends(requir
         row.revoked_at = row.revoked_at or _now()
         db.commit()
         return {"item": grant_view(row)}
+
+
+@router.post("/grants/{grant_id}/attestation")
+def attestation_route(grant_id: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    """Short-lived signed proof, for Research, that the caller holds an active editor grant."""
+    _signing_key()
+    with session_scope() as db:
+        row = db.get(ResearchApprovalGrant, grant_id)
+        if row is None or row.grantee_user_key != identity.user_key or row.revoked_at is not None or row.role != "editor":
+            raise HTTPException(status_code=404, detail="Active editor grant not found.")
+        now = _now()
+        return sign_document(ATTESTATION_SCHEMA, {
+            "schema": ATTESTATION_SCHEMA, "issuer": ISSUER, "audience": AUDIENCE, "grantId": row.grant_id,
+            "ownerScope": _scope(row.owner_user_key), "grantee": _scope(row.grantee_user_key), "role": row.role,
+            "projectId": row.project_id, "authentication": identity.authentication_method,
+            "issuedAt": now.isoformat(), "expiresAt": (now + timedelta(seconds=ATTESTATION_TTL_SECONDS)).isoformat()})
 
 
 @router.post("/requests")

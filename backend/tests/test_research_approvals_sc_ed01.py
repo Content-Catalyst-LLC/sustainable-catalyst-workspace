@@ -32,10 +32,10 @@ PG = os.getenv("SC_WORKSPACE_DATABASE_URL", "").startswith("postgresql")
 SUBJECT = "research-object:" + str(uuid4()) + "#" + "a" * 64
 
 
-def verify(doc):
+def verify(doc, domain=ra.RECORD_SCHEMA):
     body = {k: v for k, v in doc.items() if k != "signature"}
     pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(rx.public_key_info()["publicKey"]))
-    pub.verify(rx._b64d(doc["signature"]["value"]), ra.RECORD_SCHEMA.encode() + b"\n" + canonical_bytes(body))
+    pub.verify(rx._b64d(doc["signature"]["value"]), domain.encode() + b"\n" + canonical_bytes(body))
 
 
 def test_decider_rules_are_separate_per_dimension():
@@ -177,6 +177,14 @@ def test_editor_requests_and_owner_confirms_ownership(client, world):
     rec = decide(client, users["owner"], aid).json()["record"]
     assert rec["decision"]["actor"]["role"] == "research_owner" and rec["grantId"] == "owner"
     assert rec["ownerScope"] == f"workspace-user:{users['owner']}"
+    grants = client.get("/v1/research-approvals/grants", headers=hdr(users["editor"])).json()["items"]
+    editor = next(g for g in grants if g["role"] == "editor")
+    att = client.post(f"/v1/research-approvals/grants/{editor['grantId']}/attestation", headers=hdr(users["editor"]))
+    assert att.status_code == 200
+    verify(att.json(), ra.ATTESTATION_SCHEMA)
+    assert att.json()["grantee"] == f"workspace-user:{users['editor']}" and att.json()["projectId"] == project
+    # Only the grantee can obtain it, and only for an editor grant.
+    assert client.post(f"/v1/research-approvals/grants/{editor['grantId']}/attestation", headers=hdr(users["owner"])).status_code == 404
 
 
 @pg
