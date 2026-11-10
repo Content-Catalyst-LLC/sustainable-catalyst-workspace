@@ -54,6 +54,7 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.polyglot.julia.monte-carlo-normal", "workspace.polyglot.julia.quadratic-optimize",
         "workspace.polyglot.julia.eigen-analysis", "workspace.polyglot.julia.integrate-series",
         "workspace.polyglot.julia.polynomial-roots", "workspace.polyglot.julia.parameter-sweep",
+        "workspace.polyglot.julia.expression-evaluate",
     ), "Hardened Julia runtime for bounded simulation, numerical modeling, optimization, and sensitivity workflows."),
     RuntimeSpec("ml", "python-sklearn-predictive", "server-configured-http", (
         "workspace.ml.linear-regression", "workspace.ml.logistic-classification",
@@ -1244,6 +1245,12 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     finished=datetime.now(timezone.utc)
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False,
                      "inputLineage":input_lineage,"inputBindings":input_bindings}
+    # SC-MATH-01 M4: a runtime that reports its numerical library identity has it kept on the receipt.
+    reported=(result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}).get("numericalLibraries")
+    if isinstance(reported,dict):
+        receipt_details["numericalLibraries"]={str(k)[:64]:(v if isinstance(v,(str,int,float,bool)) or v is None else json.loads(json.dumps(v,default=str)))
+                                               for k,v in list(reported.items())[:32]}
+        receipt_details["runtimeVersion"]=str(reported.get("julia") or reported.get("runtime") or "unrecorded")[:64]
     if language == "neural" and isinstance(result, dict):
         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
         device_plan=remote_body.get("devicePlan") if isinstance(remote_body.get("devicePlan"),dict) else {}
@@ -1815,6 +1822,7 @@ JULIA_MODEL_OPERATIONS = {
     "workspace.polyglot.julia.integrate-series",
     "workspace.polyglot.julia.polynomial-roots",
     "workspace.polyglot.julia.parameter-sweep",
+    "workspace.polyglot.julia.expression-evaluate",
 }
 
 
