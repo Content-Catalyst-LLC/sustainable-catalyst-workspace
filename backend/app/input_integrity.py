@@ -5,6 +5,12 @@ worker then loads the artifact snapshot that the dataset revision pinned when it
 re-hashes the stored bytes, checks that the execution run declared that dataset revision, and only
 then builds the runtime rows (optionally through a declared deterministic transform). Receipts record
 the binding; inline rows are labelled ``inline-unverified`` and never count as verified lineage.
+
+SC-SIM-01: a job may also name the ParameterSet revision its execution run declared
+(``payload.parameterInput``). The worker re-hashes the stored revision, checks it is the one the run
+pinned, and builds the runtime parameters from it alone; no other inline key is accepted beside it.
+The lineage token ``artifact-bound-verified`` therefore means "bound server-side to an immutable
+registry revision": dataset bytes or a parameter-set revision.
 """
 from __future__ import annotations
 
@@ -20,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from .models import ArtifactRevision
 from .object_store import read_artifact_content
-from .registry import get_dataset_revision, get_execution_run
+from .registry import get_dataset_revision, get_execution_run, get_parameter_set_revision
 from .utils import sha256_hex
 
 BINDING_SCHEMA = "sc-workspace-dataset-input-binding/1.0"
@@ -28,7 +34,11 @@ VERIFIED = "artifact-bound-verified"
 INLINE = "inline-unverified"
 NONE = "none"
 FORMATS = {"json-records", "csv"}
-TRANSFORMS = {"least-squares-normal-equations"}
+TRANSFORMS = {"least-squares-normal-equations", "numeric-series"}
+SERIES_TARGETS = {"values", "observations"}
+PARAMETER_BINDING_SCHEMA = "sc-workspace-parameter-input-binding/1.0"
+PARAMETER_KIND = "parameter-set"
+MAX_SERIES_POINTS = 100_000
 
 
 class InputIntegrityRefused(HTTPException):
@@ -89,6 +99,84 @@ def _normal_equations(rows: list[dict[str, Any]], spec: dict[str, Any]) -> dict[
     return {"Q": Q, "c": c, "names": ["(Intercept)", *predictors]}
 
 
+def _numeric_series(rows: list[dict[str, Any]], spec: dict[str, Any]) -> dict[str, Any]:
+    """One numeric column as an ordered series. Row order is the pinned file order unless ``orderBy`` names a
+    column with unique, uniformly typed keys. Missing or non-finite values are refused, never dropped."""
+    column, order_by = str(spec.get("column") or ""), spec.get("orderBy")
+    target = str(spec.get("target") or "values")
+    if not column:
+        raise _refuse("transform-needs-column")
+    if target not in SERIES_TARGETS:
+        raise _refuse("transform-target-unsupported", supported=sorted(SERIES_TARGETS))
+    if not rows or len(rows) > MAX_SERIES_POINTS:
+        raise _refuse("transform-series-size", rows=len(rows), maximum=MAX_SERIES_POINTS)
+    if order_by is not None:
+        keys = [r.get(str(order_by)) for r in rows]
+        numeric = all(isinstance(k, (int, float)) and not isinstance(k, bool) and math.isfinite(k) for k in keys)
+        if not (numeric or all(isinstance(k, str) and k for k in keys)) or len(set(keys)) != len(keys):
+            raise _refuse("transform-order-key-invalid", column=str(order_by),
+                          detail="orderBy values must be unique and all numeric or all non-empty strings")
+        rows = [r for _, r in sorted(zip(keys, rows), key=lambda kr: kr[0])]
+    values = []
+    for i, r in enumerate(rows):
+        v = r.get(column)
+        if not (isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)):
+            raise _refuse("transform-non-numeric-value", columns=[column], row=i)
+        values.append(float(v))
+    return {"target": target, "values": values}
+
+
+def resolve_parameter_input(db: Session, user_key: str, payload: dict[str, Any], run_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Returns (runtime payload, binding). The parameters come only from the run's pinned ParameterSet revision."""
+    spec = payload.get("parameterInput")
+    if not isinstance(spec, dict):
+        raise _refuse("parameter-input-malformed")
+    extra = sorted(set(payload) - {"parameterInput", "datasetInput"})
+    if extra:
+        raise _refuse("parameter-input-inline-keys", keys=extra[:16],
+                      detail="with parameterInput every runtime parameter must come from the ParameterSet revision")
+    ps_id = str(spec.get("parameterSetId") or "").strip()
+    try:
+        revision = int(spec.get("parameterSetRevision"))
+    except (TypeError, ValueError) as exc:
+        raise _refuse("parameter-input-revision-required") from exc
+    if not run_id:
+        raise _refuse("parameter-input-needs-run", detail="a parameter binding must belong to an execution run that declares it")
+    run = get_execution_run(db, user_key, run_id)
+    if run is None:
+        raise _refuse("parameter-input-run-not-found", runId=run_id)
+    declared = run.parameter_set_ref or {}
+    if (declared.get("parameterSetId"), declared.get("revision")) != (ps_id, revision):
+        raise _refuse("parameter-input-not-declared-by-run", runId=run_id, parameterSetId=ps_id, parameterSetRevision=revision)
+    row = get_parameter_set_revision(db, user_key, ps_id, revision)
+    if row is None:
+        raise _refuse("parameter-input-not-found", parameterSetId=ps_id, parameterSetRevision=revision)
+    # Same descriptor as registry.store_parameter_set: the stored revision must still hash to its fingerprint.
+    recomputed = sha256_hex({"schema": "sc-workspace-parameter-set/1.0", "parameterSetId": row.parameter_set_id,
+                             "projectId": row.project_id, "modelId": row.model_id, "name": row.name,
+                             "parameters": row.parameters_json, "metadata": row.metadata_json})
+    if recomputed != row.fingerprint or declared.get("fingerprint") != row.fingerprint:
+        raise _refuse("parameter-set-integrity-failed", parameterSetId=ps_id, parameterSetRevision=revision)
+    expected = str(spec.get("fingerprint") or "").lower()
+    if expected and expected != row.fingerprint:
+        raise _refuse("parameter-input-fingerprint-mismatch", expected=expected, pinned=row.fingerprint)
+    params = row.parameters_json or {}
+    if "datasetInput" in params or "parameterInput" in params:
+        raise _refuse("parameter-set-contains-binding-keys")
+    runtime_payload = dict(params)
+    if "datasetInput" in payload:
+        runtime_payload["datasetInput"] = payload["datasetInput"]
+    cls = str((row.metadata_json or {}).get("scientificClassification") or "")
+    binding = {
+        "schema": PARAMETER_BINDING_SCHEMA, "kind": PARAMETER_KIND, "lineage": VERIFIED,
+        "parameterSetId": ps_id, "parameterSetRevision": revision, "parameterSetFingerprint": row.fingerprint,
+        "modelId": row.model_id, "parametersSha256": sha256_hex(params),
+        # Declared by the parameter-set owner; Research never lets it make an output 'observed'.
+        "scientificClassification": cls if cls in {"synthetic", "modelled", "literature-derived", "illustrative"} else "",
+    }
+    return runtime_payload, binding
+
+
 def resolve_dataset_input(db: Session, user_key: str, payload: dict[str, Any], run_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     """Returns (runtime payload, binding). Raises 409 on any integrity or ownership failure."""
     spec = payload.get("datasetInput")
@@ -96,6 +184,10 @@ def resolve_dataset_input(db: Session, user_key: str, payload: dict[str, Any], r
         raise _refuse("dataset-input-malformed")
     if "rows" in payload:
         raise _refuse("dataset-input-and-inline-rows", detail="send either datasetInput or rows, not both")
+    transform = spec.get("transform")
+    target = str(transform.get("target") or "values") if isinstance(transform, dict) and transform.get("kind") == "numeric-series" else None
+    if target and target in payload:
+        raise _refuse("dataset-input-and-inline-series", key=target)
     dataset_id = str(spec.get("datasetId") or "").strip()
     try:
         revision = int(spec.get("datasetRevision"))
@@ -128,13 +220,17 @@ def resolve_dataset_input(db: Session, user_key: str, payload: dict[str, Any], r
     raw = read_artifact_content(snapshot)  # re-hashes the stored bytes; 503 on any mismatch
     rows = _parse(raw, fmt)
     runtime_payload = {k: v for k, v in payload.items() if k != "datasetInput"}
-    transform = spec.get("transform")
     derived = None
     if transform is not None:
         if not isinstance(transform, dict) or transform.get("kind") not in TRANSFORMS:
             raise _refuse("dataset-input-transform-unsupported", supported=sorted(TRANSFORMS))
-        derived = _normal_equations(rows, transform)
-        runtime_payload.update({"Q": derived["Q"], "c": derived["c"]})
+        if transform["kind"] == "numeric-series":
+            series = _numeric_series(rows, transform)
+            derived = {series["target"]: series["values"]}
+        else:
+            eq = _normal_equations(rows, transform)
+            derived = {"Q": eq["Q"], "c": eq["c"]}
+        runtime_payload.update(derived)
     else:
         runtime_payload["rows"] = rows
     binding = {
@@ -142,7 +238,7 @@ def resolve_dataset_input(db: Session, user_key: str, payload: dict[str, Any], r
         "datasetId": dataset_id, "datasetRevision": revision, "datasetFingerprint": ds.fingerprint,
         "artifactId": ds.artifact_id, "artifactRevision": snapshot.revision, "artifactSha256": snapshot.sha256,
         "bytes": snapshot.bytes, "format": fmt, "rowCount": len(rows), "rowsSha256": sha256_hex(rows),
-        "transform": transform, "derivedPayloadSha256": sha256_hex({"Q": derived["Q"], "c": derived["c"]}) if derived else None,
+        "transform": transform, "derivedPayloadSha256": sha256_hex(derived) if derived else None,
     }
     return runtime_payload, binding
 

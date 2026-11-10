@@ -17,7 +17,8 @@ from .config import get_settings
 from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt, PredictiveModelReceipt, ModelEvaluationReceipt, ForecastReceipt, ForecastEvaluationReceipt, ProbabilisticInferenceReceipt, UncertaintyAnalysisReceipt, OptimizationReceipt, DecisionOptimizationReceipt, ReliabilityAnalysisReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
-from .input_integrity import VERIFIED as INPUT_VERIFIED, lineage_for_payload, resolve_dataset_input
+from .input_integrity import (VERIFIED as INPUT_VERIFIED, _refuse as _input_refuse, lineage_for_payload,
+                              resolve_dataset_input, resolve_parameter_input)
 from .cell_bindings import resolve_upstream_input
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
 from .utils import sha256_hex
@@ -427,12 +428,19 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     input_bindings=[]
     run_ref=str(((row.payload or {}).get("executionRunId") or "")).strip()
     if isinstance(payload, dict) and "upstreamInput" in payload:
+        if "parameterInput" in payload:
+            raise _input_refuse("parameter-input-with-upstream-input-unsupported")
         payload, binding=resolve_upstream_input(db,row.user_key,payload,run_ref)
         input_bindings=[binding]
         input_lineage=INPUT_VERIFIED
-    elif isinstance(payload, dict) and "datasetInput" in payload:
-        payload, binding=resolve_dataset_input(db,row.user_key,payload,run_ref)
-        input_bindings=[binding]
+    elif isinstance(payload, dict) and ("datasetInput" in payload or "parameterInput" in payload):
+        # Parameters first (from the run's pinned ParameterSet revision), then pinned dataset bytes.
+        if "parameterInput" in payload:
+            payload, binding=resolve_parameter_input(db,row.user_key,payload,run_ref)
+            input_bindings.append(binding)
+        if "datasetInput" in payload:
+            payload, binding=resolve_dataset_input(db,row.user_key,payload,run_ref)
+            input_bindings.append(binding)
         input_lineage=INPUT_VERIFIED
     else:
         input_lineage=lineage_for_payload(payload)

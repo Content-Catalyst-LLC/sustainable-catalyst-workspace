@@ -40,6 +40,7 @@ from .config import get_settings
 from .db import session_scope
 from .execution_provenance import run_provenance
 from .cell_bindings import KIND as UPSTREAM_KIND
+from .input_integrity import PARAMETER_KIND
 from .input_integrity import VERIFIED as INPUT_VERIFIED
 from .notebook_orchestration import verified_cell_run
 from .models import (
@@ -262,6 +263,30 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
     seed = seed if isinstance(seed, int) and not isinstance(seed, bool) else None
     if seed is not None or mapping.get("stochastic") is True:
         out["stochastic"] = {"seed": seed}
+    if "tolerance" in mapping:
+        tol = declared_tolerance(mapping["tolerance"])
+        if isinstance(tol, str):
+            return {"values": {}, "error": f"tolerance: {tol}"}
+        out["tolerance"] = tol
+    return out
+
+
+MAX_RELATIVE_TOLERANCE, MAX_ABSOLUTE_TOLERANCE = 0.05, 1.0
+
+
+def declared_tolerance(spec: Any) -> dict[str, float] | str:
+    """SC-MATH-01 M3: the reproduction tolerance pre-registered on the model revision (before any run).
+
+    Research compares reproductions at this tolerance and refuses requests that would loosen it.
+    """
+    if not isinstance(spec, dict) or set(spec) - {"relative", "absolute"} or not spec:
+        return "declare {relative, absolute}"
+    out = {}
+    for key, bound in (("relative", MAX_RELATIVE_TOLERANCE), ("absolute", MAX_ABSOLUTE_TOLERANCE)):
+        v = _finite(spec.get(key, 0.0))
+        if v is None or not 0 <= v <= bound:
+            return f"{key} must be a number in [0, {bound}]"
+        out[key] = v
     return out
 
 
@@ -272,9 +297,15 @@ UPSTREAM_BINDING_KEYS = ("schema", "kind", "lineage", "planId", "notebookId", "n
                          "derivedPayloadSha256", "datasets", "chainSha256")
 
 
+PARAMETER_BINDING_KEYS = ("schema", "kind", "lineage", "parameterSetId", "parameterSetRevision", "parameterSetFingerprint",
+                          "modelId", "parametersSha256", "scientificClassification")
+
+
 def project_binding(b: dict[str, Any]) -> dict[str, Any]:
-    """The exported view of a receipt's input binding: a pinned dataset, or an upstream-cell chain."""
-    return {k: b.get(k) for k in (UPSTREAM_BINDING_KEYS if b.get("kind") == UPSTREAM_KIND else DATASET_BINDING_KEYS)}
+    """The exported view of a receipt's input binding: a pinned dataset, a ParameterSet revision, or an
+    upstream-cell chain."""
+    keys = {UPSTREAM_KIND: UPSTREAM_BINDING_KEYS, PARAMETER_KIND: PARAMETER_BINDING_KEYS}.get(b.get("kind"), DATASET_BINDING_KEYS)
+    return {k: b.get(k) for k in keys}
 
 
 def _verification(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionRunOutput]) -> dict[str, Any]:
