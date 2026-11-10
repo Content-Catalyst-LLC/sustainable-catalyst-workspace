@@ -31,8 +31,16 @@ FORMATS = {"json-records", "csv"}
 TRANSFORMS = {"least-squares-normal-equations"}
 
 
-def _refuse(code: str, **detail) -> HTTPException:
-    return HTTPException(status_code=409, detail={"code": code, **detail})
+class InputIntegrityRefused(HTTPException):
+    """A deterministic refusal: the job's declared inputs cannot be bound to pinned bytes."""
+
+    @property
+    def code(self) -> str:
+        return self.detail["code"]
+
+
+def _refuse(code: str, **detail) -> InputIntegrityRefused:
+    return InputIntegrityRefused(status_code=409, detail={"code": code, **detail})
 
 
 def _parse(raw: bytes, fmt: str) -> list[dict[str, Any]]:

@@ -264,3 +264,25 @@ def test_executor_records_verified_binding_and_export_reports_lineage(client, mo
     doc = client.post("/v1/research-exports/fetch", headers={"Authorization": "Bearer research-client-test"}, json={"grant": g["grant"]}).json()
     assert doc["verification"]["status"] == "executed-verified" and doc["verification"]["inputLineage"] == ii.INLINE
     assert doc["verification"]["inputBindings"] == []
+
+
+@pg
+def test_worker_reports_integrity_refusal_code(client):
+    from app import worker
+    from app.db import session_scope
+    from app.models import JobRecord
+    sfx, art, ds = setup(client)
+    run = new_run(client, "nb-owner-a", ds["datasetId"], 1)
+    r = client.post("/v1/jobs", headers=hdr("nb-owner-a"), json={
+        "schema": "sc-workspace-job-request/1.0", "operation": "workspace.polyglot.r.linear-model", "projectId": "nb-proj",
+        "executionRunId": run, "maxAttempts": 1,
+        "payload": {**spec(ds, artifactSha256="0" * 64), "outcome": "y", "predictors": ["x"]}})
+    assert r.status_code == 200, r.text
+    job_id = r.json()["item"]["jobId"]
+    with session_scope() as db:
+        row = db.get(JobRecord, {"user_key": "nb-owner-a", "job_id": job_id})
+        db.expunge(row)
+    worker.process_job(row)
+    item = client.get(f"/v1/jobs/{job_id}", headers=hdr("nb-owner-a")).json()["item"]
+    assert item["status"] == "failed" and item["errorCode"] == "dataset-input-sha256-mismatch", item
+    assert art["sha256"] in item["errorMessage"]
