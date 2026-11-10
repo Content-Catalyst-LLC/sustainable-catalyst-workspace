@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import functools
 import json
 import math
+import platform
 import re
 import time
 from dataclasses import dataclass
@@ -21,6 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
+from .input_integrity import VERIFIED as INPUT_VERIFIED, lineage_for_payload, resolve_dataset_input, resolve_parameter_input
 from .models import ComputeExecutionReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
@@ -59,6 +62,50 @@ class ComputeCancelled(Exception):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# SC-MATH-01: every result states its arithmetic and the numerical libraries it ran on (M4), complex
+# results come in one canonical order (M2), and a symbolic result can be evaluated at declared points so
+# an independent implementation can check it numerically (M1).
+PRECISION = "ieee754-binary64"
+ORDERING = {"method": "real-then-imaginary", "realTieRelative": 1e-9}
+IDENTITY_METHOD = "numerical-identity-at-declared-points"
+IDENTITY_ACTIONS = {"evaluate", "simplify", "differentiate"}
+MAX_IDENTITY_POINTS = 256
+SYMBOLIC_EVAL_DIGITS = 30
+
+
+@functools.lru_cache(maxsize=1)
+def numerical_libraries() -> dict[str, Any]:
+    """Library identity as built into this image. BLAS/LAPACK come from NumPy's build configuration."""
+    out: dict[str, Any] = {"source": "build-configuration", "python": platform.python_version(),
+                           "numpy": np.__version__, "scipy": scipy.__version__, "sympy": sp.__version__,
+                           "precision": PRECISION}
+    try:
+        deps = np.show_config(mode="dicts").get("Build Dependencies") or {}
+    except Exception:  # pragma: no cover - older NumPy
+        deps = {}
+    for key in ("blas", "lapack"):
+        dep = deps.get(key) if isinstance(deps.get(key), dict) else {}
+        out[key] = {"name": str(dep.get("name") or "unrecorded"), "version": str(dep.get("version") or "unrecorded")}
+    return out
+
+
+def canonical_order(values: Any) -> list[int]:
+    """Indices that sort complex values by real part, then imaginary part. Real parts within a relative
+    1e-9 tie, so rounding noise between libraries cannot reorder a conjugate pair."""
+    vals = [complex(v) for v in values]
+    idx = sorted(range(len(vals)), key=lambda i: (vals[i].real, vals[i].imag))
+    out: list[int] = []
+    i = 0
+    while i < len(idx):
+        anchor = vals[idx[i]].real
+        j = i + 1
+        while j < len(idx) and abs(vals[idx[j]].real - anchor) <= ORDERING["realTieRelative"] * max(1.0, abs(anchor)):
+            j += 1
+        out += sorted(idx[i:j], key=lambda k: vals[k].imag)
+        i = j
+    return out
 
 
 def _engine_version(name: str) -> str:
@@ -286,6 +333,8 @@ def _linear_algebra(payload: dict[str, Any], cb: ProgressCallback | None) -> dic
         elif action == "eigen":
             if a.shape[0] != a.shape[1]: raise HTTPException(status_code=400, detail="eigen requires a square matrix.")
             values, vectors = np.linalg.eig(a)
+            order = canonical_order(values)
+            values, vectors = values[order], vectors[:, order]
             if np.iscomplexobj(values) or np.iscomplexobj(vectors):
                 result = {"eigenvalues": [{"real": float(v.real), "imag": float(v.imag)} for v in values],
                           "eigenvectors": [[{"real": float(v.real), "imag": float(v.imag)} for v in row] for row in vectors]}
@@ -300,6 +349,8 @@ def _linear_algebra(payload: dict[str, Any], cb: ProgressCallback | None) -> dic
     except np.linalg.LinAlgError as exc:
         raise HTTPException(status_code=422, detail=f"Linear algebra failed: {exc}")
     _progress(cb, 80, stage="linear-algebra-complete")
+    if action == "eigen":
+        result["ordering"] = ORDERING
     return {"action": action, **result}
 
 
@@ -343,7 +394,9 @@ def _symbolic(payload: dict[str, Any], cb: ProgressCallback | None) -> dict[str,
     variable = symbols.get(variable_name)
     if action in {"differentiate", "integrate", "solve"} and variable is None:
         raise HTTPException(status_code=400, detail="A declared symbolic variable is required.")
-    if action == "simplify": result = sp.simplify(expr)
+    points = _identity_points(payload, variables, action) if "evaluateAt" in payload else None
+    if action == "evaluate": result = expr
+    elif action == "simplify": result = sp.simplify(expr)
     elif action == "differentiate": result = sp.diff(expr, variable, int(payload.get("order") or 1))
     elif action == "integrate": result = sp.integrate(expr, variable)
     elif action == "solve": result = sp.solve(sp.Eq(expr, 0), variable, dict=False)
@@ -351,7 +404,51 @@ def _symbolic(payload: dict[str, Any], cb: ProgressCallback | None) -> dict[str,
     _progress(cb, 80, stage="symbolic-complete")
     if isinstance(result, list): rendered = [str(x) for x in result]
     else: rendered = str(result)
-    return {"action": action, "expression": str(expr), "result": rendered}
+    out: dict[str, Any] = {"action": action, "expression": str(expr), "result": rendered}
+    if points is not None:
+        out.update(_evaluate_at(result, action, symbols, payload, points))
+    return out
+
+
+def _identity_points(payload: dict[str, Any], variables: list[str], action: str) -> list[dict[str, float]]:
+    """Validated before any symbolic work, so an unsupported request never runs."""
+    if action not in IDENTITY_ACTIONS:
+        raise HTTPException(status_code=400, detail="evaluateAt supports the evaluate, simplify and differentiate actions.")
+    if action == "differentiate" and int(payload.get("order") or 1) != 1:
+        raise HTTPException(status_code=400, detail="evaluateAt supports first derivatives only.")
+    points = payload.get("evaluateAt")
+    if not isinstance(points, list) or not 0 < len(points) <= MAX_IDENTITY_POINTS:
+        raise HTTPException(status_code=400, detail=f"evaluateAt must list 1-{MAX_IDENTITY_POINTS} points.")
+    out = []
+    for point in points:
+        if not isinstance(point, dict) or set(point) != set(variables):
+            raise HTTPException(status_code=400, detail="Each evaluateAt point must give a value for every declared variable.")
+        if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in point.values()):
+            raise HTTPException(status_code=400, detail="evaluateAt values must be finite numbers.")
+        out.append({k: float(v) for k, v in point.items()})
+    return out
+
+
+def _evaluate_at(result: Any, action: str, symbols: dict[str, sp.Symbol], payload: dict[str, Any],
+                 points: list[dict[str, float]]) -> dict[str, Any]:
+    """Evaluate the symbolic result at declared points with SYMBOLIC_EVAL_DIGITS digits, reported as binary64.
+
+    This is a numerical identity check at finitely many points. It is evidence, never a proof."""
+    values = []
+    for point in points:
+        # Exact decimal substitution, then a high-precision evaluation.
+        subs = {symbols[k]: sp.Float(repr(v), SYMBOLIC_EVAL_DIGITS) for k, v in point.items()}
+        try:
+            z = complex(sp.N(result.subs(subs), SYMBOLIC_EVAL_DIGITS))
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="Symbolic result did not evaluate to a number at a declared point.")
+        if z.imag != 0 or not math.isfinite(z.real):
+            raise HTTPException(status_code=422, detail="Symbolic result is not finite and real at a declared point.")
+        values.append(z.real)
+    return {"values": values, "identityCheck": {
+        "method": IDENTITY_METHOD, "proof": False, "action": action, "pointCount": len(values),
+        "variable": str(payload.get("variable") or "") if action == "differentiate" else "",
+        "arithmetic": {"engine": "sympy-mpmath", "digits": SYMBOLIC_EVAL_DIGITS, "reportedAs": PRECISION}}}
 
 
 def _integrate_series(payload: dict[str, Any], cb: ProgressCallback | None) -> dict[str, Any]:
@@ -404,8 +501,9 @@ def _roots_polynomial(payload: dict[str, Any], cb: ProgressCallback | None) -> d
     if not np.isfinite(coeffs).all() or coeffs[0] == 0: raise HTTPException(status_code=400, detail="Polynomial coefficients must be finite with nonzero leading coefficient.")
     _progress(cb, 45, stage="polynomial-validated")
     roots = np.roots(coeffs)
-    rendered = [{"real": float(v.real), "imag": float(v.imag)} for v in roots]
-    return {"degree": len(coeffs) - 1, "roots": rendered}
+    roots = roots[canonical_order(roots)]
+    rendered = [{"real": float(complex(v).real), "imag": float(complex(v).imag)} for v in roots]
+    return {"degree": len(coeffs) - 1, "roots": rendered, "ordering": ORDERING}
 
 
 _EXECUTORS = {
@@ -455,8 +553,21 @@ def execute_scientific_operation(db: Session, row, progress_callback: ProgressCa
         raise HTTPException(status_code=400, detail="Scientific compute payload must be an object.")
     request_fp = sha256_hex({"operation": row.operation, "payload": job_payload})
     _progress(progress_callback, 10, stage="compute-started", engine=spec.engine)
+    # SC-MATH-01: the same governed inputs as the polyglot fabric, so in-process results can be exported.
+    bindings: list[dict[str, Any]] = []
+    runtime_payload = job_payload
+    if "parameterInput" in job_payload or "datasetInput" in job_payload:
+        if "parameterInput" in runtime_payload:
+            runtime_payload, binding = resolve_parameter_input(db, row.user_key, runtime_payload, row.execution_run_id or "")
+            bindings.append(binding)
+        if "datasetInput" in runtime_payload:
+            runtime_payload, binding = resolve_dataset_input(db, row.user_key, runtime_payload, row.execution_run_id or "")
+            bindings.append(binding)
+        input_lineage = INPUT_VERIFIED
+    else:
+        input_lineage = lineage_for_payload(job_payload)
     started = time.perf_counter()
-    result = _EXECUTORS[row.operation](job_payload, progress_callback)
+    result = _EXECUTORS[row.operation](runtime_payload, progress_callback)
     wall_seconds = round(max(0.0, time.perf_counter() - started), 6)
     _progress(progress_callback, 90, stage="persisting-result")
     envelope = {
@@ -466,6 +577,7 @@ def execute_scientific_operation(db: Session, row, progress_callback: ProgressCa
         "engine": spec.engine,
         "engineVersion": _engine_version(spec.engine),
         "requestFingerprint": request_fp,
+        "numericalLibraries": numerical_libraries(),
         "result": _json_safe(result),
     }
     raw = json.dumps(envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode("utf-8")
@@ -494,13 +606,16 @@ def execute_scientific_operation(db: Session, row, progress_callback: ProgressCa
             "metadata": {"operation": row.operation, "engine": spec.engine, "engineVersion": _engine_version(spec.engine)},
         })
         store_run_output(db, row.user_key, row.execution_run_id, output_payload)
+    receipt_details = {"deterministic": spec.deterministic, "arbitraryCode": False, "inputLineage": input_lineage,
+                       "inputBindings": bindings, "numericalLibraries": numerical_libraries()}
     receipt_id = f"compute-receipt-{row.job_id}"
     receipt = db.get(ComputeExecutionReceipt, {"user_key": row.user_key, "receipt_id": receipt_id})
     if receipt is None:
-        receipt = ComputeExecutionReceipt(user_key=row.user_key, receipt_id=receipt_id, job_id=row.job_id, execution_run_id=row.execution_run_id or "", operation=row.operation, engine=spec.engine, engine_version=_engine_version(spec.engine), request_fingerprint=request_fp, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256, result_bytes=artifact.bytes, wall_seconds=wall_seconds, metadata_json={"deterministic": spec.deterministic, "arbitraryCode": False}, created_at=_now())
+        receipt = ComputeExecutionReceipt(user_key=row.user_key, receipt_id=receipt_id, job_id=row.job_id, execution_run_id=row.execution_run_id or "", operation=row.operation, engine=spec.engine, engine_version=_engine_version(spec.engine), request_fingerprint=request_fp, result_artifact_id=artifact.artifact_id, result_sha256=artifact.sha256, result_bytes=artifact.bytes, wall_seconds=wall_seconds, metadata_json=receipt_details, created_at=_now())
         db.add(receipt)
     else:
         receipt.result_artifact_id = artifact.artifact_id; receipt.result_sha256 = artifact.sha256; receipt.result_bytes = artifact.bytes; receipt.wall_seconds = wall_seconds
+        receipt.metadata_json = receipt_details
     db.commit(); db.refresh(receipt)
     return {
         "schema": "sc-workspace-job-result/1.0",

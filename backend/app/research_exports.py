@@ -25,6 +25,7 @@ import json
 import math
 import re
 import secrets
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -45,7 +46,7 @@ from .input_integrity import PARAMETER_KIND
 from .input_integrity import VERIFIED as INPUT_VERIFIED
 from .notebook_orchestration import verified_cell_run
 from .models import (
-    ExecutionRun, ExecutionRunOutput, PolyglotExecutionReceipt, ResearchExportGrant,
+    ComputeExecutionReceipt, ExecutionRun, ExecutionRunOutput, PolyglotExecutionReceipt, ResearchExportGrant,
     ResearchExportWithdrawal, ScientificStudyPackage,
 )
 from .object_store import get_artifact, read_artifact_content
@@ -274,6 +275,27 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
         if isinstance(se, str):
             return {"values": {}, "error": f"standardErrors: {se}"}
         out["standardErrors"] = {"semantics": "monte-carlo-standard-error", "values": se}
+    out.update(_math_claims(root))
+    return out
+
+
+IDENTITY_KEYS = ("method", "proof", "action", "pointCount", "variable")
+
+
+def _math_claims(root: Any) -> dict[str, Any]:
+    """SC-MATH-01: what kind of mathematical result these values are. A symbolic identity check is evidence
+    at finitely many declared points (never a proof); complex results name their canonical ordering."""
+    inner = root.get("result") if isinstance(root, dict) and isinstance(root.get("result"), dict) else {}
+    out: dict[str, Any] = {}
+    for node in (root, inner):
+        if not isinstance(node, dict):
+            continue
+        check = node.get("identityCheck")
+        if isinstance(check, dict) and check.get("method") == "numerical-identity-at-declared-points" and "identityCheck" not in out:
+            out["identityCheck"] = {**{k: check.get(k) for k in IDENTITY_KEYS}, "proof": False}
+        ordering = node.get("ordering")
+        if isinstance(ordering, dict) and isinstance(ordering.get("method"), str) and "ordering" not in out:
+            out["ordering"] = {"method": ordering["method"], "realTieRelative": ordering.get("realTieRelative")}
     return out
 
 
@@ -357,9 +379,12 @@ def _verification(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionR
     Runtime receipts are written only by the Workspace worker after a bounded runtime call,
     so owner-supplied state changes or outputs alone never qualify.
     """
-    receipts = db.scalars(select(PolyglotExecutionReceipt).where(
+    receipts = [_polyglot_receipt(r) for r in db.scalars(select(PolyglotExecutionReceipt).where(
         PolyglotExecutionReceipt.user_key == user_key,
-        PolyglotExecutionReceipt.execution_run_id == run.run_id)).all()
+        PolyglotExecutionReceipt.execution_run_id == run.run_id)).all()]
+    receipts += [_compute_receipt(r) for r in db.scalars(select(ComputeExecutionReceipt).where(
+        ComputeExecutionReceipt.user_key == user_key,
+        ComputeExecutionReceipt.execution_run_id == run.run_id)).all()]
     output_hashes = {o.sha256 for o in outputs if o.sha256}
     matching = [r for r in receipts if r.status == "succeeded" and r.job_id == run.job_id and r.result_sha256 in output_hashes]
     if run.status != "succeeded":
@@ -380,8 +405,45 @@ def _verification(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionR
         "runtimeReceipts": [{"receiptId": r.receipt_id, "language": r.language, "runtime": r.runtime,
                              "operation": r.operation, "requestFingerprint": r.request_fingerprint,
                              "resultArtifactId": r.result_artifact_id, "resultSha256": r.result_sha256,
-                             "transport": r.transport, "status": r.status} for r in matching],
+                             "transport": r.transport, "status": r.status, "runtimeVersion": r.runtime_version,
+                             "numericalLibraries": r.numerical_libraries} for r in matching],
     }
+
+
+@dataclass(frozen=True)
+class _Receipt:
+    """One runtime receipt, whichever worker path wrote it."""
+    receipt_id: str
+    job_id: str
+    language: str
+    runtime: str
+    operation: str
+    request_fingerprint: str
+    result_artifact_id: str
+    result_sha256: str
+    transport: str
+    status: str
+    details_json: dict[str, Any]
+    runtime_version: str
+    numerical_libraries: dict[str, Any] | None
+
+
+def _polyglot_receipt(r: PolyglotExecutionReceipt) -> _Receipt:
+    details = r.details_json or {}
+    libs = details.get("numericalLibraries")
+    return _Receipt(r.receipt_id, r.job_id, r.language, r.runtime, r.operation, r.request_fingerprint,
+                    r.result_artifact_id, r.result_sha256, r.transport, r.status, details,
+                    str(details.get("runtimeVersion") or "unrecorded"), libs if isinstance(libs, dict) else None)
+
+
+def _compute_receipt(r: ComputeExecutionReceipt) -> _Receipt:
+    """SC-MATH-01: the in-process Python (NumPy/SciPy/SymPy) worker writes its own receipt; it is just as
+    server-written as a polyglot one. Older receipts carry no lineage and so stay unverified."""
+    details = r.metadata_json or {}
+    libs = details.get("numericalLibraries")
+    return _Receipt(r.receipt_id, r.job_id, "python", "cpython-scientific", r.operation, r.request_fingerprint,
+                    r.result_artifact_id, r.result_sha256, "in-process", "succeeded", details,
+                    f"{r.engine} {r.engine_version}".strip() or "unrecorded", libs if isinstance(libs, dict) else None)
 
 
 def _study_packages(db, user_key: str, run: ExecutionRun) -> list[dict[str, Any]]:

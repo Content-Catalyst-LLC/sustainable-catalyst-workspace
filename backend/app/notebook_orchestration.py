@@ -116,6 +116,19 @@ def _dataset_refs(cid: str, ex: dict[str, Any]) -> list[dict[str, Any]]:
     return [out[k] for k in sorted(out)]
 
 
+def _parameter_set_ref(cid: str, ex: dict[str, Any]) -> dict[str, Any] | None:
+    """SC-SIM-01: the ParameterSet revision a cell binds through payload.parameterInput, revision required.
+    The step's run declares it, so the worker can bind the attested revision as it does for any run."""
+    bound = (ex.get("payload") or {}).get("parameterInput")
+    if bound is None:
+        return None
+    rev = bound.get("parameterSetRevision") if isinstance(bound, dict) else None
+    if not isinstance(bound, dict) or not str(bound.get("parameterSetId") or "").strip() or not isinstance(rev, int) \
+            or isinstance(rev, bool) or rev < 1:
+        raise HTTPException(status_code=400, detail={"code": "cell-parameter-ref-requires-revision", "cellId": cid})
+    return {"parameterSetId": str(bound["parameterSetId"]).strip(), "revision": rev}
+
+
 def _validate_workspace_operation(operation: str) -> None:
     if operation in WORKSPACE_EXACT:
         return
@@ -194,6 +207,7 @@ def compile_plan(notebook: dict[str, Any], selected_cell_ids: list[str] | None =
             "sandbox":dict(ex.get("sandbox") or {}),
             "payload":payload,"upstreamInputs":upstream,
             "datasetRefs":_dataset_refs(cid,ex),
+            "parameterSetRef":_parameter_set_ref(cid,ex),
             "modelRef":dict(ex["modelRef"]) if isinstance(ex.get("modelRef"),dict) else None,
             "cellSha256":cell_sha256(cell),
             "state":"pending","jobId":"","runId":"",
@@ -281,6 +295,7 @@ def _create_step_run(db: Session, row: NotebookExecutionPlan, step: dict[str,Any
         "schema":"sc-workspace-execution-run/1.0","projectId":row.project_id or None,
         "name":f"Notebook {row.notebook_id} r{row.notebook_revision} cell {step['cellId']}",
         "datasetRefs":step.get("datasetRefs") or [],"modelRef":step.get("modelRef"),
+        **({"parameterSetRef":step["parameterSetRef"]} if step.get("parameterSetRef") else {}),
         "targetProduct":step["targetProduct"],"operation":step["operation"],
         "environment":{"notebookCell":{"schema":CELL_RUN_SCHEMA,"planId":row.plan_id,"notebookId":row.notebook_id,
                                        "notebookRevision":row.notebook_revision,"cellId":step["cellId"],"cellSha256":step["cellSha256"],
