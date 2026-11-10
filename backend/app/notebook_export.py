@@ -27,6 +27,7 @@ from .security import ServiceIdentity, require_service_identity
 from .config import get_settings
 from .db import session_scope
 from .models import ExecutionRun, ExecutionRunOutput, NotebookExecutionPlan, NotebookRevision
+from .cell_bindings import KIND as UPSTREAM_KIND
 from .notebook_orchestration import cell_sha256
 from .object_store import get_artifact, read_artifact_content
 from .utils import sha256_hex
@@ -279,8 +280,12 @@ def build_package(db, user_key: str, rev: NotebookRevision) -> dict[str, Any]:
             run = ev.pop("_run", None)
             v = ev.get("verification") or {}
             executions.append({"planId": step["planId"], "cellId": item["id"], "cellSha256": step.get("cellSha256"),
-                               "cellUnchanged": step.get("cellSha256") == sha, "stepState": step.get("state"), **ev})
+                               "cellUnchanged": step.get("cellSha256") == sha, "stepState": step.get("state"),
+                               "upstreamCellSha256": step.get("upstreamCellSha256"),
+                               "upstreamInputs": step.get("upstreamInputs") or [], **ev})
             for b in v.get("inputBindings") or []:
+                if b.get("kind") == UPSTREAM_KIND:
+                    continue  # its datasets are pinned through the upstream cells' own executions
                 datasets[(b["datasetId"], b["datasetRevision"])] = {k: b.get(k) for k in (
                     "datasetId", "datasetRevision", "artifactId", "artifactRevision", "artifactSha256", "rowsSha256")}
             if run is not None:

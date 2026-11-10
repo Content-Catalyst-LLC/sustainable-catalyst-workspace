@@ -8,6 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .cell_bindings import parse_spec as parse_upstream_spec
 from .jobs import create_job, get_job, job_metadata, request_cancel
 from .models import NotebookExecutionPlan, NotebookOrchestrationReceipt, NotebookRevision
 from .object_store import get_artifact
@@ -46,6 +47,8 @@ def profile() -> dict[str, Any]:
         "arbitraryCodeExecution": False,
         "cellExecutionRuns": True,
         "serverComputedCellSha256": True,
+        "verifiedUpstreamCellBinding": True,
+        "upstreamChangeInvalidatesDependents": True,
     }
 
 
@@ -178,6 +181,8 @@ def compile_plan(notebook: dict[str, Any], selected_cell_ids: list[str] | None =
             raise HTTPException(status_code=400, detail={"code":"execution-operation-required","cellId":cid})
         if target=="workspace": _validate_workspace_operation(operation)
         deps=[str(x) for x in (ex.get("dependsOnCellIds") or [])]
+        payload=dict(ex.get("payload") or {})
+        upstream=parse_upstream_spec(cid,payload["upstreamInput"],deps) if "upstreamInput" in payload else []
         artifacts=[str(x) for x in (ex.get("inputArtifactIds") or [])]
         steps.append({
             "stepId":cid,"cellId":cid,"targetProduct":target,"operation":operation,
@@ -187,7 +192,7 @@ def compile_plan(notebook: dict[str, Any], selected_cell_ids: list[str] | None =
             "executionPolicy":dict(ex.get("executionPolicy") or {}),
             "resourceBudget":dict(ex.get("resourceBudget") or {}),
             "sandbox":dict(ex.get("sandbox") or {}),
-            "payload":dict(ex.get("payload") or {}),
+            "payload":payload,"upstreamInputs":upstream,
             "datasetRefs":_dataset_refs(cid,ex),
             "modelRef":dict(ex["modelRef"]) if isinstance(ex.get("modelRef"),dict) else None,
             "cellSha256":cell_sha256(cell),
@@ -196,6 +201,18 @@ def compile_plan(notebook: dict[str, Any], selected_cell_ids: list[str] | None =
     order=_topological_order(steps)
     index={sid:i for i,sid in enumerate(order)}
     steps.sort(key=lambda x:index[x["stepId"]])
+    by_step={s["stepId"]:s for s in steps}
+    for step in steps:  # topological order: every dependency is already resolved
+        closure={}
+        for dep in step["dependsOnStepIds"]:
+            closure.update(by_step[dep]["upstreamCellSha256"]); closure[dep]=by_step[dep]["cellSha256"]
+        step["upstreamCellSha256"]=dict(sorted(closure.items()))
+        if step["upstreamInputs"]:
+            # An upstream-bound cell inherits the dataset revisions its upstream chain is bound to.
+            refs={(r["datasetId"],r["revision"]):r for r in step["datasetRefs"]}
+            for ref in step["upstreamInputs"]:
+                refs.update({(r["datasetId"],r["revision"]):r for r in by_step[ref["cellId"]]["datasetRefs"]})
+            step["datasetRefs"]=[refs[k] for k in sorted(refs)]
     return {"steps":steps,"order":order,"edges":[{"from":d,"to":s["stepId"]} for s in steps for d in s["dependsOnStepIds"]]}
 
 
@@ -266,7 +283,8 @@ def _create_step_run(db: Session, row: NotebookExecutionPlan, step: dict[str,Any
         "datasetRefs":step.get("datasetRefs") or [],"modelRef":step.get("modelRef"),
         "targetProduct":step["targetProduct"],"operation":step["operation"],
         "environment":{"notebookCell":{"schema":CELL_RUN_SCHEMA,"planId":row.plan_id,"notebookId":row.notebook_id,
-                                       "notebookRevision":row.notebook_revision,"cellId":step["cellId"],"cellSha256":step["cellSha256"]}},
+                                       "notebookRevision":row.notebook_revision,"cellId":step["cellId"],"cellSha256":step["cellSha256"],
+                                       "upstreamCellSha256":step.get("upstreamCellSha256") or {}}},
         "idempotencyKey":f"notebook-plan:{row.plan_id}:{step['stepId']}",
     }))
     return run.run_id
@@ -368,14 +386,68 @@ def verified_cell_run(db: Session, user_key: str, run) -> dict[str, Any] | None:
                                          "revision": claim.get("notebookRevision") if isinstance(claim.get("notebookRevision"), int) else -1})
     cells = (((revision.package or {}).get("notebook") or {}).get("cells") or []) if revision else []
     cell = next((c for c in cells if isinstance(c, dict) and str(c.get("id") or "") == str(claim.get("cellId") or "")), None)
+    # Upstream identity comes from the immutable revision; runs planned before SC-NB-01 upstream binding
+    # did not record it, newer claims must agree with it.
+    closure = _cell_closure(cells, str(claim.get("cellId") or "")) if cell is not None else None
+    out["upstreamCellSha256"] = closure
     out["verified"] = bool(
         plan and step and revision and cell
         and plan.notebook_id == revision.notebook_id and plan.notebook_revision == revision.revision
         and step.get("cellId") == claim.get("cellId") and step.get("cellSha256") == claim.get("cellSha256")
-        and cell_sha256(cell) == claim.get("cellSha256"))
+        and cell_sha256(cell) == claim.get("cellSha256")
+        and closure is not None
+        and all(src.get("upstreamCellSha256", closure) == closure for src in (step, claim)))
+    out["currency"] = cell_currency(db, user_key, str(claim.get("notebookId") or ""), str(claim.get("cellId") or ""),
+                                    claim.get("cellSha256"), closure or {})
     if cell is not None:
         out["language"] = cell.get("language") or (cell.get("execution") or {}).get("language")
     if revision is not None:
         # Server-computed package hash and title pin the revision; the notebook content stays in Workspace.
         out["notebookPackageSha256"], out["notebookTitle"] = revision.fingerprint, revision.title
     return out
+
+
+def _cell_closure(cells: list[Any], cell_id: str) -> dict[str, str] | None:
+    """Server cell hashes of every transitive dependency of a cell in one notebook revision; None if unresolvable."""
+    by_id = {str(c.get("id") or ""): c for c in cells if isinstance(c, dict)}
+    out: dict[str, str] = {}
+    pending, seen = [cell_id], set()
+    while pending:
+        cur = by_id.get(pending.pop())
+        if cur is None:
+            return None
+        for dep in ((cur.get("execution") or {}).get("dependsOnCellIds") or []):
+            dep = str(dep)
+            if dep in seen:
+                continue
+            seen.add(dep)
+            if dep not in by_id:
+                return None
+            out[dep] = cell_sha256(by_id[dep])
+            pending.append(dep)
+    return dict(sorted(out.items()))
+
+
+def cell_currency(db: Session, user_key: str, notebook_id: str, cell_id: str, cell_sha: Any, upstream: dict[str, str]) -> dict[str, Any]:
+    """Whether an execution claim still describes the notebook head: a changed cell, or any changed, added or
+    removed upstream cell, makes the claim stale until the affected cells are rerun on a newer revision."""
+    head = get_notebook(db, user_key, notebook_id)
+    if head is None:
+        return {"headRevision": None, "current": False, "reasons": ["notebook-missing"]}
+    cells = ((head.package or {}).get("notebook") or {}).get("cells") or []
+    cell = next((c for c in cells if isinstance(c, dict) and str(c.get("id") or "") == cell_id), None)
+    reasons = []
+    if cell is None:
+        reasons.append("cell-removed")
+    else:
+        if cell_sha256(cell) != cell_sha:
+            reasons.append("cell-changed")
+        closure = _cell_closure(cells, cell_id)
+        if closure is None:
+            reasons.append("upstream-unresolvable")
+        else:
+            changed = sorted(k for k in set(closure) | set(upstream) if closure.get(k) != upstream.get(k))
+            if changed:
+                reasons.append("upstream-changed")
+                return {"headRevision": head.revision, "current": False, "reasons": reasons, "changedUpstreamCells": changed}
+    return {"headRevision": head.revision, "current": not reasons, "reasons": reasons}

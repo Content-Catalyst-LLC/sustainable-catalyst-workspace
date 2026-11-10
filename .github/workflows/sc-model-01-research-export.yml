@@ -1,7 +1,7 @@
 name: SC-MODEL-01 Research export
 on:
   pull_request:
-    paths: [backend/**, .github/workflows/sc-model-01-research-export.yml]
+    paths: [backend/**, schemas/sc-workspace-notebook-*.json, wordpress/sustainable-catalyst-workspace/assets/js/sc-workspace-research-notebook-v8.js, tests/test_notebook_cell*, .github/workflows/sc-model-01-research-export.yml]
   push:
     branches: [main]
     paths: [backend/**]
@@ -32,4 +32,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -r requirements.txt pytest nbformat==5.10.4
-      - run: python -m pytest -q -p no:cacheprovider tests/test_research_export_sc_model01.py tests/test_input_integrity_sc_nb01.py tests/test_notebook_cell_runs_sc_nb01.py tests/test_notebook_export_sc_nb01.py tests/test_notebook_artifact_orchestration_v2260.py tests/test_polyglot_persistence_repair.py
+      - run: python -m pytest -q -p no:cacheprovider tests/test_research_export_sc_model01.py tests/test_input_integrity_sc_nb01.py tests/test_notebook_cell_runs_sc_nb01.py tests/test_notebook_export_sc_nb01.py tests/test_upstream_binding_sc_nb01.py tests/test_notebook_cells_sc_nb01.py tests/test_scientific_study_packages_v2270.py tests/test_notebook_artifact_orchestration_v2260.py tests/test_polyglot_persistence_repair.py
+  notebook-schema-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: python -m pip install pytest jsonschema==4.23.0
+      - run: python -m pytest -q -p no:cacheprovider tests/test_notebook_cell_schema_parity.py
+      - run: node tests/test_notebook_cells_runtime.js
