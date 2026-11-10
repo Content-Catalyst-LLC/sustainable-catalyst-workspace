@@ -22,6 +22,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 import re
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -268,6 +269,38 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
         if isinstance(tol, str):
             return {"values": {}, "error": f"tolerance: {tol}"}
         out["tolerance"] = tol
+    if "standardErrors" in mapping:
+        se = _standard_errors(mapping["standardErrors"], root, set(values))
+        if isinstance(se, str):
+            return {"values": {}, "error": f"standardErrors: {se}"}
+        out["standardErrors"] = {"semantics": "monte-carlo-standard-error", "values": se}
+    return out
+
+
+def _standard_errors(spec: Any, root: Any, names: set[str]) -> dict[str, float] | str:
+    """SC-SIM-01 G4: Monte Carlo standard error per declared value, from the runtime's own result.
+
+    ``{"sePath": p}`` takes a standard error the runtime reports; ``{"sdPath": p, "nPath": q}`` is only for a
+    value that is the mean of n independent draws (se = sd / sqrt(n)).
+    """
+    if not isinstance(spec, dict) or not spec:
+        return "declare {name: {sePath} | {sdPath, nPath}}"
+    out = {}
+    for name, how in spec.items():
+        if name not in names or not isinstance(how, dict):
+            return f"{str(name)[:64]!r} is not a declared result value"
+        if set(how) == {"sePath"}:
+            se = _resolve_path(root, how["sePath"])
+        elif set(how) == {"sdPath", "nPath"}:
+            sd, n = _resolve_path(root, how["sdPath"]), _resolve_path(root, how["nPath"])
+            if sd is None or n is None or n != int(n) or n < 2:
+                return f"{str(name)[:64]!r} needs a finite sd and an integer n >= 2"
+            se = sd / math.sqrt(n)
+        else:
+            return f"{str(name)[:64]!r} must declare sePath, or sdPath and nPath"
+        if se is None or se < 0:
+            return f"{str(name)[:64]!r} standard error does not resolve to a finite non-negative number"
+        out[str(name)] = se
     return out
 
 
@@ -279,15 +312,25 @@ def declared_tolerance(spec: Any) -> dict[str, float] | str:
 
     Research compares reproductions at this tolerance and refuses requests that would loosen it.
     """
-    if not isinstance(spec, dict) or set(spec) - {"relative", "absolute"} or not spec:
-        return "declare {relative, absolute}"
-    out = {}
+    if not isinstance(spec, dict) or set(spec) - {"relative", "absolute", "statistical"} or not spec:
+        return "declare {relative, absolute} and optionally statistical"
+    out: dict[str, Any] = {}
     for key, bound in (("relative", MAX_RELATIVE_TOLERANCE), ("absolute", MAX_ABSOLUTE_TOLERANCE)):
         v = _finite(spec.get(key, 0.0))
         if v is None or not 0 <= v <= bound:
             return f"{key} must be a number in [0, {bound}]"
         out[key] = v
+    if "statistical" in spec:
+        st = spec["statistical"]
+        z = _finite(st.get("z")) if isinstance(st, dict) else None
+        if not isinstance(st, dict) or st.get("method") != "z-score" or set(st) != {"method", "z"} or z is None \
+                or not MIN_Z <= z <= MAX_Z:
+            return f"statistical must be {{method: z-score, z in [{MIN_Z}, {MAX_Z}]}}"
+        out["statistical"] = {"method": "z-score", "z": z}
     return out
+
+
+MIN_Z, MAX_Z = 1.0, 6.0
 
 
 DATASET_BINDING_KEYS = ("datasetId", "datasetRevision", "datasetFingerprint", "artifactId", "artifactRevision",
