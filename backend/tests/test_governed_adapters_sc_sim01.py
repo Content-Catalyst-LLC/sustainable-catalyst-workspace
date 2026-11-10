@@ -157,6 +157,11 @@ def scenario(client, project_id):
         "schema": "sc-workspace-predictive-scenario-request/1.0", "projectId": project_id, "title": "Synthetic forecast scenario"})
 
 
+def code(body):
+    """This app's error handler flattens HTTPException detail objects into the response body."""
+    return (body.get("detail") or {}).get("code") if isinstance(body.get("detail"), dict) else body.get("code")
+
+
 def bind(client, scenario_id, ref, fingerprint, expect=200, metadata=None):
     r = client.post("/v1/predictive-investigation-workspace/result-bindings", headers=sim.hdr(USER), json={
         "schema": "sc-workspace-predictive-forecast-result-binding-request/1.0", "scenarioId": scenario_id,
@@ -178,14 +183,15 @@ def test_predictive_result_bindings_are_checked_against_run_receipts(client, mon
     assert v["status"] == "receipt-verified" and v["runId"] == run_id and v["receiptId"] == receipt["receiptId"]
     assert v["inputLineage"] == VERIFIED and "forged" not in v and ok["metadata"] == {"note": "client"}
     # Wrong fingerprint, unknown run, and a run that has not executed are refused.
-    assert bind(client, sc, f"workspace-run:{run_id}", "e" * 64, expect=409)["detail"]["code"] == "result-fingerprint-does-not-match-receipt"
-    assert bind(client, sc, "workspace-run:run-missing", "e" * 64, expect=404)["detail"]["code"] == "result-run-not-found"
+    assert code(bind(client, sc, f"workspace-run:{run_id}", "e" * 64, expect=409)) == "result-fingerprint-does-not-match-receipt"
+    assert code(bind(client, sc, "workspace-run:run-missing", "e" * 64, expect=404)) == "result-run-not-found"
     idle = sim.post(client, "/v1/runs", {"schema": "sc-workspace-execution-run/1.0", "projectId": PROJECT, "operation": WB_MC})["runId"]
-    assert bind(client, sc, f"workspace-run:{idle}", "e" * 64, expect=409)["detail"]["code"] == "result-run-not-executed-verified"
+    assert code(bind(client, sc, f"workspace-run:{idle}", "e" * 64, expect=409)) == "result-run-not-executed-verified"
     # Anything else is recorded, but only as a client assertion.
     ext = bind(client, sc, "https://example.test/forecast.csv", "f" * 64)
     assert ext["receiptVerification"]["status"] == "client-asserted"
     listed = client.get(f"/v1/predictive-investigation-workspace/result-bindings?scenarioId={sc}", headers=sim.hdr(USER)).json()
+    # Writes persist (they were flushed but never committed before this fix).
     statuses = sorted(x["receiptVerification"]["status"] for x in listed.get("items", listed.get("item", [])))
     assert statuses == ["client-asserted", "receipt-verified"]
 
@@ -205,4 +211,4 @@ def test_another_owners_run_cannot_be_bound(client, monkeypatch):
     r = client.post("/v1/predictive-investigation-workspace/result-bindings", headers=sim.hdr(other), json={
         "schema": "sc-workspace-predictive-forecast-result-binding-request/1.0", "scenarioId": sc, "resultKind": "forecast",
         "resultRef": f"workspace-run:{run_id}", "resultFingerprint": receipt["resultSha256"]})
-    assert r.status_code == 404 and r.json()["detail"]["code"] == "result-run-not-found"
+    assert r.status_code == 404 and code(r.json()) == "result-run-not-found"
