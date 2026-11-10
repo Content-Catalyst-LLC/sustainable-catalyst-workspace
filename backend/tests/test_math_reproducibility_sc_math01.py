@@ -128,15 +128,25 @@ def test_compute_receipt_projects_as_an_in_process_python_receipt():
 # Julia runner: registration, static safety, and a real cross-implementation check
 
 
+def source_files():
+    """The runner and schemas live outside backend/app; a backend-only image does not ship them."""
+    schema = BACKEND.parent / "schemas" / "sc-workspace-julia-simulation-runtime-v1.schema.json"
+    if not RUNNER.exists() or not schema.exists():
+        pytest.skip("needs the repository checkout (julia-runtime and schemas)")
+    return schema
+
+
 def test_expression_evaluate_is_registered_everywhere():
+    schema_path = source_files()
     op = "workspace.polyglot.julia.expression-evaluate"
     assert op in next(r for r in RUNTIMES if r.language == "julia").operations and op in JULIA_MODEL_OPERATIONS
     assert f'"{op}"' in (BACKEND / "julia-runtime" / "service.py").read_text()
-    schema = json.loads((BACKEND.parent / "schemas" / "sc-workspace-julia-simulation-runtime-v1.schema.json").read_text())
+    schema = json.loads(schema_path.read_text())
     assert op in json.dumps(schema)
 
 
 def test_julia_runner_never_parses_or_evaluates_julia_code():
+    source_files()
     runner = RUNNER.read_text()
     for unsafe in ("eval(", "Meta.parse(", "include_string", "run(`", "pipeline(", "ccall"):
         assert unsafe not in runner
@@ -191,8 +201,8 @@ client = sim.client
 USER, PROJECT = sim.USER, sim.PROJECT
 
 
-def math_model(client, model_id, operation, mapping):
-    return sim.post(client, "/v1/models", {"schema": "sc-workspace-model-record/1.0", "modelId": model_id, "projectId": PROJECT,
+def math_model(client, model_id, operation, mapping, project=PROJECT):
+    return sim.post(client, "/v1/models", {"schema": "sc-workspace-model-record/1.0", "modelId": model_id, "projectId": project,
                                            "name": "Symbolic identity check", "modelKind": "symbolic",
                                            "executionTarget": "workspace", "executionOperation": operation,
                                            "metadata": {"researchResultValues": mapping}})
@@ -315,9 +325,10 @@ def test_identity_check_runs_as_verified_notebook_cells(client, monkeypatch):
     import tests.test_notebook_cell_runs_sc_nb01 as cells
     sfx = uuid4().hex[:8]
     paths = {f"d{i}": f"result.values.{i}" for i in range(3)}
-    m_s = math_model(client, f"nb-sym-{sfx}", "workspace.compute.symbolic", {"kind": "scalar-paths", "paths": paths})
+    m_s = math_model(client, f"nb-sym-{sfx}", "workspace.compute.symbolic", {"kind": "scalar-paths", "paths": paths},
+                     project="nb-proj")
     m_j = math_model(client, f"nb-jl-{sfx}", "workspace.polyglot.julia.expression-evaluate",
-                     {"kind": "scalar-paths", "paths": {k: v.replace("result.", "") for k, v in paths.items()}})
+                     {"kind": "scalar-paths", "paths": {k: v.replace("result.", "") for k, v in paths.items()}}, project="nb-proj")
     params = {"expression": EXPR, "variables": ["x", "y"], "action": "differentiate", "variable": "x", "evaluateAt": POINTS}
     ps = sim.post(client, "/v1/parameter-sets", {"schema": "sc-workspace-parameter-set/1.0", "parameterSetId": f"nb-ps-{sfx}",
                                                  "projectId": "nb-proj", "modelId": "", "name": "Identity check points",
@@ -337,12 +348,15 @@ def test_identity_check_runs_as_verified_notebook_cells(client, monkeypatch):
     nb_id = f"nb-math-{sfx}"
     cells.store_notebook(client, USER, nb_id, identity_notebook(ps, m_s["modelId"], m_j["modelId"]))
     plan = cells.plan_and_dispatch(client, USER, nb_id)
+    assert plan["steps"][0]["jobId"], plan
     cells.run_job(plan["steps"][0]["jobId"], USER)
     plan = cells.get_plan(client, USER, plan["planId"])
+    first = client.get(f"/v1/jobs/{plan['steps'][0]['jobId']}", headers=sim.hdr(USER)).json()["item"]
+    assert plan["steps"][1]["jobId"], {k: first.get(k) for k in ("status", "errorCode", "errorMessage")}
     cells.run_job(plan["steps"][1]["jobId"], USER)
     plan = cells.get_plan(client, USER, plan["planId"])
     assert plan["status"] == "succeeded", plan
-    assert seen["payload"] == params  # Julia received exactly the attested revision
+    assert seen["payload"] == params  # Julia received exactly the attested revision, no orchestration metadata
     for step, language in zip(plan["steps"], ("python", "julia")):
         doc = cells.export(client, USER, step["runId"])
         assert doc["verification"]["status"] == "executed-verified" and doc["verification"]["inputLineage"] == VERIFIED

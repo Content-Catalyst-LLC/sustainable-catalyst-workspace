@@ -131,7 +131,8 @@ def resolve_parameter_input(db: Session, user_key: str, payload: dict[str, Any],
     spec = payload.get("parameterInput")
     if not isinstance(spec, dict):
         raise _refuse("parameter-input-malformed")
-    extra = sorted(set(payload) - {"parameterInput", "datasetInput"})
+    # notebookExecution is the plan dispatcher's orchestration record, not a parameter; it never reaches the runtime.
+    extra = sorted(set(payload) - {"parameterInput", "datasetInput", "notebookExecution"})
     if extra:
         raise _refuse("parameter-input-inline-keys", keys=extra[:16],
                       detail="with parameterInput every runtime parameter must come from the ParameterSet revision")
