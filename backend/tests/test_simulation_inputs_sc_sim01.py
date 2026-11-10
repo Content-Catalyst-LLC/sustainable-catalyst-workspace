@@ -63,6 +63,34 @@ def test_declared_tolerance_is_bounded_and_exported():
     assert "tolerance" not in rx.extract_result_values({k: v for k, v in mapping.items() if k != "tolerance"}, doc)
 
 
+def test_statistical_tolerance_declaration_is_bounded():
+    ok = rx.declared_tolerance({"relative": 0.0, "absolute": 0.0, "statistical": {"method": "z-score", "z": 4}})
+    assert ok["statistical"] == {"method": "z-score", "z": 4.0}
+    for bad in ({"method": "z-score", "z": 0.5}, {"method": "z-score", "z": 7}, {"method": "t", "z": 3},
+                {"method": "z-score"}, {"method": "z-score", "z": 3, "alpha": 0.05}, "z-score"):
+        assert isinstance(rx.declared_tolerance({"relative": 0, "statistical": bad}), str), bad
+
+
+def test_monte_carlo_standard_errors_from_the_runtime_result():
+    from tests.test_research_export_sc_model01 import _runtime_doc
+    doc = _runtime_doc("uncertainty-runtime", "workspace.uncertainty.monte-carlo-weighted-sum",
+                       {"seed": 3, "draws": 4000, "terms": [{"coefficient": 1.0, "distribution": {"kind": "normal", "mean": 2.0, "sd": 0.5}}]})
+    summary = doc["result"]["remote"]["result"]["summary"]
+    mapping = {"kind": "scalar-paths", "paths": {"sampleMean": "summary.mean"},
+               "standardErrors": {"sampleMean": {"sdPath": "summary.sd", "nPath": "summary.n"}},
+               "tolerance": {"relative": 0, "absolute": 0, "statistical": {"method": "z-score", "z": 4}}}
+    out = rx.extract_result_values(mapping, doc)
+    assert out["standardErrors"] == {"semantics": "monte-carlo-standard-error",
+                                     "values": {"sampleMean": summary["sd"] / 4000 ** 0.5}}
+    reported = {"result": {"remote": {"result": {"mean": 1.0, "mcse": 0.01, "n": 2.5}}}}
+    assert rx.extract_result_values({"kind": "scalar-paths", "paths": {"m": "mean"}, "standardErrors": {"m": {"sePath": "mcse"}}},
+                                    reported)["standardErrors"]["values"] == {"m": 0.01}
+    for se in ({"other": {"sePath": "mcse"}}, {"m": {"sdPath": "mcse", "nPath": "n"}}, {"m": {"sdPath": "mcse"}},
+               {"m": {"sePath": "missing"}}, {"m": {"sePath": "mcse", "sdPath": "mcse"}}, {}):
+        bad = rx.extract_result_values({"kind": "scalar-paths", "paths": {"m": "mean"}, "standardErrors": se}, reported)
+        assert bad["values"] == {} and bad["error"].startswith("standardErrors:"), se
+
+
 def test_parameter_binding_is_projected_into_the_export():
     b = {"schema": ii.PARAMETER_BINDING_SCHEMA, "kind": ii.PARAMETER_KIND, "lineage": ii.VERIFIED, "parameterSetId": "p",
          "parameterSetRevision": 2, "parameterSetFingerprint": "f" * 64, "modelId": "m", "parametersSha256": "a" * 64,
