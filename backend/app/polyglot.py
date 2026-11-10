@@ -17,6 +17,7 @@ from .config import get_settings
 from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt, PredictiveModelReceipt, ModelEvaluationReceipt, ForecastReceipt, ForecastEvaluationReceipt, ProbabilisticInferenceReceipt, UncertaintyAnalysisReceipt, OptimizationReceipt, DecisionOptimizationReceipt, ReliabilityAnalysisReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
+from .input_integrity import VERIFIED as INPUT_VERIFIED, lineage_for_payload, resolve_dataset_input
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
 from .utils import sha256_hex
 
@@ -382,7 +383,7 @@ def _sql_execute(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
         conn.close()
 
 
-def execute_external(language: str, row, payload: dict[str, Any]) -> dict[str, Any]:
+def execute_external(language: str, row, payload: dict[str, Any], input_bindings: list[dict[str, Any]] | None=None) -> dict[str, Any]:
     url, token=_runtime_route(language)
     if not url.strip():
         raise HTTPException(status_code=409, detail=f"{language} runtime adapter is not configured")
@@ -396,6 +397,7 @@ def execute_external(language: str, row, payload: dict[str, Any]) -> dict[str, A
         "payload":payload,
         "exchange":arrow_compatible_descriptor(exchange_rows) if exchange_rows else None,
         "requestFingerprint":row.request_fingerprint,
+        "inputBindings":input_bindings or [],
         "executionPolicy":(row.payload or {}).get("executionPolicy") or {},
         "resourceBudget":(row.payload or {}).get("resourceBudget") or {},
         "sandbox":(row.payload or {}).get("sandbox") or {},
@@ -421,10 +423,17 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     if not language or language == "python":
         raise HTTPException(status_code=400, detail="Operation is not a polyglot-fabric operation")
     payload=((row.payload or {}).get("payload") or {})
+    input_bindings=[]
+    if isinstance(payload, dict) and "datasetInput" in payload:
+        payload, binding=resolve_dataset_input(db,row.user_key,payload,str(((row.payload or {}).get("executionRunId") or "")).strip())
+        input_bindings=[binding]
+        input_lineage=INPUT_VERIFIED
+    else:
+        input_lineage=lineage_for_payload(payload)
     if progress_callback: progress_callback(15,{"stage":"runtime-selected","language":language})
     started=datetime.now(timezone.utc)
     if language == "sql": result=_sql_execute(row.operation,payload)
-    else: result=execute_external(language,row,payload)
+    else: result=execute_external(language,row,payload,input_bindings)
     if progress_callback: progress_callback(75,{"stage":"runtime-complete","language":language})
     model_artifact_id = ""
     model_artifact_sha256 = ""
@@ -1219,7 +1228,8 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             store_run_output(db,row.user_key,run_id,multimodal_output)
 
     finished=datetime.now(timezone.utc)
-    receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
+    receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False,
+                     "inputLineage":input_lineage,"inputBindings":input_bindings}
     if language == "neural" and isinstance(result, dict):
         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
         device_plan=remote_body.get("devicePlan") if isinstance(remote_body.get("devicePlan"),dict) else {}

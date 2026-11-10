@@ -38,6 +38,7 @@ from sqlalchemy import select
 from .config import get_settings
 from .db import session_scope
 from .execution_provenance import run_provenance
+from .input_integrity import VERIFIED as INPUT_VERIFIED
 from .models import (
     ExecutionRun, ExecutionRunOutput, PolyglotExecutionReceipt, ResearchExportGrant,
     ResearchExportWithdrawal, ScientificStudyPackage,
@@ -210,8 +211,17 @@ def _verification(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionR
         status = "succeeded-without-runtime-receipt"
     else:
         status = "executed-verified"
+    # Verified input lineage only when every matching receipt bound its inputs to pinned dataset bytes.
+    lineages = {(r.details_json or {}).get("inputLineage") or "unrecorded" for r in matching}
+    input_lineage = INPUT_VERIFIED if matching and lineages == {INPUT_VERIFIED} else (
+        sorted(lineages - {INPUT_VERIFIED})[0] if matching else "not-executed")
+    bindings = [b for r in matching for b in ((r.details_json or {}).get("inputBindings") or [])]
     return {
         "status": status, "runStatus": run.status, "jobId": run.job_id,
+        "inputLineage": input_lineage,
+        "inputBindings": [{k: b.get(k) for k in ("datasetId", "datasetRevision", "datasetFingerprint", "artifactId",
+                                                 "artifactRevision", "artifactSha256", "format", "rowCount", "rowsSha256",
+                                                 "transform", "derivedPayloadSha256")} for b in bindings],
         "runtimeReceipts": [{"receiptId": r.receipt_id, "language": r.language, "runtime": r.runtime,
                              "operation": r.operation, "requestFingerprint": r.request_fingerprint,
                              "resultArtifactId": r.result_artifact_id, "resultSha256": r.result_sha256,

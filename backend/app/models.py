@@ -767,6 +767,9 @@ class DatasetHead(Base):
     source_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
     artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     external_uri: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Exact artifact snapshot pinned when the dataset revision was registered (SC-NB-01 input integrity).
+    artifact_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    artifact_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     last_operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
@@ -791,6 +794,9 @@ class DatasetRevision(Base):
     source_kind: Mapped[str] = mapped_column(String(64), nullable=False, default="metadata")
     artifact_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     external_uri: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # Exact artifact snapshot pinned when the dataset revision was registered (SC-NB-01 input integrity).
+    artifact_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    artifact_sha256: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
     operation_id: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     schema_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
