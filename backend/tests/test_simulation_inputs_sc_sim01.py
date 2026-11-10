@@ -10,11 +10,17 @@ from uuid import uuid4
 
 import pytest
 
-import tests.test_input_integrity_sc_nb01 as nb  # noqa: F401  (sets the test environment first)
-from fastapi import HTTPException
+os.environ["SC_WORKSPACE_RUNTIME_FORECAST_URL"] = "http://forecast-runtime.test/v1/execute"
+os.environ.setdefault("SC_WORKSPACE_RUNTIME_FORECAST_TOKEN", "forecast-test")
 
-from app import input_integrity as ii
-from app import research_exports as rx
+import tests.test_input_integrity_sc_nb01 as nb  # noqa: E402,F401  (sets the test environment first)
+from fastapi import HTTPException  # noqa: E402
+
+from app import input_integrity as ii  # noqa: E402
+from app import research_exports as rx  # noqa: E402
+from app.config import get_settings  # noqa: E402
+
+get_settings.cache_clear()
 
 PG = os.getenv("SC_WORKSPACE_DATABASE_URL", "").startswith("postgresql")
 SERIES_ROWS = [{"t": t, "y": 10.0 + 0.5 * t} for t in (3, 1, 2, 0, 4)]
@@ -219,7 +225,7 @@ def test_parameters_and_pinned_series_combine_with_verified_lineage(client, monk
     run_id = run(client, m["modelId"], ps["parameterSetId"], 1, datasets=[(ds["datasetId"], ds["revision"])])
     series = {"datasetId": ds["datasetId"], "datasetRevision": ds["revision"],
               "transform": {"kind": "numeric-series", "column": "y", "orderBy": "t"}}
-    env = execute(monkeypatch, run_id, "workspace.polyglot.forecast.linear-trend", {**pin(ps), "datasetInput": series},
+    env = execute(monkeypatch, run_id, "workspace.forecast.linear-trend", {**pin(ps), "datasetInput": series},
                   {"kind": "linear-trend", "point": [12.5, 13.0]})
     assert env["payload"] == {"horizon": 2, "values": [10.0, 10.5, 11.0, 11.5, 12.0]}
     kinds = [b.get("kind") for b in env["inputBindings"]]
