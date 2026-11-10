@@ -26,6 +26,7 @@ WORKSPACE_PREFIXES = (
     "workspace.compute.", "workspace.polyglot.", "workspace.ml.", "workspace.neural.", "workspace.forecast.",
     "workspace.probability.", "workspace.uncertainty.", "workspace.optimize.",
     "workspace.decision.", "workspace.reliability.", "workspace.interchange.",
+    "workspace.workbench.", "workspace.decision-studio.",
 )
 WORKSPACE_EXACT = {"workspace.echo", "workspace.storage-integrity", "workspace.recovery-snapshot"}
 

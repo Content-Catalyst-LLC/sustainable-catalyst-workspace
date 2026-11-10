@@ -446,6 +446,11 @@ def _compute_receipt(r: ComputeExecutionReceipt) -> _Receipt:
                     f"{r.engine} {r.engine_version}".strip() or "unrecorded", libs if isinstance(libs, dict) else None)
 
 
+def verification_for_run(db, user_key: str, run: ExecutionRun, outputs: list[ExecutionRunOutput]) -> dict[str, Any]:
+    """Public view of the receipt check, for result bindings elsewhere in Workspace (SC-SIM-01 G9)."""
+    return _verification(db, user_key, run, outputs)
+
+
 def _study_packages(db, user_key: str, run: ExecutionRun) -> list[dict[str, Any]]:
     """Existing study packages that pin this exact run state, each freshly deep-verified."""
     rows = db.scalars(select(ScientificStudyPackage).where(
