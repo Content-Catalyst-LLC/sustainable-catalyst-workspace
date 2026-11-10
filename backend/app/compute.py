@@ -446,6 +446,12 @@ def get_compute_receipt(db: Session, user_key: str, receipt_id: str) -> ComputeE
     return db.get(ComputeExecutionReceipt, {"user_key": user_key, "receipt_id": receipt_id})
 
 
+# Dispatch only registered operations. The job's user_key scopes the resulting
+# artifact and execution output; the request fingerprint binds operation and
+# payload, while the result carries engine/version for later reproduction.
+# This call writes an artifact/output/receipt and reports progress; registry,
+# payload and size failures raise HTTP 400/413. A recorded result is a model
+# output, not independent scientific validation of its assumptions or data.
 def execute_scientific_operation(db: Session, row, progress_callback: ProgressCallback | None = None) -> dict[str, Any]:
     spec = OPERATION_MAP.get(row.operation)
     if spec is None:
