@@ -1,0 +1,35 @@
+name: SC-MODEL-01 Research export
+on:
+  pull_request:
+    paths: [backend/**, .github/workflows/sc-model-01-research-export.yml]
+  push:
+    branches: [main]
+    paths: [backend/**]
+permissions:
+  contents: read
+jobs:
+  research-export:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sc_workspace_ci
+          POSTGRES_USER: sc_workspace_ci
+          POSTGRES_PASSWORD: ci-only-disposable
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sc_workspace_ci -d sc_workspace_ci"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      SC_WORKSPACE_DATABASE_URL: postgresql+psycopg://sc_workspace_ci:ci-only-disposable@127.0.0.1:5432/sc_workspace_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt pytest
+      - run: python -m pytest -q -p no:cacheprovider tests/test_research_export_sc_model01.py
