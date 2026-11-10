@@ -443,6 +443,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
 )
 app.include_router(session_router)
+# Production WXR-09 private research (recovered from the running production image, SC-RELEASE-01).
+from .private_research import router as private_research_router
+app.include_router(private_research_router)
+from .private_research_ui import router as private_research_ui_router
+app.include_router(private_research_ui_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
@@ -5003,3 +5008,17 @@ app.include_router(notebook_export_router)
 # SC-ED-01: authenticated, persisted, signed approvals for Research publication.
 from .research_approvals import router as research_approval_router
 app.include_router(research_approval_router)
+
+# Production Wexford routes, recovered from the running production image (SC-RELEASE-01).
+# WXR-08.1.3 identity bridge
+from .erw_identity_bridge import router as erw_identity_bridge_router
+app.include_router(erw_identity_bridge_router)
+# WXR-08.3.0 legacy ERW owner-scoped registry overlay
+from .wxr083_legacy import router as wxr083_legacy_router
+app.include_router(wxr083_legacy_router)
+# WXR-08.3.8.3.5 private route activation
+from app.wxr083835.route import router as wxr083835_router
+app.include_router(wxr083835_router)
+# Wexford account-pinned permanent access route
+from .wxr_permanent_auth import router as _wxr_permanent_auth_router
+app.include_router(_wxr_permanent_auth_router)
