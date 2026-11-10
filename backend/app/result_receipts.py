@@ -38,7 +38,7 @@ def verify_result_ref(db, user_key: str, project_id: str, result_ref: str, finge
         ExecutionRunOutput.user_key == user_key, ExecutionRunOutput.run_id == run_id)).all())
     v = verification_for_run(db, user_key, run, outputs)
     if v["status"] != "executed-verified":
-        raise _refuse("result-run-not-executed-verified", runId=run_id, status=v["status"])
+        raise _refuse("result-run-not-executed-verified", runId=run_id, verificationStatus=v["status"])
     receipt = next((r for r in v["runtimeReceipts"] if r["resultSha256"] == fingerprint.strip().lower()), None)
     if receipt is None:
         raise _refuse("result-fingerprint-does-not-match-receipt", runId=run_id)
