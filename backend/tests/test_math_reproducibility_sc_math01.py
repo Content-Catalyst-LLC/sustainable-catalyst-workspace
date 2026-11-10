@@ -193,7 +193,7 @@ USER, PROJECT = sim.USER, sim.PROJECT
 
 def math_model(client, model_id, operation, mapping):
     return sim.post(client, "/v1/models", {"schema": "sc-workspace-model-record/1.0", "modelId": model_id, "projectId": PROJECT,
-                                           "name": "Symbolic identity check", "modelKind": "mathematical",
+                                           "name": "Symbolic identity check", "modelKind": "symbolic",
                                            "executionTarget": "workspace", "executionOperation": operation,
                                            "metadata": {"researchResultValues": mapping}})
 
