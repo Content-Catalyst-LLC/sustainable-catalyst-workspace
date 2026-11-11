@@ -70,19 +70,25 @@ def session_profile() -> dict[str, Any]:
         "sameSite": "lax",
         "browserServiceCredentialRequired": False,
         "serviceCredentialsBrowserVisible": False,
-        "legacyWordPressServiceIdentityCompatible": True,
+        "legacyWordPressServiceIdentityCompatible": not getattr(settings, "sc_identity_required", False),
         "standaloneSessionIdentity": True,
         "explicitSessionSigningSecretConfigured": explicit_secret,
         "serviceTokenFallbackActive": bool(
             not explicit_secret and not getattr(settings, "session_revocation_enforced", False)
             and settings.service_token.strip()
         ),
-        "globalIdentityProviderConfigured": False,
+        "globalIdentityProviderConfigured": bool(getattr(settings, "sc_identity_issuer", "") and getattr(settings, "sc_identity_client_id", "")),
+        "globalIdentityProviderRequired": bool(getattr(settings, "sc_identity_required", False)),
         "automaticAccountCreation": False,
         "arbitraryCodeExecution": False,
     }
 
-def issue_session_token(user_key: str, display_name: str = "") -> str:
+# Identity-provider claims a session may carry (SC-AUTH-02). They bind the
+# session to its IdP session for back-channel logout and record MFA evidence.
+SESSION_EXTRA_CLAIMS = frozenset({"auth", "idp_iss", "idp_sid", "idp_sub", "amr", "auth_time"})
+
+
+def issue_session_token(user_key: str, display_name: str = "", extra: dict[str, Any] | None = None) -> str:
     settings = get_settings()
     secret = _secret()
     if not secret:
@@ -99,6 +105,10 @@ def issue_session_token(user_key: str, display_name: str = "") -> str:
         "exp": now + int(settings.session_ttl_seconds),
         "jti": uuid4().hex,
     }
+    for key, value in (extra or {}).items():
+        if key not in SESSION_EXTRA_CLAIMS:
+            raise ValueError(f"unsupported session claim: {key}")
+        payload[key] = value
     encoded = _b64e(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"))
     signature = _b64e(hmac.new(secret.encode("utf-8"), encoded.encode("ascii"), hashlib.sha256).digest())
     return encoded + "." + signature
@@ -225,7 +235,7 @@ def get_session(request: Request):
         "authenticated": True,
         "subject": str(payload.get("sub") or ""),
         "displayName": str(payload.get("displayName") or ""),
-        "authenticationMethod": "signed-http-only-session-cookie",
+        "authenticationMethod": "sc-identity-oidc" if payload.get("auth") == "sc-identity-oidc" else "signed-http-only-session-cookie",
         "expiresAt": int(payload.get("exp") or 0),
     }
 
@@ -237,15 +247,11 @@ def exchange_session(
     x_sc_user_id: str | None = Header(default=None, alias="X-SC-User-ID"),
     x_sc_display_name: str | None = Header(default=None, alias="X-SC-Display-Name"),
 ):
-    if getattr(get_settings(), "bridge_assertion_required", False):
-        # SC-AUTH-01: a Workspace session is only issued for a user proven by a
-        # verified, session-bound WordPress bridge assertion.
-        bridge = getattr(request.state, "sc_bridge_identity", None)
-        if not bridge:
-            raise HTTPException(status_code=401, detail="Valid Workspace identity required.")
-        user_key = bridge["sub"]
-    else:
-        user_key = _legacy_exchange_identity(authorization, x_sc_user_id)
+    if getattr(get_settings(), "sc_identity_required", False):
+        # SC-AUTH-02: sessions are issued only by /v1/auth/callback after a
+        # verified Sustainable Catalyst Identity sign-in.
+        raise HTTPException(status_code=404, detail="Not Found")
+    user_key = _legacy_exchange_identity(authorization, x_sc_user_id)
     settings = get_settings()
     token = issue_session_token(user_key, x_sc_display_name or "")
     response.set_cookie(
@@ -267,6 +273,29 @@ def exchange_session(
         "sessionIssued": True,
     }
 
+def revoke_request_session(request: Request) -> None:
+    """Durably revoke the presented session cookie (no-op without one).
+
+    Deleting a cookie does NOT revoke a token without the durable insert.
+    """
+    token = request.cookies.get(session_cookie_name(), "")
+    if not token:
+        return
+    try:
+        claims = decode_session_token(token)
+    except SessionVerificationUnavailable:
+        raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
+    except ValueError:
+        # Bad/expired cookie has no authenticated claims to revoke.
+        return
+    try:
+        with session_scope() as db:
+            revoke_session(db, token, subject=claims["sub"], expires_at=int(claims["exp"]))
+            db.commit()
+    except Exception:
+        raise HTTPException(status_code=503, detail="Workspace session revocation unavailable") from None
+
+
 @router.delete("")
 def clear_session(request: Request, response: Response):
     # With revocation enabled, logout requires a same-origin browser request.
@@ -276,21 +305,6 @@ def clear_session(request: Request, response: Response):
         allowed = {v.strip() for v in get_settings().cors_allowed_origins.split(",") if v.strip()}
         if not origin or origin not in allowed:
             raise HTTPException(status_code=403, detail="Logout origin not authorized")
-        token = request.cookies.get(session_cookie_name(), "")
-        if token:
-            try:
-                claims = decode_session_token(token)
-            except SessionVerificationUnavailable:
-                raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
-            except ValueError:
-                # Bad/expired cookie has no authenticated claims to revoke.
-                claims = None
-            if claims is not None:
-                try:
-                    with session_scope() as db:
-                        revoke_session(db, token, subject=claims["sub"], expires_at=int(claims["exp"]))
-                        db.commit()
-                except Exception:
-                    raise HTTPException(status_code=503, detail="Workspace session revocation unavailable") from None
+        revoke_request_session(request)
     response.delete_cookie(key=session_cookie_name(), path="/", secure=True, httponly=True, samesite="lax")
     return {"schema": SESSION_SCHEMA, "version": "3.71.0", "authenticated": False, "sessionCleared": True}

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from fastapi import Header, HTTPException, Request, status
 
-from .authorization import BRIDGE_SERVICE_PRINCIPAL, SERVICE_PRINCIPAL, authorize_request
+from .authorization import SERVICE_PRINCIPAL, authorize_request
 from .config import get_settings
 
 @dataclass(frozen=True)
@@ -27,7 +27,9 @@ def _session_identity(request: Request) -> ServiceIdentity | None:
         principal_id=f"workspace-user:{user_key}",
         principal_type="workspace-user",
         service_principal=SESSION_SERVICE_PRINCIPAL,
-        authentication_method="signed-http-only-session-cookie",
+        authentication_method=(
+            "sc-identity-oidc-session" if payload.get("auth") == "sc-identity-oidc" else "signed-http-only-session-cookie"
+        ),
     )
 
 def require_service_identity(
@@ -35,17 +37,10 @@ def require_service_identity(
     authorization: str | None = Header(default=None),
     x_sc_user_id: str | None = Header(default=None, alias="X-SC-User-ID"),
 ) -> ServiceIdentity:
-    bridge = getattr(request.state, "sc_bridge_identity", None)
-    if bridge:
-        # Verified by wp_bridge.AuthHygieneMiddleware before routing; any
-        # client-supplied X-SC-User-ID is ignored on this path.
-        identity = ServiceIdentity(
-            user_key=bridge["sub"],
-            principal_id=f"wp-user:{bridge['sub']}",
-            principal_type="wordpress-user",
-            service_principal=BRIDGE_SERVICE_PRINCIPAL,
-            authentication_method="wordpress-bridge-assertion",
-        )
+    from . import sc_identity
+    if sc_identity.is_identity_bearer(authorization):
+        # SC-AUTH-02: a verified Sustainable Catalyst access token for this API.
+        identity = sc_identity.bearer_identity(authorization)
         decision = authorize_request(identity, request.method, request.url.path)
         if decision["effect"] != "allow":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code":"authorization-denied","decision":decision})
@@ -61,8 +56,8 @@ def require_service_identity(
         return session_identity
 
     settings = get_settings()
-    if getattr(settings, "bridge_assertion_required", False):
-        # SC-AUTH-01: a shared bearer plus a bare user id is no longer a user identity.
+    if getattr(settings, "sc_identity_required", False):
+        # SC-AUTH-02: a shared bearer plus a bare user id is not a user identity.
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Valid Workspace identity required.")
     if not settings.token_configured:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Workspace backend service token is not configured.")

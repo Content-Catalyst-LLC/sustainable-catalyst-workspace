@@ -5,7 +5,7 @@ from sqlalchemy import text
 from .db import get_engine
 
 # Ordered. 054 was 051 before SC-AUTH-01 G2 (051-053 are used on the release line).
-MIGRATIONS = ("054_workspace_session_revocation", "055_workspace_auth_hardening")
+MIGRATIONS = ("054_workspace_session_revocation", "055_workspace_auth_hardening", "056_workspace_sc_identity")
 MIGRATION = MIGRATIONS[0]
 REQUIRED_TABLES = (
     "workspace_revoked_sessions",
@@ -13,6 +13,9 @@ REQUIRED_TABLES = (
     "workspace_revoked_session_ids",
     "workspace_session_user_cutoffs",
     "workspace_session_revocation_audit",
+    "workspace_identity_links",
+    "workspace_identity_link_audit",
+    "workspace_revoked_idp_sessions",
 )
 
 def _read(migration_id):

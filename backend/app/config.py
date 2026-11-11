@@ -21,12 +21,23 @@ class Settings(BaseSettings):
     research_introspection_token: str = ""
     research_introspection_token_file: str = ""
     session_revocation_enforced: bool = False  # Enable only after migration + staging acceptance.
-    # SC-AUTH-01 WordPress bridge: per-request signed user assertions with a bridge-only key.
-    bridge_assertion_key: str = ""
-    bridge_assertion_key_file: str = ""
-    bridge_audience: str = "sc-workspace-api"
-    # When true, the legacy service bearer + X-SC-User-ID user context is refused.
-    bridge_assertion_required: bool = False
+    # SC-AUTH-02: Sustainable Catalyst Identity (Platform Core OIDC provider).
+    # Workspace is a confidential client (BFF); WordPress is never an identity source.
+    sc_identity_issuer: str = ""  # exact public `iss`
+    sc_identity_discovery_url: str = ""  # internal URL; defaults to issuer discovery
+    sc_identity_client_id: str = ""
+    sc_identity_client_secret: str = ""
+    sc_identity_client_secret_file: str = ""
+    sc_identity_redirect_uri: str = ""
+    sc_identity_post_logout_redirect_uri: str = ""
+    sc_identity_api_audience: str = "sc-workspace-api"
+    sc_identity_allowed_bearer_clients: str = ""  # comma-separated azp allowlist; empty = any
+    sc_identity_require_mfa: bool = True
+    sc_identity_mfa_amr: str = "otp,mfa,hwk,swk"
+    sc_identity_step_up_max_age: int = 300
+    # When true, legacy user context (service bearer + X-SC-User-ID) and the
+    # trusted-service session exchange are refused.
+    sc_identity_required: bool = False
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False
 

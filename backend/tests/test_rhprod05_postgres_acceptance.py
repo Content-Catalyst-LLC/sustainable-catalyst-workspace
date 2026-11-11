@@ -22,10 +22,12 @@ def database(monkeypatch):
     engine = create_engine(url)
     migrations = Path(__file__).resolve().parents[1] / "migrations"
     with engine.begin() as conn:
-        for name in ("054_workspace_session_revocation.sql", "055_workspace_auth_hardening.sql"):
+        for name in ("054_workspace_session_revocation.sql", "055_workspace_auth_hardening.sql",
+                     "056_workspace_sc_identity.sql"):
             conn.execute(text((migrations / name).read_text()))
         for table in ("workspace_revoked_sessions", "workspace_used_nonces", "workspace_revoked_session_ids",
-                      "workspace_session_user_cutoffs", "workspace_session_revocation_audit"):
+                      "workspace_session_user_cutoffs", "workspace_session_revocation_audit",
+                      "workspace_identity_links", "workspace_identity_link_audit", "workspace_revoked_idp_sessions"):
             conn.execute(text(f"DELETE FROM {table}"))
     from types import SimpleNamespace
     settings = SimpleNamespace(

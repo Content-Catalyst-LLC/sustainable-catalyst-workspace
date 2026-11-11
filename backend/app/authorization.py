@@ -17,8 +17,8 @@ POLICY_ID = "workspace-authenticated-user-v1"
 POLICY_REVISION = 1
 SERVICE_PRINCIPAL = "wordpress-proxy"
 SESSION_SERVICE_PRINCIPAL = "workspace-session"
-BRIDGE_SERVICE_PRINCIPAL = "wordpress-bridge"  # SC-AUTH-01 verified bridge assertions
-TRUSTED_SERVICE_PRINCIPALS = frozenset({SERVICE_PRINCIPAL, SESSION_SERVICE_PRINCIPAL, BRIDGE_SERVICE_PRINCIPAL})
+SC_IDENTITY_BEARER_PRINCIPAL = "sc-identity-bearer"  # SC-AUTH-02 verified Core access tokens
+TRUSTED_SERVICE_PRINCIPALS = frozenset({SERVICE_PRINCIPAL, SESSION_SERVICE_PRINCIPAL, SC_IDENTITY_BEARER_PRINCIPAL})
 
 ACTIONS = (
     "workspace.read",

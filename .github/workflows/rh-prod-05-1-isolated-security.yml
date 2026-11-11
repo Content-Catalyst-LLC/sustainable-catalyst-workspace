@@ -14,9 +14,12 @@ on:
       - 'backend/migrations/055_workspace_auth_hardening.sql'
       - 'backend/app/security.py'
       - 'backend/app/main.py'
-      - 'backend/app/wp_bridge.py'
+      - 'backend/app/auth_hygiene.py'
+      - 'backend/app/sc_identity.py'
+      - 'backend/migrations/056_workspace_sc_identity.sql'
       - 'backend/app/session_operator.py'
       - 'backend/tests/test_sc_auth01_*.py'
+      - 'backend/tests/test_sc_auth02_*.py'
       - 'backend/tests/sc_auth01_sqlite_schema.py'
       - 'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-backend.php'
       - 'backend/tests/test_rhprod05_*.py'
@@ -62,10 +65,10 @@ jobs:
           python -m pip install --disable-pip-version-check \
             'fastapi==0.128.2' 'SQLAlchemy==2.0.50' \
             'psycopg[binary]>=3.2,<4' 'pydantic-settings==2.14.1' \
-            'pytest>=8,<10' 'httpx==0.28.1'
+            'pytest>=8,<10' 'httpx==0.28.1' 'PyJWT[crypto]==2.10.1' 'cryptography==46.0.3'
       - name: Static compile of changed source
         run: |
-          python -m compileall -q backend/app/session_auth.py backend/app/session_revocation.py backend/app/research_session_introspection.py backend/app/wp_bridge.py backend/app/session_operator.py backend/app/migrate_security.py backend/tests/test_rhprod05_*.py backend/tests/test_sc_auth01_*.py
+          python -m compileall -q backend/app/session_auth.py backend/app/session_revocation.py backend/app/research_session_introspection.py backend/app/auth_hygiene.py backend/app/sc_identity.py backend/app/session_operator.py backend/app/migrate_security.py backend/tests/test_rhprod05_*.py backend/tests/test_sc_auth01_*.py backend/tests/test_sc_auth02_*.py
       - name: Legacy session and new security regression
         run: |
           python -m pytest -q \
@@ -76,7 +79,8 @@ jobs:
             backend/tests/test_rhprod05_logout_replay.py \
             backend/tests/test_rhprod05_postgres_acceptance.py \
             backend/tests/test_rhprod05_private_activation.py \
-            backend/tests/test_sc_auth01_hardening.py
+            backend/tests/test_sc_auth01_hardening.py \
+            backend/tests/test_sc_auth02_identity.py
       - name: Test baseline/candidate regression classifier
         run: |
           python -m unittest discover -s scripts/tests -p 'test_rhprod05_*.py' -v

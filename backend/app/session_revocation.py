@@ -40,7 +40,8 @@ def is_revoked(db, token: str, claims: dict | None = None) -> bool:
     """Database availability is mandatory for trusted private verification.
 
     A token is revoked by its own fingerprint (logout), by its server-issued
-    session id, or by a per-user cutoff at or after its issue time (operator).
+    session id, by its identity-provider session (back-channel logout), or by
+    a per-user cutoff at or after its issue time (operator).
     """
     fingerprint = token_fingerprint(token)
     try:
@@ -57,6 +58,12 @@ def is_revoked(db, token: str, claims: dict | None = None) -> bool:
             {"sid": session_id},
         ).first() is not None:
             return True
+        idp_sid = str(claims.get("idp_sid") or "")
+        if idp_sid and db.execute(
+            text("SELECT 1 FROM workspace_revoked_idp_sessions WHERE issuer = :iss AND idp_sid = :sid LIMIT 1"),
+            {"iss": str(claims.get("idp_iss") or ""), "sid": idp_sid},
+        ).first() is not None:
+            return True
         cutoff = db.execute(
             text("SELECT not_before FROM workspace_session_user_cutoffs WHERE user_key = :sub"),
             {"sub": str(claims.get("sub") or "")},
@@ -66,13 +73,16 @@ def is_revoked(db, token: str, claims: dict | None = None) -> bool:
         raise SessionVerificationUnavailable("Session verification unavailable") from None
 
 
+NONCE_SCOPES = frozenset({"introspection", "oidc-state", "backchannel-logout"})
+
+
 def consume_nonce(db, scope: str, nonce: str, expires_at: int) -> bool:
     """Record a single-use nonce. False means it was already used (replay).
 
     Rows must outlive the credential they protect, so callers pass the
     expiry of the bound session or assertion. Caller owns commit.
     """
-    if scope not in {"introspection", "wp-bridge"} or not isinstance(nonce, str) or not 16 <= len(nonce) <= 64:
+    if scope not in NONCE_SCOPES or not isinstance(nonce, str) or not 16 <= len(nonce) <= 128:
         raise ValueError("Invalid nonce")
     try:
         row = db.execute(
@@ -148,9 +158,26 @@ def purge_expired(db) -> dict:
     """Delete replay and revocation rows whose credentials can no longer be valid."""
     now = datetime.now(timezone.utc)
     counts = {}
-    for table in ("workspace_used_nonces", "workspace_revoked_sessions", "workspace_revoked_session_ids"):
+    for table in ("workspace_used_nonces", "workspace_revoked_sessions", "workspace_revoked_session_ids",
+                  "workspace_revoked_idp_sessions"):
         counts[table] = db.execute(text(f"DELETE FROM {table} WHERE expires_at < :now"), {"now": now}).rowcount
     return counts
+
+
+def revoke_idp_session(db, issuer: str, idp_sid: str, *, ttl_seconds: int) -> None:
+    """Back-channel logout: deny every Workspace session bound to an IdP session. Caller owns commit."""
+    if not issuer or not isinstance(idp_sid, str) or not 1 <= len(idp_sid) <= 255:
+        raise ValueError("Invalid identity-provider session")
+    try:
+        db.execute(
+            text(
+                "INSERT INTO workspace_revoked_idp_sessions (issuer, idp_sid, expires_at) "
+                "VALUES (:iss, :sid, :exp) ON CONFLICT (issuer, idp_sid) DO NOTHING"
+            ),
+            {"iss": issuer, "sid": idp_sid, "exp": _utc(int(time.time()) + int(ttl_seconds))},
+        )
+    except SQLAlchemyError:
+        raise SessionVerificationUnavailable("Session revocation unavailable") from None
 
 
 def revoke_session(db, token: str, *, subject: str, expires_at: int) -> None:
@@ -196,3 +223,91 @@ def validate_session_for_service(db, token: str, *, decode):
     if is_revoked(db, token, payload):
         raise ValueError("Revoked Workspace session")
     return payload
+
+
+LINK_METHODS = frozenset({"verified-existing-owner", "new-enrollment"})
+
+
+def _link_audit(db, action, issuer, subject, user_key, actor, reason, evidence_sha256=None) -> None:
+    db.execute(
+        text(
+            "INSERT INTO workspace_identity_link_audit "
+            "(action, issuer, subject, user_key, actor, reason, evidence_sha256) "
+            "VALUES (:action, :iss, :sub, :uk, :actor, :reason, :ev)"
+        ),
+        {"action": action, "iss": issuer, "sub": subject, "uk": user_key, "actor": actor,
+         "reason": reason, "ev": evidence_sha256},
+    )
+
+
+def link_identity(db, *, issuer: str, subject: str, user_key: str, method: str, actor: str, reason: str,
+                  evidence_sha256: str | None = None) -> str:
+    """Bind a Platform Core identity to a Workspace user_key (SC-AUTH-02). Caller owns commit.
+
+    Refuses every ambiguity instead of guessing: a subject already linked to
+    another account, an account already linked to another subject, an
+    existing-owner link without evidence or without existing Workspace data,
+    and a new enrollment that would collide with existing data.
+    Returns "linked" or "unchanged".
+    """
+    _operator_args(user_key, actor, reason)
+    if method not in LINK_METHODS:
+        raise ValueError("Unsupported link method")
+    if not issuer.startswith(("https://", "http://")) or len(issuer) > 255:
+        raise ValueError("Invalid issuer")
+    if not isinstance(subject, str) or not subject.strip() or len(subject) > 255:
+        raise ValueError("Invalid subject")
+    if evidence_sha256 is not None and (len(evidence_sha256) != 64 or any(c not in "0123456789abcdef" for c in evidence_sha256)):
+        raise ValueError("Evidence must be a lowercase SHA-256 hex digest")
+    by_subject = db.execute(
+        text("SELECT user_key FROM workspace_identity_links WHERE issuer = :iss AND subject = :sub"),
+        {"iss": issuer, "sub": subject},
+    ).scalar()
+    if by_subject is not None:
+        if by_subject == user_key:
+            return "unchanged"
+        raise ValueError("Subject is already linked to a different Workspace account")
+    by_user = db.execute(
+        text("SELECT subject FROM workspace_identity_links WHERE issuer = :iss AND user_key = :uk"),
+        {"iss": issuer, "uk": user_key},
+    ).scalar()
+    if by_user is not None:
+        raise ValueError("Workspace account is already linked to a different subject")
+    owned = db.execute(
+        text("SELECT count(*) FROM workspace_project_heads WHERE user_key = :uk"), {"uk": user_key}
+    ).scalar() or 0
+    if method == "verified-existing-owner":
+        if evidence_sha256 is None:
+            raise ValueError("An existing-owner link requires an evidence digest")
+        if not owned:
+            raise ValueError("No existing Workspace projects for this account; use new-enrollment")
+    elif owned:
+        raise ValueError("A new enrollment cannot take over an account that already owns projects")
+    db.execute(
+        text(
+            "INSERT INTO workspace_identity_links "
+            "(issuer, subject, user_key, status, link_method, evidence_sha256, created_by) "
+            "VALUES (:iss, :sub, :uk, 'active', :method, :ev, :actor)"
+        ),
+        {"iss": issuer, "sub": subject, "uk": user_key, "method": method, "ev": evidence_sha256, "actor": actor},
+    )
+    _link_audit(db, "link", issuer, subject, user_key, actor, reason, evidence_sha256)
+    return "linked"
+
+
+def suspend_identity(db, *, issuer: str, subject: str, actor: str, reason: str) -> str:
+    """Suspend a link and end every session of its account. Caller owns commit."""
+    user_key = db.execute(
+        text("SELECT user_key FROM workspace_identity_links WHERE issuer = :iss AND subject = :sub"),
+        {"iss": issuer, "sub": subject},
+    ).scalar()
+    if user_key is None:
+        raise ValueError("No such identity link")
+    db.execute(
+        text("UPDATE workspace_identity_links SET status = 'suspended', updated_at = CURRENT_TIMESTAMP "
+             "WHERE issuer = :iss AND subject = :sub"),
+        {"iss": issuer, "sub": subject},
+    )
+    revoke_user_sessions(db, user_key, actor=actor, reason=reason)
+    _link_audit(db, "suspend", issuer, subject, user_key, actor, reason)
+    return user_key

@@ -446,6 +446,8 @@ app.add_middleware(
 from .auth_hygiene import AuthHygieneMiddleware
 app.add_middleware(AuthHygieneMiddleware)
 app.include_router(session_router)
+from .sc_identity import router as sc_identity_router
+app.include_router(sc_identity_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
