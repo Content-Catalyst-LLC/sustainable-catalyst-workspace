@@ -442,6 +442,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
 )
+# SC-AUTH-01: outermost, so bridge assertions are verified before any routing
+# and every API response is marked no-store.
+from .wp_bridge import AuthHygieneMiddleware
+app.add_middleware(AuthHygieneMiddleware)
 app.include_router(session_router)
 
 @app.middleware("http")

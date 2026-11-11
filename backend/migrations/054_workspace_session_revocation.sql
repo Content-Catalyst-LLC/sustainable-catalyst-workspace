@@ -1,4 +1,5 @@
 -- RH-PROD-05.1: fail-closed durable revocation foundation.
+-- Renumbered from 051 (SC-AUTH-01 G2): 051-053 are taken on release/sc-release-01-rc1.
 -- This is an additive migration. Do not execute on production without an
 -- authorized, backed-up, tested change window.
 BEGIN;

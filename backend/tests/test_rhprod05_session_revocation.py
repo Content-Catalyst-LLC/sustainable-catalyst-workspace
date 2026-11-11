@@ -1,4 +1,5 @@
 """RH-PROD-05.1 isolated revocation unit tests (no deployed server)."""
+from sc_auth01_sqlite_schema import create_auth_hardening_tables
 from datetime import datetime, timezone
 
 import pytest
@@ -22,6 +23,7 @@ def db():
             "expires_at timestamp NOT NULL, "
             "revoked_at timestamp DEFAULT CURRENT_TIMESTAMP)"
         ))
+        create_auth_hardening_tables(conn)
     with Session(engine) as session:
         yield session
     engine.dispose()

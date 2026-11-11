@@ -147,7 +147,7 @@ def decode_session_token(token: str) -> dict[str, Any]:
             raise ValueError("invalid-session-claims") from None
         try:
             with session_scope() as db:
-                if is_revoked(db, token):
+                if is_revoked(db, token, payload):
                     raise ValueError("revoked-session")
         except SessionVerificationUnavailable:
             raise
@@ -169,6 +169,27 @@ def session_payload_from_request(request: Request) -> dict[str, Any] | None:
         raise HTTPException(status_code=503, detail="Workspace session verification unavailable") from None
     except Exception:
         return None
+
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+
+def enforce_cookie_csrf(request: Request) -> None:
+    """Refuse cross-site use of the ambient session cookie (SC-AUTH-01 F1).
+
+    SameSite=Lax treats every *.sustainablecatalyst.com host as same-site, so
+    the server must check the exact Origin for any state-changing request that
+    authenticates with the cookie. Browsers always send Origin on such
+    requests; a cookie request without one is not a legitimate browser call.
+    """
+    if request.method.upper() in SAFE_METHODS:
+        return
+    allowed = {v.strip() for v in get_settings().cors_allowed_origins.split(",") if v.strip()}
+    origin = request.headers.get("origin", "")
+    fetch_site = request.headers.get("sec-fetch-site", "").lower()
+    if not origin or origin not in allowed or fetch_site == "cross-site":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail={"code": "csrf-origin-refused", "message": "Cross-site session request refused."})
+
 
 def _legacy_exchange_identity(authorization: str | None, user_id: str | None) -> str:
     settings = get_settings()
@@ -210,12 +231,21 @@ def get_session(request: Request):
 
 @router.post("/exchange")
 def exchange_session(
+    request: Request,
     response: Response,
     authorization: str | None = Header(default=None),
     x_sc_user_id: str | None = Header(default=None, alias="X-SC-User-ID"),
     x_sc_display_name: str | None = Header(default=None, alias="X-SC-Display-Name"),
 ):
-    user_key = _legacy_exchange_identity(authorization, x_sc_user_id)
+    if getattr(get_settings(), "bridge_assertion_required", False):
+        # SC-AUTH-01: a Workspace session is only issued for a user proven by a
+        # verified, session-bound WordPress bridge assertion.
+        bridge = getattr(request.state, "sc_bridge_identity", None)
+        if not bridge:
+            raise HTTPException(status_code=401, detail="Valid Workspace identity required.")
+        user_key = bridge["sub"]
+    else:
+        user_key = _legacy_exchange_identity(authorization, x_sc_user_id)
     settings = get_settings()
     token = issue_session_token(user_key, x_sc_display_name or "")
     response.set_cookie(

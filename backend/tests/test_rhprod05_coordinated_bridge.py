@@ -1,7 +1,9 @@
 from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
+import secrets
 from sqlalchemy import create_engine,text
+from sc_auth01_sqlite_schema import create_auth_hardening_tables
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from app import session_auth,config,research_session_introspection as service
@@ -11,7 +13,7 @@ from app.research_bridge_proof import request_proof, verify_response
 
 def signed_request(token,project_id=None):
     payload={'schema_version':'rh-prod-05.1/1.0','session_token':token,'project_id':project_id}
-    nonce='c'*64  # Fixed synthetic nonce only in fixture; real Research uses secrets.token_hex.
+    nonce=secrets.token_hex(32)  # Fresh per request: proofs are single use (SC-AUTH-01 F2).
     return payload,{'X-SC-Request-Nonce':nonce,'X-SC-Request-Proof':request_proof('s'*64,nonce,payload)}
 
 
@@ -20,6 +22,7 @@ def authority(monkeypatch,tmp_path):
     engine=create_engine('sqlite://',connect_args={'check_same_thread':False},poolclass=StaticPool)
     with engine.begin() as c:
         c.execute(text('CREATE TABLE workspace_revoked_sessions(token_fingerprint varchar(64) PRIMARY KEY,user_key varchar(128),expires_at timestamp,revoked_at timestamp)'))
+        create_auth_hardening_tables(c)
         c.execute(text('CREATE TABLE workspace_project_heads(user_key varchar(128),project_id varchar(160),PRIMARY KEY(user_key,project_id))'))
         c.execute(text("INSERT INTO workspace_project_heads VALUES ('owner-a','a'),('owner-b','b')"))
     key=tmp_path/'service-key';key.write_text('s'*64)
@@ -90,3 +93,11 @@ def test_rhpub01a_large_portfolio_uses_exact_authoritative_project_scope(authori
     other,other_headers=signed_request(token,'b')
     assert client.post('/internal/v1/workspace/session/introspect',
                        headers=other_headers,json=other).status_code==404
+
+
+def test_introspection_proof_is_single_use(authority):
+    """SC-AUTH-01 F2: an identical nonce and proof cannot be replayed."""
+    client,token,engine=authority
+    payload,headers=signed_request(token,'a')
+    assert client.post('/internal/v1/workspace/session/introspect',headers=headers,json=payload).status_code==200
+    assert client.post('/internal/v1/workspace/session/introspect',headers=headers,json=payload).status_code==401

@@ -20,10 +20,13 @@ def database(monkeypatch):
     if not url:
         pytest.skip("Disposable acceptance PostgreSQL URL not supplied")
     engine = create_engine(url)
-    migration = Path(__file__).resolve().parents[1] / "migrations" / "051_workspace_session_revocation.sql"
+    migrations = Path(__file__).resolve().parents[1] / "migrations"
     with engine.begin() as conn:
-        conn.execute(text(migration.read_text()))
-        conn.execute(text("DELETE FROM workspace_revoked_sessions"))
+        for name in ("054_workspace_session_revocation.sql", "055_workspace_auth_hardening.sql"):
+            conn.execute(text((migrations / name).read_text()))
+        for table in ("workspace_revoked_sessions", "workspace_used_nonces", "workspace_revoked_session_ids",
+                      "workspace_session_user_cutoffs", "workspace_session_revocation_audit"):
+            conn.execute(text(f"DELETE FROM {table}"))
     from types import SimpleNamespace
     settings = SimpleNamespace(
         session_signing_secret="synthetic-test-signature-not-production",
@@ -82,4 +85,4 @@ def test_additive_migration_runner_is_idempotent(database):
     migrate(database)
     require_schema(database)
     with database.connect() as c:
-        assert c.scalar(text("SELECT count(*) FROM workspace_security_migrations WHERE migration_id='051_workspace_session_revocation'")) == 1
+        assert c.scalar(text("SELECT count(*) FROM workspace_security_migrations WHERE migration_id='054_workspace_session_revocation'")) == 1

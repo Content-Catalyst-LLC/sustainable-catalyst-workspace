@@ -3,6 +3,7 @@
 Production uses PostgreSQL; dedicated Postgres and real-account staging
 acceptance are required before enabling the feature flag.
 """
+from sc_auth01_sqlite_schema import create_auth_hardening_tables
 from types import SimpleNamespace
 
 import pytest
@@ -25,6 +26,7 @@ def gated_session(monkeypatch):
             "expires_at timestamp NOT NULL, "
             "revoked_at timestamp DEFAULT CURRENT_TIMESTAMP)"
         ))
+        create_auth_hardening_tables(conn)
 
     settings = SimpleNamespace(
         session_signing_secret="test-session-signing-secret-only",

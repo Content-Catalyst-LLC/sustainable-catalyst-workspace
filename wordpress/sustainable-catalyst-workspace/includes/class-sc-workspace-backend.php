@@ -17,12 +17,69 @@ final class SC_Workspace_Backend {
         return defined('SC_WORKSPACE_BACKEND_TOKEN') ? trim((string) SC_WORKSPACE_BACKEND_TOKEN) : '';
     }
 
+    // SC-AUTH-01: bridge-only signing key. When set, requests carry a signed,
+    // session-bound user assertion and never the shared token or a bare user id.
+    private static function bridge_key() {
+        $key = defined('SC_WORKSPACE_BRIDGE_ASSERTION_KEY') ? trim((string) SC_WORKSPACE_BRIDGE_ASSERTION_KEY) : '';
+        return strlen($key) >= 32 && $key !== self::token() ? $key : '';
+    }
+
+    public static function bridge_enabled() {
+        return self::bridge_key() !== '';
+    }
+
     public static function configured() {
-        return self::base_url() !== '' && self::token() !== '';
+        return self::base_url() !== '' && (self::token() !== '' || self::bridge_enabled());
+    }
+
+    private static function b64url($raw) {
+        return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+    }
+
+    // Must match backend/app/wp_bridge.py byte for byte: sorted keys, compact JSON.
+    private static function bridge_assertion($user_id, $method, $target, $body_bytes) {
+        $session_token = function_exists('wp_get_session_token') ? (string) wp_get_session_token() : '';
+        if ($session_token === '') {
+            return null;
+        }
+        $session = WP_Session_Tokens::get_instance($user_id)->get($session_token);
+        if (!is_array($session) || empty($session['login'])) {
+            return null;
+        }
+        $now = time();
+        $claims = array(
+            'aud' => defined('SC_WORKSPACE_BRIDGE_AUDIENCE') ? (string) SC_WORKSPACE_BRIDGE_AUDIENCE : 'sc-workspace-api',
+            'bh' => hash('sha256', (string) $body_bytes),
+            'exp' => $now + 60,
+            'iat' => $now,
+            'iss' => 'sc-wordpress-bridge',
+            'm' => strtoupper((string) $method),
+            'nonce' => bin2hex(random_bytes(32)),
+            'p' => $target,
+            'sat' => (int) $session['login'],
+            'sid' => hash('sha256', $session_token),
+            'sub' => (string) $user_id,
+            'v' => 1,
+        );
+        ksort($claims, SORT_STRING);
+        $encoded = self::b64url(wp_json_encode($claims, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        return $encoded . '.' . hash_hmac('sha256', "sc-auth-01-wp-bridge-v1\0" . $encoded, self::bridge_key());
     }
 
     public static function enabled() {
         return self::mode() === 'primary' && self::configured();
+    }
+
+    // SC-AUTH-01 F4: account persistence must not silently move to another
+    // store. The legacy WordPress user-meta store is served only on a site
+    // that explicitly opts in and has no dedicated backend configured at all.
+    public static function legacy_store_allowed() {
+        return defined('SC_WORKSPACE_LEGACY_ACCOUNT_STORE') && SC_WORKSPACE_LEGACY_ACCOUNT_STORE === true
+            && !defined('SC_WORKSPACE_BACKEND_MODE') && self::base_url() === '';
+    }
+
+    public static function fail_closed() {
+        return new WP_Error('scw_backend_unavailable_fail_closed', 'Workspace account storage is not available. No fallback store was used.', array('status' => 503));
     }
 
     public static function contract() {
@@ -196,21 +253,30 @@ final class SC_Workspace_Backend {
         if ($user_id <= 0) {
             return new WP_Error('scw_backend_auth_required', 'A signed-in Workspace account is required.', array('status' => 401));
         }
+        $target = '/' . ltrim((string) $path, '/');
+        $body_bytes = $body !== null ? wp_json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '';
         $args = array(
             'method' => strtoupper((string) $method),
             'timeout' => 15,
             'redirection' => 0,
-            'headers' => array(
-                'Authorization' => 'Bearer ' . self::token(),
-                'X-SC-User-ID' => (string) $user_id,
-                'Accept' => 'application/json',
-            ),
+            'headers' => array('Accept' => 'application/json'),
         );
+        if (self::bridge_enabled()) {
+            $assertion = self::bridge_assertion($user_id, $method, $target, $body_bytes);
+            if ($assertion === null) {
+                // No live WordPress session to bind (e.g. application passwords): refuse.
+                return new WP_Error('scw_bridge_session_required', 'A signed-in WordPress browser session is required.', array('status' => 401));
+            }
+            $args['headers']['X-SC-Bridge-Assertion'] = $assertion;
+        } else {
+            $args['headers']['Authorization'] = 'Bearer ' . self::token();
+            $args['headers']['X-SC-User-ID'] = (string) $user_id;
+        }
         if ($body !== null) {
             $args['headers']['Content-Type'] = 'application/json';
-            $args['body'] = wp_json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $args['body'] = $body_bytes;
         }
-        $response = wp_remote_request(self::base_url() . '/' . ltrim((string) $path, '/'), $args);
+        $response = wp_remote_request(self::base_url() . $target, $args);
         if (is_wp_error($response)) {
             return new WP_Error('scw_backend_unreachable', 'Workspace backend is unavailable. No fallback write was attempted.', array('status' => 503));
         }

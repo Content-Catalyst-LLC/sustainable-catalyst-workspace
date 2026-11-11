@@ -76,3 +76,23 @@ This section supersedes the earlier draft bearer-credential transport instructio
 signer/role/network, real-account browser acceptance, populated backup and
 rollback, and complete scientific regressions remain release blockers.
 Existing Wexford and Metrics records are not imported or modified.
+
+## SC-AUTH-01 additions (2026-11-10, staging only)
+
+All are off by default except CSRF and no-store, which apply only to cookie-authenticated requests and `/v1`/internal responses respectively.
+
+- **Migrations:** `051_workspace_session_revocation` is renumbered to `054_…`, because 051–053 are taken on the release line. New `055_workspace_auth_hardening` adds the single-use nonce store, operator revocation by session id, per-user cutoffs, and the revocation audit. `python -m app.migrate_security` applies both in order and `require_schema` checks both.
+- **CSRF:** a cookie-authenticated `POST/PUT/PATCH/DELETE` must carry an `Origin` listed in `SC_WORKSPACE_CORS_ALLOWED_ORIGINS`. `Sec-Fetch-Site: cross-site` is refused.
+- **Introspection:** each request nonce is single use. It is kept until the introspected session expires.
+- **No-store:** `/v1/*` and `/internal/*` responses carry `Cache-Control: no-store, private`.
+- **Operator revocation:** host-only CLI, `python -m app.session_operator {revoke-user|revoke-session|purge-expired}`. It requires an actor and a reason, and every action is audited. There is no HTTP route.
+- **WordPress bridge assertions:**
+  - With `SC_WORKSPACE_BRIDGE_ASSERTION_KEY_FILE` (Workspace) and `SC_WORKSPACE_BRIDGE_ASSERTION_KEY` (WordPress) set to the same bridge-only key, the plugin sends `X-SC-Bridge-Assertion` instead of the service bearer and `X-SC-User-ID`.
+  - The assertion is HMAC-SHA256 over the base64url claims `v, iss, aud, sub, sid=sha256(WP session token), sat=WP sign-in time, iat, exp≤iat+60, nonce, m, p, bh=sha256(body)`.
+  - Workspace verifies it before routing, consumes the nonce, and applies operator `revoke-user` cutoffs to `sat`.
+  - The key must differ from every other Workspace credential.
+  - `SC_WORKSPACE_BRIDGE_ASSERTION_REQUIRED=true` refuses the legacy bearer + user-id path.
+- **Plugin fail-closed:** account persistence returns 503 unless the dedicated backend is enabled, or the site explicitly sets `SC_WORKSPACE_LEGACY_ACCOUNT_STORE` to `true` with no backend configured.
+- **Tests:** `backend/tests/test_sc_auth01_hardening.py`, plus the updated RH-PROD-05 suites.
+
+**Still HOLD:** no production activation. Real-account acceptance is outstanding.

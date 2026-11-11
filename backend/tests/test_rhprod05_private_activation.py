@@ -13,7 +13,7 @@ BACKEND = Path(__file__).resolve().parents[1]
 def test_private_image_packages_explicit_security_migration():
     dockerfile = (BACKEND / "Dockerfile").read_text()
     assert "COPY migrations ./migrations" in dockerfile
-    assert (BACKEND / "migrations" / "051_workspace_session_revocation.sql").is_file()
+    assert (BACKEND / "migrations" / "054_workspace_session_revocation.sql").is_file()
 
 
 def test_cookie_signing_key_file_precedes_legacy_service_fallback(tmp_path, monkeypatch):

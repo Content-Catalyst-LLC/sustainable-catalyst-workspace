@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     research_introspection_token: str = ""
     research_introspection_token_file: str = ""
     session_revocation_enforced: bool = False  # Enable only after migration + staging acceptance.
+    # SC-AUTH-01 WordPress bridge: per-request signed user assertions with a bridge-only key.
+    bridge_assertion_key: str = ""
+    bridge_assertion_key_file: str = ""
+    bridge_audience: str = "sc-workspace-api"
+    # When true, the legacy service bearer + X-SC-User-ID user context is refused.
+    bridge_assertion_required: bool = False
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False
 

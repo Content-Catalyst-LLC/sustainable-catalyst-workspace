@@ -17,7 +17,7 @@ from .models import ProjectHead
 
 from .db import session_scope
 from .session_auth import decode_session_token
-from .session_revocation import SessionVerificationUnavailable, validate_session_for_service
+from .session_revocation import SessionVerificationUnavailable, consume_nonce, validate_session_for_service
 from .research_bridge_proof import verify_request, response_proof
 
 router = APIRouter(prefix="/internal/v1/workspace", include_in_schema=False)
@@ -68,6 +68,12 @@ def introspect_workspace_session(
             claims = validate_session_for_service(
                 db, payload.session_token, decode=decode_session_token
             )
+            # SC-AUTH-01 F2: a proof is single use. The nonce is kept until the
+            # session it vouches for expires, after which a replay fails anyway.
+            if not consume_nonce(db, "introspection", x_sc_request_nonce, int(claims["exp"])):
+                db.rollback()
+                raise HTTPException(status_code=401, detail="Service request replayed")
+            db.commit()
             # Ownership proof comes from the authority's persisted composite key,
             # never caller owner_scope or subject alone. No project content emitted.
             query=select(ProjectHead.project_id).where(ProjectHead.user_key==claims["sub"])

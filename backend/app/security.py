@@ -35,14 +35,35 @@ def require_service_identity(
     authorization: str | None = Header(default=None),
     x_sc_user_id: str | None = Header(default=None, alias="X-SC-User-ID"),
 ) -> ServiceIdentity:
+    bridge = getattr(request.state, "sc_bridge_identity", None)
+    if bridge:
+        # Verified by wp_bridge.AuthHygieneMiddleware before routing; any
+        # client-supplied X-SC-User-ID is ignored on this path.
+        identity = ServiceIdentity(
+            user_key=bridge["sub"],
+            principal_id=f"wp-user:{bridge['sub']}",
+            principal_type="wordpress-user",
+            service_principal="wordpress-bridge",
+            authentication_method="wordpress-bridge-assertion",
+        )
+        decision = authorize_request(identity, request.method, request.url.path)
+        if decision["effect"] != "allow":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code":"authorization-denied","decision":decision})
+        return identity
+
     session_identity = _session_identity(request)
     if session_identity is not None:
+        from .session_auth import enforce_cookie_csrf
+        enforce_cookie_csrf(request)
         decision = authorize_request(session_identity, request.method, request.url.path)
         if decision["effect"] != "allow":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code":"authorization-denied","decision":decision})
         return session_identity
 
     settings = get_settings()
+    if getattr(settings, "bridge_assertion_required", False):
+        # SC-AUTH-01: a shared bearer plus a bare user id is no longer a user identity.
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Valid Workspace identity required.")
     if not settings.token_configured:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Workspace backend service token is not configured.")
     expected = f"Bearer {settings.service_token}"
