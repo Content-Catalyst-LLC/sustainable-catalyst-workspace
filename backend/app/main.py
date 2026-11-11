@@ -4996,7 +4996,9 @@ app.include_router(lab_live_v3844_router, dependencies=[Depends(require_service_
 # SC-MODEL-01: owner-granted, signed execution exports for Research (disabled unless configured).
 from .research_exports import router as research_export_router
 from .notebook_export import router as notebook_export_router
+from .notebook_figure_bundle import router as notebook_figure_bundle_router
 
 app.include_router(research_export_router)
 # SC-NB-01: portable exports of immutable notebook revisions (owner-scoped).
 app.include_router(notebook_export_router)
+app.include_router(notebook_figure_bundle_router)
