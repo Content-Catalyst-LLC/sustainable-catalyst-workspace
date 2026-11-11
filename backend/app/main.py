@@ -442,7 +442,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
 )
+# SC-AUTH-01 F3 (kept by SC-AUTH-02): every API response is marked no-store.
+from .auth_hygiene import AuthHygieneMiddleware
+app.add_middleware(AuthHygieneMiddleware)
 app.include_router(session_router)
+from .sc_identity import router as sc_identity_router
+app.include_router(sc_identity_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
