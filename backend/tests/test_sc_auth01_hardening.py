@@ -281,3 +281,12 @@ def test_exchange_requires_bridge_assertion_when_required(env):
         "X-SC-User-ID": "3"})
     assert ok.status_code == 200 and ok.json()["subject"] == "2"
     assert "sc_workspace_session=" in ok.headers["set-cookie"]
+
+
+def test_real_authorization_policy_allows_bridge_identity():
+    """Not stubbed: the bridge principal must be trusted by the authorization policy."""
+    from app.authorization import authorize_request
+    identity = security.ServiceIdentity(user_key="2", principal_id="wp-user:2", principal_type="wordpress-user",
+                                        service_principal="wordpress-bridge", authentication_method="wordpress-bridge-assertion")
+    assert authorize_request(identity, "GET", "/v1/projects")["effect"] == "allow"
+    assert authorize_request(identity, "POST", "/v1/projects")["effect"] == "allow"

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from fastapi import Header, HTTPException, Request, status
 
-from .authorization import SERVICE_PRINCIPAL, authorize_request
+from .authorization import BRIDGE_SERVICE_PRINCIPAL, SERVICE_PRINCIPAL, authorize_request
 from .config import get_settings
 
 @dataclass(frozen=True)
@@ -43,7 +43,7 @@ def require_service_identity(
             user_key=bridge["sub"],
             principal_id=f"wp-user:{bridge['sub']}",
             principal_type="wordpress-user",
-            service_principal="wordpress-bridge",
+            service_principal=BRIDGE_SERVICE_PRINCIPAL,
             authentication_method="wordpress-bridge-assertion",
         )
         decision = authorize_request(identity, request.method, request.url.path)
