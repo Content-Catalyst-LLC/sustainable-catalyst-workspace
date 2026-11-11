@@ -276,10 +276,7 @@ def _clear_tx(response) -> None:
 
 # --- browser routes -------------------------------------------------------
 
-@router.get("/login")
-def login(returnTo: str = "/", stepUp: bool = False):
-    if not enabled():
-        raise HTTPException(status_code=404, detail="Not Found")
+def _authorize_redirect(return_to: str, step_up: bool, mfa_retry: bool = False) -> RedirectResponse:
     try:
         meta = metadata()
     except IdentityUnavailable:
@@ -290,8 +287,9 @@ def login(returnTo: str = "/", stepUp: bool = False):
         "state": secrets.token_urlsafe(32),
         "nonce": secrets.token_urlsafe(32),
         "verifier": verifier,
-        "returnTo": _safe_return_to(returnTo),
-        "stepUp": bool(stepUp),
+        "returnTo": _safe_return_to(return_to),
+        "stepUp": bool(step_up),
+        "mfaRetry": bool(mfa_retry),
         "exp": int(time.time()) + TX_TTL_SECONDS,
     }
     params = {
@@ -304,14 +302,22 @@ def login(returnTo: str = "/", stepUp: bool = False):
         "code_challenge": _b64e(hashlib.sha256(verifier.encode("ascii")).digest()),
         "code_challenge_method": "S256",
     }
-    if stepUp:
-        # Fresh authentication (password + second factor) for consequential actions.
+    if step_up or mfa_retry:
+        # Fresh authentication (password + second factor) for consequential actions,
+        # or once after a sign-in that carried no second-factor evidence.
         params["max_age"] = "0"
         params["prompt"] = "login"
     response = RedirectResponse(meta["authorization_endpoint"] + "?" + urlencode(params), status_code=303)
     response.set_cookie(TX_COOKIE, _seal_tx(tx), max_age=TX_TTL_SECONDS, secure=True, httponly=True,
                         samesite="lax", path="/v1/auth")
     return response
+
+
+@router.get("/login")
+def login(returnTo: str = "/", stepUp: bool = False):
+    if not enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
+    return _authorize_redirect(returnTo, stepUp)
 
 
 def _exchange_code(code: str, verifier: str) -> dict[str, Any]:
@@ -363,8 +369,6 @@ def _verify_id_token(id_token: str, nonce: str, step_up: bool) -> dict[str, Any]
         raise _deny("oidc-id-token-invalid", "Sign-in could not be verified.")
     if not secrets.compare_digest(str(claims.get("nonce")), nonce):
         raise _deny("oidc-nonce-mismatch", "Sign-in could not be verified.")
-    if not mfa_satisfied(claims):
-        raise _deny("mfa-required", "Multi-factor authentication is required.", status.HTTP_403_FORBIDDEN)
     if step_up:
         auth_time = int(claims.get("auth_time") or 0)
         if time.time() - auth_time > settings.sc_identity_step_up_max_age:
@@ -393,6 +397,13 @@ def callback(request: Request, code: str = "", state: str = "", error: str = "")
         raise _deny("oidc-sign-in-not-completed", "Sign-in was not completed.")
     tokens = _exchange_code(code, str(tx["verifier"]))
     claims = _verify_id_token(tokens["id_token"], str(tx["nonce"]), bool(tx.get("stepUp")))
+    if not mfa_satisfied(claims):
+        # A first sign-in that enrols the second factor through a provider required
+        # action carries no second-factor evidence. Re-authenticate exactly once;
+        # no session is issued from a sign-in without MFA evidence.
+        if not tx.get("mfaRetry"):
+            return _authorize_redirect(str(tx.get("returnTo") or "/"), bool(tx.get("stepUp")), mfa_retry=True)
+        raise _deny("mfa-required", "Multi-factor authentication is required.", status.HTTP_403_FORBIDDEN)
     issuer, subject = claims["iss"], str(claims["sub"])
     user_key = _linked_user_key(issuer, subject)
     settings = get_settings()

@@ -286,11 +286,26 @@ def test_id_token_signed_by_unknown_key_or_alg_none_is_refused(client, env):
         assert client.get("/v1/auth/callback", params={"code": "good-code", "state": q["state"]}).status_code == 401
 
 
+def _follow_mfa_retry(client, env, first, **claims):
+    """The first sign-in without MFA evidence re-authenticates once, with a fresh login."""
+    assert first.status_code == 303 and "sc_workspace_session" not in client.cookies
+    q = {k: v[0] for k, v in parse_qs(urlsplit(first.headers["location"]).query).items()}
+    assert q["prompt"] == "login" and q["max_age"] == "0"
+    env.idp.next_id_token = env.idp.id_token(q["nonce"], sub=SUBJECT_A, **claims)
+    return client.get("/v1/auth/callback", params={"code": "good-code", "state": q["state"]})
+
+
 def test_mfa_is_required(client, env):
-    r = sign_in(client, env, amr=["pwd"])
-    assert r.status_code == 403 and code(r) == "mfa-required"
-    r = sign_in(client, env, amr=None)
-    assert r.status_code == 403
+    for amr in (["pwd"], None):
+        r = _follow_mfa_retry(client, env, sign_in(client, env, amr=amr), amr=amr)
+        assert r.status_code == 403 and code(r) == "mfa-required"
+        assert "sc_workspace_session" not in client.cookies
+
+
+def test_enrolment_sign_in_without_otp_evidence_reauthenticates_once(client, env):
+    r = _follow_mfa_retry(client, env, sign_in(client, env, amr=["pwd"]), amr=["pwd", "otp"])
+    assert r.status_code == 303 and r.headers["location"] == "/projects"
+    assert "sc_workspace_session" in client.cookies
 
 
 def test_unlinked_and_suspended_identities_are_refused(client, env):
