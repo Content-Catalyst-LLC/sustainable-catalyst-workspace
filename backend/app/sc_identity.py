@@ -531,7 +531,7 @@ def bearer_identity(authorization: str):
     if claims.get("typ", "Bearer") != "Bearer":
         raise _deny("invalid-access-token", "Valid Workspace identity required.")
     allowed = {v.strip() for v in settings.sc_identity_allowed_bearer_clients.split(",") if v.strip()}
-    if allowed and claims.get("azp") not in allowed:
+    if claims.get("azp") not in allowed:  # an empty allowlist admits no service client
         raise _deny("invalid-access-token", "Valid Workspace identity required.")
     if not mfa_satisfied(claims):
         raise _deny("mfa-required", "Multi-factor authentication is required.", status.HTTP_403_FORBIDDEN)

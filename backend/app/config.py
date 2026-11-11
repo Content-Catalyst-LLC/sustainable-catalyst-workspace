@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     sc_identity_redirect_uri: str = ""
     sc_identity_post_logout_redirect_uri: str = ""
     sc_identity_api_audience: str = "sc-workspace-api"
-    sc_identity_allowed_bearer_clients: str = ""  # comma-separated azp allowlist; empty = any
+    sc_identity_allowed_bearer_clients: str = ""  # comma-separated azp allowlist; empty = no bearer clients
     sc_identity_require_mfa: bool = True
     sc_identity_mfa_amr: str = "otp,mfa,hwk,swk"
     sc_identity_step_up_max_age: int = 300

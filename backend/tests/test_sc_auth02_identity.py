@@ -94,7 +94,7 @@ def make_settings(**over):
         sc_identity_redirect_uri=ORIGIN + "/v1/auth/callback",
         sc_identity_post_logout_redirect_uri=ORIGIN + "/",
         sc_identity_api_audience=API_AUD,
-        sc_identity_allowed_bearer_clients="",
+        sc_identity_allowed_bearer_clients="sc-research",
         sc_identity_require_mfa=True,
         sc_identity_mfa_amr="otp,mfa,hwk,swk",
         sc_identity_step_up_max_age=300,
@@ -449,6 +449,12 @@ def test_access_token_client_allowlist(client, env):
     env.settings.sc_identity_allowed_bearer_clients = "sc-library"
     assert bearer(client, env.idp.access_token()).status_code == 401
     assert bearer(client, env.idp.access_token(azp="sc-library")).status_code == 200
+
+
+def test_empty_access_token_client_allowlist_admits_no_client(client, env):
+    env.settings.sc_identity_allowed_bearer_clients = ""
+    assert bearer(client, env.idp.access_token()).status_code == 401
+    assert bearer(client, env.idp.access_token(azp="")).status_code == 401
 
 
 def test_real_authorization_policy_allows_sc_identity_bearer():
