@@ -5008,3 +5008,6 @@ app.include_router(notebook_export_router)
 # SC-ED-01: authenticated, persisted, signed approvals for Research publication.
 from .research_approvals import router as research_approval_router
 app.include_router(research_approval_router)
+# SC-PUB-M1: owner- and approver-facing approval desk (static, same-origin, strict CSP).
+from .approval_desk import router as approval_desk_router
+app.include_router(approval_desk_router)

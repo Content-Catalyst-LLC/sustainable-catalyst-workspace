@@ -139,6 +139,10 @@ class DecisionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decision: Literal["approve", "reject", "request_revision"]
     note: str = Field(default="", max_length=2000)
+    # SC-PUB-M1 exact-revision confirmation: the subject (object or area + content hash) the
+    # decider was shown. An approval through an SC Identity session must carry it, and it must
+    # still be the request's subject when the record is signed.
+    expectedSubjectRef: str | None = Field(default=None, max_length=300)
 
 
 def _forbid(exc: Exception, code: int) -> HTTPException:
@@ -280,6 +284,11 @@ def decide_route(approval_id: str, payload: DecisionIn, request: Request,
         raise HTTPException(status_code=403, detail={
             "code": "step-up-required", "message": "Sign in again (password and second factor) to approve.",
             "loginUrl": "/v1/auth/login?stepUp=true"})
+    confirm_revision = payload.decision == "approve" and step_up is not None
+    if confirm_revision and not payload.expectedSubjectRef:
+        raise HTTPException(status_code=422, detail={
+            "code": "exact-revision-confirmation-required",
+            "message": "Confirm the exact revision (subject reference) you reviewed before approving."})
     with session_scope() as db:
         row = db.get(ResearchApprovalRequest, approval_id, with_for_update=True)
         if row is None:
@@ -291,6 +300,10 @@ def decide_route(approval_id: str, payload: DecisionIn, request: Request,
             raise _forbid(exc, 403) from exc
         if row.status != "pending":
             raise HTTPException(status_code=409, detail=f"approval request is {row.status}")
+        if payload.expectedSubjectRef is not None and payload.expectedSubjectRef != row.subject_ref:
+            raise HTTPException(status_code=409, detail={
+                "code": "subject-changed",
+                "message": "This request is for a different revision than the one you confirmed. Review it again."})
         out = hg.decide({"policy": _policy(), "approval": row.approval_json, "decision": payload.decision,
                          "note": payload.note or None, "provenanceRefs": [row.subject_ref],
                          "actor": {"actorId": _scope(identity.user_key), "actorType": "human", "role": role}})
@@ -300,7 +313,8 @@ def decide_route(approval_id: str, payload: DecisionIn, request: Request,
             "ownerScope": _scope(row.owner_user_key), "projectId": row.project_id, "dimension": row.dimension,
             "action": row.action, "subjectRef": row.subject_ref, "grantId": grant.grant_id if grant else "owner",
             "authentication": {"requester": row.requester_auth, "decider": identity.authentication_method,
-                               **(step_up or {"stepUp": False})},
+                               **(step_up or {"stepUp": False}),
+                               **({"revisionConfirmed": True} if payload.expectedSubjectRef else {})},
             "approval": out["approval"], "decision": out["decision"], "issuedAt": now.isoformat(),
         })
         row.status = out["approval"]["status"]
