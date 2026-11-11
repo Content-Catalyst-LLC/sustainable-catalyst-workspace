@@ -20,8 +20,10 @@ main { max-width: 64rem; margin: 0 auto; padding: 0 1rem 2rem; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 600; color: var(--muted); font-size: .85rem; }
+td code { white-space: nowrap; }
 code { font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
 .review { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.25rem; margin-top: 1rem; }
+.review h2 { margin-top: 0; }
 .banner { border-left: 3px solid var(--accent); padding-left: .75rem; }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0 0 1rem; }
 .facts dt { color: var(--muted); }
