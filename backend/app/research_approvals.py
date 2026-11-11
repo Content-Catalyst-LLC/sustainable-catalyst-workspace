@@ -24,13 +24,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
 
 from . import human_governance_approval_intervention_runtime as hg
 from .db import session_scope
 from .models import ProjectHead, ResearchApprovalGrant, ResearchApprovalRequest
+from . import sc_identity
 from .research_exports import AUDIENCE, ISSUER, _signing_key, public_key_info, sign_document
 from .security import ServiceIdentity, require_service_identity
 from .utils import sha256_hex
@@ -138,6 +139,10 @@ class DecisionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decision: Literal["approve", "reject", "request_revision"]
     note: str = Field(default="", max_length=2000)
+    # SC-PUB-M1 exact-revision confirmation: the subject (object or area + content hash) the
+    # decider was shown. An approval through an SC Identity session must carry it, and it must
+    # still be the request's subject when the record is signed.
+    expectedSubjectRef: str | None = Field(default=None, max_length=300)
 
 
 def _forbid(exc: Exception, code: int) -> HTTPException:
@@ -269,8 +274,21 @@ def _visible(row: ResearchApprovalRequest | None, user_key: str) -> ResearchAppr
 
 
 @router.post("/requests/{approval_id}/decide")
-def decide_route(approval_id: str, payload: DecisionIn, identity: ServiceIdentity = Depends(require_service_identity)):
+def decide_route(approval_id: str, payload: DecisionIn, request: Request,
+                 identity: ServiceIdentity = Depends(require_service_identity)):
     _signing_key()
+    # SC-PUB-M1: with Sustainable Catalyst Identity configured, an approval is signed only after a
+    # fresh sign-in (password + second factor); the evidence is part of the signed record.
+    step_up = sc_identity.step_up_evidence(request)
+    if payload.decision == "approve" and sc_identity.enabled() and step_up is None:
+        raise HTTPException(status_code=403, detail={
+            "code": "step-up-required", "message": "Sign in again (password and second factor) to approve.",
+            "loginUrl": "/v1/auth/login?stepUp=true"})
+    confirm_revision = payload.decision == "approve" and step_up is not None
+    if confirm_revision and not payload.expectedSubjectRef:
+        raise HTTPException(status_code=422, detail={
+            "code": "exact-revision-confirmation-required",
+            "message": "Confirm the exact revision (subject reference) you reviewed before approving."})
     with session_scope() as db:
         row = db.get(ResearchApprovalRequest, approval_id, with_for_update=True)
         if row is None:
@@ -282,6 +300,10 @@ def decide_route(approval_id: str, payload: DecisionIn, identity: ServiceIdentit
             raise _forbid(exc, 403) from exc
         if row.status != "pending":
             raise HTTPException(status_code=409, detail=f"approval request is {row.status}")
+        if payload.expectedSubjectRef is not None and payload.expectedSubjectRef != row.subject_ref:
+            raise HTTPException(status_code=409, detail={
+                "code": "subject-changed",
+                "message": "This request is for a different revision than the one you confirmed. Review it again."})
         out = hg.decide({"policy": _policy(), "approval": row.approval_json, "decision": payload.decision,
                          "note": payload.note or None, "provenanceRefs": [row.subject_ref],
                          "actor": {"actorId": _scope(identity.user_key), "actorType": "human", "role": role}})
@@ -290,7 +312,9 @@ def decide_route(approval_id: str, payload: DecisionIn, identity: ServiceIdentit
             "schema": RECORD_SCHEMA, "issuer": ISSUER, "audience": AUDIENCE,
             "ownerScope": _scope(row.owner_user_key), "projectId": row.project_id, "dimension": row.dimension,
             "action": row.action, "subjectRef": row.subject_ref, "grantId": grant.grant_id if grant else "owner",
-            "authentication": {"requester": row.requester_auth, "decider": identity.authentication_method},
+            "authentication": {"requester": row.requester_auth, "decider": identity.authentication_method,
+                               **(step_up or {"stepUp": False}),
+                               **({"revisionConfirmed": True} if payload.expectedSubjectRef else {})},
             "approval": out["approval"], "decision": out["decision"], "issuedAt": now.isoformat(),
         })
         row.status = out["approval"]["status"]

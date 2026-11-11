@@ -442,7 +442,12 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
 )
+# SC-AUTH-01 F3 (kept by SC-AUTH-02): every API response is marked no-store.
+from .auth_hygiene import AuthHygieneMiddleware
+app.add_middleware(AuthHygieneMiddleware)
 app.include_router(session_router)
+from .sc_identity import router as sc_identity_router
+app.include_router(sc_identity_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
@@ -5003,3 +5008,6 @@ app.include_router(notebook_export_router)
 # SC-ED-01: authenticated, persisted, signed approvals for Research publication.
 from .research_approvals import router as research_approval_router
 app.include_router(research_approval_router)
+# SC-PUB-M1: owner- and approver-facing approval desk (static, same-origin, strict CSP).
+from .approval_desk import router as approval_desk_router
+app.include_router(approval_desk_router)
