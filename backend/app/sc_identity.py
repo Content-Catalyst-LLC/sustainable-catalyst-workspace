@@ -190,6 +190,25 @@ def verify_jwt(token: str, *, audience: str, required: tuple[str, ...]) -> dict[
     )
 
 
+def step_up_evidence(request: Request) -> dict[str, Any] | None:
+    """Evidence of a fresh SC Identity sign-in (password + second factor) behind this request's
+    session, or None. Consequential decisions (SC-PUB-M1 publication approvals) require it."""
+    from .session_auth import session_payload_from_request
+    payload = session_payload_from_request(request) or {}
+    if payload.get("auth") != AUTH_METHOD:
+        return None
+    try:
+        auth_time = int(payload.get("auth_time") or 0)
+    except (TypeError, ValueError):
+        return None
+    if not auth_time or not 0 <= time.time() - auth_time <= get_settings().sc_identity_step_up_max_age:
+        return None
+    amr = [v for v in payload.get("amr") or [] if isinstance(v, str)]
+    if not mfa_satisfied({"amr": amr}):
+        return None
+    return {"stepUp": True, "deciderAuthTime": auth_time, "deciderAmr": amr[:8]}
+
+
 def mfa_satisfied(claims: dict[str, Any]) -> bool:
     if not get_settings().sc_identity_require_mfa:
         return True

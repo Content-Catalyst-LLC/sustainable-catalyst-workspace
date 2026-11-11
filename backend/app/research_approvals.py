@@ -24,13 +24,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import or_, select
 
 from . import human_governance_approval_intervention_runtime as hg
 from .db import session_scope
 from .models import ProjectHead, ResearchApprovalGrant, ResearchApprovalRequest
+from . import sc_identity
 from .research_exports import AUDIENCE, ISSUER, _signing_key, public_key_info, sign_document
 from .security import ServiceIdentity, require_service_identity
 from .utils import sha256_hex
@@ -269,8 +270,16 @@ def _visible(row: ResearchApprovalRequest | None, user_key: str) -> ResearchAppr
 
 
 @router.post("/requests/{approval_id}/decide")
-def decide_route(approval_id: str, payload: DecisionIn, identity: ServiceIdentity = Depends(require_service_identity)):
+def decide_route(approval_id: str, payload: DecisionIn, request: Request,
+                 identity: ServiceIdentity = Depends(require_service_identity)):
     _signing_key()
+    # SC-PUB-M1: with Sustainable Catalyst Identity configured, an approval is signed only after a
+    # fresh sign-in (password + second factor); the evidence is part of the signed record.
+    step_up = sc_identity.step_up_evidence(request)
+    if payload.decision == "approve" and sc_identity.enabled() and step_up is None:
+        raise HTTPException(status_code=403, detail={
+            "code": "step-up-required", "message": "Sign in again (password and second factor) to approve.",
+            "loginUrl": "/v1/auth/login?stepUp=true"})
     with session_scope() as db:
         row = db.get(ResearchApprovalRequest, approval_id, with_for_update=True)
         if row is None:
@@ -290,7 +299,8 @@ def decide_route(approval_id: str, payload: DecisionIn, identity: ServiceIdentit
             "schema": RECORD_SCHEMA, "issuer": ISSUER, "audience": AUDIENCE,
             "ownerScope": _scope(row.owner_user_key), "projectId": row.project_id, "dimension": row.dimension,
             "action": row.action, "subjectRef": row.subject_ref, "grantId": grant.grant_id if grant else "owner",
-            "authentication": {"requester": row.requester_auth, "decider": identity.authentication_method},
+            "authentication": {"requester": row.requester_auth, "decider": identity.authentication_method,
+                               **(step_up or {"stepUp": False})},
             "approval": out["approval"], "decision": out["decision"], "issuedAt": now.isoformat(),
         })
         row.status = out["approval"]["status"]
