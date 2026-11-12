@@ -2,7 +2,7 @@
 
 **Prepared:** 2026-11-07  
 **Status:** Implementation contract, **not yet implemented/deployed**.  
-**Research authoritative build spec:** [RH-PUB-01](https://github.com/Content-Catalyst-LLC/sustainable-catalyst-research/blob/main/docs/RH-PUB-01-PUBLICATION-OUTPUT-WORKSPACES.md).  
+**Research authoritative build spec:** RH-PUB-01, `docs/RH-PUB-01-PUBLICATION-OUTPUT-WORKSPACES.md` in the private Research repository (not public).  
 **Cross-product names:** [Publications/Press ownership ADR](https://github.com/Content-Catalyst-LLC/sustainable-catalyst-platform-core/blob/main/docs/PRODUCT-BOUNDARIES-PUBLICATIONS-PRESS-RESEARCH-2026-11-07.md).
 
 ## User-facing intent
