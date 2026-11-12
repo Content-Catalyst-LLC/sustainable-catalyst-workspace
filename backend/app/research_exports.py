@@ -36,7 +36,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from .config import get_settings
 from .db import session_scope
@@ -693,6 +693,10 @@ def source_rights_route(payload: SourceRightsRequest, identity: ServiceIdentity 
     with session_scope() as db:
         rev = _owned_dataset_revision(db, identity, payload.projectId, payload.datasetId, payload.datasetRevision)
         sha = rev.artifact_sha256
+        # SC-RIGHTS-02: one issuer at a time per owner and source, so concurrent requests cannot fork the chain.
+        if db.get_bind().dialect.name == "postgresql":
+            db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
+                       {"k": f"sc-rights:{identity.user_key}:{sha}"})
         last = db.scalars(select(ResearchSourceRightsNotice).where(
             ResearchSourceRightsNotice.user_key == identity.user_key, ResearchSourceRightsNotice.source_sha256 == sha)
             .order_by(ResearchSourceRightsNotice.sequence.desc()).limit(1)).first()
@@ -711,6 +715,10 @@ def source_rights_route(payload: SourceRightsRequest, identity: ServiceIdentity 
             dataset_revision=rev.revision, source_sha256=sha, licence_status=payload.licenceStatus,
             sequence=body["sequence"], reason=payload.reason, notice_json=notice, notice_sha256=sha256_hex(notice),
             issued_at=issued))
+        # SC-RIGHTS-02: the delivery outbox row commits with the notice or not at all.
+        from .rights_delivery import enqueue
+        enqueue(db, notice_id=body["noticeId"], user_key=identity.user_key, source_sha256=sha,
+                sequence=body["sequence"], licence_status=payload.licenceStatus, created_at=issued)
         db.commit()
         return notice
 

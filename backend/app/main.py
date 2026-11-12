@@ -5003,6 +5003,10 @@ from .research_exports import router as research_export_router
 from .notebook_export import router as notebook_export_router
 
 app.include_router(research_export_router)
+# SC-RIGHTS-02: private operator view of source-rights delivery to Research (operator credential only).
+from .rights_delivery import router as rights_delivery_router
+
+app.include_router(rights_delivery_router)
 # SC-NB-01: portable exports of immutable notebook revisions (owner-scoped).
 app.include_router(notebook_export_router)
 # SC-ED-01: authenticated, persisted, signed approvals for Research publication.

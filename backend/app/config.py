@@ -73,6 +73,18 @@ class Settings(BaseSettings):
     research_export_client_token: str = ""
     research_export_signing_key_file: str = ""
     research_export_grant_ttl_seconds: int = 900
+    # SC-RIGHTS-02 rights delivery to Research: off unless a Research URL and delivery token file are set.
+    research_rights_delivery_url: str = ""  # Research API base, e.g. http://research-api:8000/api/research/v1
+    research_rights_delivery_token_file: str = ""
+    research_rights_ops_token_file: str = ""  # Operator credential for the private delivery dashboard.
+    research_rights_max_attempts: int = 12
+    research_rights_backoff_base_seconds: float = 2.0
+    research_rights_backoff_cap_seconds: float = 300.0
+    research_rights_lease_seconds: float = 60.0
+    research_rights_http_timeout_seconds: float = 10.0
+    research_rights_attest_interval_seconds: float = 300.0
+    research_rights_alert_restriction_seconds: float = 300.0  # A restriction unapplied for longer raises an alert.
+    research_rights_batch: int = 20
 
     compute_max_rows: int = 50000
     compute_max_columns: int = 256
