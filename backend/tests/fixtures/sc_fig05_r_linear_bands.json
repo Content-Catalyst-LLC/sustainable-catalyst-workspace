@@ -1,0 +1,299 @@
+{
+ "_comment": "SC-FIG-05.3 synthetic fixture. Output of r-runtime/runner.R (this branch) in the R 4.2.2 runtime image, no network. Synthetic data only.",
+ "runtimeImage": "sha256:1ec8f911be869d9c4c091ca83b3508d9ac622aeefdc84f17e15b3338c9b8619f",
+ "input": {
+  "operation": "workspace.polyglot.r.linear-model",
+  "payload": {
+   "rows": [
+    {
+     "year": 2010,
+     "t": 0,
+     "y": 2.1
+    },
+    {
+     "year": 2011,
+     "t": 1,
+     "y": 2.38
+    },
+    {
+     "year": 2012,
+     "t": 2,
+     "y": 3.3
+    },
+    {
+     "year": 2013,
+     "t": 3,
+     "y": 3.41
+    },
+    {
+     "year": 2014,
+     "t": 4,
+     "y": 4.2
+    },
+    {
+     "year": 2015,
+     "t": 5,
+     "y": 4.33
+    },
+    {
+     "year": 2016,
+     "t": 6,
+     "y": 5.1
+    },
+    {
+     "year": 2017,
+     "t": 7,
+     "y": 5.62
+    },
+    {
+     "year": 2018,
+     "t": 8,
+     "y": 5.9
+    },
+    {
+     "year": 2019,
+     "t": 9,
+     "y": 6.71
+    },
+    {
+     "year": 2020,
+     "t": 10,
+     "y": 7.05
+    },
+    {
+     "year": 2021,
+     "t": 11,
+     "y": 7.38
+    }
+   ],
+   "outcome": "y",
+   "predictors": [
+    "t"
+   ],
+   "confidenceLevel": 0.9,
+   "bands": [
+    "confidence",
+    "prediction"
+   ]
+  }
+ },
+ "output": {
+  "ok": true,
+  "schema": "sc-workspace-r-runtime-result/1.0",
+  "runtime": "r-statistical-econometric",
+  "runtimeVersion": "4.2.2",
+  "operation": "workspace.polyglot.r.linear-model",
+  "boundedOperationsOnly": true,
+  "arbitraryCodeExecution": false,
+  "result": {
+   "kind": "linear-model",
+   "outcome": "y",
+   "predictors": "t",
+   "coefficients": [
+    {
+     "term": "(Intercept)",
+     "estimate": 2.06961538461538,
+     "stdError": 0.0881391561573301,
+     "statistic": 23.4812253128573,
+     "pValue": 4.44745177099274e-10,
+     "confLow": 1.9098665906828,
+     "confHigh": 2.22936417854797
+    },
+    {
+     "term": "t",
+     "estimate": 0.494615384615385,
+     "stdError": 0.0135732626456885,
+     "statistic": 36.4404194869461,
+     "pValue": 5.75880654409077e-12,
+     "confLow": 0.470014373760362,
+     "confHigh": 0.519216395470407
+    }
+   ],
+   "metrics": {
+    "n": 12,
+    "dfResidual": 10,
+    "rSquared": 0.99252562313026,
+    "adjustedRSquared": 0.991778185443286,
+    "sigma": 0.162312613851741,
+    "aic": -5.77087999959049,
+    "bic": -4.31616005022649
+   },
+   "interval": {
+    "confidenceLevel": 0.9,
+    "method": "stats::confint.lm: estimate +/- qt((1 + level) / 2, df.residual) * standard error",
+    "distribution": "Student t",
+    "degreesOfFreedom": 10
+   },
+   "bands": [
+    {
+     "semantics": "confidence-band",
+     "predictor": "t",
+     "confidenceLevel": 0.9,
+     "method": "stats::predict.lm(interval = \"confidence\"): fit +/- qt((1 + level) / 2, df.residual) * se.fit",
+     "distribution": "Student t",
+     "degreesOfFreedom": 10,
+     "evaluatedAt": "observed predictor values",
+     "computedBy": "runtime",
+     "points": [
+      {
+       "x": 0,
+       "fit": 2.06961538461538,
+       "lower": 1.9098665906828,
+       "upper": 2.22936417854797
+      },
+      {
+       "x": 1,
+       "fit": 2.56423076923077,
+       "lower": 2.42470449997646,
+       "upper": 2.70375703848508
+      },
+      {
+       "x": 2,
+       "fit": 3.05884615384615,
+       "lower": 2.93790855865212,
+       "upper": 3.17978374904019
+      },
+      {
+       "x": 3,
+       "fit": 3.55346153846154,
+       "lower": 3.44860619276671,
+       "upper": 3.65831688415637
+      },
+      {
+       "x": 4,
+       "fit": 4.04807692307692,
+       "lower": 3.95548208207362,
+       "upper": 4.14067176408022
+      },
+      {
+       "x": 5,
+       "fit": 4.54269230769231,
+       "lower": 4.45688213865478,
+       "upper": 4.62850247672983
+      },
+      {
+       "x": 6,
+       "fit": 5.03730769230769,
+       "lower": 4.95149752327017,
+       "upper": 5.12311786134522
+      },
+      {
+       "x": 7,
+       "fit": 5.53192307692308,
+       "lower": 5.43932823591978,
+       "upper": 5.62451791792638
+      },
+      {
+       "x": 8,
+       "fit": 6.02653846153846,
+       "lower": 5.92168311584363,
+       "upper": 6.13139380723329
+      },
+      {
+       "x": 9,
+       "fit": 6.52115384615385,
+       "lower": 6.40021625095981,
+       "upper": 6.64209144134788
+      },
+      {
+       "x": 10,
+       "fit": 7.01576923076923,
+       "lower": 6.87624296151492,
+       "upper": 7.15529550002354
+      },
+      {
+       "x": 11,
+       "fit": 7.51038461538461,
+       "lower": 7.35063582145203,
+       "upper": 7.6701334093172
+      }
+     ]
+    },
+    {
+     "semantics": "prediction-band",
+     "predictor": "t",
+     "confidenceLevel": 0.9,
+     "method": "stats::predict.lm(interval = \"prediction\"): fit +/- qt((1 + level) / 2, df.residual) * sqrt(se.fit^2 + sigma^2)",
+     "distribution": "Student t",
+     "degreesOfFreedom": 10,
+     "evaluatedAt": "observed predictor values",
+     "computedBy": "runtime",
+     "points": [
+      {
+       "x": 0,
+       "fit": 2.06961538461538,
+       "lower": 1.73485476972673,
+       "upper": 2.40437599950404
+      },
+      {
+       "x": 1,
+       "fit": 2.56423076923077,
+       "lower": 2.23863505069359,
+       "upper": 2.88982648776795
+      },
+      {
+       "x": 2,
+       "fit": 3.05884615384615,
+       "lower": 2.74077242961067,
+       "upper": 3.37691987808164
+      },
+      {
+       "x": 3,
+       "fit": 3.55346153846154,
+       "lower": 3.24114817717435,
+       "upper": 3.86577489974872
+      },
+      {
+       "x": 4,
+       "fit": 4.04807692307692,
+       "lower": 3.73966356944556,
+       "upper": 4.35649027670828
+      },
+      {
+       "x": 5,
+       "fit": 4.54269230769231,
+       "lower": 4.23624757005114,
+       "upper": 4.84913704533348
+      },
+      {
+       "x": 6,
+       "fit": 5.03730769230769,
+       "lower": 4.73086295466652,
+       "upper": 5.34375242994886
+      },
+      {
+       "x": 7,
+       "fit": 5.53192307692308,
+       "lower": 5.22350972329172,
+       "upper": 5.84033643055444
+      },
+      {
+       "x": 8,
+       "fit": 6.02653846153846,
+       "lower": 5.71422510025128,
+       "upper": 6.33885182282564
+      },
+      {
+       "x": 9,
+       "fit": 6.52115384615385,
+       "lower": 6.20308012191836,
+       "upper": 6.83922757038933
+      },
+      {
+       "x": 10,
+       "fit": 7.01576923076923,
+       "lower": 6.69017351223205,
+       "upper": 7.34136494930641
+      },
+      {
+       "x": 11,
+       "fit": 7.51038461538461,
+       "lower": 7.17562400049596,
+       "upper": 7.84514523027327
+      }
+     ]
+    }
+   ]
+  }
+ }
+}
