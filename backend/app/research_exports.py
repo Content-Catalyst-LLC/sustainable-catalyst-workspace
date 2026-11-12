@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -46,8 +46,8 @@ from .input_integrity import PARAMETER_KIND
 from .input_integrity import VERIFIED as INPUT_VERIFIED
 from .notebook_orchestration import verified_cell_run
 from .models import (
-    ComputeExecutionReceipt, ExecutionRun, ExecutionRunOutput, PolyglotExecutionReceipt, ResearchExportGrant,
-    ResearchExportWithdrawal, ScientificStudyPackage,
+    ComputeExecutionReceipt, DatasetHead, DatasetRevision, ExecutionRun, ExecutionRunOutput, PolyglotExecutionReceipt,
+    ResearchExportGrant, ResearchExportWithdrawal, ResearchSourceRightsNotice, ScientificStudyPackage,
 )
 from .object_store import get_artifact, read_artifact_content
 from .registry import get_execution_run
@@ -58,6 +58,8 @@ from .utils import canonical_bytes, sha256_hex
 GRANT_SCHEMA = "sc-workspace-research-export-grant/1.0"
 EXPORT_SCHEMA = "sc-workspace-research-export/1.0"
 WITHDRAWAL_SCHEMA = "sc-workspace-research-export-withdrawal/1.0"
+SOURCE_RIGHTS_SCHEMA = "sc-workspace-source-rights-notice/1.0"
+LICENCE_STATUSES = ("restricted", "verified-for-use")
 AUDIENCE = "sc-research"
 ISSUER = "sustainable-catalyst-workspace"
 MAX_VALUES = 256
@@ -212,13 +214,22 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
     R linear-model coefficients), ``vector`` (a list located by key, with declared names) and
     ``scalar-paths`` (named dotted paths into the runtime result, e.g. a posterior mean or a
     Monte Carlo interval bound; every declared path must resolve to a finite number).
+
+    SC-FIG-04.1: a coefficient table may also declare ``intervalFields`` ({lower, upper}); the interval
+    level, method and degrees of freedom are then taken from the runtime's own ``interval`` record, never
+    from the mapping. Statistical assumptions are the model owner's declaration and are exported as such
+    (``checked: false``); nothing here tests them.
     """
     kind = mapping.get("kind")
     values: dict[str, float] = {}
     uncertainty: dict[str, float] = {}
+    intervals: dict[str, list[float]] = {}
     if kind == "coefficient-table":
         name_f, value_f = mapping.get("nameField", "term"), mapping.get("valueField", "estimate")
         unc_f, rename = mapping.get("uncertaintyField"), mapping.get("rename") or {}
+        iv = mapping.get("intervalFields")
+        if iv is not None and (not isinstance(iv, dict) or set(iv) != {"lower", "upper"}):
+            return {"values": {}, "error": "intervalFields must be {lower, upper}"}
         table = _walk(result_doc, lambda n: isinstance(n, list) and n and all(isinstance(r, dict) and name_f in r for r in n))
         for row in table or []:
             name = str(rename.get(row[name_f], row[name_f]))
@@ -228,6 +239,12 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
             u = _finite(row.get(unc_f)) if unc_f else None
             if u is not None:
                 uncertainty[name] = u
+            if iv and v is not None:
+                lo, hi = _finite(row.get(iv["lower"])), _finite(row.get(iv["upper"]))
+                # Strict: a declared interval that is missing or does not bracket the estimate is an error.
+                if lo is None or hi is None or not lo <= v <= hi:
+                    return {"values": {}, "error": f"interval for {name[:64]!r} is missing or does not contain the estimate"}
+                intervals[name] = [lo, hi]
     elif kind == "vector":
         key, names = mapping.get("key"), list(mapping.get("names") or [])
         vec = _walk(result_doc, lambda n: isinstance(n, dict) and isinstance(n.get(key), list))
@@ -258,6 +275,21 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
     out: dict[str, Any] = {"values": values}
     if uncertainty:
         out["uncertainty"] = {"semantics": mapping.get("uncertaintySemantics", "standard-error"), "values": uncertainty}
+    if intervals:
+        spec = _walk(_runtime_root(result_doc), lambda n: isinstance(n, dict) and "confidenceLevel" in n and "method" in n)
+        level = _finite((spec or {}).get("confidenceLevel"))
+        df = _finite((spec or {}).get("degreesOfFreedom"))
+        if level is None or not 0.5 <= level < 1 or df is None or df < 1 or not isinstance(spec.get("method"), str):
+            return {"values": {}, "error": "intervals need the runtime's interval record (confidenceLevel, method, degreesOfFreedom)"}
+        out["intervals"] = {"semantics": "confidence-interval", "level": level, "method": spec["method"][:240],
+                            "distribution": str(spec.get("distribution") or "")[:64], "degreesOfFreedom": df,
+                            "computedBy": "runtime", "values": intervals}
+    assumptions = mapping.get("assumptions")
+    if assumptions is not None:
+        if not isinstance(assumptions, list) or not 0 < len(assumptions) <= 12 or \
+                not all(isinstance(a, str) and 0 < len(a.strip()) <= 240 for a in assumptions):
+            return {"values": {}, "error": "assumptions must be 1-12 non-empty statements of at most 240 characters"}
+        out["assumptions"] = {"declaredBy": "model-revision", "checked": False, "statements": [a.strip() for a in assumptions]}
     # Seeded runtimes echo their seed. Such values are pseudo-random draws: a same-seed replay
     # shows determinism, not reproduction, and Research must be told so.
     root = _runtime_root(result_doc)
@@ -523,6 +555,15 @@ class WithdrawRequest(BaseModel):
     reason: str = Field(default="", max_length=2000)
 
 
+class SourceRightsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    projectId: str = Field(min_length=1, max_length=160)
+    datasetId: str = Field(min_length=1, max_length=160)
+    datasetRevision: int | None = Field(default=None, ge=1)
+    licenceStatus: Literal["restricted", "verified-for-use"]
+    reason: str = Field(default="", max_length=2000)
+
+
 def _owned_run(db, identity: ServiceIdentity, project_id: str, run_id: str) -> ExecutionRun:
     run = get_execution_run(db, identity.user_key, run_id)
     # Same answer for absent, foreign and wrong-project runs.
@@ -624,3 +665,61 @@ def fetch_route(payload: FetchRequest):
         row.last_export_sha256 = sha256_hex(export)
         db.commit()
         return export
+
+
+# ---------------------------------------------------------------------------
+# SC-FIG-04.1 source rights notices
+
+
+def _owned_dataset_revision(db, identity: ServiceIdentity, project_id: str, dataset_id: str,
+                            revision: int | None) -> DatasetRevision:
+    head = db.get(DatasetHead, {"user_key": identity.user_key, "dataset_id": dataset_id})
+    rev = db.get(DatasetRevision, {"user_key": identity.user_key, "dataset_id": dataset_id,
+                                   "revision": revision or (head.revision if head else 0)})
+    # Same answer for absent, foreign, wrong-project and unpinned datasets: a notice names exact pinned bytes.
+    if rev is None or rev.project_id != project_id or not re.fullmatch(r"[0-9a-f]{64}", rev.artifact_sha256 or ""):
+        raise HTTPException(status_code=404, detail="Workspace dataset revision not found.")
+    return rev
+
+
+@router.post("/source-rights")
+def source_rights_route(payload: SourceRightsRequest, identity: ServiceIdentity = Depends(require_service_identity)):
+    """Owner records a licence status for the exact bytes of one of their dataset revisions.
+
+    Returns a signed notice for Research. Only the owner of the dataset can issue it; Research applies it to
+    that owner's figures only. Re-sending the current status returns the existing notice (no new sequence).
+    """
+    _signing_key()
+    with session_scope() as db:
+        rev = _owned_dataset_revision(db, identity, payload.projectId, payload.datasetId, payload.datasetRevision)
+        sha = rev.artifact_sha256
+        last = db.scalars(select(ResearchSourceRightsNotice).where(
+            ResearchSourceRightsNotice.user_key == identity.user_key, ResearchSourceRightsNotice.source_sha256 == sha)
+            .order_by(ResearchSourceRightsNotice.sequence.desc()).limit(1)).first()
+        if last is not None and last.licence_status == payload.licenceStatus:
+            return last.notice_json
+        issued = _now()
+        body = {"schema": SOURCE_RIGHTS_SCHEMA, "issuer": ISSUER, "audience": AUDIENCE, "noticeId": f"srn_{uuid4().hex}",
+                "ownerScope": f"workspace-user:{identity.user_key}", "projectId": rev.project_id,
+                "datasetId": rev.dataset_id, "datasetRevision": rev.revision, "sourceSha256": sha,
+                "licenceStatus": payload.licenceStatus, "sequence": (last.sequence + 1) if last else 1,
+                "previousNoticeSha256": last.notice_sha256 if last else None,
+                "effectiveAt": issued.isoformat(), "reason": payload.reason}
+        notice = sign_document(SOURCE_RIGHTS_SCHEMA, body)
+        db.add(ResearchSourceRightsNotice(
+            notice_id=body["noticeId"], user_key=identity.user_key, project_id=rev.project_id, dataset_id=rev.dataset_id,
+            dataset_revision=rev.revision, source_sha256=sha, licence_status=payload.licenceStatus,
+            sequence=body["sequence"], reason=payload.reason, notice_json=notice, notice_sha256=sha256_hex(notice),
+            issued_at=issued))
+        db.commit()
+        return notice
+
+
+@router.get("/source-rights")
+def source_rights_list_route(projectId: str, identity: ServiceIdentity = Depends(require_service_identity)):
+    """The owner's own notices for one project (newest first). Never another owner's."""
+    with session_scope() as db:
+        rows = db.scalars(select(ResearchSourceRightsNotice).where(
+            ResearchSourceRightsNotice.user_key == identity.user_key, ResearchSourceRightsNotice.project_id == projectId)
+            .order_by(ResearchSourceRightsNotice.issued_at.desc(), ResearchSourceRightsNotice.sequence.desc())).all()
+        return {"schema": "sc-workspace-source-rights-notices/1.0", "items": [r.notice_json for r in rows]}

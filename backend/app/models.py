@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DDL, BigInteger, DateTime, Integer, String, Text, event
+from sqlalchemy import DDL, BigInteger, DateTime, Integer, String, Text, UniqueConstraint, event
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -2800,6 +2800,41 @@ class ResearchExportWithdrawal(Base):
     reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
     notice_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     withdrawn_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ResearchSourceRightsNotice(Base):
+    """SC-FIG-04.1: the owner's signed record of a dataset source's licence status for Research.
+
+    Append-only (the database refuses updates and deletes). Each notice for one owner and source SHA-256
+    carries the next sequence number and the previous notice's digest, so Research can order notices and
+    refuse stale or replayed ones.
+    """
+    __tablename__ = "workspace_research_source_rights_notices"
+
+    notice_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    project_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    dataset_id: Mapped[str] = mapped_column(String(160), nullable=False)
+    dataset_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    licence_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    notice_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    notice_sha256: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    __table_args__ = (UniqueConstraint("user_key", "source_sha256", "sequence", name="uq_workspace_source_rights_sequence"),)
+
+
+event.listen(ResearchSourceRightsNotice.__table__, "after_create", DDL("""
+CREATE OR REPLACE FUNCTION workspace_source_rights_append_only() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'source rights notices are append-only';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER workspace_source_rights_append_only BEFORE UPDATE OR DELETE ON workspace_research_source_rights_notices
+    FOR EACH ROW EXECUTE FUNCTION workspace_source_rights_append_only();
+""").execute_if(dialect="postgresql"))
 
 
 class ResearchApprovalGrant(Base):
