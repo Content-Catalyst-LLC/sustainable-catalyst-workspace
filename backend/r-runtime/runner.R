@@ -53,22 +53,35 @@ finite_numeric <- function(x, label) {
   x
 }
 
-coef_table <- function(model) {
+confidence_level <- function(x) {
+  level <- suppressWarnings(as.numeric(x %||% 0.95))
+  if (length(level) != 1 || !is.finite(level) || level < 0.5 || level > 0.999) stop("confidenceLevel must be in [0.5, 0.999]")
+  level
+}
+
+coef_table <- function(model, level = NULL) {
   tab <- summary(model)$coefficients
+  # SC-FIG-04.1: Student-t confidence limits from stats::confint (lm method), only when requested.
+  ci <- if (is.null(level)) NULL else stats::confint(model, level = level)
   out <- vector("list", nrow(tab))
   for (i in seq_len(nrow(tab))) {
-    out[[i]] <- list(
+    row <- list(
       term = rownames(tab)[[i]],
       estimate = unname(tab[i, 1]),
       stdError = unname(tab[i, 2]),
       statistic = unname(tab[i, 3]),
       pValue = unname(tab[i, 4])
     )
+    if (!is.null(ci)) {
+      row$confLow <- unname(ci[rownames(tab)[[i]], 1])
+      row$confHigh <- unname(ci[rownames(tab)[[i]], 2])
+    }
+    out[[i]] <- row
   }
   out
 }
 
-lm_result <- function(df, outcome, predictors, econometric = FALSE) {
+lm_result <- function(df, outcome, predictors, econometric = FALSE, level = NULL) {
   outcome <- require_column(df, outcome)
   predictors <- require_predictors(df, predictors)
   if (!is.numeric(df[[outcome]])) df[[outcome]] <- suppressWarnings(as.numeric(df[[outcome]]))
@@ -78,9 +91,10 @@ lm_result <- function(df, outcome, predictors, econometric = FALSE) {
     kind = if (econometric) "econometric-ols" else "linear-model",
     outcome = outcome,
     predictors = predictors,
-    coefficients = coef_table(model),
+    coefficients = coef_table(model, level),
     metrics = list(
       n = length(stats::residuals(model)),
+      dfResidual = unname(model$df.residual),
       rSquared = unname(s$r.squared),
       adjustedRSquared = unname(s$adj.r.squared),
       sigma = unname(s$sigma),
@@ -88,6 +102,14 @@ lm_result <- function(df, outcome, predictors, econometric = FALSE) {
       bic = unname(stats::BIC(model))
     )
   )
+  if (!is.null(level)) {
+    result$interval <- list(
+      confidenceLevel = level,
+      method = "stats::confint.lm: estimate +/- qt((1 + level) / 2, df.residual) * standard error",
+      distribution = "Student t",
+      degreesOfFreedom = unname(model$df.residual)
+    )
+  }
   if (econometric) {
     e <- stats::residuals(model)
     fitted <- stats::fitted(model)
@@ -160,7 +182,8 @@ result <- switch(op,
   },
   "workspace.polyglot.r.linear-model" = {
     df <- rows_to_frame(payload$rows)
-    lm_result(df, as.character(payload$outcome %||% ""), payload$predictors, FALSE)
+    lm_result(df, as.character(payload$outcome %||% ""), payload$predictors, FALSE,
+              if (is.null(payload$confidenceLevel)) NULL else confidence_level(payload$confidenceLevel))
   },
   "workspace.polyglot.r.logistic-model" = {
     df <- rows_to_frame(payload$rows)
