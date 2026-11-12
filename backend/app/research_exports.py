@@ -207,6 +207,98 @@ def _scalar_paths(paths: Any, root: Any) -> dict[str, float] | str:
     return out
 
 
+MAX_BAND_POINTS = 500
+BAND_SEMANTICS = ("confidence-band", "prediction-band")
+
+
+def _runtime_bands(wanted: Any, root: Any) -> list[dict[str, Any]] | str:
+    """SC-FIG-05.3: the runtime's own band records (R ``stats::predict.lm``), copied and checked, never computed here.
+
+    ``wanted`` lists the band semantics the model revision declares; each must be present in the runtime result,
+    marked ``computedBy: runtime``, carry its level, method, distribution and degrees of freedom, and have
+    strictly increasing x with lower <= fit <= upper at every point. A prediction band must contain the
+    confidence band of the same level."""
+    if not isinstance(wanted, list) or not wanted or len(set(wanted)) != len(wanted) or not set(wanted) <= set(BAND_SEMANTICS):
+        return "bands must list confidence-band and/or prediction-band"
+    records = root.get("bands") if isinstance(root, dict) else None
+    if not isinstance(records, list):
+        return "the runtime result has no band record"
+    by_sem = {r.get("semantics"): r for r in records if isinstance(r, dict)}
+    out = []
+    for sem in wanted:
+        r = by_sem.get(sem)
+        if r is None:
+            return f"the runtime result has no {sem}"
+        level, df = _finite(r.get("confidenceLevel")), _finite(r.get("degreesOfFreedom"))
+        if r.get("computedBy") != "runtime" or level is None or not 0.5 <= level < 1 or df is None or df < 1 \
+                or not isinstance(r.get("method"), str) or not isinstance(r.get("predictor"), str):
+            return f"{sem} needs the runtime's record (computedBy, confidenceLevel, method, degreesOfFreedom, predictor)"
+        pts = r.get("points")
+        if not isinstance(pts, list) or not 2 <= len(pts) <= MAX_BAND_POINTS:
+            return f"{sem} must have 2-{MAX_BAND_POINTS} points"
+        clean = []
+        for pt in pts:
+            x, fit, lo, hi = (_finite(pt.get(k)) if isinstance(pt, dict) else None for k in ("x", "fit", "lower", "upper"))
+            if None in (x, fit, lo, hi) or not lo <= fit <= hi:
+                return f"{sem} has a point that is missing a value or does not contain its fit"
+            if clean and x <= clean[-1][0]:
+                return f"{sem} x values must be strictly increasing"
+            clean.append([x, fit, lo, hi])
+        out.append({"semantics": sem, "predictor": r["predictor"][:64], "level": level, "method": r["method"][:240],
+                    "distribution": str(r.get("distribution") or "")[:64], "degreesOfFreedom": df,
+                    "evaluatedAt": str(r.get("evaluatedAt") or "")[:64], "computedBy": "runtime",
+                    "points": clean})
+    conf = next((b for b in out if b["semantics"] == "confidence-band"), None)
+    pred = next((b for b in out if b["semantics"] == "prediction-band"), None)
+    if conf and pred:
+        if conf["level"] != pred["level"] or [p[0] for p in conf["points"]] != [p[0] for p in pred["points"]]:
+            return "confidence and prediction bands must share level and x"
+        if any(not (q[2] <= c[2] and c[3] <= q[3]) for c, q in zip(conf["points"], pred["points"])):
+            return "the prediction band must contain the confidence band"
+    return out
+
+
+def _runtime_quantile_bands(root: Any) -> dict[str, Any] | str:
+    """SC-FIG-05.3: an ensemble quantile fan as the uncertainty runtime computed it. Checked: computedBy runtime,
+    strictly increasing steps, and at each step min <= lower <= median <= upper <= max with wider levels nested
+    outside narrower ones."""
+    q = root.get("quantileBands") if isinstance(root, dict) else None
+    if not isinstance(q, dict) or q.get("computedBy") != "runtime" or not isinstance(q.get("method"), str):
+        return "the runtime result has no quantile band record"
+    levels = q.get("centralLevels")
+    if not isinstance(levels, list) or not 1 <= len(levels) <= 4 or any(_finite(v) is None or not 0 < v < 1 for v in levels) \
+            or levels != sorted(set(levels)):
+        return "quantile bands need increasing central levels in (0, 1)"
+    members = q.get("memberCount")
+    if not isinstance(members, int) or isinstance(members, bool) or members < 5:
+        return "quantile bands need the runtime's member count (at least 5)"
+    steps = q.get("steps")
+    if not isinstance(steps, list) or not 2 <= len(steps) <= MAX_BAND_POINTS:
+        return f"quantile bands must have 2-{MAX_BAND_POINTS} steps"
+    clean, prev = [], None
+    for st in steps:
+        if not isinstance(st, dict):
+            return "quantile band step is not an object"
+        x, med, mn, mx = (_finite(st.get(k)) for k in ("x", "median", "min", "max"))
+        bands = st.get("bands")
+        if None in (x, med, mn, mx) or not isinstance(bands, list) or len(bands) != len(levels):
+            return "quantile band step is missing a value"
+        if prev is not None and x <= prev:
+            return "quantile band steps must be strictly increasing"
+        prev, inner_lo, inner_hi, row = x, med, med, []
+        for lv, b in zip(levels, bands):
+            lo, hi = (_finite(b.get(k)) if isinstance(b, dict) else None for k in ("lower", "upper"))
+            if not isinstance(b, dict) or b.get("centralLevel") != lv or lo is None or hi is None \
+                    or not mn <= lo <= inner_lo or not inner_hi <= hi <= mx:
+                return "quantile bands are not nested around the median within the member range"
+            inner_lo, inner_hi = lo, hi
+            row.append([lo, hi])
+        clean.append({"x": x, "median": med, "min": mn, "max": mx, "bands": row})
+    return {"semantics": "ensemble-quantile-fan", "centralLevels": levels, "memberCount": members,
+            "method": q["method"][:240], "evaluatedAt": str(q.get("evaluatedAt") or "")[:64],
+            "computedBy": "runtime", "steps": clean}
+
+
 def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str, Any]:
     """Apply the model revision's declared ``researchResultValues`` mapping to its own result.
 
@@ -217,7 +309,8 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
 
     SC-FIG-04.1: a coefficient table may also declare ``intervalFields`` ({lower, upper}); the interval
     level, method and degrees of freedom are then taken from the runtime's own ``interval`` record, never
-    from the mapping. Statistical assumptions are the model owner's declaration and are exported as such
+    from the mapping. SC-FIG-05.3: ``bands`` (confidence-band, prediction-band) and ``quantileBands: true`` export
+    the runtime's band and ensemble-fan records after checking them; nothing here computes a band. Statistical assumptions are the model owner's declaration and are exported as such
     (``checked: false``); nothing here tests them.
     """
     kind = mapping.get("kind")
@@ -276,7 +369,8 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
     if uncertainty:
         out["uncertainty"] = {"semantics": mapping.get("uncertaintySemantics", "standard-error"), "values": uncertainty}
     if intervals:
-        spec = _walk(_runtime_root(result_doc), lambda n: isinstance(n, dict) and "confidenceLevel" in n and "method" in n)
+        spec = _walk(_runtime_root(result_doc), lambda n: isinstance(n, dict) and "confidenceLevel" in n and "method" in n
+                     and "points" not in n)
         level = _finite((spec or {}).get("confidenceLevel"))
         df = _finite((spec or {}).get("degreesOfFreedom"))
         if level is None or not 0.5 <= level < 1 or df is None or df < 1 or not isinstance(spec.get("method"), str):
@@ -284,6 +378,16 @@ def extract_result_values(mapping: dict[str, Any], result_doc: Any) -> dict[str,
         out["intervals"] = {"semantics": "confidence-interval", "level": level, "method": spec["method"][:240],
                             "distribution": str(spec.get("distribution") or "")[:64], "degreesOfFreedom": df,
                             "computedBy": "runtime", "values": intervals}
+    if "bands" in mapping:
+        bands = _runtime_bands(mapping["bands"], _runtime_root(result_doc))
+        if isinstance(bands, str):
+            return {"values": {}, "error": f"bands: {bands}"}
+        out["bands"] = bands
+    if mapping.get("quantileBands") is True:
+        fan = _runtime_quantile_bands(_runtime_root(result_doc))
+        if isinstance(fan, str):
+            return {"values": {}, "error": f"quantileBands: {fan}"}
+        out["quantileBands"] = fan
     assumptions = mapping.get("assumptions")
     if assumptions is not None:
         if not isinstance(assumptions, list) or not 0 < len(assumptions) <= 12 or \

@@ -81,7 +81,35 @@ coef_table <- function(model, level = NULL) {
   out
 }
 
-lm_result <- function(df, outcome, predictors, econometric = FALSE, level = NULL) {
+# SC-FIG-05.3: confidence (mean) and prediction bands from stats::predict.lm for a single numeric predictor,
+# evaluated only at the observed predictor values (no extrapolation, no smoothing between them).
+lm_bands <- function(model, df, predictor, level, kinds) {
+  kinds <- unique(as.character(kinds))
+  if (length(kinds) < 1 || !all(kinds %in% c("confidence", "prediction"))) stop("bands must be confidence and/or prediction")
+  if (is.null(level)) stop("bands require confidenceLevel")
+  x <- suppressWarnings(as.numeric(df[[predictor]]))
+  if (!is.numeric(df[[predictor]])) stop("bands require a numeric predictor")
+  xs <- sort(unique(x[is.finite(x) & seq_along(x) %in% as.integer(rownames(stats::model.frame(model)))]))
+  if (length(xs) < 2 || length(xs) > 500) stop("bands require 2-500 distinct observed predictor values")
+  grid <- stats::setNames(data.frame(xs), predictor)
+  lapply(kinds, function(k) {
+    p <- stats::predict(model, newdata = grid, interval = k, level = level)
+    list(
+      semantics = paste0(k, "-band"),
+      predictor = predictor,
+      confidenceLevel = level,
+      method = paste0("stats::predict.lm(interval = \"", k, "\"): fit +/- qt((1 + level) / 2, df.residual) * ",
+                      if (k == "confidence") "se.fit" else "sqrt(se.fit^2 + sigma^2)"),
+      distribution = "Student t",
+      degreesOfFreedom = unname(model$df.residual),
+      evaluatedAt = "observed predictor values",
+      computedBy = "runtime",
+      points = lapply(seq_along(xs), function(i) list(x = xs[[i]], fit = unname(p[i, "fit"]), lower = unname(p[i, "lwr"]), upper = unname(p[i, "upr"])))
+    )
+  })
+}
+
+lm_result <- function(df, outcome, predictors, econometric = FALSE, level = NULL, bands = NULL) {
   outcome <- require_column(df, outcome)
   predictors <- require_predictors(df, predictors)
   if (!is.numeric(df[[outcome]])) df[[outcome]] <- suppressWarnings(as.numeric(df[[outcome]]))
@@ -109,6 +137,10 @@ lm_result <- function(df, outcome, predictors, econometric = FALSE, level = NULL
       distribution = "Student t",
       degreesOfFreedom = unname(model$df.residual)
     )
+  }
+  if (!is.null(bands)) {
+    if (length(predictors) != 1) stop("bands require exactly one predictor")
+    result$bands <- lm_bands(model, df, predictors[[1]], level, bands)
   }
   if (econometric) {
     e <- stats::residuals(model)
@@ -183,7 +215,7 @@ result <- switch(op,
   "workspace.polyglot.r.linear-model" = {
     df <- rows_to_frame(payload$rows)
     lm_result(df, as.character(payload$outcome %||% ""), payload$predictors, FALSE,
-              if (is.null(payload$confidenceLevel)) NULL else confidence_level(payload$confidenceLevel))
+              if (is.null(payload$confidenceLevel)) NULL else confidence_level(payload$confidenceLevel), payload$bands)
   },
   "workspace.polyglot.r.logistic-model" = {
     df <- rows_to_frame(payload$rows)

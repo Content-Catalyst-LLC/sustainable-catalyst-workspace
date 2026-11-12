@@ -195,6 +195,7 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.uncertainty.latin-hypercube", "workspace.uncertainty.correlated-normal",
         "workspace.uncertainty.empirical-summary", "workspace.uncertainty.rank-correlation-sensitivity",
         "workspace.uncertainty.variance-contribution-linear", "workspace.uncertainty.scenario-envelope",
+        "workspace.uncertainty.ensemble-quantile-bands",
     ), "Hardened uncertainty-quantification runtime for seeded Monte Carlo simulation, resampling, experimental design, correlation, sensitivity, and scenario envelopes."),
     RuntimeSpec("optimization", "python-optimization-parameter-search", "server-configured-http", (
         "workspace.optimize.quadratic-box", "workspace.optimize.linear-box", "workspace.optimize.grid-search", "workspace.optimize.random-search",
