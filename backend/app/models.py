@@ -2837,6 +2837,76 @@ CREATE TRIGGER workspace_source_rights_append_only BEFORE UPDATE OR DELETE ON wo
 """).execute_if(dialect="postgresql"))
 
 
+class ResearchRightsOutbox(Base):
+    """SC-RIGHTS-02: delivery state of one source-rights notice to Research (transactional outbox).
+
+    Written in the same transaction as the notice. Mutable: it records delivery, not rights. The worker
+    delivers per owner and source in sequence order; restrictions go first across sources.
+    """
+    __tablename__ = "workspace_research_rights_outbox"
+
+    notice_id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    user_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    source_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    licence_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False)  # 0 = restriction, 1 = other
+    state: Mapped[str] = mapped_column(String(24), nullable=False, default="queued", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    lease_owner: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_error_code: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    last_error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    research_receipt: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    first_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+    __table_args__ = (UniqueConstraint("user_key", "source_sha256", "sequence", name="uq_workspace_rights_outbox_sequence"),)
+
+
+class ResearchRightsDeliveryEvent(Base):
+    """SC-RIGHTS-02: append-only log of delivery attempts, outcomes, requeues and reconciliation."""
+    __tablename__ = "workspace_research_rights_delivery_events"
+
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    notice_id: Mapped[str] = mapped_column(String(96), nullable=False, default="", index=True)
+    user_key: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(48), nullable=False, default="")
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detail: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+
+event.listen(ResearchRightsDeliveryEvent.__table__, "after_create", DDL("""
+CREATE OR REPLACE FUNCTION workspace_rights_delivery_events_append_only() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'rights delivery events are append-only';
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER workspace_rights_delivery_events_append_only BEFORE UPDATE OR DELETE
+    ON workspace_research_rights_delivery_events FOR EACH ROW EXECUTE FUNCTION workspace_rights_delivery_events_append_only();
+""").execute_if(dialect="postgresql"))
+
+
+class ResearchRightsSyncState(Base):
+    """SC-RIGHTS-02: Research's last answer for one owner's source (from attestation and state reads)."""
+    __tablename__ = "workspace_research_rights_sync_state"
+
+    user_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_sha256: Mapped[str] = mapped_column(String(64), primary_key=True)
+    research_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    research_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    workspace_sequence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    live_figures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    attestation_id: Mapped[str] = mapped_column(String(96), nullable=False, default="")
+    attested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 class ResearchApprovalGrant(Base):
     """SC-ED-01: a project owner grants another Workspace user an editor or per-dimension approver role."""
     __tablename__ = "workspace_research_approval_grants"

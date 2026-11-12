@@ -8,6 +8,7 @@ from uuid import uuid4
 from .config import get_settings
 from .input_integrity import InputIntegrityRefused
 from .db import initialize_schema, session_scope
+from . import rights_delivery
 from .jobs import block_job, claim_next_job, complete_job, fail_or_requeue_job, update_heartbeat
 from .routing import RemoteExecutionError, RouteBlocked, execute_job
 
@@ -60,6 +61,9 @@ def main():
             with session_scope() as db:
                 update_heartbeat(db, wid, settings.service_version, "idle", "")
             last_heartbeat = now
+
+        # SC-RIGHTS-02: deliver due source-rights notices and reconcile with Research (never raises).
+        rights_delivery.tick(wid)
 
         with session_scope() as db:
             row = claim_next_job(db, wid)
