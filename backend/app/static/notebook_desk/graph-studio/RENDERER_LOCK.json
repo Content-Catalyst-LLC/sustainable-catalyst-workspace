@@ -1,7 +1,7 @@
 {
  "schema": "sc-workspace-graph-studio-lock/1.0",
  "labRepository": "Content-Catalyst-LLC/sustainable-catalyst-lab",
- "labCommit": "a92371fa110dc6b52b0d761b8716826cc29801f4",
+ "labCommit": "387c39554e54929759c66af93731e855aab89049",
  "labRelease": "0.163.1.10",
  "note": "Byte-identical copies of the Lab Graph Studio renderer; update only with this script.",
  "files": [
