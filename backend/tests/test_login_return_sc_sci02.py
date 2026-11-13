@@ -68,3 +68,21 @@ def test_desk_links_to_the_configured_sign_in_and_keeps_its_place():
     assert '"/v1/session/profile"' in idp and "globalIdentityProviderConfigured" in idp
     # Sign-out clears the Workspace session when there is no SC Identity session to end.
     assert 'fetch("/v1/session", { method: "DELETE"' in js
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
+def test_erw_sign_in_returns_to_a_configured_research_console_only():
+    from types import SimpleNamespace
+    html = bridge.login_html(SimpleNamespace(research_console_origins="https://research.example.org, http://plain.example, https://x.example/path"))
+    script = re.search(r"<script>(.*)</script>", html, re.S).group(1)
+    assert '["https://research.example.org"]' in script
+    cases = {
+        "?returnTo=https%3A%2F%2Fresearch.example.org%2Fconsole%2F": "https://research.example.org/console/",
+        "?returnTo=https%3A%2F%2Fresearch.example.org%2Fconsole%2F%23graph": "https://research.example.org/console/#graph",
+        "?returnTo=https%3A%2F%2Fresearch.example.org.evil%2Fconsole%2F": "/v1/private-research/ui",
+        "?returnTo=https%3A%2F%2Fresearch.example.org%2Fconsole%2F..%2Fadmin": "/v1/private-research/ui",
+        "?returnTo=http%3A%2F%2Fplain.example%2Fconsole%2F": "/v1/private-research/ui",
+        "?returnTo=%2Fv1%2Fdesk%2Fnotebooks": "/v1/desk/notebooks",
+    }
+    raw = subprocess.run(["node", "-e", NODE, script, json.dumps(list(cases))], capture_output=True, text=True, check=True).stdout
+    assert json.loads(raw) == list(cases.values())

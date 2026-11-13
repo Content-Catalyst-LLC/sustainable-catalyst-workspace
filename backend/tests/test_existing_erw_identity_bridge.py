@@ -84,3 +84,14 @@ def test_reconciled_main_mounts_live_routes_once():
         # persistent-projects routes (Workspace PR #6) are not deployed and are not part of it.
     ):
         assert len([route for route in app.routes if getattr(route, 'path', None) == path and method in getattr(route, 'methods', set())]) == 1
+
+
+def test_erw_sessions_are_marked_as_erw_account_sign_ins(client,monkeypatch):
+    # SC-SCI-02: Research admits this method only where configured; it is never the generic cookie method.
+    upstream(monkeypatch)
+    assert client.post('/v1/private-research/auth/login',headers=HEADERS,json=CREDS).status_code==200
+    token=client.cookies.get(session_auth.session_cookie_name())
+    payload=session_auth.decode_session_token(token)
+    view=client.get('/v1/session').json()
+    assert view['authenticationMethod']=='erw-account'
+    assert payload['auth']=='erw-account' and payload['amr']==['pwd']

@@ -2,7 +2,7 @@
 Does not accept anonymous ERW sessions or trust client-supplied owners.
 """
 from __future__ import annotations
-import json, os, time, hashlib, sqlite3, pathlib
+import json, os, re, time, hashlib, sqlite3, pathlib
 from urllib import request as urlrequest
 from urllib.error import HTTPError, URLError
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -84,11 +84,16 @@ def _verified_owner(login_data, me_data):
         return None
     return 'erw:' + owner
 
-LOGIN_HTML='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ERW Sign in | Private Research</title><style>body{background:#0b0b0c;color:#eee;font:16px system-ui;max-width:480px;margin:7vh auto;padding:20px}input{width:100%;padding:12px;background:#222;color:white;border:1px solid #555;box-sizing:border-box;margin:8px 0 18px}button{background:#ad242e;color:white;padding:12px 20px;border:0;cursor:pointer}a{color:#e88}</style><h1>SUSTAINABLE CATALYST</h1><h2>Private Research · ERW sign in</h2><p>Use your existing ERW account. Do not create another account.</p><form id="form"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><button>Sign in</button></form><p role="alert" id="status"></p><script>document.querySelector('#form').onsubmit=async e=>{e.preventDefault();let p=document.querySelector('#password'),s=document.querySelector('#status');s.textContent='Signing in…';try{let r=await fetch('/v1/private-research/auth/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-WXR-Login':'1'},body:JSON.stringify({username:document.querySelector('#username').value,password:p.value}),cache:'no-store'});p.value='';if(!r.ok)throw Error('Authentication was not accepted ('+r.status+')');let t=new URLSearchParams(location.search).get('returnTo')||'';if(!['/v1/desk/notebooks','/v1/private-research/ui'].some(b=>t===b||t.startsWith(b+'?')||t.startsWith(b+'#')))t='/v1/private-research/ui';location.assign(t)}catch(e){p.value='';s.textContent=e.message}};</script></html>'''
+LOGIN_HTML='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ERW Sign in | Private Research</title><style>body{background:#0b0b0c;color:#eee;font:16px system-ui;max-width:480px;margin:7vh auto;padding:20px}input{width:100%;padding:12px;background:#222;color:white;border:1px solid #555;box-sizing:border-box;margin:8px 0 18px}button{background:#ad242e;color:white;padding:12px 20px;border:0;cursor:pointer}a{color:#e88}</style><h1>SUSTAINABLE CATALYST</h1><h2>Private Research · ERW sign in</h2><p>Use your existing ERW account. Do not create another account.</p><form id="form"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><button>Sign in</button></form><p role="alert" id="status"></p><script>document.querySelector('#form').onsubmit=async e=>{e.preventDefault();let p=document.querySelector('#password'),s=document.querySelector('#status');s.textContent='Signing in…';try{let r=await fetch('/v1/private-research/auth/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-WXR-Login':'1'},body:JSON.stringify({username:document.querySelector('#username').value,password:p.value}),cache:'no-store'});p.value='';if(!r.ok)throw Error('Authentication was not accepted ('+r.status+')');let t=new URLSearchParams(location.search).get('returnTo')||'',C=[]/*console-origins*/;if(![...['/v1/desk/notebooks','/v1/private-research/ui'],...C.map(o=>o+'/console/')].some(b=>t===b||t.startsWith(b+'?')||t.startsWith(b+'#')))t='/v1/private-research/ui';location.assign(t)}catch(e){p.value='';s.textContent=e.message}};</script></html>'''
 
+def login_html(settings=None):
+    # SC-SCI-02: sign-in may also return to the Research Console (``<origin>/console/``) of a configured https origin.
+    settings=settings or get_settings()
+    origins=sorted(o for o in (x.strip().rstrip('/') for x in getattr(settings,'research_console_origins','').split(',')) if re.fullmatch(r'https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?',o))
+    return LOGIN_HTML.replace('[]/*console-origins*/',json.dumps(origins).replace('<','\\u003c'),1)
 @router.get('/login',response_class=HTMLResponse)
 def login_page():
-    return HTMLResponse(LOGIN_HTML,headers={'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'})
+    return HTMLResponse(login_html(),headers={'Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",'X-Content-Type-Options':'nosniff'})
 
 @router.post('/auth/login')
 def login(req:Login,request:Request,response:Response):
@@ -110,7 +115,8 @@ def login(req:Login,request:Request,response:Response):
         if not subject: raise ValueError('ERW account attestation missing')
     except (ValueError,KeyError,TypeError):
         raise HTTPException(401,'ERW account authentication could not be verified') from None
-    token=issue_session_token(subject, req.username)
+    # SC-SCI-02: the session records that it came from the ERW account sign-in (password, no MFA).
+    token=issue_session_token(subject, req.username, {'auth': 'erw-account', 'amr': ['pwd']})
     response.set_cookie(key=session_cookie_name(),value=token,max_age=int(get_settings().session_ttl_seconds),path='/',secure=True,httponly=True,samesite='lax')
     response.headers['Cache-Control']='no-store'
     response.headers['X-Content-Type-Options']='nosniff'

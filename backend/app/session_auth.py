@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Header, HTTPException, Request, Response, status
 
-from .config import get_settings
+from .config import browser_origins, get_settings
 from .db import session_scope
 from .session_revocation import SessionVerificationUnavailable, is_revoked, revoke_session
 
@@ -193,7 +193,7 @@ def enforce_cookie_csrf(request: Request) -> None:
     """
     if request.method.upper() in SAFE_METHODS:
         return
-    allowed = {v.strip() for v in get_settings().cors_allowed_origins.split(",") if v.strip()}
+    allowed = browser_origins(get_settings())
     origin = request.headers.get("origin", "")
     fetch_site = request.headers.get("sec-fetch-site", "").lower()
     if not origin or origin not in allowed or fetch_site == "cross-site":
@@ -235,7 +235,7 @@ def get_session(request: Request):
         "authenticated": True,
         "subject": str(payload.get("sub") or ""),
         "displayName": str(payload.get("displayName") or ""),
-        "authenticationMethod": "sc-identity-oidc" if payload.get("auth") == "sc-identity-oidc" else "signed-http-only-session-cookie",
+        "authenticationMethod": payload.get("auth") if payload.get("auth") in ("sc-identity-oidc", "erw-account") else "signed-http-only-session-cookie",
         "expiresAt": int(payload.get("exp") or 0),
     }
 

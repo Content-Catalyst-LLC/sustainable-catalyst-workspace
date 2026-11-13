@@ -6,6 +6,11 @@ from fastapi import Header, HTTPException, Request, status
 from .authorization import SERVICE_PRINCIPAL, authorize_request
 from .config import get_settings
 
+# Session "auth" claim -> authentication method. Sessions without a recognised claim (cookie exchange, older ERW
+# sign-ins) stay the generic signed cookie.
+SESSION_AUTH_METHODS = {"sc-identity-oidc": "sc-identity-oidc-session", "erw-account": "erw-account-session"}
+
+
 @dataclass(frozen=True)
 class ServiceIdentity:
     user_key: str
@@ -27,9 +32,7 @@ def _session_identity(request: Request) -> ServiceIdentity | None:
         principal_id=f"workspace-user:{user_key}",
         principal_type="workspace-user",
         service_principal=SESSION_SERVICE_PRINCIPAL,
-        authentication_method=(
-            "sc-identity-oidc-session" if payload.get("auth") == "sc-identity-oidc" else "signed-http-only-session-cookie"
-        ),
+        authentication_method=SESSION_AUTH_METHODS.get(payload.get("auth"), "signed-http-only-session-cookie"),
     )
 
 def require_service_identity(

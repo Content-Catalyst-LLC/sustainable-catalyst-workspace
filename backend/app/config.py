@@ -39,6 +39,12 @@ class Settings(BaseSettings):
     # trusted-service session exchange are refused.
     sc_identity_required: bool = False
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
+    # SC-SCI-02: Research Console origins added to the browser allowlist (CORS and the cookie-write Origin check),
+    # without restating cors_allowed_origins.
+    research_console_origins: str = ""
+    # SC-SCI-02: sign-ins besides SC Identity that may receive a Research session. Only "erw-account-session"
+    # (the existing ERW account sign-in, password only) is recognised; empty means SC Identity only.
+    research_session_methods: str = ""
     auto_create_schema: bool = False
 
     max_projects_per_account: int = 100
@@ -194,3 +200,9 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def browser_origins(settings: "Settings | None" = None) -> set[str]:
+    """Exact origins allowed to call Workspace from a browser with the session cookie."""
+    settings = settings or get_settings()
+    return {o.strip().rstrip("/") for o in (settings.cors_allowed_origins + "," + getattr(settings, "research_console_origins", "")).split(",") if o.strip()}
