@@ -216,7 +216,12 @@ def build_view(req: FigureRequest, rows: list[dict[str, Any]], unc: dict[str, An
         bound_label = KIND_TEXT[unc["kind"]]
         fields[LOWER] = {"label": f"Lower bound ({bound_label})", "unit": req.y.unit}
         fields[UPPER] = {"label": f"Upper bound ({bound_label})", "unit": req.y.unit}
-    layers.append({"mark": {"type": req.mark, **({"filled": True, "size": 60} if req.mark == "point" else {})}, "encoding": enc})
+    # SC-SCI-02: hovering a mark names every value with its unit (Vega's built-in tooltip; no interaction params).
+    types = {req.x.field: req.x.type, req.y.field: "quantitative", LOWER: "quantitative", UPPER: "quantitative",
+             **({req.color.field: req.color.type} if req.color else {})}
+    tip = [{"field": f, "type": types.get(f, "nominal"), "title": d["label"] if d["unit"] in ("1", "category") else f"{d['label']} ({d['unit']})"}
+           for f, d in fields.items()]
+    layers.append({"mark": {"type": req.mark, **({"filled": True, "size": 60} if req.mark == "point" else {})}, "encoding": {**enc, "tooltip": tip}})
     return {
         "$schema": VL5_SCHEMA, "width": 560, "height": 320, "title": req.title,
         "data": {"values": rows},

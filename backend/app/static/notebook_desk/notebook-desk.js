@@ -12,7 +12,7 @@ const POLL_MS = 1500;
 const POLL_LIMIT = 400;  // ten minutes
 
 const state = { me: null, projects: [], projectId: "", notebooks: [], datasets: [], nb: null, saved: null,
-                status: null, dirty: false, polling: false };
+                status: null, dirty: false, polling: false, idp: null };
 
 // --- API -------------------------------------------------------------------------------------------------
 
@@ -75,9 +75,19 @@ async function busy(button, fn) {
 
 // --- session -------------------------------------------------------------------------------------------
 
-function showSignIn() {
+// Without SC Identity (production today) the existing ERW account sign-in issues the Workspace session.
+async function identityProvider() {
+  if (state.idp) return state.idp;
+  const res = await fetch("/v1/session/profile", { credentials: "same-origin", headers: { Accept: "application/json" } }).catch(() => null);
+  const profile = res && res.ok ? await res.json().catch(() => null) : null;
+  state.idp = profile && profile.globalIdentityProviderConfigured ? "sc-identity" : "erw";
+  return state.idp;
+}
+
+async function showSignIn() {
   el("signin").hidden = false; el("app").hidden = true; el("signout").hidden = true; el("who").textContent = "";
-  el("signin-link").href = `/v1/auth/login?returnTo=${encodeURIComponent(DESK + location.search)}`;
+  const login = (await identityProvider()) === "sc-identity" ? "/v1/auth/login" : "/v1/private-research/login";
+  el("signin-link").href = `${login}?returnTo=${encodeURIComponent(DESK + location.search)}`;
 }
 
 async function boot() {
@@ -510,6 +520,7 @@ async function buildFigure(ev) {
     el("fig-out").replaceChildren(
       h("p", {}, `Figure package from run ${pkg.run.runId} (${pkg.run.verification}, ${pkg.run.inputLineage}).`),
       h("p", { class: "fine" }, "Not stored and not published. Lab Graph Studio verifies and renders these files."),
+      h("div", { class: "actions" }, h("button", { type: "button", id: "open-graph-studio", onclick: () => openGraphStudio(pkg) }, "Open in Graph Studio")),
       h("ul", { class: "list" }, ...pkg.files.map(f => {
         const url = URL.createObjectURL(new Blob([f.text], { type: f.mediaType }));
         return h("li", {}, h("a", { href: url, download: f.name }, f.name), " ", h("code", { title: f.sha256 }, `sha256 ${short(f.sha256)}…`));
@@ -517,11 +528,35 @@ async function buildFigure(ev) {
   });
 }
 
+// --- Graph Studio ---------------------------------------------------------------------------------------
+// The vendored Lab renderer (graph-studio/RENDERER_LOCK.json) re-verifies the package bytes, pinned to the
+// bundle hash the server reported, and draws the Vega-Lite view with its table, provenance and exports.
+
+async function openGraphStudio(pkg) {
+  const R = window.SCLabFigureBundleRenderer;
+  el("graph-studio").hidden = false;
+  if (!R || !window.SCLabVegaLiteFIG02B) {
+    el("gs-state").textContent = "unavailable";
+    el("gs-out").replaceChildren(h("p", { class: "err-text" }, "The Graph Studio renderer did not load, so nothing is drawn."));
+    return;
+  }
+  el("gs-state").textContent = "verifying…";
+  const files = pkg.files.map(f => ({ name: f.name, bytes: new TextEncoder().encode(f.text) }));
+  const out = h("div", {});
+  el("gs-out").replaceChildren(out);
+  const res = await R.render(out, files, pkg.bundleSha256);
+  el("gs-state").textContent = res.state;
+  el("gs-state").className = `badge ${res.state === "rendered" ? "state-verified" : "state-failed"}`;
+  el("graph-studio").dataset.state = res.state;
+  el("graph-studio").scrollIntoView({ behavior: "smooth" });
+}
+
 // --- wiring -----------------------------------------------------------------------------------------------
 
 function wire() {
   el("signout").addEventListener("click", async () => {
-    await fetch("/v1/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => null);
+    if ((await identityProvider()) === "sc-identity") await fetch("/v1/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => null);
+    else await fetch("/v1/session", { method: "DELETE", credentials: "same-origin" }).catch(() => null);
     showSignIn();
   });
   el("project").addEventListener("change", async () => { state.projectId = el("project").value; state.nb = null; state.saved = null; render(); await loadProject(); });
@@ -538,6 +573,7 @@ function wire() {
   el("cmp-go").addEventListener("click", compare);
   el("fig-form").addEventListener("submit", buildFigure);
   el("fig-close").addEventListener("click", () => { el("figure").hidden = true; });
+  el("gs-close").addEventListener("click", () => { el("graph-studio").hidden = true; el("gs-out").replaceChildren(); });
   window.addEventListener("beforeunload", (e) => { if (state.dirty) { e.preventDefault(); e.returnValue = ""; } });
 }
 

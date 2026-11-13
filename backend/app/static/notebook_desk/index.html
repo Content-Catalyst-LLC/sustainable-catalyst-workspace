@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Research notebooks · Workspace</title>
+  <!-- BEGIN GRAPH STUDIO LOCK (scripts/sync_graph_studio_renderer.py) -->
+  <script defer src="/v1/desk/notebook-assets/graph-studio/lib/vega-6.4.0/vega.min.js" integrity="sha384-VKdcJr3ZaBIJMbVcopTAI/JEuUkSY6qnwVu9iLuw0DnQ9gQ1JjsfZJhXFQAgNi43"></script>
+  <script defer src="/v1/desk/notebook-assets/graph-studio/lib/vega-lite-6.5.0/vega-lite.min.js" integrity="sha384-pV2l7nzmyxZh02knvUH7N8zvtyCYsYiGt+SsE/emG/dFiBI6G0YJZFZ2FzEX72P3"></script>
+  <script defer src="/v1/desk/notebook-assets/graph-studio/lib/vega-interpreter-2.3.2/vega-interpreter.classic.js" integrity="sha384-6ubzJVl9QzQeCiCO0ipsYQO8/ECOldDIOuEuvZTo7sQLeoCtTI9wYKIn/uKl420O"></script>
+  <script defer src="/v1/desk/notebook-assets/graph-studio/js/modules/graph-studio-plotly-preview-fig02a.js" integrity="sha384-gCjSePplIKFDu2M2/rMUS9CCuNXLdzSV0GidfvDRXK8Ap92HzFDoCkM8caVxvkhW"></script>
+  <script defer src="/v1/desk/notebook-assets/graph-studio/js/modules/graph-studio-vega-lite-fig02b.js" integrity="sha384-J4+QOBSc4ORavG+r/5f92BXk8DYwav3yXTsyfd47EpWnZve/iFxlVM5bGG0wbwWr"></script>
+  <script defer src="/v1/desk/notebook-assets/graph-studio/js/modules/graph-studio-figure-bundle-renderer.js" integrity="sha384-4HNvLn5lOWYTSrhYegErpriX/gHS5hd/dl9JeJ9iPHpvQLOAjD5imBC8y8lanmW7"></script>
+  <link rel="stylesheet" href="/v1/desk/notebook-assets/graph-studio/css/sc-lab-graph-studio-plotly-preview-fig02a.css" integrity="sha384-0IwbQHAEX7hGcXAs17mPmMDhOSoiFbCxzMlTH9MoiNRSgGPgmaUm3rJsehLiXTpZ">
+  <link rel="stylesheet" href="/v1/desk/notebook-assets/graph-studio/css/sc-lab-graph-studio-figure-bundle-renderer.css" integrity="sha384-qmjNMQgM74NQqKuOe7WWZsPpe+2HUzJ2NAXq3BpiNZunAZ1xXO1GKrY2lwtMzhuX">
+  <!-- END GRAPH STUDIO LOCK -->
   <link rel="stylesheet" href="/v1/desk/notebook-assets/notebook-desk.css">
   <script type="module" src="/v1/desk/notebook-assets/notebook-desk.js"></script>
 </head>
@@ -160,6 +170,13 @@
               <button type="button" id="fig-close" class="link">Close</button></div>
           </form>
           <div id="fig-out"></div>
+        </section>
+        <section id="graph-studio" class="card" hidden aria-labelledby="gs-title">
+          <div class="nb-head"><h3 id="gs-title">Graph Studio</h3><span id="gs-state" class="badge"></span>
+            <span class="grow"></span><button type="button" id="gs-close" class="link">Close</button></div>
+          <p class="fine">Drawn by the Lab Graph Studio renderer, which re-verifies every file against the bundle before drawing.
+            Exports are verified in this browser and come with a receipt; nothing is uploaded, stored or published.</p>
+          <div id="gs-out" aria-live="polite"></div>
         </section>
       </section>
     </div>
