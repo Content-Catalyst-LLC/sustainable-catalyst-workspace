@@ -4399,10 +4399,24 @@ public function research_templates_contract() {
             SC_WORKSPACE_VERSION
         );
 
+        // SC-SCI-01: the research notebook editor in the compatibility runtime reads these helpers from window
+        // and, without them, falls back to an empty notebook template. They are registered here (not enqueued)
+        // as dependencies of the one thin-adapter script, so WordPress prints them before it and they are
+        // present before the compatibility runtime normalises any stored notebook.
+        $notebook_helpers = array(
+            'sc-workspace-source-capture-v1' => array(),
+            'sc-workspace-research-notebook-v8' => array('sc-workspace-source-capture-v1'),
+            'sc-workspace-notebook-portability-v1' => array(),
+            'sc-workspace-notebook-review-provenance-v1' => array(),
+        );
+        foreach ($notebook_helpers as $handle => $deps) {
+            wp_register_script($handle, SC_WORKSPACE_URL . 'assets/js/' . $handle . '.js', $deps, SC_WORKSPACE_VERSION, true);
+        }
+
         wp_enqueue_script(
             'sc-workspace-wordpress-thin-adapter-v3500',
             SC_WORKSPACE_URL . 'assets/js/sc-workspace-wordpress-thin-adapter-v3500.js',
-            array(),
+            array_keys($notebook_helpers),
             SC_WORKSPACE_VERSION,
             true
         );

@@ -1256,11 +1256,15 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False,
                      "inputLineage":input_lineage,"inputBindings":input_bindings}
     # SC-MATH-01 M4: a runtime that reports its numerical library identity has it kept on the receipt.
-    reported=(result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}).get("numericalLibraries")
+    remote=result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}
+    reported=remote.get("numericalLibraries")
     if isinstance(reported,dict):
         receipt_details["numericalLibraries"]={str(k)[:64]:(v if isinstance(v,(str,int,float,bool)) or v is None else json.loads(json.dumps(v,default=str)))
                                                for k,v in list(reported.items())[:32]}
         receipt_details["runtimeVersion"]=str(reported.get("julia") or reported.get("runtime") or "unrecorded")[:64]
+    elif isinstance(remote.get("runtimeVersion"),str) and remote["runtimeVersion"]:
+        # SC-SCI-01: the R runtime reports its interpreter version at the top level of its result.
+        receipt_details["runtimeVersion"]=remote["runtimeVersion"][:64]
     if language == "neural" and isinstance(result, dict):
         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
         device_plan=remote_body.get("devicePlan") if isinstance(remote_body.get("devicePlan"),dict) else {}
