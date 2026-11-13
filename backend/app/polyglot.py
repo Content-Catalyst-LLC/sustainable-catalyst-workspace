@@ -17,6 +17,9 @@ from .config import get_settings
 from .models import PolyglotExecutionReceipt, StatisticalModelReceipt, NumericalSimulationReceipt, PredictiveModelReceipt, ModelEvaluationReceipt, ForecastReceipt, ForecastEvaluationReceipt, ProbabilisticInferenceReceipt, UncertaintyAnalysisReceipt, OptimizationReceipt, DecisionOptimizationReceipt, ReliabilityAnalysisReceipt
 from .object_store import get_artifact, store_artifact
 from .registry import store_run_output
+from .input_integrity import (VERIFIED as INPUT_VERIFIED, _refuse as _input_refuse, lineage_for_payload,
+                              resolve_dataset_input, resolve_parameter_input)
+from .cell_bindings import resolve_upstream_input
 from .schemas import ArtifactStoreRequest, ExecutionRunOutputRequest
 from .utils import sha256_hex
 
@@ -51,6 +54,7 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.polyglot.julia.monte-carlo-normal", "workspace.polyglot.julia.quadratic-optimize",
         "workspace.polyglot.julia.eigen-analysis", "workspace.polyglot.julia.integrate-series",
         "workspace.polyglot.julia.polynomial-roots", "workspace.polyglot.julia.parameter-sweep",
+        "workspace.polyglot.julia.expression-evaluate",
     ), "Hardened Julia runtime for bounded simulation, numerical modeling, optimization, and sensitivity workflows."),
     RuntimeSpec("ml", "python-sklearn-predictive", "server-configured-http", (
         "workspace.ml.linear-regression", "workspace.ml.logistic-classification",
@@ -191,6 +195,7 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
         "workspace.uncertainty.latin-hypercube", "workspace.uncertainty.correlated-normal",
         "workspace.uncertainty.empirical-summary", "workspace.uncertainty.rank-correlation-sensitivity",
         "workspace.uncertainty.variance-contribution-linear", "workspace.uncertainty.scenario-envelope",
+        "workspace.uncertainty.ensemble-quantile-bands",
     ), "Hardened uncertainty-quantification runtime for seeded Monte Carlo simulation, resampling, experimental design, correlation, sensitivity, and scenario envelopes."),
     RuntimeSpec("optimization", "python-optimization-parameter-search", "server-configured-http", (
         "workspace.optimize.quadratic-box", "workspace.optimize.linear-box", "workspace.optimize.grid-search", "workspace.optimize.random-search",
@@ -211,6 +216,13 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
     RuntimeSpec("wasm", "wasm-sandbox-adapter", "server-configured-http", (
         "workspace.polyglot.wasm.invoke",),
         "Server-configured WebAssembly adapter for portable, capability-bounded compute modules."),
+    # SC-SIM-01 G7/G8: Workspace orchestrates and issues the receipt; the calculation stays in its product.
+    RuntimeSpec("workbench", "workbench-calculation-engine", "server-configured-http", (
+        "workspace.workbench.uncertainty-propagation", "workspace.workbench.dynamical-simulation",
+    ), "Governed adapter into existing Workbench uncertainty propagation and dynamical simulation."),
+    RuntimeSpec("decision-studio", "decision-studio-analysis", "server-configured-http", (
+        "workspace.decision-studio.scenario-comparison", "workspace.decision-studio.sensitivity-analysis",
+    ), "Governed adapter into existing Decision Studio scenario comparison and sensitivity analysis; no decision objects change."),
 )
 
 RUNTIME_BY_LANGUAGE = {r.language: r for r in RUNTIMES}
@@ -231,6 +243,8 @@ def _runtime_route(language: str) -> tuple[str, str]:
         "decision": (s.runtime_decision_url, s.runtime_decision_token),
         "reliability": (s.runtime_reliability_url, s.runtime_reliability_token),
         "wasm": (s.runtime_wasm_url, s.runtime_wasm_token),
+        "workbench": (s.runtime_workbench_url, s.runtime_workbench_token),
+        "decision-studio": (s.runtime_decision_studio_url, s.runtime_decision_studio_token),
     }.get(language, ("", ""))
 
 
@@ -382,7 +396,7 @@ def _sql_execute(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
         conn.close()
 
 
-def execute_external(language: str, row, payload: dict[str, Any]) -> dict[str, Any]:
+def execute_external(language: str, row, payload: dict[str, Any], input_bindings: list[dict[str, Any]] | None=None) -> dict[str, Any]:
     url, token=_runtime_route(language)
     if not url.strip():
         raise HTTPException(status_code=409, detail=f"{language} runtime adapter is not configured")
@@ -396,6 +410,7 @@ def execute_external(language: str, row, payload: dict[str, Any]) -> dict[str, A
         "payload":payload,
         "exchange":arrow_compatible_descriptor(exchange_rows) if exchange_rows else None,
         "requestFingerprint":row.request_fingerprint,
+        "inputBindings":input_bindings or [],
         "executionPolicy":(row.payload or {}).get("executionPolicy") or {},
         "resourceBudget":(row.payload or {}).get("resourceBudget") or {},
         "sandbox":(row.payload or {}).get("sandbox") or {},
@@ -421,10 +436,29 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
     if not language or language == "python":
         raise HTTPException(status_code=400, detail="Operation is not a polyglot-fabric operation")
     payload=((row.payload or {}).get("payload") or {})
+    input_bindings=[]
+    run_ref=str(((row.payload or {}).get("executionRunId") or "")).strip()
+    if isinstance(payload, dict) and "upstreamInput" in payload:
+        if "parameterInput" in payload:
+            raise _input_refuse("parameter-input-with-upstream-input-unsupported")
+        payload, binding=resolve_upstream_input(db,row.user_key,payload,run_ref)
+        input_bindings=[binding]
+        input_lineage=INPUT_VERIFIED
+    elif isinstance(payload, dict) and ("datasetInput" in payload or "parameterInput" in payload):
+        # Parameters first (from the run's pinned ParameterSet revision), then pinned dataset bytes.
+        if "parameterInput" in payload:
+            payload, binding=resolve_parameter_input(db,row.user_key,payload,run_ref)
+            input_bindings.append(binding)
+        if "datasetInput" in payload:
+            payload, binding=resolve_dataset_input(db,row.user_key,payload,run_ref)
+            input_bindings.append(binding)
+        input_lineage=INPUT_VERIFIED
+    else:
+        input_lineage=lineage_for_payload(payload)
     if progress_callback: progress_callback(15,{"stage":"runtime-selected","language":language})
     started=datetime.now(timezone.utc)
     if language == "sql": result=_sql_execute(row.operation,payload)
-    else: result=execute_external(language,row,payload)
+    else: result=execute_external(language,row,payload,input_bindings)
     if progress_callback: progress_callback(75,{"stage":"runtime-complete","language":language})
     model_artifact_id = ""
     model_artifact_sha256 = ""
@@ -1219,7 +1253,14 @@ def execute_polyglot_operation(db: Session, row, progress_callback: ProgressCall
             store_run_output(db,row.user_key,run_id,multimodal_output)
 
     finished=datetime.now(timezone.utc)
-    receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False}
+    receipt_details={"exchangeSchema":"sc-workspace-native-arrow-table/1.0","serverConfiguredOnly":True,"arbitraryCodeExecution":False,
+                     "inputLineage":input_lineage,"inputBindings":input_bindings}
+    # SC-MATH-01 M4: a runtime that reports its numerical library identity has it kept on the receipt.
+    reported=(result.get("remote") if isinstance(result,dict) and isinstance(result.get("remote"),dict) else {}).get("numericalLibraries")
+    if isinstance(reported,dict):
+        receipt_details["numericalLibraries"]={str(k)[:64]:(v if isinstance(v,(str,int,float,bool)) or v is None else json.loads(json.dumps(v,default=str)))
+                                               for k,v in list(reported.items())[:32]}
+        receipt_details["runtimeVersion"]=str(reported.get("julia") or reported.get("runtime") or "unrecorded")[:64]
     if language == "neural" and isinstance(result, dict):
         remote_body=result.get("remote") if isinstance(result.get("remote"),dict) else {}
         device_plan=remote_body.get("devicePlan") if isinstance(remote_body.get("devicePlan"),dict) else {}
@@ -1791,6 +1832,7 @@ JULIA_MODEL_OPERATIONS = {
     "workspace.polyglot.julia.integrate-series",
     "workspace.polyglot.julia.polynomial-roots",
     "workspace.polyglot.julia.parameter-sweep",
+    "workspace.polyglot.julia.expression-evaluate",
 }
 
 

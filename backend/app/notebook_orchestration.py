@@ -8,21 +8,25 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .cell_bindings import parse_spec as parse_upstream_spec
 from .jobs import create_job, get_job, job_metadata, request_cancel
-from .models import NotebookExecutionPlan, NotebookOrchestrationReceipt
+from .models import NotebookExecutionPlan, NotebookOrchestrationReceipt, NotebookRevision
 from .object_store import get_artifact
+from .registry import create_execution_run
 from .repository import get_notebook
 from .routing import route_registry
-from .schemas import JobCreateRequest, NotebookExecutionPlanRequest
+from .schemas import ExecutionRunCreateRequest, JobCreateRequest, NotebookExecutionPlanRequest
 from .utils import iso, sha256_hex
 
 ORCHESTRATION_SCHEMA = "sc-workspace-notebook-orchestration/1.0"
 EXECUTION_SCHEMA = "sc-workspace-notebook-cell-execution/1.0"
+CELL_RUN_SCHEMA = "sc-workspace-notebook-cell-run/1.0"
 ALLOWED_TARGETS = {"workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"}
 WORKSPACE_PREFIXES = (
     "workspace.compute.", "workspace.polyglot.", "workspace.ml.", "workspace.neural.", "workspace.forecast.",
     "workspace.probability.", "workspace.uncertainty.", "workspace.optimize.",
     "workspace.decision.", "workspace.reliability.", "workspace.interchange.",
+    "workspace.workbench.", "workspace.decision-studio.",
 )
 WORKSPACE_EXACT = {"workspace.echo", "workspace.storage-integrity", "workspace.recovery-snapshot"}
 
@@ -42,6 +46,10 @@ def profile() -> dict[str, Any]:
         "downstreamDispatchAfterSuccess": True,
         "serverConfiguredRoutesOnly": True,
         "arbitraryCodeExecution": False,
+        "cellExecutionRuns": True,
+        "serverComputedCellSha256": True,
+        "verifiedUpstreamCellBinding": True,
+        "upstreamChangeInvalidatesDependents": True,
     }
 
 
@@ -87,6 +95,39 @@ def _execution_cells(notebook: dict[str, Any]) -> list[dict[str, Any]]:
         if isinstance(execution, dict):
             out.append(cell)
     return out
+
+
+def cell_sha256(cell: dict[str, Any]) -> str:
+    """Server-side identity of a cell's code and execution declaration (never the client fingerprint)."""
+    return sha256_hex({k: cell.get(k) for k in ("id", "type", "kind", "language", "source", "execution")})
+
+
+def _dataset_refs(cid: str, ex: dict[str, Any]) -> list[dict[str, Any]]:
+    """Dataset revisions a cell declares: explicit datasetRefs plus its payload.datasetInput, revision required."""
+    refs = list(ex.get("datasetRefs") or [])
+    bound = (ex.get("payload") or {}).get("datasetInput")
+    if isinstance(bound, dict):
+        refs.append({"datasetId": bound.get("datasetId"), "revision": bound.get("datasetRevision")})
+    out = {}
+    for ref in refs:
+        if not isinstance(ref, dict) or not str(ref.get("datasetId") or "").strip() or not isinstance(ref.get("revision"), int) \
+                or isinstance(ref.get("revision"), bool) or ref["revision"] < 1:
+            raise HTTPException(status_code=400, detail={"code": "cell-dataset-ref-requires-revision", "cellId": cid})
+        out[(str(ref["datasetId"]).strip(), ref["revision"])] = {"datasetId": str(ref["datasetId"]).strip(), "revision": ref["revision"]}
+    return [out[k] for k in sorted(out)]
+
+
+def _parameter_set_ref(cid: str, ex: dict[str, Any]) -> dict[str, Any] | None:
+    """SC-SIM-01: the ParameterSet revision a cell binds through payload.parameterInput, revision required.
+    The step's run declares it, so the worker can bind the attested revision as it does for any run."""
+    bound = (ex.get("payload") or {}).get("parameterInput")
+    if bound is None:
+        return None
+    rev = bound.get("parameterSetRevision") if isinstance(bound, dict) else None
+    if not isinstance(bound, dict) or not str(bound.get("parameterSetId") or "").strip() or not isinstance(rev, int) \
+            or isinstance(rev, bool) or rev < 1:
+        raise HTTPException(status_code=400, detail={"code": "cell-parameter-ref-requires-revision", "cellId": cid})
+    return {"parameterSetId": str(bound["parameterSetId"]).strip(), "revision": rev}
 
 
 def _validate_workspace_operation(operation: str) -> None:
@@ -154,6 +195,8 @@ def compile_plan(notebook: dict[str, Any], selected_cell_ids: list[str] | None =
             raise HTTPException(status_code=400, detail={"code":"execution-operation-required","cellId":cid})
         if target=="workspace": _validate_workspace_operation(operation)
         deps=[str(x) for x in (ex.get("dependsOnCellIds") or [])]
+        payload=dict(ex.get("payload") or {})
+        upstream=parse_upstream_spec(cid,payload["upstreamInput"],deps) if "upstreamInput" in payload else []
         artifacts=[str(x) for x in (ex.get("inputArtifactIds") or [])]
         steps.append({
             "stepId":cid,"cellId":cid,"targetProduct":target,"operation":operation,
@@ -163,12 +206,28 @@ def compile_plan(notebook: dict[str, Any], selected_cell_ids: list[str] | None =
             "executionPolicy":dict(ex.get("executionPolicy") or {}),
             "resourceBudget":dict(ex.get("resourceBudget") or {}),
             "sandbox":dict(ex.get("sandbox") or {}),
-            "payload":dict(ex.get("payload") or {}),
-            "state":"pending","jobId":"",
+            "payload":payload,"upstreamInputs":upstream,
+            "datasetRefs":_dataset_refs(cid,ex),
+            "parameterSetRef":_parameter_set_ref(cid,ex),
+            "modelRef":dict(ex["modelRef"]) if isinstance(ex.get("modelRef"),dict) else None,
+            "cellSha256":cell_sha256(cell),
+            "state":"pending","jobId":"","runId":"",
         })
     order=_topological_order(steps)
     index={sid:i for i,sid in enumerate(order)}
     steps.sort(key=lambda x:index[x["stepId"]])
+    by_step={s["stepId"]:s for s in steps}
+    for step in steps:  # topological order: every dependency is already resolved
+        closure={}
+        for dep in step["dependsOnStepIds"]:
+            closure.update(by_step[dep]["upstreamCellSha256"]); closure[dep]=by_step[dep]["cellSha256"]
+        step["upstreamCellSha256"]=dict(sorted(closure.items()))
+        if step["upstreamInputs"]:
+            # An upstream-bound cell inherits the dataset revisions its upstream chain is bound to.
+            refs={(r["datasetId"],r["revision"]):r for r in step["datasetRefs"]}
+            for ref in step["upstreamInputs"]:
+                refs.update({(r["datasetId"],r["revision"]):r for r in by_step[ref["cellId"]]["datasetRefs"]})
+            step["datasetRefs"]=[refs[k] for k in sorted(refs)]
     return {"steps":steps,"order":order,"edges":[{"from":d,"to":s["stepId"]} for s in steps for d in s["dependsOnStepIds"]]}
 
 
@@ -231,17 +290,35 @@ def list_receipts(db: Session, user_key: str, limit: int=100) -> list[dict[str,A
     return [receipt_metadata(x) for x in rows]
 
 
+def _create_step_run(db: Session, row: NotebookExecutionPlan, step: dict[str,Any]) -> str:
+    """Each executed cell is an ExecutionRun declaring its dataset revisions, so its inputs can be byte-bound."""
+    run,_=create_execution_run(db,row.user_key,ExecutionRunCreateRequest.model_validate({
+        "schema":"sc-workspace-execution-run/1.0","projectId":row.project_id or None,
+        "name":f"Notebook {row.notebook_id} r{row.notebook_revision} cell {step['cellId']}",
+        "datasetRefs":step.get("datasetRefs") or [],"modelRef":step.get("modelRef"),
+        **({"parameterSetRef":step["parameterSetRef"]} if step.get("parameterSetRef") else {}),
+        "targetProduct":step["targetProduct"],"operation":step["operation"],
+        "environment":{"notebookCell":{"schema":CELL_RUN_SCHEMA,"planId":row.plan_id,"notebookId":row.notebook_id,
+                                       "notebookRevision":row.notebook_revision,"cellId":step["cellId"],"cellSha256":step["cellSha256"],
+                                       "upstreamCellSha256":step.get("upstreamCellSha256") or {}}},
+        "idempotencyKey":f"notebook-plan:{row.plan_id}:{step['stepId']}",
+    }))
+    return run.run_id
+
+
 def _queue_step(db: Session, row: NotebookExecutionPlan, step: dict[str,Any]) -> dict[str,Any]:
+    run_id=_create_step_run(db,row,step)
     payload=JobCreateRequest.model_validate({
         "schema":"sc-workspace-job-request/1.0","jobType":"compute-handoff" if step["targetProduct"]!="workspace" else "workspace-task",
         "targetProduct":step["targetProduct"],"operation":step["operation"],"projectId":row.project_id or None,
         "priority":step["priority"],"maxAttempts":step["maxAttempts"],
         "idempotencyKey":f"notebook-plan:{row.plan_id}:{step['stepId']}","inputArtifactIds":step["inputArtifactIds"],
+        "executionRunId":run_id,
         "executionPolicy":step["executionPolicy"],"resourceBudget":step["resourceBudget"],"sandbox":step["sandbox"],
         "payload":{**step["payload"],"notebookExecution":{"planId":row.plan_id,"stepId":step["stepId"],"notebookId":row.notebook_id,"notebookRevision":row.notebook_revision,"artifactBindings":row.artifact_bindings_json}},
     })
     job,_=create_job(db,row.user_key,payload)
-    step["state"]="queued"; step["jobId"]=job.job_id
+    step["state"]="queued"; step["jobId"]=job.job_id; step["runId"]=run_id
     return job_metadata(job)
 
 
@@ -309,3 +386,84 @@ def advance_for_job(db: Session, job_row) -> None:
             if queued: _add_receipt(db,row.user_key,row.plan_id,"advance","running",{"completedJobId":job_row.job_id,"queuedJobIds":[x["jobId"] for x in queued]})
         row.updated_at=datetime.now(timezone.utc)
         db.commit()
+
+
+def verified_cell_run(db: Session, user_key: str, run) -> dict[str, Any] | None:
+    """The notebook cell behind a run, re-verified against the server-created plan and the immutable
+    notebook revision. A run whose inline environment merely claims a notebookCell is reported unverified."""
+    claim = (run.environment_json or {}).get("notebookCell")
+    if not isinstance(claim, dict):
+        return None
+    out = {k: claim.get(k) for k in ("planId", "notebookId", "notebookRevision", "cellId", "cellSha256")}
+    out["schema"] = CELL_RUN_SCHEMA
+    plan = get_plan(db, user_key, str(claim.get("planId") or ""))
+    step = next((s for s in (plan.steps_json or []) if s.get("runId") == run.run_id), None) if plan else None
+    revision = db.get(NotebookRevision, {"user_key": user_key, "notebook_id": str(claim.get("notebookId") or ""),
+                                         "revision": claim.get("notebookRevision") if isinstance(claim.get("notebookRevision"), int) else -1})
+    cells = (((revision.package or {}).get("notebook") or {}).get("cells") or []) if revision else []
+    cell = next((c for c in cells if isinstance(c, dict) and str(c.get("id") or "") == str(claim.get("cellId") or "")), None)
+    # Upstream identity comes from the immutable revision; runs planned before SC-NB-01 upstream binding
+    # did not record it, newer claims must agree with it.
+    closure = _cell_closure(cells, str(claim.get("cellId") or "")) if cell is not None else None
+    out["upstreamCellSha256"] = closure
+    out["verified"] = bool(
+        plan and step and revision and cell
+        and plan.notebook_id == revision.notebook_id and plan.notebook_revision == revision.revision
+        and step.get("cellId") == claim.get("cellId") and step.get("cellSha256") == claim.get("cellSha256")
+        and cell_sha256(cell) == claim.get("cellSha256")
+        and closure is not None
+        and all(src.get("upstreamCellSha256", closure) == closure for src in (step, claim)))
+    out["currency"] = cell_currency(db, user_key, str(claim.get("notebookId") or ""), str(claim.get("cellId") or ""),
+                                    claim.get("cellSha256"), closure or {})
+    if cell is not None:
+        out["language"] = cell.get("language") or (cell.get("execution") or {}).get("language")
+    if revision is not None:
+        # Server-computed package hash and title pin the revision; the notebook content stays in Workspace.
+        out["notebookPackageSha256"], out["notebookTitle"] = revision.fingerprint, revision.title
+    return out
+
+
+def _cell_closure(cells: list[Any], cell_id: str) -> dict[str, str] | None:
+    """Server cell hashes of every transitive dependency of a cell in one notebook revision; None if unresolvable."""
+    by_id = {str(c.get("id") or ""): c for c in cells if isinstance(c, dict)}
+    out: dict[str, str] = {}
+    pending, seen = [cell_id], set()
+    while pending:
+        cur = by_id.get(pending.pop())
+        if cur is None:
+            return None
+        for dep in ((cur.get("execution") or {}).get("dependsOnCellIds") or []):
+            dep = str(dep)
+            if dep in seen:
+                continue
+            seen.add(dep)
+            if dep not in by_id:
+                return None
+            out[dep] = cell_sha256(by_id[dep])
+            pending.append(dep)
+    return dict(sorted(out.items()))
+
+
+def cell_currency(db: Session, user_key: str, notebook_id: str, cell_id: str, cell_sha: Any, upstream: dict[str, str]) -> dict[str, Any]:
+    """Whether an execution claim still describes the notebook head: a changed cell, or any changed, added or
+    removed upstream cell, makes the claim stale until the affected cells are rerun on a newer revision."""
+    head = get_notebook(db, user_key, notebook_id)
+    if head is None:
+        return {"headRevision": None, "current": False, "reasons": ["notebook-missing"]}
+    cells = ((head.package or {}).get("notebook") or {}).get("cells") or []
+    cell = next((c for c in cells if isinstance(c, dict) and str(c.get("id") or "") == cell_id), None)
+    reasons = []
+    if cell is None:
+        reasons.append("cell-removed")
+    else:
+        if cell_sha256(cell) != cell_sha:
+            reasons.append("cell-changed")
+        closure = _cell_closure(cells, cell_id)
+        if closure is None:
+            reasons.append("upstream-unresolvable")
+        else:
+            changed = sorted(k for k in set(closure) | set(upstream) if closure.get(k) != upstream.get(k))
+            if changed:
+                reasons.append("upstream-changed")
+                return {"headRevision": head.revision, "current": False, "reasons": reasons, "changedUpstreamCells": changed}
+    return {"headRevision": head.revision, "current": not reasons, "reasons": reasons}

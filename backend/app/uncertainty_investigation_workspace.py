@@ -11,6 +11,7 @@ from .models import (
     UncertaintyInvestigationSnapshot,
 )
 from .utils import iso, sha256_hex
+from .result_receipts import client_metadata, verification_of, verify_result_ref, with_verification
 
 UNCERTAINTY_WORKSPACE_SCHEMA="sc-workspace-uncertainty-sensitivity-probabilistic-investigation-workspace/1.0"
 ASSESSMENT_REQUEST_SCHEMA="sc-workspace-uncertainty-assessment-request/1.0"
@@ -192,9 +193,10 @@ def create_result_binding(db,user_key,p:ProbabilisticResultBindingRequest):
     if a is None: raise KeyError(p.assessmentId)
     if p.resultKind not in RESULT_KINDS: raise ValueError("unsupported probabilistic result kind")
     if not p.resultFingerprint: raise ValueError("result fingerprint required")
-    fp=sha256_hex({"projectId":a.project_id,"assessmentId":p.assessmentId,"resultKind":p.resultKind,"resultRef":p.resultRef,"resultFingerprint":p.resultFingerprint,"interpretationStatus":p.interpretationStatus,"note":p.note,"metadata":p.metadata})
-    row=ProbabilisticResultBinding(user_key=user_key,binding_id="probabilistic-result-"+uuid4().hex[:24],project_id=a.project_id,assessment_id=p.assessmentId,result_kind=p.resultKind,result_ref=p.resultRef,result_fingerprint=p.resultFingerprint,interpretation_status=p.interpretationStatus,note=p.note,binding_fingerprint=fp,metadata_json=p.metadata);db.add(row);db.flush();return result_metadata(row)
-def result_metadata(r): return {"schema":RESULT_BINDING_SCHEMA,"bindingId":r.binding_id,"projectId":r.project_id,"assessmentId":r.assessment_id,"resultKind":r.result_kind,"resultRef":r.result_ref,"resultFingerprint":r.result_fingerprint,"interpretationStatus":r.interpretation_status,"note":r.note,"bindingFingerprint":r.binding_fingerprint,"metadata":r.metadata_json or {},"createdAt":iso(r.created_at)}
+    receipt=verify_result_ref(db,user_key,a.project_id,p.resultRef,p.resultFingerprint)
+    fp=sha256_hex({"projectId":a.project_id,"assessmentId":p.assessmentId,"resultKind":p.resultKind,"resultRef":p.resultRef,"resultFingerprint":p.resultFingerprint,"interpretationStatus":p.interpretationStatus,"note":p.note,"metadata":client_metadata(p.metadata)})
+    row=ProbabilisticResultBinding(user_key=user_key,binding_id="probabilistic-result-"+uuid4().hex[:24],project_id=a.project_id,assessment_id=p.assessmentId,result_kind=p.resultKind,result_ref=p.resultRef,result_fingerprint=p.resultFingerprint,interpretation_status=p.interpretationStatus,note=p.note,binding_fingerprint=fp,metadata_json=with_verification(p.metadata,receipt));db.add(row);db.flush();return result_metadata(row)
+def result_metadata(r): return {"schema":RESULT_BINDING_SCHEMA,"bindingId":r.binding_id,"projectId":r.project_id,"assessmentId":r.assessment_id,"resultKind":r.result_kind,"resultRef":r.result_ref,"resultFingerprint":r.result_fingerprint,"interpretationStatus":r.interpretation_status,"note":r.note,"bindingFingerprint":r.binding_fingerprint,"receiptVerification":verification_of(r.metadata_json),"metadata":client_metadata(r.metadata_json),"createdAt":iso(r.created_at)}
 def list_result_bindings(db,user_key,project_id=None,assessment_id=None,limit=5000):
     q=select(ProbabilisticResultBinding).where(ProbabilisticResultBinding.user_key==user_key)
     if project_id:q=q.where(ProbabilisticResultBinding.project_id==project_id)
@@ -216,7 +218,7 @@ def graph(db,user_key,project_id):
         if p["evidenceRef"]: nodes.append({"id":p["evidenceRef"],"kind":"evidence-ref","externalCanonicalReference":True,"objectFingerprint":p["evidenceFingerprint"]});edges.append({"id":"evidence-edge:"+p["parameterId"],"kind":"evidence-basis","from":p["evidenceRef"],"to":pid})
     for s in m["scenarios"]: sid="scenario:"+s["scenarioId"];nodes.append({"id":sid,"kind":"uncertainty-scenario","label":s["title"],"fingerprint":s["scenarioFingerprint"]});edges.append({"id":"scenario-edge:"+s["scenarioId"],"kind":"scenario-member","from":"uncertainty:"+s["assessmentId"],"to":sid})
     for r in m["sensitivityRequests"]: rid="sensitivity:"+r["requestId"];nodes.append({"id":rid,"kind":"sensitivity-analysis-request","label":r["method"],"destination":r["destinationProduct"],"fingerprint":r["requestFingerprint"]});edges.append({"id":"sensitivity-edge:"+r["requestId"],"kind":"sensitivity-request","from":"uncertainty:"+r["assessmentId"],"to":rid})
-    for r in m["resultBindings"]: nodes.append({"id":r["resultRef"],"kind":r["resultKind"],"externalCanonicalReference":True,"resultFingerprint":r["resultFingerprint"]});edges.append({"id":"result-edge:"+r["bindingId"],"kind":"probabilistic-result","from":"uncertainty:"+r["assessmentId"],"to":r["resultRef"]})
+    for r in m["resultBindings"]: nodes.append({"id":r["resultRef"],"kind":r["resultKind"],"externalCanonicalReference":True,"resultFingerprint":r["resultFingerprint"],"receiptVerification":r["receiptVerification"]["status"]});edges.append({"id":"result-edge:"+r["bindingId"],"kind":"probabilistic-result","from":"uncertainty:"+r["assessmentId"],"to":r["resultRef"]})
     seen=set();nodes=[n for n in nodes if not (n["id"] in seen or seen.add(n["id"]))]
     payload={"schema":GRAPH_SCHEMA,"projectId":project_id,"nodes":nodes,"edges":edges,"automaticRelationshipInference":False,"automaticCausalityInference":False};payload["graphFingerprint"]=sha256_hex(payload);return payload
 

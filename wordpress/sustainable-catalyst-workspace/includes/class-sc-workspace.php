@@ -3184,6 +3184,9 @@ public function research_templates_contract() {
         if (SC_Workspace_Backend::enabled()) {
             return SC_Workspace_Backend::request('GET', '/v1/projects');
         }
+        if (!SC_Workspace_Backend::legacy_store_allowed()) {
+            return SC_Workspace_Backend::fail_closed();
+        }
         $items = array();
         foreach ($this->cloud_store_read() as $record) {
             if (is_array($record)) {
@@ -3205,6 +3208,9 @@ public function research_templates_contract() {
         $payload = $request->get_json_params();
         if (SC_Workspace_Backend::enabled()) {
             return SC_Workspace_Backend::request('POST', '/v1/projects', $payload);
+        }
+        if (!SC_Workspace_Backend::legacy_store_allowed()) {
+            return SC_Workspace_Backend::fail_closed();
         }
         $schema = is_array($payload) ? (string) ($payload['schema'] ?? '') : '';
         $is_manual = $schema === 'sc-workspace-cloud-backup/1.0';
@@ -3277,6 +3283,9 @@ public function research_templates_contract() {
         if (SC_Workspace_Backend::enabled()) {
             return SC_Workspace_Backend::request('GET', '/v1/projects/' . rawurlencode($project_id));
         }
+        if (!SC_Workspace_Backend::legacy_store_allowed()) {
+            return SC_Workspace_Backend::fail_closed();
+        }
         $store = $this->cloud_store_read();
         if (!isset($store[$project_id]) || !is_array($store[$project_id])) {
             return new WP_Error('scw_cloud_project_missing', 'Workspace account project copy not found.', array('status' => 404));
@@ -3294,6 +3303,9 @@ public function research_templates_contract() {
         if (SC_Workspace_Backend::enabled()) {
             return SC_Workspace_Backend::request('DELETE', '/v1/projects/' . rawurlencode($project_id));
         }
+        if (!SC_Workspace_Backend::legacy_store_allowed()) {
+            return SC_Workspace_Backend::fail_closed();
+        }
         $store = $this->cloud_store_read();
         if (!isset($store[$project_id])) {
             return rest_ensure_response(array('ok' => true, 'deleted' => false));
@@ -3307,9 +3319,9 @@ public function research_templates_contract() {
     private function cloud_notebook_store_key() { return 'sc_workspace_cloud_notebooks_v1'; }
     private function cloud_notebook_store_read() { $store = get_user_meta(get_current_user_id(), $this->cloud_notebook_store_key(), true); return is_array($store) ? $store : array(); }
     private function cloud_notebook_metadata($record) { return array('notebookId'=>(string)($record['notebookId']??''),'projectId'=>(string)($record['projectId']??''),'title'=>(string)($record['title']??'Research Notebook'),'clientUpdatedAt'=>(string)($record['clientUpdatedAt']??''),'backedUpAt'=>(string)($record['backedUpAt']??''),'fingerprint'=>(string)($record['fingerprint']??''),'notebookFingerprint'=>(string)($record['notebookFingerprint']??''),'revision'=>(int)($record['revision']??0),'storageMode'=>(string)($record['storageMode']??'manual-backup'),'bytes'=>(int)($record['bytes']??0)); }
-    public function cloud_notebooks_list() { if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('GET','/v1/notebooks'); $items=array(); foreach($this->cloud_notebook_store_read() as $record){ if(is_array($record))$items[]=$this->cloud_notebook_metadata($record); } usort($items,function($a,$b){return strcmp($b['backedUpAt'],$a['backedUpAt']);}); return rest_ensure_response(array('schema'=>'sc-workspace-notebook-cloud-index/1.0','items'=>$items,'automaticSync'=>false,'explicitSync'=>true)); }
+    public function cloud_notebooks_list() { if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('GET','/v1/notebooks'); if(!SC_Workspace_Backend::legacy_store_allowed())return SC_Workspace_Backend::fail_closed(); $items=array(); foreach($this->cloud_notebook_store_read() as $record){ if(is_array($record))$items[]=$this->cloud_notebook_metadata($record); } usort($items,function($a,$b){return strcmp($b['backedUpAt'],$a['backedUpAt']);}); return rest_ensure_response(array('schema'=>'sc-workspace-notebook-cloud-index/1.0','items'=>$items,'automaticSync'=>false,'explicitSync'=>true)); }
     public function cloud_notebook_store($request) {
-        $payload=$request->get_json_params(); if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('POST','/v1/notebooks',$payload); $schema=is_array($payload)?(string)($payload['schema']??''):''; $manual=$schema==='sc-workspace-notebook-cloud-backup/1.0'; $sync=$schema==='sc-workspace-notebook-sync-push/1.0';
+        $payload=$request->get_json_params(); if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('POST','/v1/notebooks',$payload); if(!SC_Workspace_Backend::legacy_store_allowed())return SC_Workspace_Backend::fail_closed(); $schema=is_array($payload)?(string)($payload['schema']??''):''; $manual=$schema==='sc-workspace-notebook-cloud-backup/1.0'; $sync=$schema==='sc-workspace-notebook-sync-push/1.0';
         if(!is_array($payload)||(!$manual&&!$sync))return new WP_Error('scw_invalid_notebook_backup','Unsupported notebook account-persistence package.',array('status'=>400));
         $notebook=is_array($payload['notebook']??null)?$payload['notebook']:null; $id=sanitize_key((string)($payload['sourceNotebookId']??'')); if(!$notebook||$id===''||($notebook['schema']??'')!=='sc-workspace-notebook/3.0')return new WP_Error('scw_invalid_cloud_notebook','A valid Research Notebook is required.',array('status'=>400));
         $canonical=wp_json_encode($payload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE); $bytes=strlen($canonical); if($bytes>1048576)return new WP_Error('scw_cloud_notebook_too_large','This notebook exceeds the 1 MB account-persistence limit.',array('status'=>413));
@@ -3319,8 +3331,8 @@ public function research_templates_contract() {
         $record=array('notebookId'=>$id,'projectId'=>sanitize_key((string)($payload['sourceProjectId']??'')),'title'=>sanitize_text_field((string)($payload['notebookTitle']??$notebook['title']??'Research Notebook')),'clientUpdatedAt'=>sanitize_text_field((string)($payload['clientUpdatedAt']??$notebook['updatedAt']??'')),'backedUpAt'=>gmdate('c'),'fingerprint'=>hash('sha256',$canonical),'notebookFingerprint'=>sanitize_text_field((string)($payload['notebookFingerprint']??hash('sha256',wp_json_encode($notebook,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)))),'revision'=>$revision+1,'storageMode'=>$sync?'sync-head':'manual-backup','bytes'=>$bytes,'package'=>$payload);
         $store[$id]=$record; update_user_meta(get_current_user_id(),$this->cloud_notebook_store_key(),$store); return rest_ensure_response(array('ok'=>true,'item'=>$this->cloud_notebook_metadata($record)));
     }
-    public function cloud_notebook_get($request) { $id=sanitize_key((string)$request['notebook_id']);if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('GET','/v1/notebooks/'.rawurlencode($id));$store=$this->cloud_notebook_store_read();if(!isset($store[$id])||!is_array($store[$id]))return new WP_Error('scw_cloud_notebook_missing','Notebook account copy not found.',array('status'=>404));$record=$store[$id];return rest_ensure_response(array('schema'=>'sc-workspace-notebook-cloud-backup-response/1.0','item'=>$this->cloud_notebook_metadata($record),'package'=>$record['package'])); }
-    public function cloud_notebook_delete($request) { $id=sanitize_key((string)$request['notebook_id']);if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('DELETE','/v1/notebooks/'.rawurlencode($id));$store=$this->cloud_notebook_store_read();if(!isset($store[$id]))return rest_ensure_response(array('ok'=>true,'deleted'=>false));unset($store[$id]);update_user_meta(get_current_user_id(),$this->cloud_notebook_store_key(),$store);return rest_ensure_response(array('ok'=>true,'deleted'=>true)); }
+    public function cloud_notebook_get($request) { $id=sanitize_key((string)$request['notebook_id']);if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('GET','/v1/notebooks/'.rawurlencode($id)); if(!SC_Workspace_Backend::legacy_store_allowed())return SC_Workspace_Backend::fail_closed();$store=$this->cloud_notebook_store_read();if(!isset($store[$id])||!is_array($store[$id]))return new WP_Error('scw_cloud_notebook_missing','Notebook account copy not found.',array('status'=>404));$record=$store[$id];return rest_ensure_response(array('schema'=>'sc-workspace-notebook-cloud-backup-response/1.0','item'=>$this->cloud_notebook_metadata($record),'package'=>$record['package'])); }
+    public function cloud_notebook_delete($request) { $id=sanitize_key((string)$request['notebook_id']);if(SC_Workspace_Backend::enabled())return SC_Workspace_Backend::request('DELETE','/v1/notebooks/'.rawurlencode($id)); if(!SC_Workspace_Backend::legacy_store_allowed())return SC_Workspace_Backend::fail_closed();$store=$this->cloud_notebook_store_read();if(!isset($store[$id]))return rest_ensure_response(array('ok'=>true,'deleted'=>false));unset($store[$id]);update_user_meta(get_current_user_id(),$this->cloud_notebook_store_key(),$store);return rest_ensure_response(array('ok'=>true,'deleted'=>true)); }
 
     public function readiness_contract() {
         return rest_ensure_response(array(

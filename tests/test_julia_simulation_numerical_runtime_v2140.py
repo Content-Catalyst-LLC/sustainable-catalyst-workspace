@@ -2,13 +2,13 @@ from pathlib import Path
 import json
 from app.polyglot import RUNTIMES, OPERATION_LANGUAGE
 ROOT=Path(__file__).resolve().parents[1]
-JULIA_OPS={"workspace.polyglot.julia.ode-linear-rk4","workspace.polyglot.julia.lotka-volterra","workspace.polyglot.julia.monte-carlo-normal","workspace.polyglot.julia.quadratic-optimize","workspace.polyglot.julia.eigen-analysis","workspace.polyglot.julia.integrate-series","workspace.polyglot.julia.polynomial-roots","workspace.polyglot.julia.parameter-sweep"}
+JULIA_OPS={"workspace.polyglot.julia.ode-linear-rk4","workspace.polyglot.julia.lotka-volterra","workspace.polyglot.julia.monte-carlo-normal","workspace.polyglot.julia.quadratic-optimize","workspace.polyglot.julia.eigen-analysis","workspace.polyglot.julia.integrate-series","workspace.polyglot.julia.polynomial-roots","workspace.polyglot.julia.parameter-sweep","workspace.polyglot.julia.expression-evaluate"}
 
 def test_version_and_lineage():
     assert 'service_version: str = "2.14.0"' in (ROOT/'backend/app/config.py').read_text()
     dep=(ROOT/'wordpress/sustainable-catalyst-workspace/includes/class-sc-workspace-deployment.php').read_text(); assert "const PREVIOUS_RELEASE = '2.13.0';" in dep; assert "const ROLLBACK_RELEASE = '2.13.0';" in dep
 
-def test_julia_runtime_has_eight_bounded_operations():
+def test_julia_runtime_has_its_bounded_operations():
     spec=next(r for r in RUNTIMES if r.language=='julia'); assert spec.runtime=='julia-simulation-numerical'; assert set(spec.operations)==JULIA_OPS; assert all(OPERATION_LANGUAGE[x]=='julia' for x in JULIA_OPS)
 
 def test_julia_sidecar_is_fixed_operation_only():

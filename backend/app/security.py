@@ -27,7 +27,9 @@ def _session_identity(request: Request) -> ServiceIdentity | None:
         principal_id=f"workspace-user:{user_key}",
         principal_type="workspace-user",
         service_principal=SESSION_SERVICE_PRINCIPAL,
-        authentication_method="signed-http-only-session-cookie",
+        authentication_method=(
+            "sc-identity-oidc-session" if payload.get("auth") == "sc-identity-oidc" else "signed-http-only-session-cookie"
+        ),
     )
 
 def require_service_identity(
@@ -35,14 +37,28 @@ def require_service_identity(
     authorization: str | None = Header(default=None),
     x_sc_user_id: str | None = Header(default=None, alias="X-SC-User-ID"),
 ) -> ServiceIdentity:
+    from . import sc_identity
+    if sc_identity.is_identity_bearer(authorization):
+        # SC-AUTH-02: a verified Sustainable Catalyst access token for this API.
+        identity = sc_identity.bearer_identity(authorization)
+        decision = authorize_request(identity, request.method, request.url.path)
+        if decision["effect"] != "allow":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code":"authorization-denied","decision":decision})
+        return identity
+
     session_identity = _session_identity(request)
     if session_identity is not None:
+        from .session_auth import enforce_cookie_csrf
+        enforce_cookie_csrf(request)
         decision = authorize_request(session_identity, request.method, request.url.path)
         if decision["effect"] != "allow":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail={"code":"authorization-denied","decision":decision})
         return session_identity
 
     settings = get_settings()
+    if getattr(settings, "sc_identity_required", False):
+        # SC-AUTH-02: a shared bearer plus a bare user id is not a user identity.
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Valid Workspace identity required.")
     if not settings.token_configured:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Workspace backend service token is not configured.")
     expected = f"Bearer {settings.service_token}"
