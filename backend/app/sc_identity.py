@@ -31,7 +31,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import httpx
 import jwt
@@ -282,11 +282,19 @@ def _open_tx(request: Request) -> dict[str, Any] | None:
 
 
 def _safe_return_to(value: str | None) -> str:
+    """A path on this origin, or (SC-UP-01) an absolute URL on an allowlisted app origin such as Research's page,
+    so a person returns to the product they signed in from. Anything else goes to "/"."""
     value = (value or "/").strip()
-    if (not value.startswith("/") or value.startswith("//") or "\\" in value or len(value) > 512
-            or re.search(r"[\x00-\x1f\x7f]", value)):
+    if "\\" in value or len(value) > 512 or re.search(r"[\x00-\x1f\x7f]", value):
         return "/"
-    return value
+    if value.startswith("/") and not value.startswith("//"):
+        return value
+    parts = urlsplit(value)
+    allowed = {o.strip() for o in get_settings().cors_allowed_origins.split(",") if o.strip()}
+    if parts.scheme in {"https", "http"} and not (parts.username or parts.password) \
+            and f"{parts.scheme}://{parts.netloc}" in allowed:
+        return value
+    return "/"
 
 
 def _clear_tx(response) -> None:
