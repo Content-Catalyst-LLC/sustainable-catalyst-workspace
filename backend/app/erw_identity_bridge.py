@@ -110,7 +110,8 @@ def login(req:Login,request:Request,response:Response):
         if not subject: raise ValueError('ERW account attestation missing')
     except (ValueError,KeyError,TypeError):
         raise HTTPException(401,'ERW account authentication could not be verified') from None
-    token=issue_session_token(subject, req.username)
+    # SC-SCI-02: the session records that it came from the ERW account sign-in (password, no MFA).
+    token=issue_session_token(subject, req.username, {'auth': 'erw-account', 'amr': ['pwd']})
     response.set_cookie(key=session_cookie_name(),value=token,max_age=int(get_settings().session_ttl_seconds),path='/',secure=True,httponly=True,samesite='lax')
     response.headers['Cache-Control']='no-store'
     response.headers['X-Content-Type-Options']='nosniff'

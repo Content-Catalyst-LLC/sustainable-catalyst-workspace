@@ -94,3 +94,49 @@ def test_sign_in_returns_to_an_allowlisted_research_page_and_nowhere_else(env):
                   "https://user@research.example.org/", "http://research.example.org/", "javascript:alert(1)",
                   "//research.example.org/", RESEARCH + "/a\nb"):
         assert sc_identity._safe_return_to(value) == "/", value
+
+
+# ---------------------------------------------------------------------------
+# SC-SCI-02: production sign-in (ERW account) admitted only where configured; Research Console origin.
+
+def erw_cookie(app_client, extra=None):
+    token = session_auth.issue_session_token("erw:sc:synthetic-owner", "Synthetic", extra)
+    app_client.cookies.set(session_auth.session_cookie_name(), token)
+
+
+@pytest.fixture
+def erw_env(env, monkeypatch):
+    monkeypatch.setattr(research_access, "get_settings", lambda: env.settings)
+    return env
+
+
+def test_erw_account_sessions_get_a_research_session_only_where_configured(app_client, erw_env):
+    erw_cookie(app_client, {"auth": "erw-account", "amr": ["pwd"]})
+    r = app_client.post("/v1/research-access/session", headers={"Origin": RESEARCH})
+    assert r.status_code == 403 and r.json()["detail"]["code"] == "sc-identity-required"  # default: SC Identity only
+    erw_env.settings.research_session_methods = "erw-account-session"
+    r = app_client.post("/v1/research-access/session", headers={"Origin": RESEARCH})
+    assert r.status_code == 200, r.text
+    body = verify(r.json())
+    assert body["subject"] == "workspace-user:erw:sc:synthetic-owner" and body["authentication"] == "erw-account-session"
+
+
+@pytest.mark.parametrize("configured", ["erw-account-session", "signed-http-only-session-cookie,service-bearer+wordpress-user-context"])
+def test_legacy_cookie_sessions_never_get_one_whatever_is_configured(app_client, erw_env, configured):
+    erw_env.settings.research_session_methods = configured
+    erw_cookie(app_client)  # cookie exchange / older sign-in: no auth claim
+    r = app_client.post("/v1/research-access/session", headers={"Origin": RESEARCH})
+    assert r.status_code == 403
+    assert research_access.accepted_methods() <= research_access.SC_IDENTITY_METHODS | {"erw-account-session"}
+
+
+def test_research_console_origin_is_added_without_restating_the_workspace_allowlist(app_client, erw_env):
+    erw_env.settings.cors_allowed_origins = ORIGIN
+    erw_env.settings.research_session_methods = "erw-account-session"
+    erw_cookie(app_client, {"auth": "erw-account", "amr": ["pwd"]})
+    assert app_client.post("/v1/research-access/session", headers={"Origin": RESEARCH}).status_code == 403
+    erw_env.settings.research_console_origins = RESEARCH + "/"
+    assert app_client.post("/v1/research-access/session", headers={"Origin": RESEARCH}).status_code == 200
+    assert app_client.post("/v1/research-access/session", headers={"Origin": "https://evil.example"}).status_code == 403
+    from app.config import browser_origins
+    assert browser_origins(erw_env.settings) == {ORIGIN, RESEARCH}

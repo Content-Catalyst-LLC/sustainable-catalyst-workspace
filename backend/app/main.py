@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import get_settings
+from .config import browser_origins, get_settings
 from .user_workspace import profile as user_workspace_profile, bootstrap as user_workspace_bootstrap, project_package as user_workspace_project_package
 from .workspace_navigation import profile as workspace_navigation_profile, recent as workspace_navigation_recent
 from .research_object_browser import profile as research_object_browser_profile, browse as browse_research_objects
@@ -434,7 +434,7 @@ app = FastAPI(
 )
 
 # v3.71 standalone authenticated browser transport.
-_allowed_origins = [origin.strip() for origin in settings.cors_allowed_origins.split(",") if origin.strip()]
+_allowed_origins = sorted(browser_origins(settings))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
