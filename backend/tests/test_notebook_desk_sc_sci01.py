@@ -125,3 +125,24 @@ def test_cell_status_is_owner_scoped_and_reports_failures(client, monkeypatch):
     assert cells["fit"]["state"] == "verified" and cells["replay"]["state"] == "verified"
     assert cells["scenario"]["state"] == "failed" and cells["scenario"]["run"]["runStatus"] == "failed"
     assert cells["scenario"]["run"]["resultValues"] is None
+
+
+@pg
+def test_r_receipts_keep_the_interpreter_version_the_runtime_reports(client, monkeypatch):
+    import app.polyglot as polyglot
+    fake_runtimes(monkeypatch)
+    inner = polyglot.httpx.post
+
+    def with_version(url, json=None, headers=None, timeout=None):
+        resp = inner(url, json=json, headers=headers, timeout=timeout)
+        if json["language"] != "r":
+            return resp
+        body = resp.json()
+        return type(resp)(status_code=200, json=lambda: {**body, "runtimeVersion": "4.4.1"}, text="")
+
+    monkeypatch.setattr(polyglot.httpx, "post", with_version)
+    ctx = setup_chain(client)
+    assert run_through(client, ctx)["status"] == "succeeded"
+    cells = by_cell(status(client, ctx.user, ctx.nb_id))
+    assert cells["fit"]["run"]["verification"]["runtimeReceipts"][0]["runtimeVersion"] == "4.4.1"
+    assert cells["replay"]["run"]["verification"]["runtimeReceipts"][0]["runtimeVersion"] == "unrecorded"  # the fake Julia reports none
