@@ -5001,6 +5001,7 @@ app.include_router(lab_live_v3844_router, dependencies=[Depends(require_service_
 # SC-MODEL-01: owner-granted, signed execution exports for Research (disabled unless configured).
 from .research_exports import router as research_export_router
 from .notebook_export import router as notebook_export_router
+from .notebook_figure_bundle import router as notebook_figure_bundle_router
 
 app.include_router(research_export_router)
 # SC-RIGHTS-02: private operator view of source-rights delivery to Research (operator credential only).
@@ -5017,3 +5018,5 @@ app.include_router(research_access_router)
 # SC-PUB-M1: owner- and approver-facing approval desk (static, same-origin, strict CSP).
 from .approval_desk import router as approval_desk_router
 app.include_router(approval_desk_router)
+# SC-FIG-02B: Vega-Lite figure package from a verified notebook cell run.
+app.include_router(notebook_figure_bundle_router)
