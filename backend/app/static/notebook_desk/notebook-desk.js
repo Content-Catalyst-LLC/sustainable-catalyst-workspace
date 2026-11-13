@@ -12,7 +12,7 @@ const POLL_MS = 1500;
 const POLL_LIMIT = 400;  // ten minutes
 
 const state = { me: null, projects: [], projectId: "", notebooks: [], datasets: [], nb: null, saved: null,
-                status: null, dirty: false, polling: false };
+                status: null, dirty: false, polling: false, idp: null };
 
 // --- API -------------------------------------------------------------------------------------------------
 
@@ -75,9 +75,19 @@ async function busy(button, fn) {
 
 // --- session -------------------------------------------------------------------------------------------
 
-function showSignIn() {
+// Without SC Identity (production today) the existing ERW account sign-in issues the Workspace session.
+async function identityProvider() {
+  if (state.idp) return state.idp;
+  const res = await fetch("/v1/session/profile", { credentials: "same-origin", headers: { Accept: "application/json" } }).catch(() => null);
+  const profile = res && res.ok ? await res.json().catch(() => null) : null;
+  state.idp = profile && profile.globalIdentityProviderConfigured ? "sc-identity" : "erw";
+  return state.idp;
+}
+
+async function showSignIn() {
   el("signin").hidden = false; el("app").hidden = true; el("signout").hidden = true; el("who").textContent = "";
-  el("signin-link").href = `/v1/auth/login?returnTo=${encodeURIComponent(DESK + location.search)}`;
+  const login = (await identityProvider()) === "sc-identity" ? "/v1/auth/login" : "/v1/private-research/login";
+  el("signin-link").href = `${login}?returnTo=${encodeURIComponent(DESK + location.search)}`;
 }
 
 async function boot() {
@@ -521,7 +531,8 @@ async function buildFigure(ev) {
 
 function wire() {
   el("signout").addEventListener("click", async () => {
-    await fetch("/v1/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => null);
+    if ((await identityProvider()) === "sc-identity") await fetch("/v1/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => null);
+    else await fetch("/v1/session", { method: "DELETE", credentials: "same-origin" }).catch(() => null);
     showSignIn();
   });
   el("project").addEventListener("change", async () => { state.projectId = el("project").value; state.nb = null; state.saved = null; render(); await loadProject(); });
