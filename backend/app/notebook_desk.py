@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import select
 
-from .approval_desk import HEADERS
+from .approval_desk import HEADERS as APPROVAL_DESK_HEADERS
 from .db import session_scope
 from .execution_provenance import run_provenance
 from .models import NotebookExecutionPlan
@@ -43,10 +43,23 @@ status_router = APIRouter(prefix="/v1/notebooks", tags=["SC-SCI-01 notebook work
 STATIC = Path(__file__).resolve().parent / "static" / "notebook_desk"
 ASSETS = {"notebook-desk.js": "text/javascript; charset=utf-8", "notebook-desk.css": "text/css; charset=utf-8",
           "notebook-recipes.js": "text/javascript; charset=utf-8"}
+# SC-SCI-02: the vendored Lab Graph Studio renderer (scripts/sync_graph_studio_renderer.py). Only files in its
+# lock are served; the page loads them with Subresource Integrity.
+GRAPH_STUDIO = STATIC / "graph-studio"
+GRAPH_STUDIO_TYPES = {"script": "text/javascript; charset=utf-8", "style": "text/css; charset=utf-8"}
+# Vega sets inline styles on the SVG it draws, and verified exports are shown and rasterised from blob: URLs.
+CSP = ("default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' blob: data:; "
+       "form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+HEADERS = {**APPROVAL_DESK_HEADERS, "Content-Security-Policy": CSP}
 
 
 def _file(name: str, media_type: str) -> Response:
     return Response((STATIC / name).read_bytes(), media_type=media_type, headers=HEADERS)
+
+
+def _graph_studio_files() -> dict[str, str]:
+    lock = json.loads((GRAPH_STUDIO / "RENDERER_LOCK.json").read_text())
+    return {f["path"]: GRAPH_STUDIO_TYPES[f["kind"]] for f in lock["files"] if f["kind"] in GRAPH_STUDIO_TYPES}
 
 
 @page_router.get("/notebooks")
@@ -59,6 +72,15 @@ def notebook_desk_asset(name: str):
     if name not in ASSETS:
         raise HTTPException(status_code=404, detail="Not Found")
     return _file(name, ASSETS[name])
+
+
+@page_router.get("/notebook-assets/graph-studio/{path:path}")
+def graph_studio_asset(path: str):
+    media_type = _graph_studio_files().get(path)
+    if media_type is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return Response((GRAPH_STUDIO / path).read_bytes(), media_type=media_type,
+                    headers={**HEADERS, "Cache-Control": "public, max-age=3600"})
 
 
 def _values(db, user_key: str, run, verification: dict[str, Any]) -> dict[str, Any] | None:

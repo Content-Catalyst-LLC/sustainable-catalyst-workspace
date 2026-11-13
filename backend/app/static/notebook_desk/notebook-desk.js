@@ -520,11 +520,35 @@ async function buildFigure(ev) {
     el("fig-out").replaceChildren(
       h("p", {}, `Figure package from run ${pkg.run.runId} (${pkg.run.verification}, ${pkg.run.inputLineage}).`),
       h("p", { class: "fine" }, "Not stored and not published. Lab Graph Studio verifies and renders these files."),
+      h("div", { class: "actions" }, h("button", { type: "button", id: "open-graph-studio", onclick: () => openGraphStudio(pkg) }, "Open in Graph Studio")),
       h("ul", { class: "list" }, ...pkg.files.map(f => {
         const url = URL.createObjectURL(new Blob([f.text], { type: f.mediaType }));
         return h("li", {}, h("a", { href: url, download: f.name }, f.name), " ", h("code", { title: f.sha256 }, `sha256 ${short(f.sha256)}…`));
       })));
   });
+}
+
+// --- Graph Studio ---------------------------------------------------------------------------------------
+// The vendored Lab renderer (graph-studio/RENDERER_LOCK.json) re-verifies the package bytes, pinned to the
+// bundle hash the server reported, and draws the Vega-Lite view with its table, provenance and exports.
+
+async function openGraphStudio(pkg) {
+  const R = window.SCLabFigureBundleRenderer;
+  el("graph-studio").hidden = false;
+  if (!R || !window.SCLabVegaLiteFIG02B) {
+    el("gs-state").textContent = "unavailable";
+    el("gs-out").replaceChildren(h("p", { class: "err-text" }, "The Graph Studio renderer did not load, so nothing is drawn."));
+    return;
+  }
+  el("gs-state").textContent = "verifying…";
+  const files = pkg.files.map(f => ({ name: f.name, bytes: new TextEncoder().encode(f.text) }));
+  const out = h("div", {});
+  el("gs-out").replaceChildren(out);
+  const res = await R.render(out, files, pkg.bundleSha256);
+  el("gs-state").textContent = res.state;
+  el("gs-state").className = `badge ${res.state === "rendered" ? "state-verified" : "state-failed"}`;
+  el("graph-studio").dataset.state = res.state;
+  el("graph-studio").scrollIntoView({ behavior: "smooth" });
 }
 
 // --- wiring -----------------------------------------------------------------------------------------------
@@ -549,6 +573,7 @@ function wire() {
   el("cmp-go").addEventListener("click", compare);
   el("fig-form").addEventListener("submit", buildFigure);
   el("fig-close").addEventListener("click", () => { el("figure").hidden = true; });
+  el("gs-close").addEventListener("click", () => { el("graph-studio").hidden = true; el("gs-out").replaceChildren(); });
   window.addEventListener("beforeunload", (e) => { if (state.dirty) { e.preventDefault(); e.returnValue = ""; } });
 }
 
