@@ -4,7 +4,7 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
-VERSION="2.20.0"
+VERSION="2.21.0"
 RUNTIME="python-monte-carlo-uq"
 OPS=(
  "workspace.uncertainty.monte-carlo-weighted-sum",
@@ -15,6 +15,7 @@ OPS=(
  "workspace.uncertainty.rank-correlation-sensitivity",
  "workspace.uncertainty.variance-contribution-linear",
  "workspace.uncertainty.scenario-envelope",
+ "workspace.uncertainty.ensemble-quantile-bands",
 )
 MAX_DRAWS=int(os.getenv("SC_WORKSPACE_UNCERTAINTY_MAX_DRAWS","20000"))
 MAX_ROWS=int(os.getenv("SC_WORKSPACE_UNCERTAINTY_MAX_ROWS","10000"))
@@ -234,6 +235,31 @@ def execute(op,p):
         if baseline is not None:
             b=finite(baseline,"baseline"); sm["baseline"]=b; sm["minDeltaFromBaseline"]=lo["value"]-b; sm["maxDeltaFromBaseline"]=hi["value"]-b
         return {"kind":"scenario-envelope","scenarioCount":len(clean),"summary":sm,"interval":sm["interval"],"minimumScenario":lo,"maximumScenario":hi}
+    if op=="workspace.uncertainty.ensemble-quantile-bands":
+        # SC-FIG-05.3: per-step empirical quantiles across ensemble members (type 7, the same quantile() as above).
+        # Only the declared steps are summarised: nothing is interpolated between steps or extrapolated beyond them.
+        steps=p.get("steps") or []; members=p.get("members") or []; levels=p.get("centralLevels") or [0.5,0.8,0.95]
+        if not isinstance(steps,list) or not 2<=len(steps)<=500: raise HTTPException(status_code=400,detail="steps must contain 2..500 items")
+        xs=[finite(x,"step") for x in steps]
+        if any(b<=a for a,b in zip(xs,xs[1:])): raise HTTPException(status_code=400,detail="steps must be strictly increasing")
+        if not isinstance(members,list) or not 5<=len(members)<=1000: raise HTTPException(status_code=400,detail="members must contain 5..1000 items")
+        if len(members)*len(xs)>MAX_ROWS*20: raise HTTPException(status_code=400,detail="ensemble is larger than the runtime bound")
+        names=[]; cols=[[] for _ in xs]
+        for idx,m in enumerate(members):
+            if not isinstance(m,dict) or not isinstance(m.get("values"),list) or len(m["values"])!=len(xs): raise HTTPException(status_code=400,detail="each member must be an object with one value per step")
+            names.append(str(m.get("name") or f"member-{idx+1}")[:96])
+            for j,v in enumerate(m["values"]): cols[j].append(finite(v,"member value"))
+        if not isinstance(levels,list) or not 1<=len(levels)<=4: raise HTTPException(status_code=400,detail="centralLevels must contain 1..4 values")
+        lv=sorted({finite(x,"centralLevel") for x in levels})
+        if any(not 0.1<=x<=0.99 for x in lv): raise HTTPException(status_code=400,detail="centralLevels must be between 0.1 and 0.99")
+        n=len(members); out_steps=[]
+        for x,col in zip(xs,cols):
+            s=sorted(col); bands=[{"centralLevel":l,"lower":quantile(s,(1-l)/2),"upper":quantile(s,(1+l)/2)} for l in lv]
+            out_steps.append({"x":x,"median":quantile(s,0.5),"min":s[0],"max":s[-1],"bands":bands})
+        return {"kind":"ensemble-quantile-bands","memberCount":n,"members":names,"stepCount":len(xs),
+                "quantileBands":{"semantics":"ensemble-quantile-fan","centralLevels":lv,"method":"empirical quantiles across members at each step, linear interpolation between order statistics (Hyndman-Fan type 7)",
+                                 "memberCount":n,"computedBy":"runtime","evaluatedAt":"declared steps only","steps":out_steps},
+                "summary":{"memberCount":n,"stepCount":len(xs),"centralLevels":lv}}
     raise HTTPException(status_code=400,detail="Unregistered uncertainty operation")
 
 @app.get('/health')

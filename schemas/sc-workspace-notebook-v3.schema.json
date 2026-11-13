@@ -5,14 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema",
-    "id",
-    "title",
-    "description",
-    "sections",
-    "activeSectionId",
-    "createdAt",
-    "updatedAt"
+    "schema"
   ],
   "properties": {
     "schema": {
@@ -80,6 +73,32 @@
     },
     "updatedAt": {
       "type": "string"
+    },
+    "cells": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "sc-workspace-notebook-cell-v1.schema.json"
+      }
     }
-  }
+  },
+  "description": "One schema for both producers. The browser editor always emits every editorial field (sections, activeSectionId, timestamps); the Workspace backend also accepts executable notebooks that carry cells[] without editorial sections. cells[] entries follow sc-workspace-notebook-cell-v1, which the backend enforces strictly (backend/app/notebook_cells.py) and the editor preserves verbatim.",
+  "anyOf": [
+    {
+      "required": [
+        "id",
+        "title",
+        "description",
+        "sections",
+        "activeSectionId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    {
+      "required": [
+        "cells"
+      ]
+    }
+  ]
 }

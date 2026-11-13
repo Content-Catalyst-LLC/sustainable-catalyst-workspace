@@ -9,12 +9,35 @@ class Settings(BaseSettings):
     service_version: str = "3.83.0"
     environment: str = "production"
     database_url: str = "postgresql+psycopg://sc_workspace:change-me@127.0.0.1:5432/sc_workspace"
+    database_url_file: str = ""  # Optional least-privilege authority DSN Docker secret path.
     service_token: str = ""
     session_signing_secret: str = ""
+    session_signing_secret_file: str = ""  # Optional shared Workspace cookie-signing key, Docker secret path.
     session_cookie_name: str = "sc_workspace_session"
     session_issuer: str = "sustainable-catalyst-workspace"
     session_audience: str = "workspace.sustainablecatalyst.com"
     session_ttl_seconds: int = 28800
+    # Separate secret for gated Research-to-Workspace introspection; never browser-facing.
+    research_introspection_token: str = ""
+    research_introspection_token_file: str = ""
+    session_revocation_enforced: bool = False  # Enable only after migration + staging acceptance.
+    # SC-AUTH-02: Sustainable Catalyst Identity (Platform Core OIDC provider).
+    # Workspace is a confidential client (BFF); WordPress is never an identity source.
+    sc_identity_issuer: str = ""  # exact public `iss`
+    sc_identity_discovery_url: str = ""  # internal URL; defaults to issuer discovery
+    sc_identity_client_id: str = ""
+    sc_identity_client_secret: str = ""
+    sc_identity_client_secret_file: str = ""
+    sc_identity_redirect_uri: str = ""
+    sc_identity_post_logout_redirect_uri: str = ""
+    sc_identity_api_audience: str = "sc-workspace-api"
+    sc_identity_allowed_bearer_clients: str = ""  # comma-separated azp allowlist; empty = no bearer clients
+    sc_identity_require_mfa: bool = True
+    sc_identity_mfa_amr: str = "otp,mfa,hwk,swk"
+    sc_identity_step_up_max_age: int = 300
+    # When true, legacy user context (service bearer + X-SC-User-ID) and the
+    # trusted-service session exchange are refused.
+    sc_identity_required: bool = False
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     auto_create_schema: bool = False
 
@@ -45,6 +68,23 @@ class Settings(BaseSettings):
     max_compliance_waivers_per_account: int = 1000
     max_attestation_verifications_per_account: int = 5000
     runtime_attestation_token: str = ""
+    # SC-MODEL-01 Research export: disabled unless explicitly configured.
+    research_export_enabled: bool = False
+    research_export_client_token: str = ""
+    research_export_signing_key_file: str = ""
+    research_export_grant_ttl_seconds: int = 900
+    # SC-RIGHTS-02 rights delivery to Research: off unless a Research URL and delivery token file are set.
+    research_rights_delivery_url: str = ""  # Research API base, e.g. http://research-api:8000/api/research/v1
+    research_rights_delivery_token_file: str = ""
+    research_rights_ops_token_file: str = ""  # Operator credential for the private delivery dashboard.
+    research_rights_max_attempts: int = 12
+    research_rights_backoff_base_seconds: float = 2.0
+    research_rights_backoff_cap_seconds: float = 300.0
+    research_rights_lease_seconds: float = 60.0
+    research_rights_http_timeout_seconds: float = 10.0
+    research_rights_attest_interval_seconds: float = 300.0
+    research_rights_alert_restriction_seconds: float = 300.0  # A restriction unapplied for longer raises an alert.
+    research_rights_batch: int = 20
 
     compute_max_rows: int = 50000
     compute_max_columns: int = 256
@@ -79,6 +119,11 @@ class Settings(BaseSettings):
     runtime_reliability_token: str = ""
     runtime_wasm_url: str = ""
     runtime_wasm_token: str = ""
+    # SC-SIM-01 G7/G8: governed adapters into existing Workbench and Decision Studio calculations.
+    runtime_workbench_url: str = ""
+    runtime_workbench_token: str = ""
+    runtime_decision_studio_url: str = ""
+    runtime_decision_studio_token: str = ""
     polyglot_timeout_seconds: float = 45.0
     polyglot_max_exchange_rows: int = 50000
     polyglot_max_exchange_columns: int = 256
