@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Research notebooks · Workspace</title>
+  <link rel="stylesheet" href="/v1/desk/notebook-assets/notebook-desk.css">
+  <script type="module" src="/v1/desk/notebook-assets/notebook-desk.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <h1>Research notebooks</h1>
+    <div class="who"><span id="who" aria-live="polite"></span>
+      <button type="button" id="signout" class="link" hidden>Sign out</button></div>
+  </header>
+  <main>
+    <p id="notice" class="notice" role="status" hidden></p>
+
+    <section id="signin" hidden>
+      <p>Sign in with your Sustainable Catalyst account to open your research notebooks.</p>
+      <a id="signin-link" class="button" href="/v1/auth/login?returnTo=%2Fv1%2Fdesk%2Fnotebooks">Sign in</a>
+    </section>
+
+    <div id="app" class="layout" hidden>
+      <nav class="side" aria-label="Projects and notebooks">
+        <label for="project">Project</label>
+        <select id="project"></select>
+        <details>
+          <summary>New project</summary>
+          <form id="project-form" class="stack">
+            <label for="project-title">Title</label>
+            <input id="project-title" required maxlength="160">
+            <button type="submit">Create project</button>
+          </form>
+        </details>
+
+        <h2>Notebooks</h2>
+        <ul id="notebooks" class="list"></ul>
+        <p id="notebooks-empty" class="empty" hidden>No notebooks in this project yet.</p>
+        <form id="notebook-form" class="stack">
+          <label for="notebook-title">New notebook</label>
+          <input id="notebook-title" required maxlength="160" placeholder="Title">
+          <button type="submit">Create notebook</button>
+        </form>
+
+        <h2>Datasets</h2>
+        <ul id="datasets" class="list"></ul>
+        <p id="datasets-empty" class="empty" hidden>No datasets in this project yet.</p>
+        <details>
+          <summary>Add a dataset file</summary>
+          <form id="dataset-form" class="stack">
+            <label for="dataset-file">CSV or JSON records</label>
+            <input id="dataset-file" type="file" accept=".csv,.json,text/csv,application/json" required>
+            <label for="dataset-name">Name</label>
+            <input id="dataset-name" required maxlength="200">
+            <label for="dataset-class">What kind of data is this?</label>
+            <select id="dataset-class" required>
+              <option value="">Choose…</option>
+              <option value="synthetic">Synthetic (generated for testing or teaching)</option>
+              <option value="observed">Observed (measured)</option>
+              <option value="modelled">Modelled (output of a model)</option>
+            </select>
+            <p class="fine">The exact bytes are stored and pinned by SHA-256. Cells read only those bytes.</p>
+            <button type="submit">Store dataset</button>
+          </form>
+        </details>
+      </nav>
+
+      <section id="editor" class="editor" hidden aria-labelledby="nb-title">
+        <div class="nb-head">
+          <h2 id="nb-title"></h2>
+          <span id="nb-rev" class="muted"></span>
+          <span id="nb-dirty" class="badge warn" hidden>Unsaved changes</span>
+        </div>
+        <div class="actions">
+          <button type="button" id="save">Save revision</button>
+          <button type="button" id="run">Save and run all cells</button>
+          <span class="sep"></span>
+          <a id="export-ipynb" class="button secondary" download>Jupyter (.ipynb)</a>
+          <a id="export-qmd" class="button secondary" download>Quarto (.qmd)</a>
+          <a id="export-package" class="button secondary" download>Reproducibility package</a>
+        </div>
+        <p class="fine">Runs use the governed R and Julia runtimes. They execute the declared operation on the
+          pinned dataset bytes; the cell text documents the method. Exports describe the last saved revision.</p>
+
+        <ol id="cells" class="cells"></ol>
+        <p id="cells-empty" class="empty" hidden>No cells yet. Add one below.</p>
+
+        <form id="cell-form" class="card stack" aria-labelledby="cell-form-title">
+          <h3 id="cell-form-title">Add a cell</h3>
+          <input type="hidden" id="cell-edit-id">
+          <label for="recipe">Cell</label>
+          <select id="recipe"></select>
+          <label for="cell-title">Title</label>
+          <input id="cell-title" maxlength="200">
+          <div data-for="markdown">
+            <label for="cell-text">Text</label>
+            <textarea id="cell-text" rows="4" maxlength="20000"></textarea>
+          </div>
+          <div data-for="dataset">
+            <label for="cell-dataset">Dataset</label>
+            <select id="cell-dataset"></select>
+            <label for="cell-outcome">Outcome column</label>
+            <select id="cell-outcome"></select>
+            <fieldset><legend>Predictor columns</legend><div id="cell-predictors" class="checks"></div></fieldset>
+          </div>
+          <div data-for="after">
+            <label for="cell-after">Run after (optional)</label>
+            <select id="cell-after"></select>
+          </div>
+          <div data-for="scenario">
+            <label for="cell-primary">Verified fit cell (primary)</label>
+            <select id="cell-primary"></select>
+            <label for="cell-cross">Independent cross-check cell (optional)</label>
+            <select id="cell-cross"></select>
+            <label for="cell-slope">Predictor whose slope drives the scenarios</label>
+            <input id="cell-slope" maxlength="64">
+            <label for="cell-rates">Rates to compare (comma separated)</label>
+            <input id="cell-rates" value="10, 25, 40">
+            <p class="fine">This cell receives the upstream cells' verified results; Workspace refuses values typed here.</p>
+          </div>
+          <div data-for="source">
+            <label for="cell-source">Method notes (shown in the cell and exports)</label>
+            <textarea id="cell-source" rows="3" maxlength="20000"></textarea>
+          </div>
+          <div class="actions">
+            <button type="submit" id="cell-submit">Add cell</button>
+            <button type="button" id="cell-cancel" class="link" hidden>Cancel edit</button>
+          </div>
+        </form>
+
+        <section class="card" aria-labelledby="cmp-title">
+          <h3 id="cmp-title">Compare two results</h3>
+          <div class="row">
+            <select id="cmp-a" aria-label="First cell"></select>
+            <select id="cmp-b" aria-label="Second cell"></select>
+            <button type="button" id="cmp-go" class="secondary">Compare</button>
+          </div>
+          <div id="cmp-out"></div>
+          <p class="fine">A Workspace preview at the first cell's declared tolerance. Research decides whether a
+            result is reproduced (identical verified inputs, independent implementation).</p>
+        </section>
+
+        <section id="figure" class="card" hidden aria-labelledby="fig-title">
+          <h3 id="fig-title">Figure from <span id="fig-cell"></span></h3>
+          <form id="fig-form" class="stack">
+            <label for="fig-heading">Title</label>
+            <input id="fig-heading" required minlength="8" maxlength="200">
+            <label for="fig-caption">Caption</label>
+            <textarea id="fig-caption" required minlength="15" maxlength="600" rows="2"></textarea>
+            <label for="fig-alt">Text alternative</label>
+            <textarea id="fig-alt" required minlength="15" maxlength="600" rows="2"></textarea>
+            <label for="fig-limit">Limitation</label>
+            <input id="fig-limit" required maxlength="300">
+            <label for="fig-class">Evidence class</label>
+            <select id="fig-class"><option value="modelled">Modelled (computed from the pinned inputs)</option>
+              <option value="hypothetical">Hypothetical</option></select>
+            <div class="actions"><button type="submit">Build figure package</button>
+              <button type="button" id="fig-close" class="link">Close</button></div>
+          </form>
+          <div id="fig-out"></div>
+        </section>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

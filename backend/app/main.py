@@ -5020,3 +5020,7 @@ from .approval_desk import router as approval_desk_router
 app.include_router(approval_desk_router)
 # SC-FIG-02B: Vega-Lite figure package from a verified notebook cell run.
 app.include_router(notebook_figure_bundle_router)
+# SC-SCI-01: the owner's notebook workspace page and its cell status read.
+from .notebook_desk import page_router as notebook_desk_router, status_router as notebook_status_router
+app.include_router(notebook_desk_router)
+app.include_router(notebook_status_router)
