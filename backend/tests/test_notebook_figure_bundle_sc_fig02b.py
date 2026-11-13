@@ -164,7 +164,7 @@ def test_verified_run_becomes_a_figure_package(client, monkeypatch):
     nb_id, art, ds, plan = executed(client, monkeypatch, with_scenario=False)
     r = post(client, "nb-owner-a", nb_id, "fit")
     pkg = r.json()
-    assert r.headers["X-SC-Figure-Bundle-Sha256"] == pkg["bundleSha256"] and r.headers["Cache-Control"] == "no-store"
+    assert r.headers["X-SC-Figure-Bundle-Sha256"] == pkg["bundleSha256"] and "no-store" in r.headers["Cache-Control"]  # SC-AUTH-02 hygiene adds "private"
     assert post(client, "nb-owner-a", nb_id, "fit").content == r.content  # deterministic
     fit = plan["steps"][0]
     assert pkg["run"]["runId"] == fit["runId"] and pkg["run"]["verification"] == "executed-verified"
