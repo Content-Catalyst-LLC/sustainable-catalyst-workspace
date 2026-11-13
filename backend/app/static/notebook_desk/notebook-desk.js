@@ -201,7 +201,8 @@ async function save() {
     sourceNotebookId: nb.id, sourceProjectId: state.projectId, notebookTitle: nb.title, expectedRevision: expected,
     operationId: `${nb.id}-r${expected + 1}-${rid("o").slice(2)}`, clientUpdatedAt: new Date().toISOString(), notebook: nb });
   state.saved = data.item; state.dirty = false;
-  if (!state.notebooks.some(n => n.notebookId === nb.id)) await loadProject(); else renderNotebookList();
+  const listed = state.notebooks.find(n => n.notebookId === nb.id);
+  if (!listed) await loadProject(); else { Object.assign(listed, state.saved); renderNotebookList(); }
   history.replaceState(null, "", `${DESK}?project=${encodeURIComponent(state.projectId)}&notebook=${encodeURIComponent(nb.id)}`);
   await refreshStatus();
   notice(`Saved revision ${state.saved.revision}.`);
@@ -259,8 +260,11 @@ function render() {
   el("cells").replaceChildren(...nb.cells.map((c, i) => renderCell(c, i)));
   el("cells-empty").hidden = nb.cells.length > 0;
   const code = nb.cells.filter(c => c.type !== "markdown").map(c => [c.id, `${c.id} · ${c.title || c.language || c.type}`]);
-  options(el("cmp-a"), code, el("cmp-a").value || (code[0] || [])[0]);
-  options(el("cmp-b"), code, el("cmp-b").value || (code[1] || [])[0]);
+  const ids = code.map(([id]) => id);
+  const a = ids.includes(el("cmp-a").value) ? el("cmp-a").value : ids[0];
+  const b = ids.includes(el("cmp-b").value) && el("cmp-b").value !== a ? el("cmp-b").value : ids.find(id => id !== a);
+  options(el("cmp-a"), code, a);
+  options(el("cmp-b"), code, b);
   renderCellForm();
 }
 
