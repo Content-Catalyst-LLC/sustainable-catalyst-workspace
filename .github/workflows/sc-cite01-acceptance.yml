@@ -28,6 +28,10 @@ jobs:
           cache-dependency-path: |
             backend/requirements.txt
             backend/requirements-reporting.txt
+      - name: Install Cairo build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
       - name: Install test and Reporting Studio dependencies
         run: |
           python -m pip install -r requirements.txt -r requirements-reporting.txt pytest
