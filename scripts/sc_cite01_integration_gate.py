@@ -17,7 +17,7 @@ import secrets
 import sys
 from datetime import datetime, timezone
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, build_opener, HTTPRedirectHandler
 from urllib.error import HTTPError, URLError
 
 SCHEMA = "sc-cite01-live-integration/1.0"
@@ -63,6 +63,14 @@ def headers(name: str) -> dict:
     return {str(k): str(v) for k, v in data.items()}
 
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise RuntimeError("Redirect refused: live acceptance must stay on the staging origin")
+
+
+OPENER = build_opener(NoRedirect)
+
+
 def call(base: str, method: str, route: str, auth: dict | None = None, body=None,
          allowed=(200,)) -> tuple[int, dict]:
     data = json.dumps(body, separators=(",", ":")).encode() if body is not None else None
@@ -71,7 +79,7 @@ def call(base: str, method: str, route: str, auth: dict | None = None, body=None
                            **({"Content-Type": "application/json"} if body is not None else {}),
                            **(auth or {})})
     try:
-        with urlopen(req, timeout=20) as response:
+        with OPENER.open(req, timeout=20) as response:
             status = response.status
             payload = response.read(2_000_000)
     except HTTPError as exc:
