@@ -20,6 +20,8 @@ from xml.etree import ElementTree as ET
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 
@@ -29,6 +31,7 @@ from .db import session_scope
 from .schemas import ProjectStoreRequest
 from .wxr_private_projects import _subject, _write, _project, _locked_project, HEADERS
 from .reporting_project_catalog import read_legacy_artifacts
+from . import citation_studio as cite
 
 router = APIRouter(prefix='/publication', tags=['Scientific Publication Studio'])
 SCHEMA = 'sc-scientific-publication/1.0'
@@ -41,6 +44,7 @@ class Draft(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     markdown: str = Field(min_length=1, max_length=MAX_MANUSCRIPT)
     sourceArtifactId: str | None = Field(default=None, max_length=160)
+    citationStyle: Literal[cite.STYLES] = cite.DEFAULT_STYLE
 
 
 class Save(Draft):
@@ -366,11 +370,14 @@ def preview_document(project_id:str,body:Draft,request:Request):
     owner=_subject(request)
     with session_scope() as db:
         _project(db,owner,project_id)
+        row=_project(db,owner,project_id)
         if body.sourceArtifactId:_source_meta(db,owner,project_id,body.sourceArtifactId)
+        frozen=cite.freeze(body.markdown,cite.collection(row.package),body.citationStyle)
         path='/v1/private-research/reporting-studio/publication/projects/'+quote(project_id,safe='')
-        html,ids=render_html(body.markdown,lambda aid:path+'/assets/'+quote(aid,safe='')+'/svg')
+        html,ids=render_html(cite.resolve(body.markdown,frozen),lambda aid:path+'/assets/'+quote(aid,safe='')+'/svg')
         sources=_verify_figures(db,owner,project_id,ids)
     return JSONResponse({'html':html,'figures':sources,'sourceVerified':bool(body.sourceArtifactId),
+                         'citations':frozen,
                          'equations':'LaTeX source displayed, not mathematically executed',
                          'scientificValidationPerformed':False},headers=HEADERS)
 
@@ -407,7 +414,8 @@ def save_document(project_id:str,body:Save,request:Request):
         from datetime import datetime,timezone
         publication={'schema':SCHEMA,'documentId':document_id,'revision':version,
               'title':body.title.strip(),'markdown':body.markdown,'source':source,
-              'figureSources':figure_sources,'createdAt':datetime.now(timezone.utc).isoformat(),
+              'figureSources':figure_sources,'citations':cite.freeze(body.markdown,cite.collection(row.package),body.citationStyle),
+              'createdAt':datetime.now(timezone.utc).isoformat(),
               'projectRevision':row.revision+1,'markdownSHA256':hashlib.sha256(body.markdown.encode()).hexdigest(),
               'scientificStatus':'unreviewed','rightsStatus':'not-redistribution-approved',
               'computationsExecuted':False,'sourceBytesModified':False}
@@ -456,7 +464,7 @@ def open_document(project_id:str,document_id:str,request:Request,revision:int|No
 
 def _as_html(pub:dict,figures:dict|None=None) -> bytes:
     figures=figures or {}
-    body,_=render_html(pub['markdown'],lambda aid:figures.get(aid,''))
+    body,_=render_html(cite.resolve(pub['markdown'],pub.get('citations')),lambda aid:figures.get(aid,''))
     title=escape(pub['title'])
     css='''body{font:11pt/1.65 Georgia,serif;max-width:760px;margin:45px auto;color:#202b29;padding:0 18px}h1,h2,h3{font-family:Arial,sans-serif;color:#143b32}h1{font-size:26pt}h2{font-size:17pt;margin-top:28px}table{border-collapse:collapse;width:100%;font:9pt Arial}td,th{border:1px solid #b9c6c0;padding:7px;text-align:left}figure{text-align:center;margin:24px 0}figure img{max-width:100%}figcaption{font:9pt Arial;color:#526b63}pre{white-space:pre-wrap;background:#f3f6f4;padding:12px}.meta{font:9pt Arial;color:#526b63;border-bottom:1px solid #cedbd4;padding-bottom:16px}blockquote{border-left:3px solid #82a89c;padding-left:16px}'''
     meta=f'Saved version {pub["revision"]} · SHA-256 {pub["markdownSHA256"]} · Scientific content not independently verified'
@@ -485,7 +493,7 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
     out=BytesIO(); doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=48,leftMargin=48,topMargin=50,bottomMargin=48,title=pub['title'])
     story=[Paragraph(escape(pub['title']),styles['Title']),Spacer(1,10),
            Paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed',styles['SCCaption'])]
-    for block in parse_blocks(pub['markdown']):
+    for block in parse_blocks(cite.resolve(pub['markdown'],pub.get('citations'))):
         k=block['kind']
         if k=='heading':story.append(Paragraph(_pdf_inline(block['text']),styles['Heading1' if block['level']<=2 else 'Heading2']))
         elif k=='paragraph':story.append(Paragraph(_pdf_inline(block['text']),styles['SCBody']))
@@ -538,7 +546,7 @@ def _docx(pub:dict,figure_bytes:dict[str,bytes]):
     from docx.shared import Inches,Pt
     doc=Document(); doc.add_heading(pub['title'],0)
     doc.add_paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed')
-    for block in parse_blocks(pub['markdown']):
+    for block in parse_blocks(cite.resolve(pub['markdown'],pub.get('citations'))):
         k=block['kind']
         if k=='heading':doc.add_heading(block['text'],level=min(block['level'],4))
         elif k=='paragraph':_docx_rich(doc,block['text'])
@@ -597,3 +605,27 @@ def export_publication(project_id:str,document_id:str,format:str,request:Request
     return Response(data,media_type=media,headers={**HEADERS,'Content-Disposition':f'attachment; filename="{filename}"',
                 'X-Publication-Revision-SHA256':pub['markdownSHA256'],
                 'Content-Security-Policy':"sandbox" if format=='html' else "default-src 'none'"})
+
+
+# SC-CITE-01: Citation Studio, with this Studio's owner, origin and project-revision gates.
+def _store_collection(db, owner, row, project, operation):
+    payload=ProjectStoreRequest.model_validate({'schema':'sc-workspace-sync-push/1.0','sourceProjectId':row.project_id,
+       'projectTitle':row.title,'expectedRevision':row.revision,'operationId':operation,'project':project})
+    updated,_=repository.store_project(db,owner,payload)
+    return updated
+
+
+def _library_record(record_id:str)->dict:
+    from .library_discovery_v3841 import verified_public_reference,_fetch
+    verified_public_reference(record_id)  # published, public, complete provenance; otherwise 404/502/503
+    return _fetch('/api/library/v1/research-objects/'+quote(record_id,safe=''),{'include_body':'false'})
+
+
+def _library_search(q:str)->dict:
+    from .library_discovery_v3841 import discover
+    return discover(q)
+
+
+router.include_router(cite.build_router({'subject':_subject,'write':_write,'project':_project,
+    'locked_project':_locked_project,'original_asset':_original_asset,'store':_store_collection,'session':session_scope,
+    'headers':HEADERS,'library_record':_library_record,'library_search':_library_search}))
