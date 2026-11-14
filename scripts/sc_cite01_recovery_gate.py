@@ -68,6 +68,8 @@ def verify_tar(path):
             name = PurePosixPath(entry.name)
             if name.is_absolute() or ".." in name.parts:
                 fail("Data archive includes unsafe paths")
+            if entry.issym() or entry.islnk():
+                fail("Data archive contains a link; manual security review required")
             if entry.isfile():
                 count += 1
     if count < 1:
