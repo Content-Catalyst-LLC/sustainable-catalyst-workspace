@@ -275,7 +275,8 @@ def in_text(item: dict, style: str = DEFAULT_STYLE, locator: str = '') -> str:
     amp = '&' if style == 'apa' else 'and'
     label = names[0] if len(names) == 1 else f'{names[0]} {amp} {names[1]}' if len(names) == 2 else names[0] + ' et al.'
     year = str(item['year']) if item['year'] else 'n.d.'
-    loc = ', ' + locator.strip() if locator.strip() else ''
+    locator = (locator or '').strip()
+    loc = ', ' + locator if locator else ''
     return f'({label}, {year}{loc})'
 
 

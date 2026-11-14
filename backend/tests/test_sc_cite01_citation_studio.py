@@ -106,6 +106,20 @@ def test_harvard_and_apa_formatting_of_imported_records():
     assert cite.reference(beerling, 'apa').startswith('Beerling, D. J., Kantzas, E. P., & Lomas, M. R. (2020). Potential')
 
 
+def test_ris_and_verified_json_exports_of_one_work_give_the_same_key_and_reference():
+    ris = [cite.make_item(f, p) for f, p in cite.parse_reference_file('references.ris', RIS.encode())]
+    verified = [cite.make_item(f, p) for f, p in cite.parse_reference_file('references-verified.json', json.dumps([{
+        'doi': '10.1073/pnas.2319436121',
+        'title': 'Enhanced weathering in the US Corn Belt delivers carbon removal with agronomic benefits',
+        'authors': [{'given': 'David J.', 'family': 'Beerling'}, {'given': 'Dimitar Z.', 'family': 'Epihov'}],
+        'journal': ['Proceedings of the National Academy of Sciences'], 'volume': '121',
+        'published': {'date-parts': [[2024]]}, 'metadata_url': 'https://api.crossref.org/works/y', 'verified_utc': 't',
+    }]).encode())]
+    assert ris[0]['key'] == verified[0]['key'] == 'beerling2024enhanced'
+    assert cite.reference(ris[0]) == cite.reference(verified[0])
+    assert cite.in_text(ris[0], 'harvard', None) == '(Beerling and Epihov, 2024)'
+
+
 def test_markers_resolve_to_in_text_citations_and_a_sorted_reference_list():
     current = _wexford_collection()
     b, c = (x['key'] for x in current['items'])
