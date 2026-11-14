@@ -17,6 +17,7 @@ from copy import deepcopy
 import hashlib
 import json
 import re
+import unicodedata
 from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -36,6 +37,10 @@ KEY = re.compile(r'^[A-Za-z0-9_.:-]{1,80}$')
 # One marker holds one or more ``@key`` cites, each with an optional locator: [@a2020], [@a2020, p. 4; @b2021].
 MARKER = re.compile(r'\[(@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?(?:;\s*@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?)*)\]')
 SITE_AUTHORS = {'wordpress-main': 'Sustainable Catalyst'}  # Library sources whose organisational author is known
+MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November',
+          'December')
+# Provenance a CSL-JSON row may carry in ``custom`` when its metadata was checked against the publisher's own catalog.
+CATALOG_PROVENANCE = ('metadataUrl', 'metadataVerifiedAt', 'catalogUrl', 'license', 'contentSha256', 'retrievedUtc')
 
 
 def _clean(value: Any, limit: int = 600) -> str:
@@ -116,6 +121,23 @@ def _year(value: Any) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _date_text(value: Any) -> str:
+    """A CSL date (``date-parts`` or literal) as written in a reference: ``22 October 2026``. Missing parts stay missing."""
+    if isinstance(value, dict):
+        if value.get('literal'):
+            return _clean(value['literal'], 40)
+        parts = (value.get('date-parts') or [[]])[0] or []
+        try:
+            nums = [int(x) for x in parts[:3]]
+        except (TypeError, ValueError):
+            return ''
+        if not nums or not 1500 <= nums[0] <= 2199 or any(not 1 <= n <= 12 for n in nums[1:2]):
+            return ''
+        return ' '.join(([str(nums[2])] if len(nums) > 2 else []) + ([MONTHS[nums[1] - 1]] if len(nums) > 1 else [])
+                        + [str(nums[0])])
+    return _clean(value, 40)
+
+
 def item_fingerprint(item: dict) -> str:
     basis = {k: item.get(k) for k in ('type', 'authors', 'year', 'title', 'container', 'volume', 'issue', 'pages',
                                       'publisher', 'doi', 'url', 'accessed')}
@@ -142,6 +164,7 @@ def base_key(item: dict) -> str:
     first = item['authors'][0] if item['authors'] else {}
     name = first.get('family') or first.get('literal') or 'anon'
     word = next((w for w in re.findall(r'[A-Za-z]+', item['title']) if len(w) > 3), 'work')
+    name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode()  # Éireann -> Eireann, not ireann
     raw = re.sub(r'[^A-Za-z0-9]', '', name)[:30].lower() + str(item['year'] or 'nd') + word.lower()[:12]
     return raw or 'ref'
 
@@ -161,12 +184,25 @@ def from_crossref_verified(rows: list) -> list[dict]:
     return out
 
 
+def _csl_provenance(row: dict) -> dict:
+    custom = row.get('custom') if isinstance(row.get('custom'), dict) else {}
+    checked = custom.get('metadataAuthority') == 'publisher-catalog' and _url(custom.get('metadataUrl'))
+    out = {'metadataAuthority': 'publisher-catalog' if checked else 'csl-json'}
+    if checked:
+        out.update({k: _clean(custom.get(k), 2000) for k in CATALOG_PROVENANCE if custom.get(k)})
+    if row.get('ISBN'):
+        out['isbn'] = _clean(row['ISBN'], 40)
+    return out
+
+
 def from_csl(rows: list) -> list[dict]:
-    """CSL-JSON, as exported by the Knowledge Library citation workspace."""
+    """CSL-JSON, as exported by the Knowledge Library citation workspace or written from a publisher's catalog
+    record (``custom.metadataAuthority = 'publisher-catalog'`` with the catalog URL it was checked against)."""
     return [({'type': r.get('type'), 'authors': r.get('author') or [], 'year': r.get('issued'), 'title': r.get('title'),
               'container': r.get('container-title'), 'volume': r.get('volume'), 'issue': r.get('issue'),
-              'pages': r.get('page'), 'publisher': r.get('publisher'), 'doi': r.get('DOI'), 'url': r.get('URL')},
-             {'metadataAuthority': 'csl-json'}) for r in rows]
+              'pages': r.get('page'), 'publisher': r.get('publisher'), 'doi': r.get('DOI'), 'url': r.get('URL'),
+              'accessed': _date_text(r.get('accessed'))},
+             _csl_provenance(r)) for r in rows]
 
 
 def from_erw_v132(rows: list) -> list[dict]:
