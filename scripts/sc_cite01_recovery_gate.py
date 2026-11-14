@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import subprocess
 import sys
 import tarfile
@@ -37,7 +38,7 @@ def run(argv, *, stdin=None, stdout=subprocess.PIPE):
 
 def ssh(*args, stdin=None, stdout=subprocess.PIPE):
     return run(["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
-                TARGET, *args], stdin=stdin, stdout=stdout)
+                TARGET, " ".join(shlex.quote(str(arg)) for arg in args)], stdin=stdin, stdout=stdout)
 
 
 def digest(path):
