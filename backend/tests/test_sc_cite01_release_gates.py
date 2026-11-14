@@ -68,6 +68,7 @@ def test_python_and_bash_release_scripts_parse():
                  "sc_cite01_verify_receipts.py"):
         source = (SCRIPTS / name).read_text()
         compile(source, str(SCRIPTS / name), "exec")
-    out = subprocess.run(["bash", "-n", str(SCRIPTS / "sc_cite01_release.sh")],
-                         capture_output=True)
-    assert out.returncode == 0, out.stderr.decode()
+    for name in ("sc_cite01_release.sh", "sc_cite01_operator.sh"):
+        out = subprocess.run(["bash", "-n", str(SCRIPTS / name)],
+                             capture_output=True)
+        assert out.returncode == 0, out.stderr.decode()
