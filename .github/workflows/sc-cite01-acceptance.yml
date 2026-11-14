@@ -16,6 +16,20 @@ jobs:
   synthetic-acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cite01
+          POSTGRES_PASSWORD: synthetic-only
+          POSTGRES_DB: cite01_acceptance
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cite01 -d cite01_acceptance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -39,12 +53,15 @@ jobs:
       - name: Existing Citation Studio regressions and synthetic full-route workflow
         env:
           PYTHONDONTWRITEBYTECODE: '1'
+          SC_CITE01_DISPOSABLE_POSTGRES: I_UNDERSTAND_THIS_IS_SYNTHETIC
+          SC_CITE01_POSTGRES_URL: postgresql://cite01:synthetic-only@127.0.0.1:5432/cite01_acceptance
         run: |
           python -m pytest -q \
             tests/test_sc_cite01_citation_studio.py \
-            tests/test_sc_cite01_synthetic_workflow.py
+            tests/test_sc_cite01_synthetic_workflow.py \
+            tests/test_sc_cite01_postgres_contract.py
       - name: Scope and deployment warning
         run: |
-          echo 'This workflow covers offline synthetic route tests only.'
+          echo 'This workflow covers synthetic route tests and a disposable PostgreSQL adapter only.'
           echo 'It does NOT certify PostgreSQL persistence, Research editorial integration,'
           echo 'off-host recovery or production cutover.'
