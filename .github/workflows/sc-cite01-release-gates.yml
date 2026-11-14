@@ -4,6 +4,8 @@ on:
     paths:
       - scripts/sc_cite01_*.py
       - scripts/sc_cite01_release.sh
+      - scripts/sc_cite01_operator.sh
+      - docs/releases/SC-CITE-01-OPERATIONAL-RELEASE.md
       - backend/tests/test_sc_cite01_release_gates.py
       - .github/workflows/sc-cite01-release-gates.yml
   workflow_dispatch:
