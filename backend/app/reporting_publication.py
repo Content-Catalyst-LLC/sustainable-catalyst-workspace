@@ -221,7 +221,30 @@ SVG_ATTRS={'width','height','viewBox','x','y','x1','y1','x2','y2','cx','cy','r',
 SVG_NS='http://www.w3.org/2000/svg'
 
 
+# Matplotlib writes the standard SVG 1.1 PUBLIC doctype. DTDs, external entities and internal subsets are never
+# resolved: only that exact declaration, at the start of the document, is dropped from the in-memory rendering copy
+# before the sanitizer below. Stored source bytes and their SHA-256 are never modified.
+_SVG11_DOCTYPE = re.compile(
+    rb'\A(?P<before>(?:\xef\xbb\xbf)?[ \t\r\n]*(?:<\?xml[ \t]+[^<>]{1,250}\?>[ \t\r\n]*)?)'
+    rb'(?P<doctype><!DOCTYPE[ \t\r\n]+svg[ \t\r\n]+PUBLIC[ \t\r\n]+'
+    rb'(?P<quote>["\x27])-//W3C//DTD SVG 1\.1//EN(?P=quote)[ \t\r\n]+'
+    rb'(?P<urlquote>["\x27])https?://www\.w3\.org/Graphics/SVG/1\.1/DTD/svg11\.dtd(?P=urlquote)[ \t\r\n]*>)',
+    re.IGNORECASE,
+)
+
+
+def _strip_known_svg_doctype(raw: bytes) -> bytes:
+    """Remove only an official SVG 1.1 PUBLIC declaration; every other doctype or entity stays refused."""
+    if b'<!DOCTYPE' not in raw.upper():
+        return raw
+    match = _SVG11_DOCTYPE.match(raw)
+    if b'<!ENTITY' in raw.upper() or match is None:
+        raise HTTPException(422,'SVG document type declarations not allowed.')
+    return raw[:match.start('doctype')] + raw[match.end('doctype'):]
+
+
 def sanitize_svg(raw: bytes) -> bytes:
+    raw = _strip_known_svg_doctype(raw)
     if b'<!DOCTYPE' in raw.upper() or b'<!ENTITY' in raw.upper():
         raise HTTPException(422,'SVG document type declarations not allowed.')
     try: root=ET.fromstring(raw)
