@@ -645,13 +645,13 @@ def research_sections(markdown: str, title: str) -> tuple[list[dict], int]:
 def research_revision(project_id: str, pub: dict, publication_type: str, summary: str = '') -> dict:
     if publication_type not in RESEARCH_PUBLICATION_TYPES:
         raise HTTPException(422,'Choose a publication type: '+', '.join(RESEARCH_PUBLICATION_TYPES)+'.')
-    body = cite.resolve(pub['markdown'], pub.get('citations'), references=False)
-    sections, figures = research_sections(body, pub['title'])
+    # Markers stay in the text so the revision remains editable; the bibliography carries what each one renders as.
+    sections, figures = research_sections(pub['markdown'], pub['title'])
     publication = {'type': publication_type, 'derivedFrom': [{
         'relation': 'derived-from', 'kind': 'workspace-studio-revision', 'workspaceProjectId': project_id,
         'documentId': pub['documentId'], 'revision': pub['revision'], 'documentSha256': pub['markdownSHA256'],
         'label': f"Reporting Studio revision {pub['revision']}"}]}
-    bibliography = cite.bibliography_record(pub.get('citations'))
+    bibliography = cite.bibliography_record(pub.get('citations'), [s['body'] for s in sections])
     if bibliography:
         publication['bibliography'] = bibliography
     return {'schema': 'sc-studio-research-revision/1.0', 'title': pub['title'], 'summary': summary,

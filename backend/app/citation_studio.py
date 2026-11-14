@@ -17,7 +17,7 @@ from copy import deepcopy
 import hashlib
 import json
 import re
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -397,38 +397,68 @@ def freeze(markdown: str, current: dict, style: str) -> dict | None:
             'unresolved': [k for k in keys if k not in found]}
 
 
+def render_marker(m: re.Match, found: dict, style: str) -> str | None:
+    """The in-text citation for one ``[@key, locator; @key2]`` marker; None if any key is not in ``found``."""
+    parts = []
+    for part in m.group(1).split(';'):
+        key, _, loc = part.strip().lstrip('@').partition(',')
+        item = found.get(key.strip())
+        if item is None:
+            return None
+        parts.append(in_text(item, style, loc))
+    return parts[0] if len(parts) == 1 else '(' + '; '.join(p[1:-1] for p in parts) + ')'
+
+
 def resolve(markdown: str, frozen: dict | None, references: bool = True) -> str:
     """Replace markers with in-text citations and append the reference list (unless ``references`` is False, when the
     list travels separately). Text without citations is unchanged."""
     if not frozen or not frozen.get('items'):
         return markdown
     style, found = frozen['style'], {x['key']: x for x in frozen['items']}
-
-    def one(m):
-        parts = []
-        for part in m.group(1).split(';'):
-            key, _, loc = part.strip().lstrip('@').partition(',')
-            item = found.get(key.strip())
-            if item is None:
-                return m.group(0)  # unresolved markers stay visible
-            parts.append(in_text(item, style, loc))
-        return parts[0] if len(parts) == 1 else '(' + '; '.join(p[1:-1] for p in parts) + ')'
-    body = MARKER.sub(one, markdown)
+    body = MARKER.sub(lambda m: render_marker(m, found, style) or m.group(0), markdown)  # unresolved stay visible
     if not references:
         return body
     refs = sorted(frozen['items'], key=sort_key)
     return body.rstrip() + '\n\n## References\n\n' + '\n\n'.join(reference(x, style) for x in refs) + '\n'
 
 
-def bibliography_record(frozen: dict | None) -> dict | None:
-    """A frozen bibliography as formatted text (sc-publication-bibliography/1.0), for systems that do not format
-    citations themselves, such as Research editorial. Provenance and private source ids stay in Workspace."""
+def _library(item: dict) -> dict | None:
+    prov = item.get('provenance') or {}
+    if prov.get('metadataAuthority') != 'knowledge-library' or not prov.get('libraryRecordId'):
+        return None
+    return {'recordId': prov['libraryRecordId'], 'revision': prov.get('libraryRevision') or '',
+            'contentSha256': prov.get('libraryContentSha256') or ''}
+
+
+def bibliography_record(frozen: dict | None, texts: Iterable[str] = ()) -> dict | None:
+    """A frozen bibliography as formatted text (sc-publication-bibliography/1.0), for editors that do not format
+    citations themselves (Research editorial and the Research Console). ``markers`` maps every citation marker in
+    ``texts`` to the in-text string rendered here, so those editors keep markers editable and substitute exactly
+    what Workspace rendered. Library provenance travels with each item; private source ids stay in Workspace."""
     if not frozen or not frozen.get('items'):
         return None
-    style = frozen['style']
+    style, found = frozen['style'], {x['key']: x for x in frozen['items']}
+    markers = {}
+    for text in texts:
+        for m in MARKER.finditer(text):
+            rendered = render_marker(m, found, style)
+            if rendered:
+                markers[m.group(0)] = rendered
+    items = []
+    for x in sorted(frozen['items'], key=sort_key):
+        item = {'key': x['key'], 'reference': reference(x, style), 'inText': in_text(x, style), 'doi': x.get('doi') or ''}
+        if _library(x):
+            item['library'] = _library(x)
+        items.append(item)
     return {'schema': FROZEN_SCHEMA, 'style': style, 'unresolved': list(frozen.get('unresolved') or []),
-            'items': [{'key': x['key'], 'reference': reference(x, style), 'inText': in_text(x, style),
-                       'doi': x.get('doi') or ''} for x in sorted(frozen['items'], key=sort_key)]}
+            'items': items, 'markers': markers}
+
+
+def snapshot(sections: list[dict], current: dict, style: str) -> dict | None:
+    """The bibliography snapshot an editor stores with one publication revision: the cited works of these sections,
+    frozen from the project's collection, with every marker rendered."""
+    texts = [str(s.get('body') or '') for s in sections]
+    return bibliography_record(freeze('\n\n'.join(texts), current, style), texts)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -444,6 +474,18 @@ class ImportLibrary(BaseModel):
     model_config = ConfigDict(extra='forbid')
     recordId: str = Field(min_length=1, max_length=240)
     expectedProjectRevision: int = Field(ge=1)
+
+
+class SnapshotSection(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    heading: str = Field(default='', max_length=300)
+    body: str = Field(default='', max_length=200_000)
+
+
+class SnapshotRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    sections: list[SnapshotSection] = Field(min_length=1, max_length=40)
+    style: str = DEFAULT_STYLE
 
 
 class FormatRequest(BaseModel):
@@ -522,6 +564,20 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
             items = collection(deps['project'](db, owner, project_id).package)['items']
         chosen = [x for x in items if not body.keys or x['key'] in body.keys]
         return JSONResponse({'style': body.style, 'references': [reference(x, body.style) for x in sorted(chosen, key=sort_key)]},
+                            headers=H)
+
+    @router.post('/projects/{project_id}/snapshot')
+    def snapshot_route(project_id: str, body: SnapshotRequest, request: Request):
+        """Read-only: used by Research editorial and the Research Console with the owner's session (CORS-limited to
+        the configured Research Console origins). Nothing is stored in Workspace; the snapshot is stored with the
+        Research revision it belongs to."""
+        owner = deps['subject'](request)
+        if body.style not in STYLES:
+            raise HTTPException(422, 'Unknown citation style.')
+        with deps['session']() as db:
+            current = collection(deps['project'](db, owner, project_id).package)
+        sections = [s.model_dump() for s in body.sections]
+        return JSONResponse({'schema': 'sc-citation-snapshot/1.0', 'bibliography': snapshot(sections, current, body.style)},
                             headers=H)
 
     return router
