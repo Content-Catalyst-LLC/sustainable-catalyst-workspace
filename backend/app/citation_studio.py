@@ -397,8 +397,9 @@ def freeze(markdown: str, current: dict, style: str) -> dict | None:
             'unresolved': [k for k in keys if k not in found]}
 
 
-def resolve(markdown: str, frozen: dict | None) -> str:
-    """Replace markers with in-text citations and append the reference list. Text without citations is unchanged."""
+def resolve(markdown: str, frozen: dict | None, references: bool = True) -> str:
+    """Replace markers with in-text citations and append the reference list (unless ``references`` is False, when the
+    list travels separately). Text without citations is unchanged."""
     if not frozen or not frozen.get('items'):
         return markdown
     style, found = frozen['style'], {x['key']: x for x in frozen['items']}
@@ -413,8 +414,21 @@ def resolve(markdown: str, frozen: dict | None) -> str:
             parts.append(in_text(item, style, loc))
         return parts[0] if len(parts) == 1 else '(' + '; '.join(p[1:-1] for p in parts) + ')'
     body = MARKER.sub(one, markdown)
+    if not references:
+        return body
     refs = sorted(frozen['items'], key=sort_key)
     return body.rstrip() + '\n\n## References\n\n' + '\n\n'.join(reference(x, style) for x in refs) + '\n'
+
+
+def bibliography_record(frozen: dict | None) -> dict | None:
+    """A frozen bibliography as formatted text (sc-publication-bibliography/1.0), for systems that do not format
+    citations themselves, such as Research editorial. Provenance and private source ids stay in Workspace."""
+    if not frozen or not frozen.get('items'):
+        return None
+    style = frozen['style']
+    return {'schema': FROZEN_SCHEMA, 'style': style, 'unresolved': list(frozen.get('unresolved') or []),
+            'items': [{'key': x['key'], 'reference': reference(x, style), 'inText': in_text(x, style),
+                       'doi': x.get('doi') or ''} for x in sorted(frozen['items'], key=sort_key)]}
 
 
 # ---------------------------------------------------------------------------------------------------------------

@@ -607,6 +607,68 @@ def export_publication(project_id:str,document_id:str,format:str,request:Request
                 'Content-Security-Policy':"sandbox" if format=='html' else "default-src 'none'"})
 
 
+# UCD-RESEARCH-01: Studio -> Research bridge. Read-only: it states an exact saved revision as a Research editorial
+# revision payload, which the owner then submits to Research with their own signed session. Nothing is sent from here.
+RESEARCH_PUBLICATION_TYPES = ('report','working-paper','policy-brief','interactive-analysis')
+RESEARCH_MAX_SECTIONS = 40
+FIGURE_LINE = re.compile(r'^!\[([^\]]{0,160})\]\(asset:[A-Za-z0-9_.-]{1,160}\)$')
+
+
+def research_sections(markdown: str, title: str) -> tuple[list[dict], int]:
+    """Split at level-1/2 headings. Workspace figures are not carried: they reach Research only as pinned, released
+    figure objects, so each one is replaced by a visible placeholder and counted."""
+    sections, heading, body, figures = [], None, [], 0
+    for line in markdown.replace('\r\n','\n').replace('\r','\n').split('\n'):
+        match = re.match(r'^(#{1,2})\s+(.*\S)\s*$', line)
+        if match:
+            if heading is not None or ''.join(body).strip():
+                sections.append({'heading': heading or 'Overview', 'body': '\n'.join(body).strip()})
+            heading, body = match.group(2)[:300], []
+            continue
+        figure = FIGURE_LINE.fullmatch(line.strip())
+        if figure:
+            figures += 1
+            line = f'*[Figure: {figure.group(1) or "untitled"}. Not yet released to Research.]*'
+        body.append(line)
+    if heading is not None or ''.join(body).strip():
+        sections.append({'heading': heading or 'Overview', 'body': '\n'.join(body).strip()})
+    if sections and sections[0]['heading'] == title:  # the manuscript's own title line; Research holds the title
+        sections = sections[1:] if not sections[0]['body'] else [{**sections[0], 'heading': 'Overview'}, *sections[1:]]
+    if not sections:
+        raise HTTPException(422,'The manuscript has no text to submit.')
+    if len(sections) > RESEARCH_MAX_SECTIONS:
+        raise HTTPException(422,f'Research articles hold at most {RESEARCH_MAX_SECTIONS} sections; '
+                                'merge sections before submitting.')
+    return sections, figures
+
+
+def research_revision(project_id: str, pub: dict, publication_type: str, summary: str = '') -> dict:
+    if publication_type not in RESEARCH_PUBLICATION_TYPES:
+        raise HTTPException(422,'Choose a publication type: '+', '.join(RESEARCH_PUBLICATION_TYPES)+'.')
+    body = cite.resolve(pub['markdown'], pub.get('citations'), references=False)
+    sections, figures = research_sections(body, pub['title'])
+    publication = {'type': publication_type, 'derivedFrom': [{
+        'relation': 'derived-from', 'kind': 'workspace-studio-revision', 'workspaceProjectId': project_id,
+        'documentId': pub['documentId'], 'revision': pub['revision'], 'documentSha256': pub['markdownSHA256'],
+        'label': f"Reporting Studio revision {pub['revision']}"}]}
+    bibliography = cite.bibliography_record(pub.get('citations'))
+    if bibliography:
+        publication['bibliography'] = bibliography
+    return {'schema': 'sc-studio-research-revision/1.0', 'title': pub['title'], 'summary': summary,
+            'sections': sections, 'references': [], 'publication': publication,
+            'changeSummary': f"From Reporting Studio revision {pub['revision']} ({pub['markdownSHA256'][:12]})",
+            'notCarried': {'figures': figures, 'unresolvedCitations': list((pub.get('citations') or {}).get('unresolved') or []),
+                           'scientificStatus': pub.get('scientificStatus'), 'rightsStatus': pub.get('rightsStatus')}}
+
+
+@router.get('/projects/{project_id}/documents/{document_id}/research-revision')
+def research_revision_route(project_id:str,document_id:str,request:Request,revision:int,publicationType:str):
+    owner=_subject(request)
+    with session_scope() as db:
+        _,pub=_saved(db,owner,project_id,document_id,revision)
+    return JSONResponse(research_revision(project_id,pub,publicationType),headers=HEADERS)
+
+
 # SC-CITE-01: Citation Studio, with this Studio's owner, origin and project-revision gates.
 def _store_collection(db, owner, row, project, operation):
     payload=ProjectStoreRequest.model_validate({'schema':'sc-workspace-sync-push/1.0','sourceProjectId':row.project_id,
