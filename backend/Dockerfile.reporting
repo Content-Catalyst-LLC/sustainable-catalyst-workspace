@@ -1,0 +1,24 @@
+# RD-01.2 Reporting Studio: the Workspace backend plus the Studio's export and typesetting dependencies, served by
+# app.reporting_production_entry. Recovered from the deployed sc-reporting-rd012 image layers; schema stays with the
+# Workspace backend, so this image never runs init_db.
+FROM node:26.12.1-slim AS node
+
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SC_WORKSPACE_REPORTING_STUDIO_ENABLED=1
+WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+COPY requirements.txt requirements-reporting.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-reporting.txt && python -m pip check
+COPY reporting_math/package.json reporting_math/package-lock.json ./reporting_math/
+RUN cd reporting_math && node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci --omit=dev --ignore-scripts \
+    && rm -rf /usr/local/lib/node_modules/npm /root/.npm
+COPY reporting_math ./reporting_math
+COPY app ./app
+COPY migrations ./migrations
+RUN test -s reporting_math/heatmap.cjs && node --version
+EXPOSE 8089
+CMD ["uvicorn", "app.reporting_production_entry:app", "--host", "0.0.0.0", "--port", "8089", "--proxy-headers", "--forwarded-allow-ips=*"]
