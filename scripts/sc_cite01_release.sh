@@ -31,6 +31,10 @@ BASELINE="$(live_state)" || die 'Cannot inspect live Studio'
 [[ "$BASELINE" == *'sc-workspace-reporting:prod-5e354cba'* ]] ||
   die 'Live Studio changed since release plan; new baseline acceptance required'
 health || die 'Production Studio unhealthy before cutover'
+# A Studio cutover alone is not a full Citation Studio release. Require the
+# production Research API to load the frozen-bibliography editorial contract.
+ssh_do "docker exec rhprod02-research-research-api-1 python -c 'from app import editorial as e; assert getattr(e, \"BIBLIOGRAPHY_SCHEMA\", None) == \"sc-publication-bibliography/1.0\"'" ||
+  die 'Research production does not have the required frozen-bibliography contract; deploy Research separately first'
 IMAGE_ID="$(ssh_do "docker image inspect '$IMAGE' --format '{{.Id}}'")" ||
   die 'Expected candidate image is not on Contabo'
 [[ "$IMAGE_ID" == sha256:* ]] || die 'Candidate image identifier invalid'
