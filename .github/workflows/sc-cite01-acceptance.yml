@@ -1,0 +1,67 @@
+name: SC-CITE-01 Citation Studio acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/citation_studio.py'
+      - 'backend/app/reporting_publication.py'
+      - 'backend/tests/test_sc_cite01_*.py'
+      - '.github/workflows/sc-cite01-acceptance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: cite01
+          POSTGRES_PASSWORD: synthetic-only
+          POSTGRES_DB: cite01_acceptance
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cite01 -d cite01_acceptance"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-reporting.txt
+      - name: Install Cairo build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
+      - name: Install test and Reporting Studio dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-reporting.txt pytest
+          python -m pip check
+      - name: Existing Citation Studio regressions and synthetic full-route workflow
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          SC_CITE01_DISPOSABLE_POSTGRES: I_UNDERSTAND_THIS_IS_SYNTHETIC
+          SC_CITE01_POSTGRES_URL: postgresql://cite01:synthetic-only@127.0.0.1:5432/cite01_acceptance
+        run: |
+          python -m pytest -q \
+            tests/test_sc_cite01_citation_studio.py \
+            tests/test_sc_cite01_synthetic_workflow.py \
+            tests/test_sc_cite01_postgres_contract.py
+      - name: Scope and deployment warning
+        run: |
+          echo 'This workflow covers synthetic route tests and a disposable PostgreSQL adapter only.'
+          echo 'It does NOT certify PostgreSQL persistence, Research editorial integration,'
+          echo 'off-host recovery or production cutover.'
