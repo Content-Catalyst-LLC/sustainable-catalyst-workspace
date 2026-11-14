@@ -48,9 +48,15 @@ async function selectProject(id){
     const pos=textarea.selectionStart;textarea.setRangeText(snippet,pos,textarea.selectionEnd,'end');markDirty();await preview();});
    row.append(insert);
   }
+  if(/\.(ris|json)$/i.test(file.filename)&&/(^|\/)[^/]*(ref|bib|citation)[^/]*$/i.test(file.filename)){
+   const imp=document.createElement('button');imp.textContent='Import references';
+   imp.onclick=run(async()=>{await citeImport('/import-source',{sourceArtifactId:file.artifactId});});
+   row.append(imp);
+  }
   if(file.downloadUrl){const a=document.createElement('a');a.href=file.downloadUrl;a.textContent='Original';a.setAttribute('download','');a.style.fontSize='11px';row.append(a)}
   container.append(row);E('assets').append(container);
  }
+ await loadCitations();
  const docs=await api(path('/documents'));
  await renderHistoryButtons(docs.documents);
  if(!docs.documents.length){const p=document.createElement('div');p.className='empty';p.textContent='No saved publications yet.';E('versions').append(p)}
@@ -66,7 +72,7 @@ async function selectProject(id){
   }else{setDraft(state.catalog.project.title,'# Introduction\n\n',null);await preview();status('New publication draft. Existing research files remain available in the asset panel.')}
  }
 }
-function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId}}
+function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId,citationStyle:E('citeStyle').value}}
 async function preview(){
  if(!state.project)return;
  const data=await api(path('/preview'),manuscript());
@@ -127,6 +133,49 @@ E('title').addEventListener('input',markDirty);E('manuscript').addEventListener(
 E('new').onclick=run(async()=>{if(!state.project)throw Error('Select a project');setDraft(state.catalog.project.title,'# Introduction\n\n',null);await preview();status('Blank publication draft opened. Existing source material remains preserved.')});
 E('previewButton').onclick=run(async()=>{await preview();status('Publication preview updated. Research source hashes verified where used.')});
 E('save').onclick=run(save);
+// SC-CITE-01 Citation Studio: project citation collection, Library sources, [@key] insertion and reference lists.
+function citePath(s){return pub+'/citations/projects/'+encodeURIComponent(state.project)+s}
+function citeRow(label,detail,buttonText,onclick){
+ const box=document.createElement('div');box.className='asset';
+ const b=document.createElement('b');b.textContent=label;const small=document.createElement('small');small.textContent=detail;
+ const row=document.createElement('div');row.className='asset-row';const button=document.createElement('button');
+ button.textContent=buttonText;button.onclick=run(onclick);row.append(button);box.append(b,small,row);return box;
+}
+function renderCitations(collection){
+ state.citations=collection.items;E('citeList').replaceChildren();
+ if(!collection.items.length){const p=document.createElement('div');p.className='empty';p.textContent='No citations in this project yet.';E('citeList').append(p);return}
+ const style=E('citeStyle').value;
+ for(const item of collection.items){
+  const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
+  E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
+   const t=E('manuscript');t.setRangeText('[@'+item.key+']',t.selectionStart,t.selectionEnd,'end');markDirty();await preview();
+   status('Citation '+item.key+' inserted. The reference list is generated from saved project records.');}));
+ }
+}
+async function loadCitations(){
+ const c=await api(citePath(''));renderCitations(c);return c;
+}
+async function citeImport(suffix,body){
+ const head=await api(base+'/catalog/projects/'+encodeURIComponent(state.project));
+ if(state.projectRevision!==undefined&&state.projectRevision!==head.project.revision)throw Error('Project changed since loading. Reopen it before importing citations.');
+ const r=await api(citePath(suffix),{...body,expectedProjectRevision:head.project.revision});
+ state.projectRevision=r.projectRevision;renderCitations(r);E('citeStudio').hidden=false;
+ status('Citations: '+r.import.added.length+' added, '+r.import.reused.length+' already in the project'+(r.import.rejected.length?', '+r.import.rejected.length+' rejected':'')+'.');
+}
+E('citeOpen').onclick=run(async()=>{const open=E('citeStudio').hidden;E('citeStudio').hidden=!open;E('citeOpen').setAttribute('aria-expanded',String(open));if(open&&state.project)await loadCitations()});
+E('citeStyle').onchange=run(async()=>{if(state.project){await loadCitations();await preview()}});
+E('citeSearch').onclick=run(async()=>{
+ const q=E('citeQuery').value.trim();if(q.length<2)throw Error('Enter at least two characters');
+ const r=await api(pub+'/citations/library/search?q='+encodeURIComponent(q));E('citeResults').replaceChildren();
+ for(const ref of r.items)E('citeResults').append(citeRow(ref.title,ref.canonicalUrl+' · revision '+ref.revision,'Add to project',async()=>{await citeImport('/import-library',{recordId:ref.libraryObjectId})}));
+ if(!r.items.length){const p=document.createElement('div');p.className='empty';p.textContent='No verified public Library records found.';E('citeResults').append(p)}
+});
+E('citeBibButton').onclick=run(async()=>{
+ const keys=[...E('manuscript').value.matchAll(/@([A-Za-z0-9_.:-]{1,80})/g)].map(m=>m[1]);
+ const r=await api(citePath('/bibliography'),{keys,style:E('citeStyle').value});E('citeBib').replaceChildren();
+ for(const ref of r.references){const li=document.createElement('li');li.textContent=ref;E('citeBib').append(li)}
+ status(r.references.length+' reference(s) generated from project citation records.');
+});
 for(const ext of ['html','pdf','docx'])E(ext).onclick=run(async()=>exportAs(ext));
 run(async()=>{
  const result=await api(base+'/catalog/projects');E('projects').replaceChildren();
