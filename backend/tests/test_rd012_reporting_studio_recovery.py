@@ -248,3 +248,47 @@ def test_the_studio_refuses_anonymous_requests(monkeypatch):
         assert r.status_code == 401, (path, r.status_code)
     monkeypatch.setenv("SC_WORKSPACE_REPORTING_STUDIO_ENABLED", "0")
     assert client.get("/v1/private-research/reporting-studio/catalog/projects").status_code == 503
+
+
+# RD-01.3: Matplotlib's standard SVG 1.1 doctype previews; every other DTD, entity or external reference stays refused.
+SVG11 = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">'
+BODY = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 240"><rect width="480" height="240" fill="#fff"/>'
+        '<path d="M1 2L30 40" style="fill:none;stroke:#123;stroke-width:2"/></svg>')
+
+
+def test_the_standard_svg11_doctype_previews_without_touching_the_source():
+    import cairosvg
+    for prolog in ('<?xml version="1.0" encoding="utf-8" standalone="no"?>\n' + SVG11 + '\n',
+                   SVG11.replace('http://', 'https://'), SVG11.replace('"', "'")):
+        original = (prolog + BODY).encode()
+        before = hashlib.sha256(original).hexdigest()
+        clean = pub.sanitize_svg(original)
+        assert b'DOCTYPE' not in clean and b'path' in clean and b'#123' in clean
+        assert hashlib.sha256(original).hexdigest() == before
+        assert cairosvg.svg2png(bytestring=clean).startswith(b'\x89PNG')
+
+
+def test_other_doctypes_entities_and_external_resources_stay_refused():
+    import pytest
+    refused = [
+        '<!DOCTYPE svg>' + BODY,
+        SVG11.replace('www.w3.org', 'private.invalid') + BODY,
+        SVG11[:-1] + ' [<!ELEMENT svg ANY>]>' + BODY,
+        SVG11 + '<!ENTITY x SYSTEM "file:///etc/passwd">' + BODY,
+        SVG11.replace('>', ' [<!ENTITY x "evil">]>') + BODY,
+        SVG11 + '\n' + SVG11 + '\n' + BODY,
+        '<svg xmlns="http://www.w3.org/2000/svg"></svg>' + SVG11,
+        SVG11 + '<html/>',
+    ]
+    for source in refused:
+        with pytest.raises(HTTPException) as err:
+            pub.sanitize_svg(source.encode())
+        assert err.value.status_code == 422, source
+    clean = pub.sanitize_svg((SVG11 + BODY.replace(
+        '</svg>', '<script>alert(1)</script><image href="https://evil.invalid/a"/></svg>')).encode())
+    assert b'<script' not in clean and b'<image' not in clean and b'evil.invalid' not in clean
+
+
+def test_create_project_links_to_the_notebook_desk_project_workflow():
+    html = (Path(pub.__file__).parent / 'research_reporting_ui.html').read_text()
+    assert 'href="/v1/desk/notebooks"' in html and 'persistent-projects' not in html
