@@ -1,0 +1,28 @@
+name: SC-CITE-01 release gates (offline validation)
+on:
+  pull_request:
+    paths:
+      - scripts/sc_cite01_*.py
+      - scripts/sc_cite01_release.sh
+      - backend/tests/test_sc_cite01_release_gates.py
+      - .github/workflows/sc-cite01-release-gates.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  release-gate-code:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check release-gate scripts and fail-closed receipts only
+        run: |
+          python -m pip install pytest
+          python -m pytest -q backend/tests/test_sc_cite01_release_gates.py
+      - name: Explain CI limits
+        run: |
+          echo 'CI validates gate code; it does not produce live integration or off-host recovery receipts.'
+          echo 'Production cutover is impossible without independently verified receipts.'
