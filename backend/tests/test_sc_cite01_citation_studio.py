@@ -163,6 +163,41 @@ def test_library_records_are_cited_without_inventing_authors():
     assert other[0]['authors'] == [] and other[1]['authorStatus'] == 'missing-review-required'
 
 
+
+# Agency reports and datasets without a DOI: checked against the publisher's own catalog, cited with no invented date.
+AGENCY_CSL = [{
+    'type': 'dataset', 'author': [{'literal': 'Met Éireann'}], 'title': 'Johnstown Castle Climate Data',
+    'publisher': 'Met Éireann', 'URL': 'https://clidata.met.ie/cli/climate_data/webdatac/dly915.csv',
+    'accessed': {'date-parts': [[2026, 10, 22]]},
+    'custom': {'metadataAuthority': 'publisher-catalog', 'metadataUrl': 'https://data.gov.ie/api/3/action/package_show?id=x',
+               'license': 'CC-BY-4.0', 'contentSha256': '2' * 64, 'unlisted': 'dropped'},
+}, {
+    'type': 'report', 'author': [{'literal': 'Environmental Protection Agency'}], 'issued': {'date-parts': [[2026]]},
+    'title': "Ireland's Final Greenhouse Gas Emissions 1990-2024", 'publisher': 'Environmental Protection Agency',
+    'ISBN': '978-1-80009-336-2', 'URL': 'https://www.epa.ie/publications/x.php',
+    'custom': {'metadataAuthority': 'publisher-catalog'},  # no catalog URL: not treated as checked
+}]
+
+
+def test_publisher_catalog_records_keep_access_date_and_provenance_without_inventing_a_year():
+    current, report = cite.add_items({'schema': cite.COLLECTION_SCHEMA, 'items': []},
+                                     cite.parse_reference_file('agency.csl.json', json.dumps(AGENCY_CSL).encode()), {})
+    met, epa = current['items']
+    assert report['added'] == ['meteireannndjohnstown', 'environmentalprotectionagency2026ireland']
+    assert cite.reference(met) == ('Met Éireann (n.d.) *Johnstown Castle Climate Data*. Available at: '
+                                   'https://clidata.met.ie/cli/climate_data/webdatac/dly915.csv (Accessed: 22 October 2026).')
+    assert cite.in_text(met) == '(Met Éireann, n.d.)'
+    assert met['provenance'] == {'metadataAuthority': 'publisher-catalog', 'metadataUrl': AGENCY_CSL[0]['custom']['metadataUrl'],
+                                 'license': 'CC-BY-4.0', 'contentSha256': '2' * 64}
+    assert epa['provenance'] == {'metadataAuthority': 'csl-json', 'isbn': '978-1-80009-336-2'} and epa['accessed'] == ''
+    assert cite.reference(epa).endswith("1990-2024*. Available at: https://www.epa.ie/publications/x.php.")
+
+
+@pytest.mark.parametrize('value,text', [({'date-parts': [[2026, 10]]}, 'October 2026'), ({'date-parts': [[2026, 13, 1]]}, ''),
+                                        ({'literal': 'Spring 2026'}, 'Spring 2026'), ({'date-parts': [['x']]}, ''), (None, '')])
+def test_csl_access_dates_are_written_as_given_or_left_out(value, text):
+    assert cite._date_text(value) == text
+
 # --- 4. Revisions freeze their bibliography; every export carries it -----------------------------------------------
 
 def _save(markdown, package, style='harvard'):

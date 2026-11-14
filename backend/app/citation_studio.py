@@ -17,7 +17,8 @@ from copy import deepcopy
 import hashlib
 import json
 import re
-from typing import Any, Callable
+import unicodedata
+from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -36,6 +37,10 @@ KEY = re.compile(r'^[A-Za-z0-9_.:-]{1,80}$')
 # One marker holds one or more ``@key`` cites, each with an optional locator: [@a2020], [@a2020, p. 4; @b2021].
 MARKER = re.compile(r'\[(@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?(?:;\s*@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?)*)\]')
 SITE_AUTHORS = {'wordpress-main': 'Sustainable Catalyst'}  # Library sources whose organisational author is known
+MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November',
+          'December')
+# Provenance a CSL-JSON row may carry in ``custom`` when its metadata was checked against the publisher's own catalog.
+CATALOG_PROVENANCE = ('metadataUrl', 'metadataVerifiedAt', 'catalogUrl', 'license', 'contentSha256', 'retrievedUtc')
 
 
 def _clean(value: Any, limit: int = 600) -> str:
@@ -116,6 +121,23 @@ def _year(value: Any) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _date_text(value: Any) -> str:
+    """A CSL date (``date-parts`` or literal) as written in a reference: ``22 October 2026``. Missing parts stay missing."""
+    if isinstance(value, dict):
+        if value.get('literal'):
+            return _clean(value['literal'], 40)
+        parts = (value.get('date-parts') or [[]])[0] or []
+        try:
+            nums = [int(x) for x in parts[:3]]
+        except (TypeError, ValueError):
+            return ''
+        if not nums or not 1500 <= nums[0] <= 2199 or any(not 1 <= n <= 12 for n in nums[1:2]):
+            return ''
+        return ' '.join(([str(nums[2])] if len(nums) > 2 else []) + ([MONTHS[nums[1] - 1]] if len(nums) > 1 else [])
+                        + [str(nums[0])])
+    return _clean(value, 40)
+
+
 def item_fingerprint(item: dict) -> str:
     basis = {k: item.get(k) for k in ('type', 'authors', 'year', 'title', 'container', 'volume', 'issue', 'pages',
                                       'publisher', 'doi', 'url', 'accessed')}
@@ -142,6 +164,7 @@ def base_key(item: dict) -> str:
     first = item['authors'][0] if item['authors'] else {}
     name = first.get('family') or first.get('literal') or 'anon'
     word = next((w for w in re.findall(r'[A-Za-z]+', item['title']) if len(w) > 3), 'work')
+    name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode()  # Éireann -> Eireann, not ireann
     raw = re.sub(r'[^A-Za-z0-9]', '', name)[:30].lower() + str(item['year'] or 'nd') + word.lower()[:12]
     return raw or 'ref'
 
@@ -161,12 +184,25 @@ def from_crossref_verified(rows: list) -> list[dict]:
     return out
 
 
+def _csl_provenance(row: dict) -> dict:
+    custom = row.get('custom') if isinstance(row.get('custom'), dict) else {}
+    checked = custom.get('metadataAuthority') == 'publisher-catalog' and _url(custom.get('metadataUrl'))
+    out = {'metadataAuthority': 'publisher-catalog' if checked else 'csl-json'}
+    if checked:
+        out.update({k: _clean(custom.get(k), 2000) for k in CATALOG_PROVENANCE if custom.get(k)})
+    if row.get('ISBN'):
+        out['isbn'] = _clean(row['ISBN'], 40)
+    return out
+
+
 def from_csl(rows: list) -> list[dict]:
-    """CSL-JSON, as exported by the Knowledge Library citation workspace."""
+    """CSL-JSON, as exported by the Knowledge Library citation workspace or written from a publisher's catalog
+    record (``custom.metadataAuthority = 'publisher-catalog'`` with the catalog URL it was checked against)."""
     return [({'type': r.get('type'), 'authors': r.get('author') or [], 'year': r.get('issued'), 'title': r.get('title'),
               'container': r.get('container-title'), 'volume': r.get('volume'), 'issue': r.get('issue'),
-              'pages': r.get('page'), 'publisher': r.get('publisher'), 'doi': r.get('DOI'), 'url': r.get('URL')},
-             {'metadataAuthority': 'csl-json'}) for r in rows]
+              'pages': r.get('page'), 'publisher': r.get('publisher'), 'doi': r.get('DOI'), 'url': r.get('URL'),
+              'accessed': _date_text(r.get('accessed'))},
+             _csl_provenance(r)) for r in rows]
 
 
 def from_erw_v132(rows: list) -> list[dict]:
@@ -397,24 +433,68 @@ def freeze(markdown: str, current: dict, style: str) -> dict | None:
             'unresolved': [k for k in keys if k not in found]}
 
 
-def resolve(markdown: str, frozen: dict | None) -> str:
-    """Replace markers with in-text citations and append the reference list. Text without citations is unchanged."""
+def render_marker(m: re.Match, found: dict, style: str) -> str | None:
+    """The in-text citation for one ``[@key, locator; @key2]`` marker; None if any key is not in ``found``."""
+    parts = []
+    for part in m.group(1).split(';'):
+        key, _, loc = part.strip().lstrip('@').partition(',')
+        item = found.get(key.strip())
+        if item is None:
+            return None
+        parts.append(in_text(item, style, loc))
+    return parts[0] if len(parts) == 1 else '(' + '; '.join(p[1:-1] for p in parts) + ')'
+
+
+def resolve(markdown: str, frozen: dict | None, references: bool = True) -> str:
+    """Replace markers with in-text citations and append the reference list (unless ``references`` is False, when the
+    list travels separately). Text without citations is unchanged."""
     if not frozen or not frozen.get('items'):
         return markdown
     style, found = frozen['style'], {x['key']: x for x in frozen['items']}
-
-    def one(m):
-        parts = []
-        for part in m.group(1).split(';'):
-            key, _, loc = part.strip().lstrip('@').partition(',')
-            item = found.get(key.strip())
-            if item is None:
-                return m.group(0)  # unresolved markers stay visible
-            parts.append(in_text(item, style, loc))
-        return parts[0] if len(parts) == 1 else '(' + '; '.join(p[1:-1] for p in parts) + ')'
-    body = MARKER.sub(one, markdown)
+    body = MARKER.sub(lambda m: render_marker(m, found, style) or m.group(0), markdown)  # unresolved stay visible
+    if not references:
+        return body
     refs = sorted(frozen['items'], key=sort_key)
     return body.rstrip() + '\n\n## References\n\n' + '\n\n'.join(reference(x, style) for x in refs) + '\n'
+
+
+def _library(item: dict) -> dict | None:
+    prov = item.get('provenance') or {}
+    if prov.get('metadataAuthority') != 'knowledge-library' or not prov.get('libraryRecordId'):
+        return None
+    return {'recordId': prov['libraryRecordId'], 'revision': prov.get('libraryRevision') or '',
+            'contentSha256': prov.get('libraryContentSha256') or ''}
+
+
+def bibliography_record(frozen: dict | None, texts: Iterable[str] = ()) -> dict | None:
+    """A frozen bibliography as formatted text (sc-publication-bibliography/1.0), for editors that do not format
+    citations themselves (Research editorial and the Research Console). ``markers`` maps every citation marker in
+    ``texts`` to the in-text string rendered here, so those editors keep markers editable and substitute exactly
+    what Workspace rendered. Library provenance travels with each item; private source ids stay in Workspace."""
+    if not frozen or not frozen.get('items'):
+        return None
+    style, found = frozen['style'], {x['key']: x for x in frozen['items']}
+    markers = {}
+    for text in texts:
+        for m in MARKER.finditer(text):
+            rendered = render_marker(m, found, style)
+            if rendered:
+                markers[m.group(0)] = rendered
+    items = []
+    for x in sorted(frozen['items'], key=sort_key):
+        item = {'key': x['key'], 'reference': reference(x, style), 'inText': in_text(x, style), 'doi': x.get('doi') or ''}
+        if _library(x):
+            item['library'] = _library(x)
+        items.append(item)
+    return {'schema': FROZEN_SCHEMA, 'style': style, 'unresolved': list(frozen.get('unresolved') or []),
+            'items': items, 'markers': markers}
+
+
+def snapshot(sections: list[dict], current: dict, style: str) -> dict | None:
+    """The bibliography snapshot an editor stores with one publication revision: the cited works of these sections,
+    frozen from the project's collection, with every marker rendered."""
+    texts = [str(s.get('body') or '') for s in sections]
+    return bibliography_record(freeze('\n\n'.join(texts), current, style), texts)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -430,6 +510,18 @@ class ImportLibrary(BaseModel):
     model_config = ConfigDict(extra='forbid')
     recordId: str = Field(min_length=1, max_length=240)
     expectedProjectRevision: int = Field(ge=1)
+
+
+class SnapshotSection(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    heading: str = Field(default='', max_length=300)
+    body: str = Field(default='', max_length=200_000)
+
+
+class SnapshotRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    sections: list[SnapshotSection] = Field(min_length=1, max_length=40)
+    style: str = DEFAULT_STYLE
 
 
 class FormatRequest(BaseModel):
@@ -508,6 +600,20 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
             items = collection(deps['project'](db, owner, project_id).package)['items']
         chosen = [x for x in items if not body.keys or x['key'] in body.keys]
         return JSONResponse({'style': body.style, 'references': [reference(x, body.style) for x in sorted(chosen, key=sort_key)]},
+                            headers=H)
+
+    @router.post('/projects/{project_id}/snapshot')
+    def snapshot_route(project_id: str, body: SnapshotRequest, request: Request):
+        """Read-only: used by Research editorial and the Research Console with the owner's session (CORS-limited to
+        the configured Research Console origins). Nothing is stored in Workspace; the snapshot is stored with the
+        Research revision it belongs to."""
+        owner = deps['subject'](request)
+        if body.style not in STYLES:
+            raise HTTPException(422, 'Unknown citation style.')
+        with deps['session']() as db:
+            current = collection(deps['project'](db, owner, project_id).package)
+        sections = [s.model_dump() for s in body.sections]
+        return JSONResponse({'schema': 'sc-citation-snapshot/1.0', 'bibliography': snapshot(sections, current, body.style)},
                             headers=H)
 
     return router

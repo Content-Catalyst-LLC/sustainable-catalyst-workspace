@@ -148,7 +148,7 @@ function renderCitations(collection){
  for(const item of collection.items){
   const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
   E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
-   const t=E('manuscript');t.setRangeText('[@'+item.key+']',t.selectionStart,t.selectionEnd,'end');markDirty();await preview();
+   const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
    status('Citation '+item.key+' inserted. The reference list is generated from saved project records.');}));
  }
 }
