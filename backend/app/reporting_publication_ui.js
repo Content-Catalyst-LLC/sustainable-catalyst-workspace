@@ -24,6 +24,8 @@ function setDraft(title,markdown,sourceId=null,docId=null,version=0,type='report
 }
 async function selectProject(id){
  if(!id)return;state.project=id;state.catalog=await api(base+'/catalog/projects/'+encodeURIComponent(id));
+ E('notebookDeskLink').href='/v1/desk/notebooks?project='+encodeURIComponent(id);
+ E('figureStudioLink').href=base+'?project='+encodeURIComponent(id);
  E('assets').replaceChildren();E('versions').replaceChildren();
  const files=[...(state.catalog.legacyFiles||[]),...(state.catalog.files||[])];
  E('fileCount').textContent=files.length+' files';
@@ -77,6 +79,10 @@ async function preview(){
  if(!state.project)return;
  const data=await api(path('/preview'),manuscript());
  const article=E('preview');article.innerHTML=data.html;
+ const masthead=document.createElement('div');masthead.className='preview-brand';
+ const institution=document.createElement('strong');institution.textContent='SUSTAINABLE CATALYST';
+ const type=document.createElement('span');type.textContent='INDEPENDENT RESEARCH / '+E('publicationType').selectedOptions[0].textContent;
+ masthead.append(institution,type);article.prepend(masthead);
  E('proof').textContent=data.figures.length+' source figures verified · computations not executed';
  return data;
 }
@@ -130,7 +136,22 @@ function exportAs(ext){
 }
 E('projects').onchange=run(async()=>{state.projectRevision=undefined;await selectProject(E('projects').value);state.projectRevision=state.catalog.project.revision});
 E('title').addEventListener('input',markDirty);E('publicationType').addEventListener('change',markDirty);E('manuscript').addEventListener('input',markDirty);
-E('new').onclick=run(async()=>{if(!state.project)throw Error('Select a project');setDraft(state.catalog.project.title,'# Introduction\n\n',null,null,0,E('publicationType').value);await preview();status('Blank publication draft opened. Existing source material remains preserved.')});
+function newReportTemplate(kind){
+ const outlines={
+  'report':['Research question','Methods','Results','Discussion','Limitations','References'],
+  'policy-brief':['Executive summary','Scientific evidence','Policy context','Implications','Limitations','References'],
+  'working-paper':['Abstract','Research question','Methods','Analysis','Discussion','References'],
+  'interactive-analysis':['Research question','Data and methods','Verified results','Visualizations','Limitations','References'],
+  'overview':['Research overview','Evidence and methods','Principal findings','Limitations','References'],
+ };
+ return (outlines[kind]||outlines.report).map(x=>'## '+x).join('\n\n')+'\n\n';
+}
+E('new').onclick=run(async()=>{
+ if(!state.project)throw Error('Select a project');
+ const kind=E('publicationType').value;
+ setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);
+ await preview();status('New private '+E('publicationType').selectedOptions[0].textContent+' draft. Other reports and preserved sources are unchanged.');
+});
 E('previewButton').onclick=run(async()=>{await preview();status('Publication preview updated. Research source hashes verified where used.')});
 E('save').onclick=run(save);
 // SC-CITE-01 Citation Studio: project citation collection, Library sources, [@key] insertion and reference lists.
