@@ -104,3 +104,14 @@ def test_browser_controls_are_save_gated_and_do_not_claim_publication():
     assert "authoringPackage','researchDraft" in js
     assert "NOT submitted or published" in js
     assert "if(!state.saved||state.dirty||!state.documentId)" in js
+
+
+def test_machine_readable_authoring_schema_matches_issued_package():
+    schema_path = Path(__file__).resolve().parents[2] / 'schemas' / 'sc-unified-scientific-authoring-v1.schema.json'
+    schema = json.loads(schema_path.read_text())
+    package = pub.authoring_package('p', saved())
+    assert schema['properties']['schema']['const'] == pub.AUTHORING_SCHEMA
+    assert set(schema['required']) == set(package)
+    assert schema['properties']['manuscript']['properties']['format']['const'] == 'markdown'
+    assert schema['properties']['approval']['type'] == 'null'
+    assert schema['properties']['handoffStatus']['const'] == 'private-draft-not-published'
