@@ -355,7 +355,7 @@ def publication_ui(request:Request):
     inline='<script>'+script+'</script>'
     local_bundle='<script src="'+bundle_src+'" defer></script>'
     return HTMLResponse(html.replace('<!--SCRIPT-->', inline+local_bundle),headers={**HEADERS,
-        'Content-Security-Policy':"default-src 'none'; script-src 'self' 'sha256-"+script_hash+"'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'})
+        'Content-Security-Policy':"default-src 'none'; script-src 'self' 'sha256-"+script_hash+"'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"})
 
 
 @router.get('/editor.bundle.js')
