@@ -46,7 +46,7 @@ async function selectProject(id){
   if(/\.svg$/i.test(file.filename)){
    const insert=document.createElement('button');insert.textContent='Insert figure';
    insert.onclick=run(async()=>{const caption=file.filename.split('/').pop().replace(/\.svg$/i,'').replace(/_/g,' ');
-    if(visualMode)setEditorMode('source');const textarea=E('manuscript');const snippet='\n\n!['+caption+'](asset:'+file.artifactId+')\n\n';
+    prepareSourceInsertion();const textarea=E('manuscript');const snippet='\n\n!['+caption+'](asset:'+file.artifactId+')\n\n';
     const pos=textarea.selectionStart;textarea.setRangeText(snippet,pos,textarea.selectionEnd,'end');markDirty();await preview();});
    row.append(insert);
   }
@@ -169,7 +169,7 @@ function renderCitations(collection){
  for(const item of collection.items){
   const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
   E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
-   if(visualMode)setEditorMode('source');const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
+   prepareSourceInsertion();const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
    status('Citation '+item.key+' inserted. The reference list is generated from saved project records.');}));
  }
 }
