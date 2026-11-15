@@ -1,0 +1,44 @@
+name: SC-PUB-TIPTAP-01 production cutover safety checks
+
+on:
+  push:
+    branches:
+      - release/sc-pub-tiptap-production-20261115
+    paths:
+      - 'scripts/sc_pub_tiptap_release.py'
+      - 'scripts/sc_pub_tiptap_recovery_gate.py'
+      - 'backend/tests/test_sc_pub_tiptap_release.py'
+      - 'docs/releases/SC-PUB-TIPTAP-01-PRODUCTION-RELEASE.md'
+      - '.github/workflows/sc-pub-tiptap-production-release.yml'
+  pull_request:
+    paths:
+      - 'scripts/sc_pub_tiptap_release.py'
+      - 'scripts/sc_pub_tiptap_recovery_gate.py'
+      - 'backend/tests/test_sc_pub_tiptap_release.py'
+      - 'docs/releases/SC-PUB-TIPTAP-01-PRODUCTION-RELEASE.md'
+      - '.github/workflows/sc-pub-tiptap-production-release.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  offline-operator-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile immutable-release and isolated-restore operators
+        run: |
+          python3 -m py_compile \
+            scripts/sc_pub_tiptap_release.py \
+            scripts/sc_pub_tiptap_recovery_gate.py \
+            backend/tests/test_sc_pub_tiptap_release.py
+      - name: Test preflight and recovery fail-closed behavior without SSH/Docker
+        run: python3 -m unittest discover -s backend/tests -p 'test_sc_pub_tiptap_release.py' -v
+      - name: CI scope notice
+        run: |
+          echo "CI checks operator code only; it does NOT inspect, back up or deploy production."
+          echo "A genuine off-host recovery receipt and interactive operator are still mandatory."
