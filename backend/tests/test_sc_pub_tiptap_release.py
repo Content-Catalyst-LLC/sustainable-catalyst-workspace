@@ -86,11 +86,14 @@ class ReleaseGateTests(unittest.TestCase):
 
     def test_failed_recovery_reports_sanitized_child_error(self):
         failed = SimpleNamespace(returncode=1, stdout="",
-                                 stderr="internal diagnostic\\nNO-GO: Encrypted backup directory already exists\\n")
-        with patch.dict(os.environ, {
-            "SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION": "READ_ONLY_PRODUCTION_TO_OFFHOST"
-        }), patch.object(release.sys, "argv", ["operator", "recover"]), \\
-             patch.object(release.subprocess, "run", return_value=failed):
+                                 stderr="internal diagnostic\nNO-GO: Encrypted backup directory already exists\n")
+        with (
+            patch.dict(os.environ, {
+                "SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION": "READ_ONLY_PRODUCTION_TO_OFFHOST"
+            }),
+            patch.object(release.sys, "argv", ["operator", "recover"]),
+            patch.object(release.subprocess, "run", return_value=failed),
+        ):
             with self.assertRaisesRegex(
                 RuntimeError, "Encrypted backup directory already exists"
             ):
@@ -98,11 +101,14 @@ class ReleaseGateTests(unittest.TestCase):
 
     def test_unstructured_child_error_not_exposed(self):
         failed = SimpleNamespace(returncode=1, stdout="",
-                                 stderr="password=SECRET\\nTraceback: secret\\n")
-        with patch.dict(os.environ, {
-            "SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION": "READ_ONLY_PRODUCTION_TO_OFFHOST"
-        }), patch.object(release.sys, "argv", ["operator", "recover"]), \\
-             patch.object(release.subprocess, "run", return_value=failed):
+                                 stderr="password=SECRET\nTraceback: secret\n")
+        with (
+            patch.dict(os.environ, {
+                "SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION": "READ_ONLY_PRODUCTION_TO_OFFHOST"
+            }),
+            patch.object(release.sys, "argv", ["operator", "recover"]),
+            patch.object(release.subprocess, "run", return_value=failed),
+        ):
             with self.assertRaisesRegex(RuntimeError, "without a sanitized diagnostic"):
                 release.main()
 
