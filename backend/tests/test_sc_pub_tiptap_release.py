@@ -122,7 +122,7 @@ class ReleaseGateTests(unittest.TestCase):
         db.write_bytes(b"PGDMP" + b"x" * 2048)
         data = root / "sc-workspace-data.tgz"
         with tarfile.open(data, "w:gz") as tf:
-            payload = b"isolated synthetic source only"
+            payload = b"".join(hashlib.sha256(str(i).encode()).digest() for i in range(256))
             entry = tarfile.TarInfo("example.txt")
             entry.size = len(payload)
             tf.addfile(entry, io.BytesIO(payload))
