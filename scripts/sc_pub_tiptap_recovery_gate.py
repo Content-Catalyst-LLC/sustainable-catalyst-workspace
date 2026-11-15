@@ -232,7 +232,11 @@ def main():
         # No network connection to the isolated PostgreSQL container: stdin
         # flows into docker exec over SSH and the local Unix socket.
         with dbdump.open("rb") as input_file:
-            ssh("docker", "exec", "-i", container, "pg_restore", "-U", "postgres",
+            # Match the isolated operator diagnostic that successfully
+            # restored this same archive. Exit on the first actual SQL error
+            # rather than attempting later objects and masking the cause.
+            ssh("docker", "exec", "-i", container, "pg_restore",
+                "--exit-on-error", "-U", "postgres",
                 "-d", "postgres", "-C", "--no-owner", "--no-acl",
                 stdin=input_file)
         SSH_STAGE = "Count tables in original production PostgreSQL database"
