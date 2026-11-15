@@ -1,5 +1,8 @@
 """SC-PUB-TIPTAP-01 release gate tests: offline, no Docker/SSH/services touched."""
 import hashlib
+import io
+import tarfile
+import time
 import json
 import os
 from pathlib import Path
@@ -111,6 +114,114 @@ class ReleaseGateTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(RuntimeError, "without a sanitized diagnostic"):
                 release.main()
+
+    @staticmethod
+    def synthetic_resume_archive(root):
+        root.chmod(0o700)
+        db = root / "sc_workspace.dump"
+        db.write_bytes(b"PGDMP" + b"x" * 2048)
+        data = root / "sc-workspace-data.tgz"
+        with tarfile.open(data, "w:gz") as tf:
+            payload = b"".join(hashlib.sha256(str(i).encode()).digest() for i in range(256))
+            entry = tarfile.TarInfo("example.txt")
+            entry.size = len(payload)
+            tf.addfile(entry, io.BytesIO(payload))
+        return db, data
+
+    def test_resume_existing_archives_preserves_bytes_and_closes_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db, data = self.synthetic_resume_archive(root)
+            original = (hashlib.sha256(db.read_bytes()).digest(),
+                        hashlib.sha256(data.read_bytes()).digest())
+            db.chmod(0o644)
+            data.chmod(0o644)
+            recovered = recovery.resume_existing_backup(root)
+            self.assertEqual(recovered, (db, data))
+            self.assertEqual(original,
+                (hashlib.sha256(db.read_bytes()).digest(),
+                 hashlib.sha256(data.read_bytes()).digest()))
+            self.assertEqual(db.stat().st_mode & 0o077, 0)
+            self.assertEqual(data.stat().st_mode & 0o077, 0)
+
+    def test_resume_rejects_existing_receipt_and_stale_archives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db, data = self.synthetic_resume_archive(root)
+            receipt = root / "sc-pub-tiptap-recovery.json"
+            receipt.write_text('{"outcome":"PASS"}')
+            with self.assertRaisesRegex(RuntimeError, "exactly the two"):
+                recovery.resume_existing_backup(root)
+            receipt.unlink()
+            old = time.time() - (27 * 3600)
+            os.utime(db, (old, old))
+            with self.assertRaisesRegex(RuntimeError, "older than 24 hours"):
+                recovery.resume_existing_backup(root)
+
+    def test_resume_rejects_non_postgresql_archive_and_bad_directory_mode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            db, _ = self.synthetic_resume_archive(root)
+            root.chmod(0o755)
+            with self.assertRaisesRegex(RuntimeError, "unsafe permissions"):
+                recovery.resume_existing_backup(root)
+            root.chmod(0o700)
+            db.write_bytes(b"INVALID" + b"x" * 2048)
+            with self.assertRaisesRegex(RuntimeError, "custom-format"):
+                recovery.resume_existing_backup(root)
+
+    def test_ssh_errors_identify_stage_without_remote_stderr(self):
+        with (
+            patch.object(recovery, "run",
+                         side_effect=RuntimeError("Command failed (1): ssh -o")),
+            patch.object(recovery, "TARGET", "catalystadmin@example.test", create=True),
+            patch.object(recovery, "SSH_STAGE", "Restore isolated database")
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Restore isolated database"):
+                recovery.ssh("docker", "exec", "scratch-only")
+
+    def test_resumed_release_refuses_changed_baseline_before_any_restore(self):
+        live = {
+            "container_id": "a" * 64, "image_ref": "sc-workspace-reporting:prod-old",
+            "image_id": "sha256:" + "c" * 64, "running": "true",
+        }
+        state = {"live_before": {**live, "container_id": "b" * 64}}
+        with (
+            patch.dict(os.environ, {
+                "SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION": "READ_ONLY_PRODUCTION_TO_OFFHOST",
+                "SC_PUB_TIPTAP_RECOVERY_RESUME": "VERIFIED_EXISTING_ARCHIVES",
+            }),
+            patch.object(release.sys, "argv", ["operator", "recover"]),
+            patch.object(release, "read_state", return_value=state),
+            patch.object(release, "assert_live", return_value=live),
+            patch.object(release.subprocess, "run") as child,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "changed"):
+                release.main()
+            child.assert_not_called()
+
+    def test_resumed_release_passes_exact_baseline_to_isolated_restore(self):
+        live = {
+            "container_id": "a" * 64, "image_ref": "sc-workspace-reporting:prod-old",
+            "image_id": "sha256:" + "c" * 64, "running": "true",
+        }
+        with (
+            patch.dict(os.environ, {
+                "SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION": "READ_ONLY_PRODUCTION_TO_OFFHOST",
+                "SC_PUB_TIPTAP_RECOVERY_RESUME": "VERIFIED_EXISTING_ARCHIVES",
+            }),
+            patch.object(release.sys, "argv", ["operator", "recover"]),
+            patch.object(release, "read_state", return_value={"live_before": live}),
+            patch.object(release, "assert_live", return_value=live),
+            patch.object(release.subprocess, "run",
+                         return_value=SimpleNamespace(returncode=0, stdout="", stderr="")) as child,
+        ):
+            release.main()
+            env = child.call_args.kwargs["env"]
+            self.assertEqual(env["SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_ID"],
+                             live["container_id"])
+            self.assertEqual(env["SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_IMAGE"],
+                             live["image_ref"])
 
     def test_cutover_refuses_if_live_baseline_changed(self):
         baseline = {
