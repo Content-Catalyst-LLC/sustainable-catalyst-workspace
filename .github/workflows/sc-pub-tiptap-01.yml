@@ -19,7 +19,7 @@ on:
       - '.github/workflows/sc-pub-tiptap-01.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   editor:
@@ -29,13 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Generate pinned dependency lock
-        working-directory: backend/reporting_tiptap
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install pinned dependencies
         working-directory: backend/reporting_tiptap
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -78,13 +75,3 @@ jobs:
             backend/app/reporting_publication_tiptap.bundle.js
           if-no-files-found: error
           retention-days: 7
-      - name: Commit only lockfile for this first-party feature branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/sc-pub-visual-report-studio-m1-20261115'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend/reporting_tiptap/package-lock.json
-          if ! git diff --cached --quiet; then
-            git commit -m "SC-PUB-TIPTAP-01: lock exact editor dependency graph"
-            git push origin HEAD:feature/sc-pub-visual-report-studio-m1-20261115
-          fi
