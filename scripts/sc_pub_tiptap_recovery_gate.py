@@ -174,6 +174,44 @@ def require_scratch(name):
         fail("Refusing an operation on a non-scratch Docker resource")
 
 
+def wait_final_postgresql(container, *, attempts=90, pause_seconds=1):
+    """Wait for the *final* PostgreSQL PID 1, not the entrypoint's
+    temporary initialization postmaster.
+
+    The standard PostgreSQL container entrypoint starts a local temporary
+    server to initialize a new volume, shuts it down, then execs the final
+    postgres server as PID 1. pg_isready can succeed against the temporary
+    server, so checking pg_isready alone permits a mid-restore disconnect.
+    All probes are read-only and restricted to our scratch-only container.
+    """
+    require_scratch(container)
+    assert attempts > 0
+    for attempt in range(attempts):
+        base = [
+            "ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+            TARGET, "docker", "exec", container,
+        ]
+        # In the PostgreSQL 18 image, PID 1 becomes 'postgres' only after
+        # the temporary initialization server exits. Never inspect
+        # production DB containers, or accept a shell/entrypoint PID 1.
+        pid = subprocess.run(
+            [*base, "cat", "/proc/1/comm"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False,
+            timeout=20,
+        )
+        if pid.returncode == 0 and pid.stdout.strip() == b"postgres":
+            ready = subprocess.run(
+                [*base, "pg_isready", "-U", "postgres"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                check=False, timeout=20,
+            )
+            if ready.returncode == 0:
+                return True
+        if attempt + 1 < attempts:
+            time.sleep(pause_seconds)
+    return False
+
+
 def isolated_restore_command(container):
     # Verified in operator's Nov 15 network-isolated restore diagnostic.
     # Keep this independently testable; do not add a network route or use
@@ -280,18 +318,9 @@ def main():
                            "--format", "{{.HostConfig.NetworkMode}}")
         if network_mode != "none":
             fail("Restored PostgreSQL container unexpectedly has network access")
-        ready = False
-        for _ in range(30):
-            p = subprocess.run(["ssh", "-o", "BatchMode=yes", TARGET,
-                                "docker", "exec", container, "pg_isready", "-U", "postgres"],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if p.returncode == 0:
-                ready = True
-                break
-            import time
-            time.sleep(1)
-        if not ready:
-            fail("Isolated PostgreSQL never became ready")
+        SSH_STAGE = "Await final PostgreSQL postmaster after initialization"
+        if not wait_final_postgresql(container):
+            fail("Final isolated PostgreSQL server never became ready; temporary init server is insufficient")
         SSH_STAGE = "Restore PostgreSQL database from off-host archive"
         # No network connection to the isolated PostgreSQL container: stdin
         # flows into docker exec over SSH and the local Unix socket.

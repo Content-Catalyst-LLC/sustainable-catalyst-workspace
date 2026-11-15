@@ -259,6 +259,64 @@ class ReleaseGateTests(unittest.TestCase):
             self.assertNotIn("private_name", str(context.exception))
             self.assertEqual(len(list((root / ".sc-pub-tiptap-diagnostics").glob("pg-restore-*.log"))), 1)
 
+    def test_final_postgresql_wait_ignores_temporary_initialized_server(self):
+        scratch = "sc-pub-tiptap-restore-123456abcdef"
+        calls = []
+
+        def subprocess_probe(argv, **kwargs):
+            calls.append(argv)
+            if argv[-2:] == ["cat", "/proc/1/comm"]:
+                # First probe sees the entrypoint's temporary server.
+                pid = b"docker-entrypoint\n" if len(calls) == 1 else b"postgres\n"
+                return SimpleNamespace(returncode=0, stdout=pid)
+            self.assertEqual(argv[-3:], ["pg_isready", "-U", "postgres"])
+            return SimpleNamespace(returncode=0, stdout=b"")
+
+        with (
+            patch.object(recovery, "TARGET", "operator@example.test", create=True),
+            patch.object(recovery.subprocess, "run", side_effect=subprocess_probe),
+            patch.object(recovery.time, "sleep") as sleep,
+        ):
+            self.assertTrue(recovery.wait_final_postgresql(
+                scratch, attempts=3, pause_seconds=0
+            ))
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(calls[-1][-3:], ["pg_isready", "-U", "postgres"])
+        self.assertEqual(sleep.call_count, 1)
+        self.assertTrue(all("sc-postgres" not in call for call in calls))
+
+    def test_final_postgresql_wait_fails_closed_if_only_temporary_server(self):
+        scratch = "sc-pub-tiptap-restore-123456abcdef"
+        temporary = SimpleNamespace(returncode=0, stdout=b"docker-entrypoint\n")
+        with (
+            patch.object(recovery, "TARGET", "operator@example.test", create=True),
+            patch.object(recovery.subprocess, "run", return_value=temporary) as probe,
+            patch.object(recovery.time, "sleep"),
+        ):
+            self.assertFalse(recovery.wait_final_postgresql(
+                scratch, attempts=2, pause_seconds=0
+            ))
+            self.assertEqual(probe.call_count, 2)
+            with self.assertRaisesRegex(RuntimeError, "non-scratch"):
+                recovery.wait_final_postgresql("sc-postgres", attempts=1)
+
+    def test_final_postgresql_wait_requires_readiness_after_final_pid(self):
+        scratch = "sc-pub-tiptap-restore-123456abcdef"
+        results = iter([
+            SimpleNamespace(returncode=0, stdout=b"postgres\n"),
+            SimpleNamespace(returncode=1, stdout=b""),
+            SimpleNamespace(returncode=0, stdout=b"postgres\n"),
+            SimpleNamespace(returncode=0, stdout=b""),
+        ])
+        with (
+            patch.object(recovery, "TARGET", "operator@example.test", create=True),
+            patch.object(recovery.subprocess, "run", side_effect=lambda *a, **k: next(results)),
+            patch.object(recovery.time, "sleep"),
+        ):
+            self.assertTrue(recovery.wait_final_postgresql(
+                scratch, attempts=3, pause_seconds=0
+            ))
+
     def test_isolated_pg_restore_matches_successful_operator_diagnostic(self):
         name = "sc-pub-tiptap-restore-123456abcdef"
         tokens = recovery.isolated_restore_command(name)
