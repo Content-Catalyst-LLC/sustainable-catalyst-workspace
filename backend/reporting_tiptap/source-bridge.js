@@ -84,6 +84,16 @@ export function replaceEditedBlock(original, markdown) {
  * This is a deliberately narrow compatibility normalization, not a general
  * Markdown unescape or scientific content transformation.
  */
-export function restoreCitationMarkers(markdown) {
-  return String(markdown).replace(/\\\[@([A-Za-z0-9_.:-]{1,80})\\\]/g, '[@$1]');
+const CITATION_MARKER = /\[@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?(?:;\s*@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?)*\]/g;
+const CITATION_EXACT = new RegExp('^' + CITATION_MARKER.source + '$');
+
+export function restoreCitationMarkers(markdown, originalBlock) {
+  // Only restore marks that were *already active citations* before this
+  // rich-text edit. An intentionally escaped literal marker must NOT become
+  // an active citation merely because a neighboring word was changed.
+  const allowed = new Set(String(originalBlock).match(CITATION_MARKER) || []);
+  return String(markdown).replace(/\\\[([^\]\n]{1,320}?)\\\]/g, (whole, inside) => {
+    const candidate = '[' + inside.replace(/\\([_.:*-])/g, '$1') + ']';
+    return CITATION_EXACT.test(candidate) && allowed.has(candidate) ? candidate : whole;
+  });
 }
