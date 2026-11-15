@@ -31,7 +31,7 @@ const original='## Wexford Results\n\n$$\nCO_2 + basalt\n$$\n';
 manuscript.value=original;
 assert.equal(E('visualMode').disabled,true);
 assert.equal(manuscript.hidden,false);
-assert.equal(window.SCStudioRegisterTiptap instanceof Function,true);
+assert.equal(typeof window.SCStudioRegisterTiptap,'function');
 window.SCStudioRegisterTiptap({
  render(){renders++},destroy(){destroys++}
 });
