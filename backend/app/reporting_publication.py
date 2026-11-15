@@ -350,8 +350,24 @@ def publication_ui(request:Request):
     script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
     html=Path(__file__).with_name('reporting_publication_ui.html').read_text()
     script_hash=base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
-    return HTMLResponse(html.replace('<!--SCRIPT-->', '<script>'+script+'</script>'),headers={**HEADERS,
-        'Content-Security-Policy':"default-src 'none'; script-src 'sha256-"+script_hash+"'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"})
+    # Self-hosted Tiptap bundle. No CDN or external editor service.
+    bundle_src='/v1/private-research/reporting-studio/publication/editor.bundle.js'
+    inline='<script>'+script+'</script>'
+    local_bundle='<script src="'+bundle_src+'" defer></script>'
+    return HTMLResponse(html.replace('<!--SCRIPT-->', inline+local_bundle),headers={**HEADERS,
+        'Content-Security-Policy':"default-src 'none'; script-src 'self' 'sha256-"+script_hash+"'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'})
+
+
+@router.get('/editor.bundle.js')
+def tiptap_editor_bundle(request:Request):
+    """Authenticated same-origin Tiptap asset; no remote JavaScript."""
+    _subject(request)
+    path=Path(__file__).with_name('reporting_publication_tiptap.bundle.js')
+    if not path.is_file():
+        raise HTTPException(503,'Tiptap bundle missing from this Reporting Studio image.')
+    return Response(path.read_bytes(),media_type='text/javascript; charset=utf-8',
+                    headers={**HEADERS,'Cache-Control':'private, no-store',
+                             'X-Content-Type-Options':'nosniff'})
 
 
 @router.get('/projects/{project_id}/sources/{artifact_id}')
