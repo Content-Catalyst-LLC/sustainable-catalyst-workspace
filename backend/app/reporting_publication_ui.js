@@ -13,7 +13,7 @@ async function api(url,body){
  try{return JSON.parse(text)}catch{throw Error('Unexpected server response')}
 }
 function run(fn){return async()=>{try{await fn()}catch(err){status(err.message,true);console.error(err)}}}
-function refreshExport(){for(const id of ['html','pdf','docx'])E(id).disabled=!state.saved||state.dirty}
+function refreshExport(){for(const id of ['html','pdf','docx','authoringPackage','researchDraft'])E(id).disabled=!state.saved||state.dirty}
 function markDirty(){state.dirty=true;state.saved=false;E('dirty').textContent='Unsaved changes';refreshExport();E('length').textContent=E('manuscript').value.length.toLocaleString()+' characters'}
 function setDraft(title,markdown,sourceId=null,docId=null,version=0,type='report'){
  E('title').value=title;E('manuscript').value=markdown;E('publicationType').value=type;
@@ -134,6 +134,30 @@ function exportAs(ext){
  const a=document.createElement('a');a.href=path('/documents/'+encodeURIComponent(state.documentId)+'/export.'+ext+'?revision='+state.documentRevision);
  a.download='scientific-publication-v'+state.documentRevision+'.'+ext;document.body.append(a);a.click();a.remove();
 }
+async function downloadImmutableJSON(suffix,name){
+ if(!state.saved||state.dirty||!state.documentId)throw Error('Save this manuscript revision before creating a handoff.');
+ const data=await api(path('/documents/'+encodeURIComponent(state.documentId)+suffix));
+ const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'});
+ const objectUrl=URL.createObjectURL(blob);
+ try{
+   const a=document.createElement('a');
+   a.href=objectUrl;a.download=name;document.body.append(a);a.click();a.remove();
+ }finally{setTimeout(()=>URL.revokeObjectURL(objectUrl),1000);}
+ return data;
+}
+E('authoringPackage').onclick=run(async()=>{
+ await downloadImmutableJSON('/authoring-package?revision='+state.documentRevision,
+   'sc-authoring-'+state.documentRevision+'.json');
+ status('Private immutable authoring package exported with manuscript, source hashes, citations and figure pins. No publication occurred.');
+});
+E('researchDraft').onclick=run(async()=>{
+ const draft=await downloadImmutableJSON('/research-revision?revision='+state.documentRevision+
+   '&publicationType='+encodeURIComponent(E('publicationType').value),
+   'sc-research-draft-'+state.documentRevision+'.json');
+ const missing=(draft.notCarried?.figures||[]).length;
+ status('Research draft exported, NOT submitted or published. '+missing+
+   ' figure(s) require separate Research object linkage and approval.',missing>0);
+});
 E('projects').onchange=run(async()=>{state.projectRevision=undefined;await selectProject(E('projects').value);state.projectRevision=state.catalog.project.revision});
 E('title').addEventListener('input',markDirty);E('publicationType').addEventListener('change',markDirty);E('manuscript').addEventListener('input',markDirty);
 function newReportTemplate(kind){
