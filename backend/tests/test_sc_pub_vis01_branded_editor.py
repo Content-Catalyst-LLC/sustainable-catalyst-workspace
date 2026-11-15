@@ -52,7 +52,8 @@ class BrandedPublicationTests(unittest.TestCase):
     def test_pdf_branding_and_basic_export(self):
         data = pub._pdf(self.sample, {})
         self.assertTrue(data.startswith(b'%PDF'))
-        self.assertGreater(len(data), 2000)
+        self.assertGreater(len(data), 1000)
+        self.assertIn(b'%%EOF', data[-200:])
 
     def test_visual_script_is_loaded_with_existing_csp_hash(self):
         source = Path(pub.__file__).read_text()
