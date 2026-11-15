@@ -97,3 +97,16 @@ export function restoreCitationMarkers(markdown, originalBlock) {
     return CITATION_EXACT.test(candidate) && allowed.has(candidate) ? candidate : whole;
   });
 }
+
+/**
+ * SC-EDITOR-01: prove that opening a block visually cannot rewrite it.
+ * A recognized Markdown block is NOT necessarily safe in Tiptap's beta
+ * serializer. Refuse visual editing unless the initial parse/serialize cycle
+ * returns exactly the original semantic bytes (ignoring the block's terminal
+ * newline, which replaceEditedBlock restores separately).
+ */
+export function isLosslessRichBlock(original, serialized) {
+  if (typeof original !== 'string' || typeof serialized !== 'string') return false;
+  const trimmed = value => value.replace(/\n+$/, '');
+  return trimmed(original) === trimmed(restoreCitationMarkers(serialized, original));
+}
