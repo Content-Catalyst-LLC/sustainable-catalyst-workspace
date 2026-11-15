@@ -310,13 +310,24 @@ def main():
     elif mode == "recover":
         if os.environ.get("SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION") != "READ_ONLY_PRODUCTION_TO_OFFHOST":
             fail("Set SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION=READ_ONLY_PRODUCTION_TO_OFFHOST")
+        # A resume may only reuse archives while the live container still
+        # matches the immutable baseline captured when the candidate built.
+        # This is operator-authenticated over the existing SSH connection.
+        child_env = os.environ.copy()
+        if child_env.get("SC_PUB_TIPTAP_RECOVERY_RESUME") == "VERIFIED_EXISTING_ARCHIVES":
+            state = read_state()
+            live = assert_live()
+            if live != state.get("live_before"):
+                fail("Live Studio changed since the retained backup was produced")
+            child_env["SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_ID"] = live["container_id"]
+            child_env["SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_IMAGE"] = live["image_ref"]
         # This subprocess intentionally sanitizes SSH/DB stderr inside the
         # recovery gate. Surface only its final NO-GO line: the generic
         # execute() wrapper otherwise discards the actionable root cause.
         p = subprocess.run(
             [sys.executable, str(ROOT / "scripts" / "sc_pub_tiptap_recovery_gate.py")],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            timeout=1800, check=False,
+            timeout=1800, check=False, env=child_env,
         )
         if p.returncode:
             reasons = [
