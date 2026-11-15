@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-unified-scientific-authoring-v1.schema.json",
+  "title": "Sustainable Catalyst Unified Scientific Authoring — Private Saved Revision",
+  "description": "Authenticated Workspace interchange envelope. Validation never constitutes Research publication, rights approval, or source re-verification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "authority",
+    "projectId",
+    "documentId",
+    "revision",
+    "projectRevision",
+    "title",
+    "publicationType",
+    "createdAt",
+    "manuscript",
+    "source",
+    "figureSources",
+    "citationSnapshot",
+    "scientificStatus",
+    "rightsStatus",
+    "computationsExecuted",
+    "sourceBytesModified",
+    "links",
+    "handoffStatus",
+    "approval"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-unified-scientific-authoring/1.0"
+    },
+    "authority": {
+      "const": "workspace-scientific-publication"
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "documentId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "projectRevision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "publicationType": {
+      "enum": [
+        "report",
+        "policy-brief",
+        "working-paper",
+        "interactive-analysis",
+        "overview"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "manuscript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "sha256",
+        "body"
+      ],
+      "properties": {
+        "format": {
+          "const": "markdown"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "artifactId",
+            "sha256"
+          ],
+          "properties": {
+            "artifactId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "figureSources": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "artifactId",
+          "sha256"
+        ],
+        "properties": {
+          "artifactId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "citationSnapshot": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "scientificStatus": {
+      "type": "string"
+    },
+    "rightsStatus": {
+      "type": "string"
+    },
+    "computationsExecuted": {
+      "type": "boolean"
+    },
+    "sourceBytesModified": {
+      "type": "boolean"
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "html",
+        "pdf",
+        "docx",
+        "researchDraft"
+      ],
+      "properties": {
+        "html": {
+          "type": "string",
+          "pattern": "^/v1/private-research/"
+        },
+        "pdf": {
+          "type": "string",
+          "pattern": "^/v1/private-research/"
+        },
+        "docx": {
+          "type": "string",
+          "pattern": "^/v1/private-research/"
+        },
+        "researchDraft": {
+          "type": "string",
+          "pattern": "^/v1/private-research/"
+        }
+      }
+    },
+    "handoffStatus": {
+      "const": "private-draft-not-published"
+    },
+    "approval": {
+      "type": "null"
+    }
+  }
+}
