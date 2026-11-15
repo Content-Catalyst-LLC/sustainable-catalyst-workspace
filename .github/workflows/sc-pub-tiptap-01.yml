@@ -1,0 +1,72 @@
+name: SC-PUB-TIPTAP-01 Scientific Editor
+
+on:
+  push:
+    branches:
+      - feature/sc-pub-visual-report-studio-m1-20261115
+    paths:
+      - 'backend/reporting_tiptap/**'
+      - 'backend/app/reporting_publication*'
+      - 'backend/Dockerfile.reporting'
+      - 'tests/test_sc_pub_vis01_visual.cjs'
+      - '.github/workflows/sc-pub-tiptap-01.yml'
+  pull_request:
+    paths:
+      - 'backend/reporting_tiptap/**'
+      - 'backend/app/reporting_publication*'
+      - 'backend/Dockerfile.reporting'
+      - 'tests/test_sc_pub_vis01_visual.cjs'
+      - '.github/workflows/sc-pub-tiptap-01.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  editor:
+    name: Build self-hosted editor and verify source preservation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Generate pinned dependency lock
+        working-directory: backend/reporting_tiptap
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Install pinned dependencies
+        working-directory: backend/reporting_tiptap
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build local bundle and run no-loss unit tests
+        working-directory: backend/reporting_tiptap
+        run: |
+          npm run build
+          npm test
+          test -s ../app/reporting_publication_tiptap.bundle.js
+          sha256sum ../app/reporting_publication_tiptap.bundle.js
+      - name: Verify existing Workspace adapter syntax
+        run: |
+          node --check backend/app/reporting_publication_ui.js
+          node --check backend/app/reporting_publication_visual.js
+          python3 -m py_compile backend/app/reporting_publication.py
+          node --check tests/test_sc_pub_vis01_visual.cjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sc-pub-tiptap-build
+          path: |
+            backend/reporting_tiptap/package-lock.json
+            backend/app/reporting_publication_tiptap.bundle.js
+          if-no-files-found: error
+          retention-days: 7
+      - name: Commit only lockfile for this first-party feature branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/sc-pub-visual-report-studio-m1-20261115'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/reporting_tiptap/package-lock.json
+          if ! git diff --cached --quiet; then
+            git commit -m "SC-PUB-TIPTAP-01: lock exact editor dependency graph"
+            git push origin HEAD:feature/sc-pub-visual-report-studio-m1-20261115
+          fi
