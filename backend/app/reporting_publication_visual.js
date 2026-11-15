@@ -93,6 +93,12 @@ function setEditorMode(mode){
  E('visualMode').setAttribute('aria-pressed',String(visualMode));
  E('sourceMode').setAttribute('aria-pressed',String(!visualMode));
 }
+function prepareSourceInsertion(){
+ if(visualMode){
+  setEditorMode('source');
+  const t=E('manuscript');t.setSelectionRange(t.value.length,t.value.length);
+ }
+}
 function addVisualMarkdown(snippet){
  const t=E('manuscript');
  t.value=t.value.replace(/\s*$/,'')+'\n\n'+snippet;
