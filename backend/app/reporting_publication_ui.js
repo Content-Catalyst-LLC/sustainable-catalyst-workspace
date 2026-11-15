@@ -15,12 +15,12 @@ async function api(url,body){
 function run(fn){return async()=>{try{await fn()}catch(err){status(err.message,true);console.error(err)}}}
 function refreshExport(){for(const id of ['html','pdf','docx'])E(id).disabled=!state.saved||state.dirty}
 function markDirty(){state.dirty=true;state.saved=false;E('dirty').textContent='Unsaved changes';refreshExport();E('length').textContent=E('manuscript').value.length.toLocaleString()+' characters'}
-function setDraft(title,markdown,sourceId=null,docId=null,version=0){
- E('title').value=title;E('manuscript').value=markdown;
+function setDraft(title,markdown,sourceId=null,docId=null,version=0,type='report'){
+ E('title').value=title;E('manuscript').value=markdown;E('publicationType').value=type;
  state.sourceId=sourceId;state.documentId=docId;state.documentRevision=version;
  state.saved=!!docId;state.dirty=false;E('dirty').textContent=docId?'Saved · revision '+version:'New unsaved draft';
  E('length').textContent=markdown.length.toLocaleString()+' characters';
- refreshExport(); E('provenance').textContent=sourceId?'Source ID: '+sourceId+' · original bytes immutable':'New document. Source not yet linked.';
+ refreshExport();if(visualMode)renderVisualBlocks(); E('provenance').textContent=sourceId?'Source ID: '+sourceId+' · original bytes immutable':'New document. Source not yet linked.';
 }
 async function selectProject(id){
  if(!id)return;state.project=id;state.catalog=await api(base+'/catalog/projects/'+encodeURIComponent(id));
@@ -44,7 +44,7 @@ async function selectProject(id){
   if(/\.svg$/i.test(file.filename)){
    const insert=document.createElement('button');insert.textContent='Insert figure';
    insert.onclick=run(async()=>{const caption=file.filename.split('/').pop().replace(/\.svg$/i,'').replace(/_/g,' ');
-    const textarea=E('manuscript');const snippet='\n\n!['+caption+'](asset:'+file.artifactId+')\n\n';
+    if(visualMode)setEditorMode('source');const textarea=E('manuscript');const snippet='\n\n!['+caption+'](asset:'+file.artifactId+')\n\n';
     const pos=textarea.selectionStart;textarea.setRangeText(snippet,pos,textarea.selectionEnd,'end');markDirty();await preview();});
    row.append(insert);
   }
@@ -62,7 +62,7 @@ async function selectProject(id){
  if(!docs.documents.length){const p=document.createElement('div');p.className='empty';p.textContent='No saved publications yet.';E('versions').append(p)}
  // Prefer the preserved manuscript when there is no saved publication to reopen.
  if(docs.documents.length){const last=docs.documents[0];const r=await api(path('/documents/'+encodeURIComponent(last.documentId)));
-  setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,r.document.documentId,r.document.revision);
+  setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,r.document.documentId,r.document.revision,r.document.publicationType||'report');
   state.saved=true;refreshExport();await preview();status('Saved scientific publication opened.');
  }else{
   const candidate=files.find(f=>/\/final_manuscript\.md$/i.test(f.filename))||files.find(f=>/\.md$/i.test(f.filename));
@@ -72,7 +72,7 @@ async function selectProject(id){
   }else{setDraft(state.catalog.project.title,'# Introduction\n\n',null);await preview();status('New publication draft. Existing research files remain available in the asset panel.')}
  }
 }
-function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId,citationStyle:E('citeStyle').value}}
+function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId,citationStyle:E('citeStyle').value,publicationType:E('publicationType').value}}
 async function preview(){
  if(!state.project)return;
  const data=await api(path('/preview'),manuscript());
@@ -107,7 +107,7 @@ async function renderHistoryButtons(documents){
       button.onclick=run(async()=>{
         const r=await api(path('/documents/'+encodeURIComponent(doc.documentId)+'?revision='+version.revision));
         setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,
-                 r.document.documentId,r.document.revision);
+                 r.document.documentId,r.document.revision,r.document.publicationType||'report');
         // Older snapshots may be viewed and exported. Saving from an older
         // version is rejected by server's optimistic document-revision gate.
         state.projectRevision=r.projectRevision;
@@ -129,8 +129,8 @@ function exportAs(ext){
  a.download='scientific-publication-v'+state.documentRevision+'.'+ext;document.body.append(a);a.click();a.remove();
 }
 E('projects').onchange=run(async()=>{state.projectRevision=undefined;await selectProject(E('projects').value);state.projectRevision=state.catalog.project.revision});
-E('title').addEventListener('input',markDirty);E('manuscript').addEventListener('input',markDirty);
-E('new').onclick=run(async()=>{if(!state.project)throw Error('Select a project');setDraft(state.catalog.project.title,'# Introduction\n\n',null);await preview();status('Blank publication draft opened. Existing source material remains preserved.')});
+E('title').addEventListener('input',markDirty);E('publicationType').addEventListener('change',markDirty);E('manuscript').addEventListener('input',markDirty);
+E('new').onclick=run(async()=>{if(!state.project)throw Error('Select a project');setDraft(state.catalog.project.title,'# Introduction\n\n',null,null,0,E('publicationType').value);await preview();status('Blank publication draft opened. Existing source material remains preserved.')});
 E('previewButton').onclick=run(async()=>{await preview();status('Publication preview updated. Research source hashes verified where used.')});
 E('save').onclick=run(save);
 // SC-CITE-01 Citation Studio: project citation collection, Library sources, [@key] insertion and reference lists.
@@ -148,7 +148,7 @@ function renderCitations(collection){
  for(const item of collection.items){
   const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
   E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
-   const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
+   if(visualMode)setEditorMode('source');const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
    status('Citation '+item.key+' inserted. The reference list is generated from saved project records.');}));
  }
 }
