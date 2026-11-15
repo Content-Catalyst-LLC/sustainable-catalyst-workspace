@@ -81,10 +81,15 @@ test('newline convention and empty file survive',()=>{
 });
 
 
-test('Tiptap serializer escapes brackets but Citation Studio markers remain unchanged',()=>{
- const serialized='A result \\[@Beerling2020\\] and \\[@Clarkson2024\\].';
- assert.equal(restoreCitationMarkers(serialized),
-   'A result [@Beerling2020] and [@Clarkson2024].');
- assert.equal(restoreCitationMarkers('\\[ordinary\\] and [@already]'),
-   '\\[ordinary\\] and [@already]');
+test('Tiptap serializer escapes brackets, but original citation markers survive',()=>{
+ const original='Result [@Beerling2020] and [@Clarkson_2024].';
+ const serialized='Result \\[@Beerling2020\\] and \\[@Clarkson\\_2024\\].';
+ assert.equal(restoreCitationMarkers(serialized,original),original);
+ assert.equal(restoreCitationMarkers('\\[@new_source\\]',original),
+   '\\[@new_source\\]', 'unverified citation must not be activated');
+ assert.equal(restoreCitationMarkers('\\[@literal\\]','Literal \\[@literal\\]'),
+   '\\[@literal\\]', 'escaped marker must remain escaped');
+ const multi='Combined [@a2020, p. 4; @b2021] evidence';
+ assert.equal(restoreCitationMarkers('Combined \\[@a2020, p. 4; @b2021\\] evidence',multi),multi);
 });
+
