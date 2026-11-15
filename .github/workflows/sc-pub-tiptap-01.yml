@@ -59,6 +59,13 @@ jobs:
           python3 -m py_compile backend/app/reporting_publication.py
           node --check tests/test_sc_pub_vis01_visual.cjs
           node tests/test_sc_pub_vis01_visual.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify branded DOCX/PDF/HTML publication contracts
+        run: |
+          python -m pip install --disable-pip-version-check -r backend/requirements.txt -r backend/requirements-reporting.txt
+          PYTHONPATH=backend python -m unittest backend.tests.test_sc_pub_vis01_branded_editor -v
       - uses: actions/upload-artifact@v4
         with:
           name: sc-pub-tiptap-build
