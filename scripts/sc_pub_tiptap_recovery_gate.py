@@ -122,6 +122,18 @@ def require_scratch(name):
         fail("Refusing an operation on a non-scratch Docker resource")
 
 
+def isolated_restore_command(container):
+    # Verified in operator's Nov 15 network-isolated restore diagnostic.
+    # Keep this independently testable; do not add a network route or use
+    # the production PostgreSQL service as the restore target.
+    require_scratch(container)
+    return (
+        "docker", "exec", "-i", container, "pg_restore",
+        "--exit-on-error", "-U", "postgres", "-d", "postgres",
+        "-C", "--no-owner", "--no-acl",
+    )
+
+
 def main():
     global TARGET, SSH_STAGE
     if os.environ.get("SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION") != "READ_ONLY_PRODUCTION_TO_OFFHOST":
@@ -232,9 +244,10 @@ def main():
         # No network connection to the isolated PostgreSQL container: stdin
         # flows into docker exec over SSH and the local Unix socket.
         with dbdump.open("rb") as input_file:
-            ssh("docker", "exec", "-i", container, "pg_restore", "-U", "postgres",
-                "-d", "postgres", "-C", "--no-owner", "--no-acl",
-                stdin=input_file)
+            # Match the isolated operator diagnostic that successfully
+            # restored this same archive. Exit on the first actual SQL error
+            # rather than attempting later objects and masking the cause.
+            ssh(*isolated_restore_command(container), stdin=input_file)
         SSH_STAGE = "Count tables in original production PostgreSQL database"
         origin_tables = ssh("docker", "exec", "sc-postgres", "sh", "-c",
             """psql -U ${POSTGRES_USER:-postgres} -d sc_workspace -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema') AND table_type='BASE TABLE'" """)
