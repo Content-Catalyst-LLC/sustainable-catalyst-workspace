@@ -32,6 +32,51 @@ def fail(msg):
 SSH_STAGE = "Remote recovery initialization"
 
 
+def private_failure_report(stderr: bytes) -> str:
+    """Retain SSH/PostgreSQL diagnostics only under the user's encrypted
+    off-host backup mount, never in GitHub or public terminal output.
+
+    Return a fixed, nonsecret classification and an absolute private path.
+    This is diagnostic evidence only; it cannot satisfy the restore gate.
+    """
+    root = os.environ.get("SC_PUB_TIPTAP_BACKUP_DIR", "")
+    if not root:
+        return "private diagnostic unavailable (backup location not set)"
+    dest = Path(root).expanduser()
+    parent = dest.parent
+    if not parent.is_dir() or parent.is_symlink():
+        return "private diagnostic unavailable (backup mount missing)"
+    try:
+        folder = parent / ".sc-pub-tiptap-diagnostics"
+        folder.mkdir(mode=0o700, exist_ok=True)
+        if folder.is_symlink() or (folder.stat().st_mode & 0o077):
+            return "private diagnostic unavailable (unsafe destination permissions)"
+        location = folder / ("pg-restore-" + uuid4().hex[:16] + ".log")
+        fd = os.open(location, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        with os.fdopen(fd, "wb") as output:
+            output.write(stderr[:256 * 1024])  # bound private diagnostic
+        raw = stderr.lower()
+        if b"already exists" in raw:
+            kind = "existing database/object"
+        elif b"permission denied" in raw or b"not permitted" in raw:
+            kind = "permission failure"
+        elif b"no space left" in raw:
+            kind = "out-of-space"
+        elif b"could not connect" in raw or b"connection refused" in raw:
+            kind = "connectivity"
+        elif b"no such container" in raw or b"oci runtime" in raw:
+            kind = "Docker/container"
+        elif b"could not execute query" in raw or b"pg_restore: error:" in raw:
+            kind = "PostgreSQL restore SQL error"
+        elif b"broken pipe" in raw:
+            kind = "SSH/stream failure"
+        else:
+            kind = "unclassified SSH/PostgreSQL error"
+        return f"{kind}; private stderr: {location}"
+    except (OSError, ValueError):
+        return "private diagnostic unavailable (write failed)"
+
+
 def resume_existing_backup(dest: Path) -> tuple[Path, Path]:
     """Strictly reuse only the two off-host archives left by this failed gate.
 
@@ -71,13 +116,20 @@ def run(argv, *, stdin=None, stdout=subprocess.PIPE):
 
 
 def ssh(*args, stdin=None, stdout=subprocess.PIPE):
+    argv = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
+            TARGET, " ".join(shlex.quote(str(arg)) for arg in args)]
+    # Only the restore step needs detailed diagnostics. Other operations
+    # continue through the existing sanitized command runner unchanged.
+    if SSH_STAGE == "Restore PostgreSQL database from off-host archive":
+        p = subprocess.run(argv, stdin=stdin, stdout=stdout,
+                           stderr=subprocess.PIPE, check=False)
+        if p.returncode:
+            explanation = private_failure_report(p.stderr)
+            fail(f"{SSH_STAGE}: remote exit {p.returncode}; {explanation}")
+        return p.stdout.decode().strip() if stdout == subprocess.PIPE else None
     try:
-        return run(["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes",
-                    TARGET, " ".join(shlex.quote(str(arg)) for arg in args)],
-                   stdin=stdin, stdout=stdout)
+        return run(argv, stdin=stdin, stdout=stdout)
     except RuntimeError as error:
-        # Stage is authored here, never from remote output or a potentially
-        # secret-bearing command line. Do not expose DB/SSH stderr.
         fail(f"{SSH_STAGE}: {error}")
 
 

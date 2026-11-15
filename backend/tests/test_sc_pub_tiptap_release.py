@@ -223,6 +223,42 @@ class ReleaseGateTests(unittest.TestCase):
             self.assertEqual(env["SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_IMAGE"],
                              live["image_ref"])
 
+    def test_restore_failure_details_stay_in_private_offhost_log(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            leaf = root / "sc-pub-tiptap-20261115-retry-01"
+            root.chmod(0o700)
+            with patch.dict(os.environ, {"SC_PUB_TIPTAP_BACKUP_DIR": str(leaf)}):
+                message = recovery.private_failure_report(
+                    b'pg_restore: error: could not execute query: secret-value\n'
+                )
+            self.assertIn("PostgreSQL restore SQL error", message)
+            self.assertNotIn("secret-value", message)
+            folder = root / ".sc-pub-tiptap-diagnostics"
+            logs = list(folder.glob("pg-restore-*.log"))
+            self.assertEqual(len(logs), 1)
+            self.assertIn(b"secret-value", logs[0].read_bytes())
+            self.assertEqual(folder.stat().st_mode & 0o077, 0)
+            self.assertEqual(logs[0].stat().st_mode & 0o077, 0)
+
+    def test_postgresql_failure_reports_class_without_leaking_stderr(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            root.chmod(0o700)
+            error = SimpleNamespace(returncode=1, stdout=b"", stderr=
+                                    b'pg_restore: error: database "private_name" already exists')
+            with (
+                patch.dict(os.environ, {"SC_PUB_TIPTAP_BACKUP_DIR": str(root / "backup")}),
+                patch.object(recovery, "TARGET", "operator@example.test", create=True),
+                patch.object(recovery, "SSH_STAGE", "Restore PostgreSQL database from off-host archive"),
+                patch.object(recovery.subprocess, "run", return_value=error),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "existing database/object") as context:
+                    recovery.ssh("docker", "exec", "-i", "sc-pub-tiptap-restore-123456abcdef",
+                                 "pg_restore")
+            self.assertNotIn("private_name", str(context.exception))
+            self.assertEqual(len(list((root / ".sc-pub-tiptap-diagnostics").glob("pg-restore-*.log"))), 1)
+
     def test_isolated_pg_restore_matches_successful_operator_diagnostic(self):
         name = "sc-pub-tiptap-restore-123456abcdef"
         tokens = recovery.isolated_restore_command(name)
