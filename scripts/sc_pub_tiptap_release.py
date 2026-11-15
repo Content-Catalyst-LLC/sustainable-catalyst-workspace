@@ -33,6 +33,7 @@ STATE = Path.home() / ".sc-pub-tiptap" / f"{RELEASE}.json"
 TARGET = os.environ.get("SC_PUB_TIPTAP_SSH_TARGET", "catalystadmin@94.72.113.77")
 HEALTH = "http://127.0.0.1:20080/health"
 PROBE = "http://127.0.0.1:20080/v1/private-research/reporting-studio/publication/editor.bundle.js"
+LEGACY_PROBE = "http://127.0.0.1:20080/v1/private-research/reporting-studio/publication"
 
 
 def fail(message):
@@ -123,6 +124,10 @@ def build():
     verify_source()
     live = assert_live()
     capacity()
+    exists = ssh('docker image inspect ' + shlex.quote(IMAGE) +
+                 ' >/dev/null 2>&1 && echo yes || echo no')
+    if exists != 'no':
+        fail("Candidate image tag already exists: refusing to overwrite an immutable release candidate")
     remote_dir = f"$HOME/sc-pub-tiptap-{SHORT}"
     command = (f'umask 077; mkdir -m 700 -p "{remote_dir}"; '
                f'test ! -e "{remote_dir}/backend" || exit 42; '
@@ -216,11 +221,14 @@ def verify_recovery(live):
     print("PASS: fresh off-host PostgreSQL and data-volume restore receipts and archive hashes")
 
 
-def check_probe():
+def check_probe(*, after_cutover=False):
+    # Before cutover the old Studio image does not have editor.bundle.js,
+    # so check the existing private Studio UI rather than requiring a new route.
+    url = PROBE if after_cutover else LEGACY_PROBE
     code = ssh(quoted("curl", "-sS", "-o", "/dev/null", "-w", "%{http_code}",
-                      "--max-time", "8", PROBE))
+                      "--max-time", "8", url))
     if code not in ("401", "403"):
-        fail("Anonymous editor JavaScript route not denied as expected (HTTP " + code + ")")
+        fail("Anonymous Studio access not denied as expected (HTTP " + code + ")")
 
 
 def rollback(reason):
@@ -258,7 +266,7 @@ def deploy():
         updated = assert_live()
         if updated["image_ref"] != IMAGE or updated["image_id"] != candidate["image_id"]:
             fail("Live container is not using the approved Tiptap image digest")
-        check_probe()
+        check_probe(after_cutover=True)
         present = ssh(quoted("docker", "exec", LIVE, "sh", "-c",
                              "test -s /app/app/reporting_publication_tiptap.bundle.js && echo present"))
         if present != "present":
