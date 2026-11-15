@@ -1,60 +1,55 @@
 'use strict';
-// SC-PUB-VIS-01 isolated visual editor tests; no application server required.
+// SC-PUB-TIPTAP-01 adapter test (offline); Tiptap source model has its own
+// independent Node test suite in backend/reporting_tiptap/tests.
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
 
-const target=path.resolve(__dirname,'../backend/app/reporting_publication_visual.js');
-const source=fs.readFileSync(target,'utf8');
+const source=fs.readFileSync(path.resolve(__dirname,'../backend/app/reporting_publication_visual.js'),'utf8');
 new vm.Script(source,{filename:'reporting_publication_visual.js'});
-
 function mockElement(){
  return {
-  value:'',hidden:false,attributes:{},onclick:null,children:[],
+  value:'',hidden:false,disabled:false,attributes:{},onclick:null,
   setAttribute(k,v){this.attributes[k]=v},
-  replaceChildren(...items){this.children=items},
-  append(v){this.children.push(v)},
+  setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end},
+  focus(){},
  };
 }
-const nodes=new Map();
-const document={
- getElementById(id){if(!nodes.has(id))nodes.set(id,mockElement());return nodes.get(id)},
- createElement(){return mockElement()},
+const elements=new Map();
+const E=id=>{
+ if(!elements.has(id))elements.set(id,mockElement());
+ return elements.get(id);
 };
-const ctx={document,E:(id)=>document.getElementById(id),markDirty(){},preview:async()=>({}),
- status(){},setTimeout,clearTimeout,console};
+let dirty=0, previews=0, renders=0, destroys=0;
+const window={};
+const ctx={E,window,status(){},markDirty(){dirty++},preview:async()=>{previews++}};
 vm.createContext(ctx);
-vm.runInContext(source+'\nglobalThis.__api={parseVisualParts,classifyVisual,blockMarkdown,renderVisualBlocks,setEditorMode};',ctx);
-const {parseVisualParts,classifyVisual,blockMarkdown,renderVisualBlocks,setEditorMode}=ctx.__api;
+vm.runInContext(source+'\nglobalThis.__test={setEditorMode,prepareSourceInsertion};',ctx);
+const manuscript=E('manuscript');
+const original='## Wexford Results\n\n$$\nCO_2 + basalt\n$$\n';
+manuscript.value=original;
+assert.equal(E('visualMode').disabled,true);
+assert.equal(manuscript.hidden,false);
+assert.equal(window.SCStudioRegisterTiptap instanceof Function,true);
+window.SCStudioRegisterTiptap({
+ render(){renders++},destroy(){destroys++}
+});
+assert.equal(E('visualMode').disabled,false);
+assert.equal(manuscript.hidden,true);
+assert.equal(renders,1);
+ctx.__test.prepareSourceInsertion();
+assert.equal(manuscript.hidden,false);
+assert.equal(manuscript.value,original);
+assert.equal(manuscript.selectionStart,original.length);
+assert.equal(destroys,1);
+E('addHeading').onclick();
+assert.match(manuscript.value,/## New section/);
+assert.equal(dirty,1);
 
-const text='# Wexford ERW\n\nEvidence [@beerling2020] remains source text.\n\n$$\n\nCO_2 + basalt\n\n$$\n\n![Verified figure](asset:fig01)\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n';
-const parsed=parseVisualParts(text);
-assert.equal(parsed.prefix+parsed.parts.map(p=>p.raw+p.sep).join(''),text);
-assert.equal(parsed.parts[0].raw,'# Wexford ERW\n');
-assert.equal(classifyVisual(parsed.parts[0].raw).type,'heading1');
-assert.equal(classifyVisual(parsed.parts[1].raw).type,'paragraph');
-assert.equal(classifyVisual(parsed.parts[2].raw).type,'technical');
-assert.equal(classifyVisual(parsed.parts[3].raw).type,'technical');
-assert.equal(classifyVisual(parsed.parts[4].raw).type,'technical');
-assert.equal(blockMarkdown('heading2','Methods','# Old heading\n'),'## Methods\n');
-assert.equal(blockMarkdown('list','First\nSecond','- Original\n'),'- First\n- Second\n');
-
-document.getElementById('manuscript').value=text;
-setEditorMode('visual');
-assert.equal(document.getElementById('manuscript').hidden,true);
-assert.equal(document.getElementById('visualBlocks').children.length,5);
-// Viewing / switching modes must not change source Markdown.
-setEditorMode('source');
-assert.equal(document.getElementById('manuscript').value,text);
-assert.equal(document.getElementById('manuscript').hidden,false);
-
-const runtime=fs.readFileSync(path.resolve(__dirname,'../backend/app/reporting_publication_ui.js'),'utf8');
 const ui=fs.readFileSync(path.resolve(__dirname,'../backend/app/reporting_publication_ui.html'),'utf8');
-assert.match(runtime,/publicationType:E\('publicationType'\)\.value/);
-assert.match(ui,/id="visualBlocks"/);
-assert.match(ui,/id="publicationType"/);
-assert.match(ui,/id="html"/);
-assert.match(ui,/id="pdf"/);
-assert.match(ui,/id="docx"/);
-console.log('SC-PUB-VIS-01: visual authoring/source preservation/export wiring PASS');
+const controller=fs.readFileSync(path.resolve(__dirname,'../backend/app/reporting_publication_ui.js'),'utf8');
+assert.match(controller,/publicationType:E\('publicationType'\)\.value/);
+for(const id of ['visualBlocks','publicationType','html','pdf','docx'])
+ assert.ok(ui.includes('id="'+id+'"'),id);
+console.log('SC-PUB-TIPTAP-01: editor adapter and existing Workspace export wiring PASS');
