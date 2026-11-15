@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {splitMarkdown,joinMarkdown,classifyMarkdownBlock,replaceEditedBlock} from '../source-bridge.js';
+import {splitMarkdown,joinMarkdown,classifyMarkdownBlock,replaceEditedBlock,restoreCitationMarkers} from '../source-bridge.js';
 
 const wexford = [
  '# Wexford Enhanced Rock Weathering',
@@ -78,4 +78,13 @@ test('newline convention and empty file survive',()=>{
  assert.equal(replaceEditedBlock('# One\n','## Two'),'## Two\n');
  const x=splitMarkdown('\n\n# A\n\n');
  assert.equal(joinMarkdown(x.prefix,x.parts),'\n\n# A\n\n');
+});
+
+
+test('Tiptap serializer escapes brackets but Citation Studio markers remain unchanged',()=>{
+ const serialized='A result \\[@Beerling2020\\] and \\[@Clarkson2024\\].';
+ assert.equal(restoreCitationMarkers(serialized),
+   'A result [@Beerling2020] and [@Clarkson2024].');
+ assert.equal(restoreCitationMarkers('\\[ordinary\\] and [@already]'),
+   '\\[ordinary\\] and [@already]');
 });
