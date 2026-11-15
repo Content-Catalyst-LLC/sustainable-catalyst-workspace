@@ -46,6 +46,12 @@ jobs:
           npm test
           test -s ../app/reporting_publication_tiptap.bundle.js
           sha256sum ../app/reporting_publication_tiptap.bundle.js
+      - name: Install isolated Chromium for a real editor browser check
+        working-directory: backend/reporting_tiptap
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance of Tiptap and preserved scientific objects
+        working-directory: backend/reporting_tiptap
+        run: node tests/browser-smoke.mjs
       - name: Verify existing Workspace adapter syntax
         run: |
           node --check backend/app/reporting_publication_ui.js
