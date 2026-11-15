@@ -310,8 +310,22 @@ def main():
     elif mode == "recover":
         if os.environ.get("SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION") != "READ_ONLY_PRODUCTION_TO_OFFHOST":
             fail("Set SC_PUB_TIPTAP_RECOVERY_AUTHORIZATION=READ_ONLY_PRODUCTION_TO_OFFHOST")
-        execute(["python3", str(ROOT / "scripts" / "sc_pub_tiptap_recovery_gate.py")],
-                timeout=1800)
+        # This subprocess intentionally sanitizes SSH/DB stderr inside the
+        # recovery gate. Surface only its final NO-GO line: the generic
+        # execute() wrapper otherwise discards the actionable root cause.
+        p = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "sc_pub_tiptap_recovery_gate.py")],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            timeout=1800, check=False,
+        )
+        if p.returncode:
+            reasons = [
+                line.strip() for line in p.stderr.splitlines()
+                if line.strip().startswith("NO-GO:")
+            ]
+            fail((reasons[-1][len("NO-GO:"):].strip()
+                  if reasons else
+                  "Recovery gate failed without a sanitized diagnostic"))
         print("PASS: independent off-host backup and restore performed")
     elif mode == "deploy":
         deploy()
