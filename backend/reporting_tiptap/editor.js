@@ -77,7 +77,7 @@ function richBlock(part, kind, index) {
         },
       },
       onUpdate: ({editor: instance}) => {
-        syncEditedBlock(part, restoreCitationMarkers(instance.getMarkdown()));
+        syncEditedBlock(part, restoreCitationMarkers(instance.getMarkdown(), part.raw));
       },
     });
   } catch (error) {
