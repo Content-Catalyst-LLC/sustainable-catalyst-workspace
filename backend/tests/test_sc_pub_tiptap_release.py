@@ -223,6 +223,18 @@ class ReleaseGateTests(unittest.TestCase):
             self.assertEqual(env["SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_IMAGE"],
                              live["image_ref"])
 
+    def test_isolated_pg_restore_matches_successful_operator_diagnostic(self):
+        name = "sc-pub-tiptap-restore-123456abcdef"
+        tokens = recovery.isolated_restore_command(name)
+        self.assertEqual(tokens[:5], ("docker", "exec", "-i", name, "pg_restore"))
+        self.assertIn("--exit-on-error", tokens)
+        self.assertIn("--no-owner", tokens)
+        self.assertIn("--no-acl", tokens)
+        self.assertIn("-C", tokens)
+        self.assertNotIn("sc-postgres", tokens)
+        with self.assertRaisesRegex(RuntimeError, "non-scratch"):
+            recovery.isolated_restore_command("sc-postgres")
+
     def test_cutover_refuses_if_live_baseline_changed(self):
         baseline = {
             "container_id": "a" * 64, "image_ref": "sc-workspace-reporting:prod-old",
