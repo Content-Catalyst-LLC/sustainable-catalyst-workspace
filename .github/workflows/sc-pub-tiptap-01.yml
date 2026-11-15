@@ -52,6 +52,7 @@ jobs:
           node --check backend/app/reporting_publication_visual.js
           python3 -m py_compile backend/app/reporting_publication.py
           node --check tests/test_sc_pub_vis01_visual.cjs
+          node tests/test_sc_pub_vis01_visual.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: sc-pub-tiptap-build
