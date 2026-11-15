@@ -74,3 +74,16 @@ export function replaceEditedBlock(original, markdown) {
   const trailing = original.match(/\n*$/)[0];
   return String(markdown).replace(/\n*$/, '') + trailing;
 }
+
+
+/**
+ * Tiptap Markdown escapes square brackets of plain text tokens. Restore
+ * exclusively valid Citation Studio markers, otherwise the existing server
+ * citation parser would treat a formerly cited revision as unresolved.
+ *
+ * This is a deliberately narrow compatibility normalization, not a general
+ * Markdown unescape or scientific content transformation.
+ */
+export function restoreCitationMarkers(markdown) {
+  return String(markdown).replace(/\\\[@([A-Za-z0-9_.:-]{1,80})\\\]/g, '[@$1]');
+}
