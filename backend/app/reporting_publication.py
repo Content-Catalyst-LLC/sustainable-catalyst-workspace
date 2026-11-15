@@ -727,6 +727,65 @@ def research_revision(project_id: str, pub: dict, publication_type: str, summary
                            'scientificStatus': pub.get('scientificStatus'), 'rightsStatus': pub.get('rightsStatus')}}
 
 
+# SC-EDITOR-01: stable, private interchange snapshot for Workspace, Research and
+# downstream publication adapters. No extra document database, no publish action.
+AUTHORING_SCHEMA = 'sc-unified-scientific-authoring/1.0'
+
+
+def authoring_package(project_id: str, publication: dict) -> dict:
+    """Create an immutable, content-addressed authoring envelope from a saved revision."""
+    markdown = publication['markdown']
+    digest = hashlib.sha256(markdown.encode('utf-8')).hexdigest()
+    if digest != publication.get('markdownSHA256'):
+        raise HTTPException(409, 'Saved manuscript hash does not match its immutable revision.')
+    document_id = publication['documentId']
+    revision = publication['revision']
+    kind = publication.get('publicationType', 'report')
+    root = ('/v1/private-research/reporting-studio/publication/projects/' +
+            quote(project_id, safe='') + '/documents/' + quote(document_id, safe=''))
+    return {
+        'schema': AUTHORING_SCHEMA,
+        'authority': 'workspace-scientific-publication',
+        'projectId': project_id,
+        'documentId': document_id,
+        'revision': revision,
+        'projectRevision': publication['projectRevision'],
+        'title': publication['title'],
+        'publicationType': kind,
+        'createdAt': publication['createdAt'],
+        'manuscript': {'format': 'markdown', 'sha256': digest, 'body': markdown},
+        'source': publication.get('source'),
+        'figureSources': publication.get('figureSources', []),
+        'citationSnapshot': publication.get('citations'),
+        'scientificStatus': publication.get('scientificStatus', 'unreviewed'),
+        'rightsStatus': publication.get('rightsStatus', 'not-redistribution-approved'),
+        'computationsExecuted': publication.get('computationsExecuted', False),
+        'sourceBytesModified': publication.get('sourceBytesModified', False),
+        'links': {
+            'html': root + '/export.html?revision=' + str(revision),
+            'pdf': root + '/export.pdf?revision=' + str(revision),
+            'docx': root + '/export.docx?revision=' + str(revision),
+            'researchDraft': root + '/research-revision?revision=' + str(revision) +
+                '&publicationType=' + quote(kind, safe=''),
+        },
+        'handoffStatus': 'private-draft-not-published',
+        'approval': None,
+    }
+
+
+@router.get('/projects/{project_id}/documents/{document_id}/authoring-package')
+def authoring_package_route(project_id: str, document_id: str, request: Request, revision: int):
+    """Authenticated owner-scoped immutable exchange; no public release or write."""
+    owner = _subject(request)
+    if revision < 1:
+        raise HTTPException(422, 'A saved positive document revision is required.')
+    with session_scope() as db:
+        _, publication = _saved(db, owner, project_id, document_id, revision)
+    package = authoring_package(project_id, publication)
+    return JSONResponse(package, headers={**HEADERS, 'Cache-Control': 'private, no-store',
+        'X-Content-Type-Options': 'nosniff'})
+
+
 @router.get('/projects/{project_id}/documents/{document_id}/research-revision')
 def research_revision_route(project_id:str,document_id:str,request:Request,revision:int,publicationType:str):
     owner=_subject(request)

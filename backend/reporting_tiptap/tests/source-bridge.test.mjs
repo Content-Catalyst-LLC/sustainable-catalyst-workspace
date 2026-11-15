@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {splitMarkdown,joinMarkdown,classifyMarkdownBlock,replaceEditedBlock,restoreCitationMarkers} from '../source-bridge.js';
+import {splitMarkdown,joinMarkdown,classifyMarkdownBlock,replaceEditedBlock,restoreCitationMarkers,isLosslessRichBlock} from '../source-bridge.js';
 
 const wexford = [
  '# Wexford Enhanced Rock Weathering',
@@ -93,3 +93,14 @@ test('Tiptap serializer escapes brackets, but original citation markers survive'
  assert.equal(restoreCitationMarkers('Combined \\[@a2020, p. 4; @b2021\\] evidence',multi),multi);
 });
 
+
+
+test('SC-EDITOR-01 admits only losslessly converted Tiptap blocks',()=>{
+ assert.equal(isLosslessRichBlock('## Methods\n', '## Methods'),true);
+ assert.equal(isLosslessRichBlock('Evidence [@Beerling2020].\n', 'Evidence \\[@Beerling2020\\].'),true);
+ assert.equal(isLosslessRichBlock('**Important**\n', 'Important'),false);
+ assert.equal(isLosslessRichBlock('Keep two spaces  \n', 'Keep two spaces'),false);
+ assert.equal(isLosslessRichBlock('Text with a protected source', ''),false);
+ assert.equal(isLosslessRichBlock('x\r\n', 'x\n'),false);
+ assert.equal(isLosslessRichBlock(null, 'text'),false);
+});

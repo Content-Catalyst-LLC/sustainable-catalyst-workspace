@@ -84,7 +84,7 @@ class PublicationTests(unittest.TestCase):
         self.assertTrue(docx.startswith(b'PK'))
         from docx import Document
         d=Document(io.BytesIO(docx))
-        self.assertIn('Metrics',d.paragraphs[0].text)
+        self.assertIn('Metrics', '\n'.join(p.text for p in d.paragraphs))  # Branded cover precedes title
 
     def test_input_model_rejects_extra_fields_and_oversized(self):
         from pydantic import ValidationError

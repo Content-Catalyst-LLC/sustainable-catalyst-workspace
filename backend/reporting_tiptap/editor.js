@@ -14,7 +14,7 @@ import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import {
-  splitMarkdown, joinMarkdown, classifyMarkdownBlock, replaceEditedBlock, restoreCitationMarkers,
+  splitMarkdown, joinMarkdown, classifyMarkdownBlock, replaceEditedBlock, restoreCitationMarkers, isLosslessRichBlock,
 } from './source-bridge.js';
 
 const editors = [];
@@ -80,6 +80,12 @@ function richBlock(part, kind, index) {
         syncEditedBlock(part, restoreCitationMarkers(instance.getMarkdown(), part.raw));
       },
     });
+    // A syntactically simple block may still be altered by the beta Markdown
+    // parser. Refuse visual editing before any user interaction if so.
+    if (!isLosslessRichBlock(part.raw, editor.getMarkdown())) {
+      editor.destroy();
+      return sourceOnlyBlock(part.raw, 'Lossless visual conversion was not verified. Edit the exact source in Markdown mode.');
+    }
   } catch (error) {
     // Fail closed for this block. Do not ever drop or mutate original source.
     const preserved = document.createElement('pre');
@@ -108,7 +114,7 @@ function richBlock(part, kind, index) {
   return box;
 }
 
-function sourceOnlyBlock(raw) {
+function sourceOnlyBlock(raw, reason = 'Equation, table, figure, code or complex Markdown. Original bytes remain untouched.') {
   const box = document.createElement('section');
   box.className = 'sc-block technical sc-source-only';
   const label = document.createElement('div');
@@ -116,7 +122,7 @@ function sourceOnlyBlock(raw) {
   label.textContent = 'Preserved scientific source';
   const note = document.createElement('p');
   note.className = 'preserved';
-  note.textContent = 'Equation, table, figure, code or complex Markdown. Original bytes remain untouched.';
+  note.textContent = reason;
   const pre = document.createElement('pre'); pre.textContent = raw;
   const button = document.createElement('button'); button.type='button';
   button.textContent='Edit in Markdown';

@@ -9,6 +9,7 @@ on:
       - 'backend/app/reporting_publication*'
       - 'backend/Dockerfile.reporting'
       - 'tests/test_sc_pub_vis01_visual.cjs'
+      - 'backend/tests/test_sc_editor_01_foundation.py'
       - '.github/workflows/sc-pub-tiptap-01.yml'
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - 'backend/app/reporting_publication*'
       - 'backend/Dockerfile.reporting'
       - 'tests/test_sc_pub_vis01_visual.cjs'
+      - 'backend/tests/test_sc_editor_01_foundation.py'
       - '.github/workflows/sc-pub-tiptap-01.yml'
 
 permissions:
@@ -67,6 +69,12 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check -r backend/requirements.txt -r backend/requirements-reporting.txt
           PYTHONPATH=backend python -m unittest backend.tests.test_sc_pub_vis01_branded_editor -v
+      - name: SC-EDITOR-01 immutable authoring and legacy revision tests
+        run: |
+          python -m pip install --disable-pip-version-check pytest
+          PYTHONPATH=backend python -m pytest -q \
+            backend/tests/test_sc_editor_01_foundation.py \
+            backend/tests/test_rd012_reporting_studio_recovery.py
       - uses: actions/upload-artifact@v4
         with:
           name: sc-pub-tiptap-build
