@@ -38,6 +38,23 @@ SCHEMA = 'sc-scientific-publication/1.0'
 MAX_MANUSCRIPT = 180_000
 MAX_ASSET = 4_000_000
 
+# Brand and document types are shared by every saved revision and export.
+# Preview and authoring do not constitute scientific review or publication approval.
+PUBLICATION_TYPES = ('report', 'policy-brief', 'working-paper', 'interactive-analysis', 'overview')
+PUBLICATION_LABELS = {
+    'report': 'Scientific Report', 'policy-brief': 'Policy Brief',
+    'working-paper': 'Working Paper', 'interactive-analysis': 'Interactive Analysis',
+    'overview': 'Research Overview',
+}
+BRAND_NAME = 'SUSTAINABLE CATALYST'
+BRAND_LINE = 'INDEPENDENT RESEARCH'
+BRAND_RED = '#b00020'
+BRAND_INK = '#171717'
+
+
+def _publication_label(pub: dict) -> str:
+    return PUBLICATION_LABELS.get(pub.get('publicationType'), PUBLICATION_LABELS['report'])
+
 
 class Draft(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -45,6 +62,7 @@ class Draft(BaseModel):
     markdown: str = Field(min_length=1, max_length=MAX_MANUSCRIPT)
     sourceArtifactId: str | None = Field(default=None, max_length=160)
     citationStyle: Literal[cite.STYLES] = cite.DEFAULT_STYLE
+    publicationType: Literal['report', 'policy-brief', 'working-paper', 'interactive-analysis', 'overview'] = 'report'
 
 
 class Save(Draft):
@@ -329,10 +347,27 @@ def _verify_figures(db, owner, project_id, figure_ids):
 def publication_ui(request:Request):
     _subject(request)
     script=Path(__file__).with_name('reporting_publication_ui.js').read_text()
+    script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
     html=Path(__file__).with_name('reporting_publication_ui.html').read_text()
     script_hash=base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
-    return HTMLResponse(html.replace('<!--SCRIPT-->', '<script>'+script+'</script>'),headers={**HEADERS,
-        'Content-Security-Policy':"default-src 'none'; script-src 'sha256-"+script_hash+"'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"})
+    # Self-hosted Tiptap bundle. No CDN or external editor service.
+    bundle_src='/v1/private-research/reporting-studio/publication/editor.bundle.js'
+    inline='<script>'+script+'</script>'
+    local_bundle='<script src="'+bundle_src+'" defer></script>'
+    return HTMLResponse(html.replace('<!--SCRIPT-->', inline+local_bundle),headers={**HEADERS,
+        'Content-Security-Policy':"default-src 'none'; script-src 'self' 'sha256-"+script_hash+"'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"})
+
+
+@router.get('/editor.bundle.js')
+def tiptap_editor_bundle(request:Request):
+    """Authenticated same-origin Tiptap asset; no remote JavaScript."""
+    _subject(request)
+    path=Path(__file__).with_name('reporting_publication_tiptap.bundle.js')
+    if not path.is_file():
+        raise HTTPException(503,'Tiptap bundle missing from this Reporting Studio image.')
+    return Response(path.read_bytes(),media_type='text/javascript; charset=utf-8',
+                    headers={**HEADERS,'Cache-Control':'private, no-store',
+                             'X-Content-Type-Options':'nosniff'})
 
 
 @router.get('/projects/{project_id}/sources/{artifact_id}')
@@ -413,7 +448,7 @@ def save_document(project_id:str,body:Save,request:Request):
         version=(last['revision']+1) if last else 1
         from datetime import datetime,timezone
         publication={'schema':SCHEMA,'documentId':document_id,'revision':version,
-              'title':body.title.strip(),'markdown':body.markdown,'source':source,
+              'title':body.title.strip(),'markdown':body.markdown,'publicationType':body.publicationType,'source':source,
               'figureSources':figure_sources,'citations':cite.freeze(body.markdown,cite.collection(row.package),body.citationStyle),
               'createdAt':datetime.now(timezone.utc).isoformat(),
               'projectRevision':row.revision+1,'markdownSHA256':hashlib.sha256(body.markdown.encode()).hexdigest(),
@@ -466,9 +501,10 @@ def _as_html(pub:dict,figures:dict|None=None) -> bytes:
     figures=figures or {}
     body,_=render_html(cite.resolve(pub['markdown'],pub.get('citations')),lambda aid:figures.get(aid,''))
     title=escape(pub['title'])
-    css='''body{font:11pt/1.65 Georgia,serif;max-width:760px;margin:45px auto;color:#202b29;padding:0 18px}h1,h2,h3{font-family:Arial,sans-serif;color:#143b32}h1{font-size:26pt}h2{font-size:17pt;margin-top:28px}table{border-collapse:collapse;width:100%;font:9pt Arial}td,th{border:1px solid #b9c6c0;padding:7px;text-align:left}figure{text-align:center;margin:24px 0}figure img{max-width:100%}figcaption{font:9pt Arial;color:#526b63}pre{white-space:pre-wrap;background:#f3f6f4;padding:12px}.meta{font:9pt Arial;color:#526b63;border-bottom:1px solid #cedbd4;padding-bottom:16px}blockquote{border-left:3px solid #82a89c;padding-left:16px}'''
-    meta=f'Saved version {pub["revision"]} · SHA-256 {pub["markdownSHA256"]} · Scientific content not independently verified'
-    return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>'+title+'</title><style>'+css+'</style></head><body><p class="meta">'+escape(meta)+'</p><h1>'+title+'</h1>'+body+'</body></html>').encode()
+    css='''@page{margin:20mm}body{font:11pt/1.65 Georgia,serif;max-width:760px;margin:40px auto;color:#171717;padding:0 18px}h1,h2,h3{font-family:Arial,sans-serif;color:#171717}h1{font-size:26pt}h2{font-size:17pt;margin-top:28px}table{border-collapse:collapse;width:100%;font:9pt Arial}td,th{border:1px solid #ccc;padding:7px;text-align:left}figure{text-align:center;margin:24px 0}figure img{max-width:100%}figcaption{font:9pt Arial;color:#555}pre{white-space:pre-wrap;background:#f7f7f7;padding:12px}.sc-brand{border-top:5px solid #b00020;padding-top:10px;font:700 15pt Arial,sans-serif;letter-spacing:.07em}.sc-type{font:9pt Arial,sans-serif;color:#555;letter-spacing:.09em;margin:4px 0 22px}.meta{font:9pt Arial;color:#666;border-bottom:1px solid #ccc;padding-bottom:16px}blockquote{border-left:3px solid #b00020;padding-left:16px}a{color:#b00020}@media print{body{margin:0;max-width:none}}'''
+    meta=f'Saved revision {pub["revision"]} · SHA-256 {pub["markdownSHA256"]} · Scientific content not independently verified'
+    masthead='<header class="sc-brand">SUSTAINABLE CATALYST</header><p class="sc-type">'+escape(BRAND_LINE+' / '+_publication_label(pub))+'</p>'
+    return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>'+title+'</title><style>'+css+'</style></head><body>'+masthead+'<h1>'+title+'</h1><p class="meta">'+escape(meta)+'</p>'+body+'</body></html>').encode()
 
 
 def _pdf_inline(value: str) -> str:
@@ -489,9 +525,15 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
     from reportlab.lib.pagesizes import A4
     styles=getSampleStyleSheet()
     styles.add(ParagraphStyle(name='SCBody',parent=styles['BodyText'],fontSize=10.5,leading=16,spaceAfter=9))
-    styles.add(ParagraphStyle(name='SCCaption',parent=styles['Normal'],fontSize=9,alignment=TA_CENTER,spaceAfter=12,textColor=colors.HexColor('#526b63')))
-    out=BytesIO(); doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=48,leftMargin=48,topMargin=50,bottomMargin=48,title=pub['title'])
-    story=[Paragraph(escape(pub['title']),styles['Title']),Spacer(1,10),
+    styles.add(ParagraphStyle(name='SCCaption',parent=styles['Normal'],fontSize=9,alignment=TA_CENTER,spaceAfter=12,textColor=colors.HexColor('#555555')))
+    styles.add(ParagraphStyle(name='SCBrand',parent=styles['Normal'],fontName='Helvetica-Bold',fontSize=15,
+                              leading=19,spaceAfter=5,textColor=colors.HexColor(BRAND_RED)))
+    styles.add(ParagraphStyle(name='SCType',parent=styles['Normal'],fontName='Helvetica',
+                              fontSize=9,leading=12,spaceAfter=16,textColor=colors.HexColor('#555555')))
+    out=BytesIO(); doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=48,leftMargin=48,topMargin=60,bottomMargin=54,title=pub['title'])
+    story=[Paragraph(BRAND_NAME,styles['SCBrand']),
+           Paragraph(escape(BRAND_LINE+' / '+_publication_label(pub)),styles['SCType']),
+           Paragraph(escape(pub['title']),styles['Title']),Spacer(1,10),
            Paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed',styles['SCCaption'])]
     for block in parse_blocks(cite.resolve(pub['markdown'],pub.get('citations'))):
         k=block['kind']
@@ -522,7 +564,16 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
                     story.append(Paragraph('[Figure available as preserved SVG attachment]',styles['SCCaption']))
             else:story.append(Paragraph('[Figure source unavailable]',styles['SCCaption']))
             story.append(Paragraph(escape(block['caption']),styles['SCCaption']))
-    doc.build(story)
+    def draw_footer(canvas, document):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor(BRAND_RED))
+        canvas.line(48, 39, A4[0]-48, 39)
+        canvas.setFont('Helvetica', 8)
+        canvas.setFillColor(colors.HexColor('#555555'))
+        canvas.drawString(48, 27, BRAND_NAME+' · '+_publication_label(pub))
+        canvas.drawRightString(A4[0]-48, 27, 'Revision '+str(pub['revision'])+' · Page '+str(document.page))
+        canvas.restoreState()
+    doc.build(story,onFirstPage=draw_footer,onLaterPages=draw_footer)
     return out.getvalue()
 
 
@@ -544,7 +595,22 @@ def _docx_rich(doc, content: str, style: str | None = None):
 def _docx(pub:dict,figure_bytes:dict[str,bytes]):
     from docx import Document
     from docx.shared import Inches,Pt
-    doc=Document(); doc.add_heading(pub['title'],0)
+    doc=Document()
+    normal=doc.styles['Normal']
+    normal.font.name='Aptos'
+    normal.font.size=Pt(10.5)
+    section=doc.sections[0]
+    header=section.header.paragraphs[0]
+    header.text=BRAND_NAME+'  |  '+BRAND_LINE
+    header.style=doc.styles['Header']
+    if header.runs:
+        header.runs[0].bold=True
+        header.runs[0].font.color.rgb=__import__('docx').shared.RGBColor(176,0,32)
+    footer=section.footer.paragraphs[0]
+    footer.text=BRAND_NAME+' · '+_publication_label(pub)+' · Saved revision '+str(pub['revision'])
+    footer.style=doc.styles['Footer']
+    doc.add_paragraph(_publication_label(pub).upper(),style='Subtitle')
+    doc.add_heading(pub['title'],0)
     doc.add_paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed')
     for block in parse_blocks(cite.resolve(pub['markdown'],pub.get('citations'))):
         k=block['kind']

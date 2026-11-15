@@ -1,0 +1,77 @@
+name: SC-PUB-TIPTAP-01 Scientific Editor
+
+on:
+  push:
+    branches:
+      - feature/sc-pub-visual-report-studio-m1-20261115
+    paths:
+      - 'backend/reporting_tiptap/**'
+      - 'backend/app/reporting_publication*'
+      - 'backend/Dockerfile.reporting'
+      - 'tests/test_sc_pub_vis01_visual.cjs'
+      - '.github/workflows/sc-pub-tiptap-01.yml'
+  pull_request:
+    paths:
+      - 'backend/reporting_tiptap/**'
+      - 'backend/app/reporting_publication*'
+      - 'backend/Dockerfile.reporting'
+      - 'tests/test_sc_pub_vis01_visual.cjs'
+      - '.github/workflows/sc-pub-tiptap-01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  editor:
+    name: Build self-hosted editor and verify source preservation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned dependencies
+        working-directory: backend/reporting_tiptap
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build local bundle and run no-loss unit tests
+        working-directory: backend/reporting_tiptap
+        run: |
+          npm run build
+          npm test
+          test -s ../app/reporting_publication_tiptap.bundle.js
+          sha256sum ../app/reporting_publication_tiptap.bundle.js
+      - name: Install isolated Chromium for a real editor browser check
+        working-directory: backend/reporting_tiptap
+        run: npx playwright install --with-deps chromium
+      - name: Browser acceptance of Tiptap and preserved scientific objects
+        working-directory: backend/reporting_tiptap
+        run: node tests/browser-smoke.mjs
+      - name: Verify existing Workspace adapter syntax
+        run: |
+          node --check backend/app/reporting_publication_ui.js
+          node --check backend/app/reporting_publication_visual.js
+          python3 -m py_compile backend/app/reporting_publication.py
+          node --check tests/test_sc_pub_vis01_visual.cjs
+          node tests/test_sc_pub_vis01_visual.cjs
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Match Reporting Studio production renderer system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
+      - name: Verify branded DOCX/PDF/HTML publication contracts
+        run: |
+          python -m pip install --disable-pip-version-check -r backend/requirements.txt -r backend/requirements-reporting.txt
+          PYTHONPATH=backend python -m unittest backend.tests.test_sc_pub_vis01_branded_editor -v
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sc-pub-tiptap-build
+          path: |
+            backend/reporting_tiptap/package-lock.json
+            backend/app/reporting_publication_tiptap.bundle.js
+          if-no-files-found: error
+          retention-days: 7

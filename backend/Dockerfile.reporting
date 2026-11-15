@@ -14,10 +14,17 @@ COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY requirements.txt requirements-reporting.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-reporting.txt && python -m pip check
 COPY reporting_math/package.json reporting_math/package-lock.json ./reporting_math/
-RUN cd reporting_math && node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci --omit=dev --ignore-scripts \
-    && rm -rf /usr/local/lib/node_modules/npm /root/.npm
+RUN cd reporting_math && node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci --omit=dev --ignore-scripts
 COPY reporting_math ./reporting_math
 COPY app ./app
+# SC-PUB-TIPTAP-01: bundle the MIT-licensed editor LOCALLY. The project
+# package-lock is required for a reproducible, fail-closed production image.
+COPY reporting_tiptap ./reporting_tiptap
+RUN cd reporting_tiptap \
+    && node /usr/local/lib/node_modules/npm/bin/npm-cli.js ci --ignore-scripts --no-audit --no-fund \
+    && node /usr/local/lib/node_modules/npm/bin/npm-cli.js run build \
+    && test -s ../app/reporting_publication_tiptap.bundle.js \
+    && rm -rf node_modules /root/.npm /usr/local/lib/node_modules/npm
 COPY migrations ./migrations
 RUN test -s reporting_math/heatmap.cjs && node --version
 EXPOSE 8089
