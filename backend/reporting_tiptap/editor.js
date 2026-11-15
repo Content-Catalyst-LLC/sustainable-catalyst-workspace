@@ -14,7 +14,7 @@ import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from '@tiptap/markdown';
 import {
-  splitMarkdown, joinMarkdown, classifyMarkdownBlock, replaceEditedBlock,
+  splitMarkdown, joinMarkdown, classifyMarkdownBlock, replaceEditedBlock, restoreCitationMarkers,
 } from './source-bridge.js';
 
 const editors = [];
@@ -77,7 +77,7 @@ function richBlock(part, kind, index) {
         },
       },
       onUpdate: ({editor: instance}) => {
-        syncEditedBlock(part, instance.getMarkdown());
+        syncEditedBlock(part, restoreCitationMarkers(instance.getMarkdown()));
       },
     });
   } catch (error) {
