@@ -277,9 +277,28 @@ def deploy():
     print("Note: authenticated real-owner editor/export acceptance remains separate from public Research release.")
 
 
+def manual_rollback():
+    # Deliberately limited to the image produced by this precise release.
+    current = assert_live()
+    if current["image_ref"] != IMAGE:
+        fail("Manual rollback refused: live Studio is not this Tiptap release image")
+    if not sys.stdin.isatty():
+        fail("Rollback requires an interactive operator")
+    answer = input("Type ROLLBACK SC-PUB-TIPTAP-01: ")
+    if answer != "ROLLBACK SC-PUB-TIPTAP-01":
+        fail("Operator declined rollback")
+    if assert_live() != current:
+        fail("Live Studio changed before rollback")
+    ssh('bash "$HOME/sc-sci02/rd/studio.sh" rollback', timeout=180)
+    restored = assert_live()
+    if restored["image_ref"] == IMAGE:
+        fail("Rollback did not restore the previous Reporting Studio image")
+    print("ROLLED BACK: previous Reporting Studio image restored and health checked")
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("mode", choices=("status", "build", "recover", "deploy"))
+    p.add_argument("mode", choices=("status", "build", "recover", "deploy", "rollback"))
     mode = p.parse_args().mode
     if mode == "status":
         info = assert_live()
@@ -296,6 +315,8 @@ def main():
         print("PASS: independent off-host backup and restore performed")
     elif mode == "deploy":
         deploy()
+    elif mode == "rollback":
+        manual_rollback()
 
 
 if __name__ == "__main__":
