@@ -347,6 +347,7 @@ def _verify_figures(db, owner, project_id, figure_ids):
 def publication_ui(request:Request):
     _subject(request)
     script=Path(__file__).with_name('reporting_publication_ui.js').read_text()
+    script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
     html=Path(__file__).with_name('reporting_publication_ui.html').read_text()
     script_hash=base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     return HTMLResponse(html.replace('<!--SCRIPT-->', '<script>'+script+'</script>'),headers={**HEADERS,
