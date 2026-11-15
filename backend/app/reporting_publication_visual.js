@@ -57,7 +57,7 @@ E('sourceMode').onclick = () => setEditorMode('source');
 E('addHeading').onclick = () => addVisualMarkdown('## New section');
 E('addParagraph').onclick = () => addVisualMarkdown('New paragraph');
 E('addList').onclick = () => addVisualMarkdown('- New item');
-E('addQuote').onclick = () addVisualMarkdown('> Quoted passage');
+E('addQuote').onclick = () => addVisualMarkdown('> Quoted passage');
 E('addEquation').onclick = () => {
   addVisualMarkdown('$$\n\n$$');
   setEditorMode('source');
