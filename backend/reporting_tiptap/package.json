@@ -15,7 +15,8 @@
     "@tiptap/markdown": "3.34.0"
   },
   "devDependencies": {
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "playwright": "1.65.1"
   },
   "engines": {
     "node": ">=22"
