@@ -267,7 +267,7 @@ class ReleaseGateTests(unittest.TestCase):
             calls.append(argv)
             if argv[-2:] == ["cat", "/proc/1/comm"]:
                 # First probe sees the entrypoint's temporary server.
-                pid = b"docker-entrypoint\\n" if len(calls) == 1 else b"postgres\\n"
+                pid = b"docker-entrypoint\n" if len(calls) == 1 else b"postgres\n"
                 return SimpleNamespace(returncode=0, stdout=pid)
             self.assertEqual(argv[-3:], ["pg_isready", "-U", "postgres"])
             return SimpleNamespace(returncode=0, stdout=b"")
@@ -287,7 +287,7 @@ class ReleaseGateTests(unittest.TestCase):
 
     def test_final_postgresql_wait_fails_closed_if_only_temporary_server(self):
         scratch = "sc-pub-tiptap-restore-123456abcdef"
-        temporary = SimpleNamespace(returncode=0, stdout=b"docker-entrypoint\\n")
+        temporary = SimpleNamespace(returncode=0, stdout=b"docker-entrypoint\n")
         with (
             patch.object(recovery, "TARGET", "operator@example.test", create=True),
             patch.object(recovery.subprocess, "run", return_value=temporary) as probe,
@@ -303,9 +303,9 @@ class ReleaseGateTests(unittest.TestCase):
     def test_final_postgresql_wait_requires_readiness_after_final_pid(self):
         scratch = "sc-pub-tiptap-restore-123456abcdef"
         results = iter([
-            SimpleNamespace(returncode=0, stdout=b"postgres\\n"),
+            SimpleNamespace(returncode=0, stdout=b"postgres\n"),
             SimpleNamespace(returncode=1, stdout=b""),
-            SimpleNamespace(returncode=0, stdout=b"postgres\\n"),
+            SimpleNamespace(returncode=0, stdout=b"postgres\n"),
             SimpleNamespace(returncode=0, stdout=b""),
         ])
         with (
