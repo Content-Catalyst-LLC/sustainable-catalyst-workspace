@@ -20,6 +20,7 @@ import shlex
 import subprocess
 import sys
 import tarfile
+import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -51,6 +52,8 @@ def resume_existing_backup(dest: Path) -> tuple[Path, Path]:
     for p in (dbdump, archive):
         if p.is_symlink() or not p.is_file() or p.stat().st_size < 1000:
             fail("Resume archive missing, symlinked or unexpectedly small")
+        if not 0 <= time.time() - p.stat().st_mtime < 24 * 3600:
+            fail("Retained backup archive is older than 24 hours; start a new recovery")
         os.chmod(p, 0o600)
     with dbdump.open("rb") as stream:
         if stream.read(5) != b"PGDMP":
@@ -155,6 +158,11 @@ def main():
                       "--format", "{{.Id}} {{.Config.Image}}")
     if not live_before or len(live_before.split()) != 2:
         fail("Cannot identify live Reporting Studio image")
+    if resume:
+        expected_id = os.environ.get("SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_ID")
+        expected_image = os.environ.get("SC_PUB_TIPTAP_RECOVERY_EXPECTED_LIVE_IMAGE")
+        if not expected_id or not expected_image or live_before.split() != [expected_id, expected_image]:
+            fail("Retained archive cannot be tied to the built candidate's current live baseline")
     studioimage = live_before.split()[1]
     if not re.fullmatch(r"[A-Za-z0-9_./:@-]+", studioimage):
         fail("Unexpected live Studio image reference")
