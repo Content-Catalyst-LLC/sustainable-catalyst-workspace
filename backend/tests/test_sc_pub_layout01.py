@@ -136,7 +136,7 @@ class LayoutAuditTests(unittest.TestCase):
         import json
         from contextlib import nullcontext
         from unittest.mock import patch
-        source = '[FIGURE_RANK]\\n\\n![01 rank comparison](asset:rank-123)\\n'
+        source = '[FIGURE_RANK]\n\n![01 rank comparison](asset:rank-123)\n'
         body = pub.FigureMove.model_validate({
             'title': self.title, 'markdown': source, 'marker':'FIGURE_RANK',
             'assetId':'rank-123', 'expectedSHA256':hashlib.sha256(source.encode()).hexdigest(),
@@ -163,7 +163,7 @@ class LayoutAuditTests(unittest.TestCase):
         from contextlib import nullcontext
         from fastapi import HTTPException
         from unittest.mock import patch
-        source='[FIGURE_HDI]\\n'
+        source='[FIGURE_HDI]\n'
         kwargs={'title':'T','markdown':source,'marker':'FIGURE_HDI',
                 'assetId':'hdi-chart','caption':'HDI 2026',
                 'expectedSHA256':hashlib.sha256(b'different').hexdigest()}
