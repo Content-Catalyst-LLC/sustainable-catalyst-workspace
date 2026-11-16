@@ -56,5 +56,7 @@ jobs:
         run: |
           PYTHONPATH=backend python -m unittest \
             backend.tests.test_sc_pub_e2e01_outputs \
+            backend.tests.test_research_approvals_sc_ed01 \
+            backend.tests.test_sc_pub_m1_step_up_approvals \
             backend.tests.test_sc_pub_layout01 \
             backend.tests.test_rd012_reporting_studio_recovery -v
