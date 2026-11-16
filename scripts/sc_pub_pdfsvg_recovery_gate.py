@@ -246,6 +246,10 @@ def main():
         dbdump = dest / "sc_workspace.dump"
         archive = dest / "sc-workspace-data.tgz"
     receipt = dest / "sc-pub-pdfsvg-recovery.json"
+    # A later Studio release (e.g. sc_pub_e2e01_release.py) reuses this gate and names itself in the receipt.
+    release = os.environ.get("SC_PUB_RECOVERY_RELEASE", "sc-pub-pdfsvg-f59daf8085e8")
+    if not re.fullmatch(r"sc-pub-[a-z0-9]+-[a-f0-9]{12}", release):
+        fail("Unsafe release name")
     suffix = uuid4().hex[:12]
     container = f"sc-pub-pdfsvg-restore-{suffix}"
     pgvolume = f"sc-pub-pdfsvg-restore-{suffix}"  # same label, distinct Docker resource type
@@ -362,7 +366,7 @@ def main():
 
         record = {
             "schema": "sc-pub-pdfsvg-recovery/1.0",
-            "release": "sc-pub-pdfsvg-f59daf8085e8",
+            "release": release,
             "createdUtc": datetime.now(timezone.utc).isoformat(),
             "outcome": "PASS", "offhostBackup": True,
             "databaseRestore": True, "dataVolumeRestore": True,
