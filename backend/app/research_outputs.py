@@ -224,6 +224,26 @@ class WithdrawIn(ReasonIn):
     confirmArticleSlug: str = Field(min_length=1, max_length=150)
 
 
+class ObjectApprovalIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    dimension: Literal[DIMENSIONS]
+    reason: str = Field(default="", max_length=2000)
+
+
+class ObjectAttachIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    approvalId: str = Field(min_length=1, max_length=80)
+
+
+class ReasonOptionalIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(default="", max_length=2000)
+
+
+class AreaPublishIn(ObjectAttachIn):
+    confirmAreaSlug: str = Field(min_length=1, max_length=120)
+
+
 class DecideIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decision: Literal["approve", "reject", "request_revision"]
@@ -483,6 +503,100 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         research = call(ident, "GET", f"/editorial/articles/{quote(binding['articleSlug'], safe='')}/receipts")
         return JSONResponse({"workspace": binding.get("receipts") or [], "research": research.get("items") or []},
                             headers=H)
+
+    # Cited evidence and the Research area pass the same approval rules as the article: requests name the exact
+    # current subject Research reports, and only Research decides whether the signed records release them.
+    def _owned_project(ident, project_id: str) -> None:
+        with deps["session"]() as db:
+            deps["project"](db, ident.user_key, project_id)
+
+    def _object_subject(ident, object_id: str) -> tuple[str, dict]:
+        obj = call(ident, "GET", f"/console/objects/{quote(object_id, safe='')}")
+        if not obj.get("subjectRef"):
+            raise HTTPException(409, "Research has no reviewable subject for that object.")
+        return obj["subjectRef"], obj
+
+    @router.get("/projects/{project_id}/research-objects/{object_id}")
+    def research_object(project_id: str, object_id: str, request: Request):
+        from . import research_approvals as ra
+        ident = identity(request)
+        _owned_project(ident, project_id)
+        subject, obj = _object_subject(ident, object_id)
+        items = [i for i in ra.list_requests_route(role="owner", status="any", identity=ident)["items"]
+                 if i["subjectRef"] == subject and i["projectId"] == project_id]
+        return JSONResponse({"object": {k: obj.get(k) for k in ("id", "kind", "title", "visibility", "reviewState",
+                                                                 "approvals", "reproduction", "verification", "subjectRef")},
+                             "requests": items}, headers=H)
+
+    @router.post("/projects/{project_id}/research-objects/{object_id}/approval-requests")
+    def request_object_approval(project_id: str, object_id: str, body: ObjectApprovalIn, request: Request):
+        from . import research_approvals as ra
+        ident = writer(request)
+        _owned_project(ident, project_id)
+        subject, obj = _object_subject(ident, object_id)
+        return JSONResponse(ra.create_request_route(ra.ApprovalRequestIn(
+            projectId=project_id, dimension=body.dimension, subjectRef=subject,
+            subjectTitle=f"Research object: {str(obj.get('title') or object_id)[:200]}", reason=body.reason), ident),
+            status_code=201, headers=H)
+
+    @router.post("/projects/{project_id}/research-objects/{object_id}/approvals/attach")
+    def attach_object_approval(project_id: str, object_id: str, body: ObjectAttachIn, request: Request):
+        from . import research_approvals as ra
+        ident = writer(request)
+        _owned_project(ident, project_id)
+        signed = ra.record_route(body.approvalId, ident)
+        subject, _ = _object_subject(ident, object_id)
+        if signed.get("subjectRef") != subject or signed.get("projectId") != project_id \
+                or signed.get("dimension") not in DIMENSIONS:
+            raise HTTPException(409, "That approval is for a different object, revision or project.")
+        return JSONResponse(call(ident, "POST", f"/console/objects/{quote(object_id, safe='')}/approvals/"
+                                 f"{signed['dimension']}", {"record": signed}), headers=H)
+
+    @router.post("/projects/{project_id}/research-objects/{object_id}/release")
+    def release_object(project_id: str, object_id: str, request: Request):
+        """Release cited evidence for publication. Research applies its own rule; nothing is public until the
+        article that cites it, and its area, are published."""
+        ident = writer(request)
+        _owned_project(ident, project_id)
+        return JSONResponse(call(ident, "POST", f"/console/objects/{quote(object_id, safe='')}/public-projection"),
+                            headers=H)
+
+    @router.get("/projects/{project_id}/outputs/{document_id}/area")
+    def area(project_id: str, document_id: str, request: Request):
+        from . import research_approvals as ra
+        ident = identity(request)
+        with deps["session"]() as db:
+            _, binding = bound(db, ident.user_key, project_id, document_id)
+        view = call(ident, "GET", f"/editorial/areas/{quote(binding['areaSlug'], safe='')}")
+        items = [i for i in ra.list_requests_route(role="owner", status="any", identity=ident)["items"]
+                 if i["subjectRef"] == view.get("subjectRef")]
+        return JSONResponse({"area": {k: view.get(k) for k in ("slug", "title", "summary", "visibility", "subjectRef")},
+                             "requests": items}, headers=H)
+
+    @router.post("/projects/{project_id}/outputs/{document_id}/area/approval-requests")
+    def request_area(project_id: str, document_id: str, body: ReasonOptionalIn, request: Request):
+        from . import research_approvals as ra
+        ident = writer(request)
+        with deps["session"]() as db:
+            _, binding = bound(db, ident.user_key, project_id, document_id)
+        view = call(ident, "GET", f"/editorial/areas/{quote(binding['areaSlug'], safe='')}")
+        return JSONResponse(ra.create_request_route(ra.ApprovalRequestIn(
+            projectId=project_id, dimension="area-publication", subjectRef=str(view.get("subjectRef") or ""),
+            subjectTitle=f"Research area: {binding['areaSlug']}", reason=body.reason), ident), status_code=201, headers=H)
+
+    @router.post("/projects/{project_id}/outputs/{document_id}/area/publish")
+    def publish_area(project_id: str, document_id: str, body: AreaPublishIn, request: Request):
+        from . import research_approvals as ra
+        ident = writer(request)
+        with deps["session"]() as db:
+            _, binding = bound(db, ident.user_key, project_id, document_id)
+        if body.confirmAreaSlug != binding["areaSlug"]:
+            raise HTTPException(422, "Type the area identifier to confirm publishing the Research area.")
+        signed = ra.record_route(body.approvalId, ident)
+        done = call(ident, "POST", f"/editorial/areas/{quote(binding['areaSlug'], safe='')}/publish", {"record": signed})
+        record(ident.user_key, project_id, document_id, receipt_entry("area-published", done, area=binding["areaSlug"]),
+               f"research-output-area-{document_id}-{body.approvalId}")
+        return JSONResponse(done, headers=H)
 
     @router.get("/research-objects")
     def research_objects(request: Request):

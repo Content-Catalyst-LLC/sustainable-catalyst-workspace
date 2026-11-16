@@ -93,7 +93,20 @@ class FakeResearch:
                                                "status": "draft", "approved": {}, "ws": body["workspaceProjectId"]}
             return ok({"slug": body["slug"], "area": body["areaSlug"], "created": a is None})
         if path.startswith("/console/objects/"):
-            return ok({"id": parts[-1], "pin": "f" * 64})
+            oid = parts[2]
+            if len(parts) == 3:
+                return ok({"id": oid, "pin": "f" * 64, "title": "Synthetic dataset", "kind": "dataset",
+                           "visibility": "private", "subjectRef": f"research-object:{oid}#{'c' * 64}"})
+            if parts[3] == "approvals":
+                assert body["record"]["subjectRef"] == f"research-object:{oid}#{'c' * 64}"
+                return ok({"dimension": parts[4], "signed": True})
+            if parts[3] == "public-projection":
+                return httpx.Response(403, json={"detail": "Missing signed Workspace approvals: rights"})
+        if path.startswith("/editorial/areas/"):
+            if request.method == "GET":
+                return ok({"slug": parts[2], "title": "Metrics", "visibility": "private",
+                           "subjectRef": f"research-area:area-1#{'d' * 64}"})
+            return ok({"slug": parts[2], "visibility": "approved"})
         slug = parts[2] if len(parts) > 2 else ""
         a = self.articles.get(slug)
         if a is None or a["owner"] != subject:
@@ -393,3 +406,34 @@ def test_studio_page_carries_the_panel_and_its_script_under_the_csp_hash(monkeyp
     digest = b64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     assert f"'sha256-{digest}'" in page.headers["content-security-policy"]
     assert "innerHTML" not in script.split("SC-PUB-ENDTOEND-01")[1]
+
+
+def test_cited_evidence_and_area_use_the_same_exact_subject_rules(env, monkeypatch):
+    from app import research_approvals as ra
+    bind(env)
+    subject = f"research-object:obj-1#{'c' * 64}"
+    seen = {}
+    monkeypatch.setattr(ra, "create_request_route", lambda payload, identity: seen.setdefault("req", payload) and {"item": {}})
+    r = env.client.post("/projects/metrics/research-objects/obj-1/approval-requests", headers=h(), json={"dimension": "rights"})
+    assert r.status_code == 201 and seen["req"].subjectRef == subject and seen["req"].projectId == "metrics"
+    monkeypatch.setattr(ra, "record_route", lambda approval_id, identity: {
+        "subjectRef": f"research-object:obj-1#{'0' * 64}", "projectId": "metrics", "dimension": "rights"})
+    stale = env.client.post("/projects/metrics/research-objects/obj-1/approvals/attach", headers=h(), json={"approvalId": "a"})
+    assert stale.status_code == 409
+    monkeypatch.setattr(ra, "record_route", lambda approval_id, identity: {
+        "subjectRef": subject, "projectId": "metrics", "dimension": "rights"})
+    assert env.client.post("/projects/metrics/research-objects/obj-1/approvals/attach", headers=h(),
+                           json={"approvalId": "a"}).status_code == 200
+    refused = env.client.post("/projects/metrics/research-objects/obj-1/release", headers=h())
+    assert refused.status_code == 403 and "rights" in refused.json()["detail"]  # Research's rule, reported as is
+    # Another owner's project: nothing reaches Research.
+    calls = len(env.research.calls)
+    assert env.client.post("/projects/metrics/research-objects/obj-1/release", headers=h("owner-b")).status_code == 404
+    assert len(env.research.calls) == calls
+    monkeypatch.setattr(ra, "record_route", lambda approval_id, identity: {"dimension": "area-publication"})
+    bad = env.client.post(f"{BASE}/publication-overview/area/publish", headers=h(),
+                          json={"approvalId": "x", "confirmAreaSlug": "wrong"})
+    assert bad.status_code == 422
+    ok = env.client.post(f"{BASE}/publication-overview/area/publish", headers=h(),
+                         json={"approvalId": "x", "confirmAreaSlug": "metrics-of-sustainable-development"})
+    assert ok.status_code == 200 and ok.json()["visibility"] == "approved"

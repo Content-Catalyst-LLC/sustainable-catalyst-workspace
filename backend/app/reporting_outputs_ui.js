@@ -46,6 +46,33 @@ async function approvalsBlock(o){
   if(!signed[d]&&!req.some(q=>q.status==='pending'||q.status==='approved'))td.append(act('Request review',async()=>{await api(outPath(o.documentId,'/approval-requests'),{researchRevision:n,dimension:d});status(d+' review requested from your granted reviewers.')},o.controls.requestApproval));
   tr.append(td);table.append(tr)}
  box.append(table);return box}
+function projPath(s){return pub+'/projects/'+encodeURIComponent(state.project)+s}
+async function evidenceBlock(o){
+ const box=el('div',null,'out-approvals');const refs=o.research.headReferences||[];
+ if(!refs.length){box.append(el('p','The current Research revision cites no evidence. Cite at least one verified run, figure or source before review.','hint'));return box}
+ for(const ref of refs){
+  let info;try{info=await api(projPath('/research-objects/'+encodeURIComponent(ref.objectId)))}catch(e){box.append(el('p',ref.role+' '+ref.objectId+': '+e.message,'hint warn'));continue}
+  const obj=info.object,row=el('div',null,'out-card');
+  row.append(el('strong',ref.role+' · '+(obj.title||obj.id)),el('p','Status for publication: '+(ref.status||'?')+((ref.problems||[]).length?' — '+ref.problems.join(', '):''),'hint'),el('p','Exact subject: '+obj.subjectRef,'out-subject'));
+  const signed=obj.approvals||{};
+  for(const d of DIMS){const line=el('div',null,'out-actions');line.append(el('span',d+': '+(signed[d]?'signed approval recorded in Research':'not recorded')));
+   const req=info.requests.filter(q=>q.dimension===d);
+   for(const q of req)if(q.status==='approved'&&!signed[d])line.append(act('Record in Research',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/approvals/attach'),{approvalId:q.approvalId});status(d+' approval recorded for the cited object.')}));
+   if(!signed[d]&&!req.some(q=>q.status==='pending'||q.status==='approved'))line.append(act('Request review',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/approval-requests'),{dimension:d});status(d+' review requested for the cited object.')}));
+   row.append(line)}
+  if(obj.visibility!=='public-approved')row.append(act('Release for citation',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/release'));status('Research released the object for citation; it stays invisible until the article and area are published.')},DIMS.every(d=>signed[d])));
+  box.append(row)}
+ return box}
+async function areaBlock(o){
+ const box=el('div',null,'out-actions');let info;
+ try{info=await api(outPath(o.documentId,'/area'))}catch(e){box.append(el('p',e.message,'hint warn'));return box}
+ const a=info.area;box.append(el('span','Area '+a.slug+': '+(a.visibility==='approved'||a.visibility==='public-approved'?'published':'not published')));
+ if(a.visibility==='approved'||a.visibility==='public-approved')return box;
+ const approved=info.requests.filter(q=>q.status==='approved');
+ if(!info.requests.some(q=>q.status==='pending')&&!approved.length)box.append(act('Request area publication review',async()=>{await api(outPath(o.documentId,'/area/approval-requests'),{});status('Area publication review requested.')}));
+ for(const q of info.requests)if(q.status==='pending')box.append(el('span','review pending'));
+ if(approved.length){const c=input('Type '+a.slug+' to confirm',120);box.append(field('Confirm area identifier',c),act('Publish Research area',async()=>{await api(outPath(o.documentId,'/area/publish'),{approvalId:approved[approved.length-1].approvalId,confirmAreaSlug:c.value.trim()});status('Research area published (confirmed by Research).')}))}
+ return box}
 function releaseBlock(o){
  const r=o.research,box=el('div',null,'out-actions');const slug=o.binding.articleSlug;
  const confirm=input('Type '+slug+' to confirm');
@@ -80,7 +107,8 @@ async function outputCard(o){
  if(!r)return card;
  card.append(el('h4','Revision'),await revisionForm(o));
  if(o.controls.submit)card.append(act('Submit Research revision '+r.headRevision+' for review',async()=>{await api(outPath(o.documentId,'/submit'),{researchRevision:r.headRevision});status('Submitted for review (confirmed by Research).')}));
- card.append(el('h4','Review and rights'),await approvalsBlock(o),el('h4','Release'),releaseBlock(o));
+ card.append(el('h4','Cited evidence'),await evidenceBlock(o),el('h4','Review and rights'),await approvalsBlock(o),
+  el('h4','Research area'),await areaBlock(o),el('h4','Release'),releaseBlock(o));
  return card}
 async function reviewerInbox(){
  const box=el('section',null,'out-inbox');box.append(el('h3','Reviews assigned to you'));
