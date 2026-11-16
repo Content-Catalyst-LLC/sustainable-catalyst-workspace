@@ -84,7 +84,8 @@ class PublicationTests(unittest.TestCase):
         self.assertTrue(docx.startswith(b'PK'))
         from docx import Document
         d=Document(io.BytesIO(docx))
-        self.assertIn('Metrics',d.paragraphs[0].text)
+        self.assertEqual(sum('Metrics of Sustainable Development' in p.text for p in d.paragraphs),1)
+        self.assertIn('SCIENTIFIC REPORT',d.paragraphs[0].text)
 
     def test_input_model_rejects_extra_fields_and_oversized(self):
         from pydantic import ValidationError
