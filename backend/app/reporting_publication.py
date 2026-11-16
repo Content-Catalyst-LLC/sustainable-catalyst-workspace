@@ -534,10 +534,10 @@ def _pdf_svg_image(raw: bytes):
     # references, scripts, or unsafe CSS.
     safe = sanitize_svg(raw)
     root = ET.fromstring(safe)
-    viewbox = re.split(r'[\\s,]+', (root.attrib.get('viewBox') or '').strip())
+    viewbox = re.split(r'[\s,]+', (root.attrib.get('viewBox') or '').strip())
 
     def length(value):
-        match = re.fullmatch(r'\\s*(\\d+(?:\\.\\d+)?)(?:px|pt|in|cm|mm)?\\s*',
+        match = re.fullmatch(r'\s*(\d+(?:\.\d+)?)(?:px|pt|in|cm|mm)?\s*',
                              value or '', re.IGNORECASE)
         return float(match.group(1)) if match else 0.0
 
