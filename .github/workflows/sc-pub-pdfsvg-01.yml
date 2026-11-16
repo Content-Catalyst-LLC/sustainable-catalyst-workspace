@@ -1,0 +1,57 @@
+name: SC-PUB-PDFSVG-01 guarded operator safety
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/sc_pub_pdfsvg_release.py'
+      - 'scripts/sc_pub_pdfsvg_recovery_gate.py'
+      - 'backend/tests/test_sc_pub_pdfsvg_release.py'
+      - '.github/workflows/sc-pub-pdfsvg-01.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/sc_pub_pdfsvg_release.py'
+      - 'scripts/sc_pub_pdfsvg_recovery_gate.py'
+      - 'backend/tests/test_sc_pub_pdfsvg_release.py'
+      - '.github/workflows/sc-pub-pdfsvg-01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  operator:
+    name: Verify pinned release and isolated restore safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned reviewed PDF chart fix is a real ancestor of release
+        run: |
+          test "$(git cat-file -t f59daf8085e84446b6c78545d8534beab6abf4cb)" = commit
+          git merge-base --is-ancestor f59daf8085e84446b6c78545d8534beab6abf4cb HEAD
+      - name: Compile guarded operators
+        run: |
+          python -m py_compile scripts/sc_pub_pdfsvg_release.py scripts/sc_pub_pdfsvg_recovery_gate.py
+      - name: Run strictly offline release, rollback, and backup restore tests
+        run: |
+          python -m unittest backend.tests.test_sc_pub_pdfsvg_release -v
+      - name: Check release targets stay distinct from the deployed old Tiptap image
+        run: |
+          python - <<'PY'
+          import importlib.util
+          p = "scripts/sc_pub_pdfsvg_release.py"
+          spec = importlib.util.spec_from_file_location("operator", p)
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          assert module.SOURCE_SHA == "f59daf8085e84446b6c78545d8534beab6abf4cb"
+          assert module.IMAGE == "sc-workspace-reporting:pdfsvg-f59daf8085e8"
+          assert module.LIVE == "sc-workspace-reporting-live"
+          assert "SC-PUB-PDFSVG-01" in module.PDFSVG_SMOKE_PY or "_pdf_svg_image" in module.PDFSVG_SMOKE_PY
+          print("PASS: exact reviewed source and distinct guarded candidate tag")
+          PY
