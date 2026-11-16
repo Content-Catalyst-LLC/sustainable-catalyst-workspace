@@ -363,6 +363,7 @@ def publication_ui(request:Request):
     _subject(request)
     script=Path(__file__).with_name('reporting_publication_ui.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
+    script+='\n'+Path(__file__).with_name('reporting_outputs_ui.js').read_text()
     html=Path(__file__).with_name('reporting_publication_ui.html').read_text()
     script_hash=base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     # Self-hosted Tiptap bundle. No CDN or external editor service.
@@ -857,6 +858,14 @@ def _library_search(q:str)->dict:
     return discover(q)
 
 
+# SC-PUB-ENDTOEND-01: Outputs & Publishing drives Research's editorial lifecycle for this Studio's saved revisions.
+from . import research_outputs as outputs
+router.include_router(outputs.build_router({'subject':_subject,'write':_write,'project':_project,
+    'locked_project':_locked_project,'session':session_scope,'headers':HEADERS,'saved':_saved,
+    'store':_store_collection,'research_revision':research_revision,
+    'documents':lambda package:[{**d,**{k:s.get(k) for s in snapshots(package,d['documentId'])[-1:]
+                                          for k in ('publicationType','scientificStatus','rightsStatus','markdownSHA256')}}
+                                 for d in latest_documents(package)]}))
 router.include_router(cite.build_router({'subject':_subject,'write':_write,'project':_project,
     'locked_project':_locked_project,'original_asset':_original_asset,'store':_store_collection,'session':session_scope,
     'headers':HEADERS,'library_record':_library_record,'library_search':_library_search}))

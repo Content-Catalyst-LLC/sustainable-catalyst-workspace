@@ -37,6 +37,11 @@ def accepted_methods() -> frozenset[str]:
 
 @router.post("/session")
 def research_session_route(identity: ServiceIdentity = Depends(require_service_identity)):
+    return issue_session(identity)
+
+
+def issue_session(identity: ServiceIdentity) -> dict:
+    """The signed session document for ``identity``; also used server-side by Outputs & Publishing."""
     if identity.authentication_method not in accepted_methods():
         raise HTTPException(status_code=403, detail={
             "code": "sc-identity-required", "message": "Sign in to Sustainable Catalyst to use Research."})

@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # SC-SCI-02: sign-ins besides SC Identity that may receive a Research session. Only "erw-account-session"
     # (the existing ERW account sign-in, password only) is recognised; empty means SC Identity only.
     research_session_methods: str = ""
+    # SC-PUB-ENDTOEND-01: the Research API that Outputs & Publishing calls server-side with the signed-in person's
+    # Research session (https; plain http only where research_api_allow_http is set, for isolated staging).
+    research_api_origin: str = ""
+    research_api_allow_http: bool = False
+    # Public Research Hub page; an output's public URL is <hub>?article=<slug>.
+    research_hub_url: str = "https://sustainablecatalyst.com/research-hub/"
     auto_create_schema: bool = False
 
     max_projects_per_account: int = 100
