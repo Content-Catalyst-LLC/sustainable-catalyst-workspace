@@ -49,10 +49,10 @@ class Settings(BaseSettings):
     # Research session (https; plain http only where research_api_allow_http is set, for isolated staging).
     research_api_origin: str = ""
     research_api_allow_http: bool = False
-    # Where a separate Studio process obtains the person's Research session: the backend's own
-    # /v1/research-access/session, called with the person's cookie, so only the backend holds the signing key.
-    # Empty: this process signs the session itself (it then needs research_export_signing_key_file).
-    research_session_issuer_url: str = ""
+    # Internal origin of the Workspace backend that holds the Research signing key (e.g. http://sc-workspace-backend:8089).
+    # Set in a separate Studio process: it then asks the backend, with the person's own cookie, for their Research
+    # session and to sign their approval decisions, and never holds the key. Empty: this process signs itself.
+    research_signing_backend_url: str = ""
     # Public Research Hub page; an output's public URL is <hub>?article=<slug>.
     research_hub_url: str = "https://sustainablecatalyst.com/research-hub/"
     auto_create_schema: bool = False

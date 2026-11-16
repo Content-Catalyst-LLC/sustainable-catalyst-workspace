@@ -439,14 +439,15 @@ def test_cited_evidence_and_area_use_the_same_exact_subject_rules(env, monkeypat
     assert ok.status_code == 200 and ok.json()["visibility"] == "approved"
 
 
-ISSUER = "http://sc-workspace-backend:8089/v1/research-access/session"
+BACKEND = "http://sc-workspace-backend:8089"
+ISSUER = BACKEND + "/v1/research-access/session"
 
 
 def _issuer_env(env, monkeypatch, answer):
     """The Studio without the signing key: sessions come from the backend issuer (here a MockTransport)."""
     pinned = rx.public_key_info()  # Research keeps the public key it pins; only the private key leaves this process
     monkeypatch.setattr(rx, "public_key_info", lambda: pinned)
-    monkeypatch.setenv("SC_WORKSPACE_RESEARCH_SESSION_ISSUER_URL", ISSUER)
+    monkeypatch.setenv("SC_WORKSPACE_RESEARCH_SIGNING_BACKEND_URL", BACKEND)
     monkeypatch.setenv("SC_WORKSPACE_RESEARCH_EXPORT_SIGNING_KEY_FILE", "/nonexistent/no-key-in-the-studio")
     get_settings.cache_clear()
     seen = []
@@ -498,3 +499,25 @@ def test_backend_refusal_passes_through_and_no_cookie_is_refused(env, monkeypatc
     env.client.cookies.set("sc_workspace_session", "cookie-of-owner-a")
     assert bind(env).status_code == 403
     assert env.research.calls == []
+
+
+def test_approval_decisions_are_signed_by_the_backend_not_the_studio(env, monkeypatch):
+    def backend(request: httpx.Request):
+        if request.url.path.endswith("/decide"):
+            body = json.loads(request.content)
+            if body["expectedSubjectRef"] != "object:o1#sha256:" + "a" * 64:
+                return httpx.Response(409, json={"ok": False, "message": "The subject changed; review it again."})
+            return httpx.Response(200, json={"record": {"schema": "sc-workspace-research-approval/1.0",
+                                                        "approvalId": "approval_x", "decision": body["decision"]}})
+        return httpx.Response(404, json={"detail": "not found"})
+    seen = _issuer_env(env, monkeypatch, backend)
+    env.client.cookies.set("sc_workspace_session", "cookie-of-owner-a")
+    good = {"decision": "approve", "note": "ok", "expectedSubjectRef": "object:o1#sha256:" + "a" * 64}
+    out = env.client.post("/research-approvals/approval_x/decide", headers=h(), json=good)
+    assert out.status_code == 200 and out.json()["record"]["decision"] == "approve"
+    assert str(seen[-1].url) == BACKEND + "/v1/research-approvals/requests/approval_x/decide"
+    assert seen[-1].headers["cookie"] == "sc_workspace_session=cookie-of-owner-a"
+    stale = env.client.post("/research-approvals/approval_x/decide", headers=h(),
+                            json={**good, "expectedSubjectRef": "object:o1#sha256:" + "b" * 64})
+    assert stale.status_code == 409 and "review it again" in stale.text
+    assert env.client.post("/research-approvals/approval_x/decide", headers=h(write=False), json=good).status_code == 403

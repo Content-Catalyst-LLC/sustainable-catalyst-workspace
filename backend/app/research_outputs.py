@@ -61,13 +61,18 @@ def research_origin() -> str:
     return value
 
 
-def _issued_by_backend(identity, issuer: str) -> dict:
-    """The person's Research session from the Workspace backend, which alone holds the Research signing key.
+def signing_backend() -> str:
+    value = (get_settings().research_signing_backend_url or "").strip().rstrip("/")
+    parts = urlsplit(value)
+    if value and (parts.scheme not in ("http", "https") or not parts.hostname or parts.path or parts.query):
+        raise HTTPException(503, "Research publishing is not configured for this Workspace.")
+    return value
 
-    Sent with the person's own session cookie, so the backend applies its own identity and method rules; the returned
-    document must name exactly the person and sign-in method this request was authenticated with."""
+
+def _backend(path: str, body: dict | None = None) -> httpx.Response:
+    """POST to the Workspace backend that alone holds the Research signing key, as the person: their own session cookie
+    and the browser Origin travel with it, so the backend applies its own identity, CSRF, step-up and approval rules."""
     from .config import browser_origins
-    from .research_access import SESSION_SCHEMA
     settings = get_settings()
     request = _REQUEST.get()
     cookie = request.cookies.get(settings.session_cookie_name) if request is not None else None
@@ -77,14 +82,22 @@ def _issued_by_backend(identity, issuer: str) -> dict:
     origin = request.headers.get("origin") if request.headers.get("origin") in origins else min(origins, default="")
     try:
         with httpx.Client(transport=ISSUER_TRANSPORT, timeout=TIMEOUT, follow_redirects=False) as client:
-            response = client.post(issuer, headers={"Cookie": f"{settings.session_cookie_name}={cookie}", "Origin": origin,
-                                                    "Accept": "application/json"})
+            response = client.post(signing_backend() + path, json=body, headers={
+                "Cookie": f"{settings.session_cookie_name}={cookie}", "Origin": origin, "Accept": "application/json"})
     except httpx.HTTPError as exc:
-        raise HTTPException(502, "Research is unavailable; nothing was changed in Workspace.") from exc
-    if response.status_code in (401, 403):
+        raise HTTPException(502, "Workspace is unavailable; nothing was changed.") from exc
+    if response.status_code in (400, 401, 403, 404, 409, 422):
         raise HTTPException(response.status_code, _detail(response))
+    if response.status_code != 200:
+        raise HTTPException(502, "Workspace is unavailable; nothing was changed.")
+    return response
+
+
+def _issued_by_backend(identity) -> dict:
+    """The person's Research session from the backend; it must name exactly this person and sign-in method."""
+    from .research_access import SESSION_SCHEMA
     try:
-        doc = response.json() if response.status_code == 200 else None
+        doc = _backend("/v1/research-access/session").json()
     except ValueError:
         doc = None
     if not isinstance(doc, dict) or doc.get("schema") != SESSION_SCHEMA \
@@ -95,9 +108,8 @@ def _issued_by_backend(identity, issuer: str) -> dict:
 
 
 def session_header(identity) -> str:
-    issuer = (get_settings().research_session_issuer_url or "").strip()
-    if issuer:
-        doc = _issued_by_backend(identity, issuer)
+    if signing_backend():
+        doc = _issued_by_backend(identity)
     else:
         from .research_access import issue_session
         doc = issue_session(identity)
@@ -660,6 +672,9 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
     def decide(approval_id: str, body: DecideIn, request: Request):
         from . import research_approvals as ra
         ident = writer(request)
+        if signing_backend():  # the backend signs the decision record; this process holds no key
+            decided = _backend(f"/v1/research-approvals/requests/{quote(approval_id, safe='')}/decide", body.model_dump())
+            return JSONResponse(decided.json(), headers=H)
         return JSONResponse(ra.decide_route(approval_id, ra.DecisionIn(**body.model_dump()), request, ident), headers=H)
 
     return router
