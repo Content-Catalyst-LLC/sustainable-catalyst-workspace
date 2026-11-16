@@ -79,7 +79,7 @@ class BrandedPublicationTests(unittest.TestCase):
                         if min(pixels[i:i + 3]) < 200)
         self.assertGreater(non_white, 10000)
         marked = {**self.sample,
-                  'markdown': '## Figure\\n\\n![Synthetic chart](asset:chart)'}
+                  'markdown': '## Figure\n\n![Synthetic chart](asset:chart)'}
         pdf = pub._pdf(marked, {'chart': svg})
         self.assertIn(b'/Subtype /Image', pdf)
         self.assertIn(b'%%EOF', pdf[-200:])
