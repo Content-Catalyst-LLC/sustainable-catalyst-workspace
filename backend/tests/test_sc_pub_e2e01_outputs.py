@@ -437,3 +437,64 @@ def test_cited_evidence_and_area_use_the_same_exact_subject_rules(env, monkeypat
     ok = env.client.post(f"{BASE}/publication-overview/area/publish", headers=h(),
                          json={"approvalId": "x", "confirmAreaSlug": "metrics-of-sustainable-development"})
     assert ok.status_code == 200 and ok.json()["visibility"] == "approved"
+
+
+ISSUER = "http://sc-workspace-backend:8089/v1/research-access/session"
+
+
+def _issuer_env(env, monkeypatch, answer):
+    """The Studio without the signing key: sessions come from the backend issuer (here a MockTransport)."""
+    pinned = rx.public_key_info()  # Research keeps the public key it pins; only the private key leaves this process
+    monkeypatch.setattr(rx, "public_key_info", lambda: pinned)
+    monkeypatch.setenv("SC_WORKSPACE_RESEARCH_SESSION_ISSUER_URL", ISSUER)
+    monkeypatch.setenv("SC_WORKSPACE_RESEARCH_EXPORT_SIGNING_KEY_FILE", "/nonexistent/no-key-in-the-studio")
+    get_settings.cache_clear()
+    seen = []
+
+    def issuer(request: httpx.Request):
+        seen.append(request)
+        return answer(request)
+    monkeypatch.setattr(ro, "ISSUER_TRANSPORT", httpx.MockTransport(issuer))
+    return seen
+
+
+def _backend_signed(subject="workspace-user:owner-a", method="erw-account-session"):
+    # Signed with the test key, as the backend would; the Studio process itself is not given the key file.
+    from datetime import timedelta, timezone
+    now = datetime.now(timezone.utc)
+    return rx.sign_document(research_access.SESSION_SCHEMA, {
+        "schema": research_access.SESSION_SCHEMA, "issuer": rx.ISSUER, "audience": rx.AUDIENCE, "sessionId": "rss_t",
+        "subject": subject, "authentication": method, "issuedAt": now.isoformat(),
+        "expiresAt": (now + timedelta(seconds=300)).isoformat()})
+
+
+def test_studio_obtains_the_session_from_the_backend_with_the_persons_cookie(env, monkeypatch):
+    doc = _backend_signed()  # signed before the Studio loses the key
+    seen = _issuer_env(env, monkeypatch, lambda r: httpx.Response(200, json=doc))
+    with pytest.raises((HTTPException, OSError)):  # this process cannot sign a session itself
+        research_access.issue_session(security.ServiceIdentity("owner-a", "workspace-user:owner-a", "workspace-user",
+                                                               "session", "erw-account-session"))
+    env.client.cookies.set("sc_workspace_session", "cookie-of-owner-a")
+    first = bind(env)
+    assert first.status_code == 201, first.text
+    assert env.research.subjects == ["workspace-user:owner-a"]  # Research verified the backend's signature
+    assert seen and all(r.method == "POST" and str(r.url) == ISSUER for r in seen)
+    assert all(r.headers["cookie"] == "sc_workspace_session=cookie-of-owner-a" and r.headers["origin"] == ORIGIN
+               for r in seen)
+
+
+def test_backend_issued_session_must_name_exactly_this_person(env, monkeypatch):
+    other = _backend_signed(subject="workspace-user:owner-b")
+    _issuer_env(env, monkeypatch, lambda r: httpx.Response(200, json=other))
+    env.client.cookies.set("sc_workspace_session", "cookie-of-owner-a")
+    assert bind(env).status_code == 502
+    assert env.research.calls == []
+
+
+def test_backend_refusal_passes_through_and_no_cookie_is_refused(env, monkeypatch):
+    _issuer_env(env, monkeypatch, lambda r: httpx.Response(403, json={"detail": {"code": "sc-identity-required",
+                                                                                   "message": "Sign in."}}))
+    assert bind(env).status_code == 401  # no session cookie to forward: nothing is asked of the backend
+    env.client.cookies.set("sc_workspace_session", "cookie-of-owner-a")
+    assert bind(env).status_code == 403
+    assert env.research.calls == []

@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+from contextvars import ContextVar
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Callable, Literal
@@ -41,6 +42,8 @@ MAX_RECEIPTS = 200
 TIMEOUT = 15.0
 # Tests replace this with an httpx.MockTransport; production uses the default network transport.
 TRANSPORT: httpx.BaseTransport | None = None
+ISSUER_TRANSPORT: httpx.BaseTransport | None = None  # the backend's session issuer (tests inject a MockTransport)
+_REQUEST: ContextVar[Request | None] = ContextVar("sc_outputs_request", default=None)
 
 
 # ---------------------------------------------------------------------------
@@ -58,9 +61,46 @@ def research_origin() -> str:
     return value
 
 
+def _issued_by_backend(identity, issuer: str) -> dict:
+    """The person's Research session from the Workspace backend, which alone holds the Research signing key.
+
+    Sent with the person's own session cookie, so the backend applies its own identity and method rules; the returned
+    document must name exactly the person and sign-in method this request was authenticated with."""
+    from .config import browser_origins
+    from .research_access import SESSION_SCHEMA
+    settings = get_settings()
+    request = _REQUEST.get()
+    cookie = request.cookies.get(settings.session_cookie_name) if request is not None else None
+    if not cookie:
+        raise HTTPException(401, "A valid Workspace browser session is required.")
+    origins = browser_origins(settings)
+    origin = request.headers.get("origin") if request.headers.get("origin") in origins else min(origins, default="")
+    try:
+        with httpx.Client(transport=ISSUER_TRANSPORT, timeout=TIMEOUT, follow_redirects=False) as client:
+            response = client.post(issuer, headers={"Cookie": f"{settings.session_cookie_name}={cookie}", "Origin": origin,
+                                                    "Accept": "application/json"})
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Research is unavailable; nothing was changed in Workspace.") from exc
+    if response.status_code in (401, 403):
+        raise HTTPException(response.status_code, _detail(response))
+    try:
+        doc = response.json() if response.status_code == 200 else None
+    except ValueError:
+        doc = None
+    if not isinstance(doc, dict) or doc.get("schema") != SESSION_SCHEMA \
+            or doc.get("subject") != f"workspace-user:{identity.user_key}" \
+            or doc.get("authentication") != identity.authentication_method:
+        raise HTTPException(502, "Research is unavailable; nothing was changed in Workspace.")
+    return doc
+
+
 def session_header(identity) -> str:
-    from .research_access import issue_session
-    doc = issue_session(identity)
+    issuer = (get_settings().research_session_issuer_url or "").strip()
+    if issuer:
+        doc = _issued_by_backend(identity, issuer)
+    else:
+        from .research_access import issue_session
+        doc = issue_session(identity)
     return "SC-Workspace " + base64.urlsafe_b64encode(json.dumps(doc, separators=(",", ":")).encode()).decode().rstrip("=")
 
 
@@ -262,6 +302,7 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         ident = _session_identity(request)
         if ident is None or ident.user_key != owner:
             raise HTTPException(401, "A valid Workspace browser session is required.")
+        _REQUEST.set(request)
         return ident
 
     def writer(request: Request):
