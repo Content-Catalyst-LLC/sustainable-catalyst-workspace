@@ -2,7 +2,7 @@
 const base='/v1/private-research/reporting-studio';
 const pub=base+'/publication';
 const E=id=>document.getElementById(id);
-const state={project:null,catalog:null,documentId:null,documentRevision:0,sourceId:null,saved:false,dirty:false,figures:[]};
+const state={project:null,catalog:null,documentId:null,documentRevision:0,sourceId:null,saved:false,dirty:false,figures:[],layoutAudit:null};
 function status(s,error=false){E('status').textContent=s;E('status').classList.toggle('warn',error)}
 function path(s){return pub+'/projects/'+encodeURIComponent(state.project)+s}
 async function api(url,body){
@@ -14,10 +14,16 @@ async function api(url,body){
 }
 function run(fn){return async()=>{try{await fn()}catch(err){status(err.message,true);console.error(err)}}}
 function refreshExport(){for(const id of ['html','pdf','docx'])E(id).disabled=!state.saved||state.dirty}
-function markDirty(){state.dirty=true;state.saved=false;E('dirty').textContent='Unsaved changes';refreshExport();E('length').textContent=E('manuscript').value.length.toLocaleString()+' characters'}
+function markDirty(){
+ state.dirty=true;state.saved=false;state.layoutAudit=null;
+ E('dirty').textContent='Unsaved changes';refreshExport();
+ E('length').textContent=E('manuscript').value.length.toLocaleString()+' characters';
+ E('layoutMove').disabled=true;
+ E('layoutSummary').textContent='Update preview to refresh the layout audit.';
+}
 function setDraft(title,markdown,sourceId=null,docId=null,version=0,type='report'){
  E('title').value=title;E('manuscript').value=markdown;E('publicationType').value=type;
- state.sourceId=sourceId;state.documentId=docId;state.documentRevision=version;
+ state.sourceId=sourceId;state.documentId=docId;state.documentRevision=version;state.layoutAudit=null;
  state.saved=!!docId;state.dirty=false;E('dirty').textContent=docId?'Saved · revision '+version:'New unsaved draft';
  E('length').textContent=markdown.length.toLocaleString()+' characters';
  refreshExport();if(visualMode)renderVisualBlocks(); E('provenance').textContent=sourceId?'Source ID: '+sourceId+' · original bytes immutable':'New document. Source not yet linked.';
@@ -31,6 +37,12 @@ async function selectProject(id){
  E('fileCount').textContent=files.length+' files';
  const figureFiles=files.filter(f=>f.filename.toLowerCase().endsWith('.svg'));
  state.figures=figureFiles;
+ const assetSelect=E('layoutAsset');assetSelect.replaceChildren();
+ const emptyFigure=document.createElement('option');emptyFigure.value='';emptyFigure.textContent='Select verified project SVG';assetSelect.append(emptyFigure);
+ for(const figure of figureFiles){
+   const option=document.createElement('option');option.value=figure.artifactId;
+   option.textContent=figure.filename.split('/').pop();assetSelect.append(option);
+ }
  for(const file of files){
   const container=document.createElement('div');container.className='asset';
   const title=document.createElement('b');title.textContent=file.filename.split('/').pop();container.append(title);
@@ -75,15 +87,57 @@ async function selectProject(id){
  }
 }
 function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId,citationStyle:E('citeStyle').value,publicationType:E('publicationType').value}}
+function renderLayoutReport(report){
+ state.layoutAudit=report;
+ E('layoutSummary').textContent=report.status==='ready'?'No unresolved figure placement issues.':
+  report.issues.filter(x=>x.severity!=='info').length+' layout item(s) need review before publication.';
+ E('layoutSummary').classList.toggle('warn',report.status!=='ready');
+ const issues=E('layoutIssues');issues.replaceChildren();
+ for(const finding of report.issues){
+  const item=document.createElement('li');
+  item.textContent=(finding.line?'Line '+finding.line+': ':'')+finding.message;
+  issues.append(item);
+ }
+ const markers=E('layoutMarker'),wanted=markers.value;markers.replaceChildren();
+ const blank=document.createElement('option');blank.value='';blank.textContent='Select unresolved marker';markers.append(blank);
+ for(const marker of report.markers){
+  const option=document.createElement('option');option.value=marker.marker;
+  option.textContent=marker.marker+' (line '+marker.line+')';markers.append(option);
+ }
+ if(report.markers.some(x=>x.marker===wanted))markers.value=wanted;
+ E('layoutMove').disabled=!report.markers.length||!state.figures.length;
+}
+E('layoutMove').onclick=run(async()=>{
+ if(!state.project||!state.layoutAudit)throw Error('Update preview to refresh the figure layout audit.');
+ const marker=E('layoutMarker').value,assetId=E('layoutAsset').value;
+ if(!marker||!assetId)throw Error('Choose both an unresolved marker and the exact project SVG.');
+ const body={title:E('title').value.trim(),markdown:E('manuscript').value,
+             expectedSHA256:state.layoutAudit.markdownSHA256,
+             marker,assetId,caption:E('layoutCaption').value.trim()};
+ const proposed=await api(path('/layout/move-figure'),body);
+ const summary='Move '+assetId+' to ['+marker+'] using the source-backed figure. '+
+  'This proposal removes '+proposed.removedDuplicatePlacements+' extra placement(s) of the same SVG. '+
+  'The original saved revision will remain unchanged. Apply to the unsaved editor draft?';
+ if(!window.confirm(summary)){status('Layout move canceled. Saved manuscript unchanged.');return}
+ if(!state.layoutAudit||state.layoutAudit.markdownSHA256!==proposed.beforeSHA256)
+  throw Error('The manuscript changed during layout planning. Update preview and retry.');
+ E('manuscript').value=proposed.proposedMarkdown;
+ markDirty();if(visualMode)renderVisualBlocks();
+ await preview();
+ status('Figure moved in unsaved draft only. Review layout and Save revision to preserve the change.');
+});
 async function preview(){
  if(!state.project)return;
  const data=await api(path('/preview'),manuscript());
  const article=E('preview');article.innerHTML=data.html;
+ renderLayoutReport(data.layout);
  const masthead=document.createElement('div');masthead.className='preview-brand';
  const institution=document.createElement('strong');institution.textContent='SUSTAINABLE CATALYST';
  const type=document.createElement('span');type.textContent='INDEPENDENT RESEARCH / '+E('publicationType').selectedOptions[0].textContent;
  masthead.append(institution,type);article.prepend(masthead);
- E('proof').textContent=data.figures.length+' source figures verified · computations not executed';
+ const reportTitle=document.createElement('h1');reportTitle.textContent=E('title').value.trim();
+ masthead.after(reportTitle);
+ E('proof').textContent=data.figures.length+' source figures verified · layout '+data.layout.status+' · computations not executed';
  return data;
 }
 async function save(){
