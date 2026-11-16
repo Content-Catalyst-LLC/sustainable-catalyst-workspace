@@ -25,7 +25,7 @@ def _content_lines(markdown: str):
     math = False
     for number, line in enumerate(markdown.splitlines(), 1):
         value = line.strip()
-        if value.startswith('\\`\\`\\`'):
+        if value.startswith('```'):
             fenced = not fenced
             continue
         if not fenced and value == '$$':
@@ -118,7 +118,6 @@ def propose_figure_move(markdown: str, marker: str, asset_id: str,
         raise ValueError('Figure caption contains invalid characters.')
 
     lines = markdown.splitlines(keepends=True)
-    new_line = '\r\n' if '\r\n' in markdown else '\n'
     destinations = []
     removals = []
     captured = []
