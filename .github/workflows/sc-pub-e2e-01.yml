@@ -1,0 +1,60 @@
+name: SC-PUB-ENDTOEND-01 Outputs & Publishing
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/research_outputs.py'
+      - 'backend/app/research_access.py'
+      - 'backend/app/research_approvals.py'
+      - 'backend/app/reporting_outputs_ui.js'
+      - 'backend/app/reporting_publication*'
+      - 'backend/tests/test_sc_pub_e2e01_outputs.py'
+      - 'scripts/sc_pub_e2e01_staging_harness.py'
+      - '.github/workflows/sc-pub-e2e-01.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/app/research_outputs.py'
+      - 'backend/app/research_access.py'
+      - 'backend/app/research_approvals.py'
+      - 'backend/app/reporting_outputs_ui.js'
+      - 'backend/app/reporting_publication*'
+      - 'backend/tests/test_sc_pub_e2e01_outputs.py'
+      - '.github/workflows/sc-pub-e2e-01.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  outputs:
+    name: Bind, revise, approve and release through signed Research sessions (synthetic, no network)
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: UI syntax
+        run: |
+          node --check backend/app/reporting_outputs_ui.js
+          node --check backend/app/reporting_publication_ui.js
+          grep -Fq 'id="outputsPanel"' backend/app/reporting_publication_ui.html
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install exact Workspace and Reporting Studio dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
+          python -m pip install --disable-pip-version-check -r backend/requirements.txt -r backend/requirements-reporting.txt
+      - name: Strict syntax checks
+        run: python -m py_compile backend/app/research_outputs.py backend/app/research_access.py scripts/sc_pub_e2e01_staging_harness.py
+      - name: Outputs & Publishing, approvals and existing Studio regression contracts
+        run: |
+          PYTHONPATH=backend python -m unittest \
+            backend.tests.test_sc_pub_e2e01_outputs \
+            backend.tests.test_sc_pub_layout01 \
+            backend.tests.test_rd012_reporting_studio_recovery -v
