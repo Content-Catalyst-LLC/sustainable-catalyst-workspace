@@ -132,5 +132,59 @@ class LayoutAuditTests(unittest.TestCase):
         self.assertEqual(report['status'],'needs-attention')
 
 
+    def test_move_proposal_route_is_authenticated_project_gated_and_non_mutating(self):
+        import json
+        from contextlib import nullcontext
+        from unittest.mock import patch
+        source = '[FIGURE_RANK]\\n\\n![01 rank comparison](asset:rank-123)\\n'
+        body = pub.FigureMove.model_validate({
+            'title': self.title, 'markdown': source, 'marker':'FIGURE_RANK',
+            'assetId':'rank-123', 'expectedSHA256':hashlib.sha256(source.encode()).hexdigest(),
+        })
+        svg = b'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#b00020"/></svg>'
+        meta={'artifactId':'rank-123','filename':'ranking.svg','sha256':hashlib.sha256(svg).hexdigest()}
+        with patch.object(pub,'_subject',return_value='owner') as subject, \
+             patch.object(pub,'session_scope',return_value=nullcontext(object())), \
+             patch.object(pub,'_project',return_value=object()) as project, \
+             patch.object(pub,'_original_asset',return_value=(meta,svg)) as asset, \
+             patch.object(pub,'_verify_figures',return_value=[meta]) as verify:
+            response=pub.propose_layout_figure_move('owned-project',body,request=object())
+        payload=json.loads(response.body)
+        self.assertFalse(payload['saved'])
+        self.assertFalse(payload['sourceModified'])
+        self.assertEqual(payload['selectedFigure']['sha256'],meta['sha256'])
+        self.assertEqual(payload['proposedMarkdown'].count('asset:rank-123'),1)
+        subject.assert_called_once()
+        project.assert_called_once()
+        asset.assert_called_once()
+        verify.assert_called_once()
+
+    def test_move_proposal_refuses_stale_editor_and_foreign_project(self):
+        from contextlib import nullcontext
+        from fastapi import HTTPException
+        from unittest.mock import patch
+        source='[FIGURE_HDI]\\n'
+        kwargs={'title':'T','markdown':source,'marker':'FIGURE_HDI',
+                'assetId':'hdi-chart','caption':'HDI 2026',
+                'expectedSHA256':hashlib.sha256(b'different').hexdigest()}
+        stale=pub.FigureMove.model_validate(kwargs)
+        with patch.object(pub,'_subject',return_value='owner'), \
+             patch.object(pub,'session_scope') as sessions:
+            with self.assertRaises(HTTPException) as caught:
+                pub.propose_layout_figure_move('project',stale,object())
+            self.assertEqual(caught.exception.status_code,409)
+            sessions.assert_not_called()
+
+        valid=pub.FigureMove.model_validate({
+            **kwargs, 'expectedSHA256':hashlib.sha256(source.encode()).hexdigest()
+        })
+        with patch.object(pub,'_subject',side_effect=HTTPException(401,'No valid session')), \
+             patch.object(pub,'_original_asset') as asset:
+            with self.assertRaises(HTTPException) as caught:
+                pub.propose_layout_figure_move('foreign-project',valid,object())
+            self.assertEqual(caught.exception.status_code,401)
+            asset.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
