@@ -517,6 +517,60 @@ def _pdf_inline(value: str) -> str:
             .replace('<code>','<font name="Courier">').replace('</code>','</font>'))
 
 
+def _pdf_svg_image(raw: bytes):
+    """Render a verified SVG chart as a bounded, high-resolution PDF image.
+
+    ReportLab's svglib silently loses Matplotlib clip paths and SVG references,
+    producing blank or partial scientific charts. CairoSVG already powers the
+    DOCX figure export and correctly resolves those constructs. The original
+    SVG remains immutable and is never replaced in project storage.
+    """
+    import math
+    import cairosvg
+    from reportlab.platypus import Image
+
+    # The export route already sanitizes source-verified figures. Sanitize again
+    # at the renderer boundary so direct callers cannot introduce external SVG
+    # references, scripts, or unsafe CSS.
+    safe = sanitize_svg(raw)
+    root = ET.fromstring(safe)
+    viewbox = re.split(r'[\s,]+', (root.attrib.get('viewBox') or '').strip())
+
+    def length(value):
+        match = re.fullmatch(r'\s*(\d+(?:\.\d+)?)(?:px|pt|in|cm|mm)?\s*',
+                             value or '', re.IGNORECASE)
+        return float(match.group(1)) if match else 0.0
+
+    if len(viewbox) == 4:
+        try:
+            width, height = float(viewbox[2]), float(viewbox[3])
+        except ValueError:
+            width = height = 0.0
+    else:
+        width, height = length(root.get('width')), length(root.get('height'))
+    if not (math.isfinite(width) and math.isfinite(height) and
+            width > 0 and height > 0 and 1 / 50 <= width / height <= 50):
+        raise HTTPException(422, 'SVG figure has invalid PDF display dimensions.')
+
+    # Stay inside the A4 document frame. Fixed raster density and maximum page
+    # dimensions bound conversion to 1230 x 1125 pixels even for oversized SVG.
+    scale = min(492.0 / width, 450.0 / height)
+    draw_width, draw_height = width * scale, height * scale
+    pixel_width = max(1, round(draw_width * 2.5))
+    pixel_height = max(1, round(draw_height * 2.5))
+    try:
+        png = cairosvg.svg2png(
+            bytestring=safe, output_width=pixel_width,
+            output_height=pixel_height,
+        )
+    except Exception:
+        # A visible 422 is safer than publishing an apparently complete report
+        # with a silently missing, partially interpreted scientific figure.
+        raise HTTPException(422, 'Saved SVG figure could not be rendered for PDF export.') from None
+    return Image(BytesIO(png), width=draw_width, height=draw_height,
+                 hAlign='CENTER')
+
+
 def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
     from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Preformatted,Table,TableStyle,Image,KeepTogether
     from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
@@ -552,16 +606,7 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
         elif k=='figure':
             raw=figure_bytes.get(block['assetId'])
             if raw:
-                try:
-                    from svglib.svglib import svg2rlg
-                    from reportlab.graphics import renderPDF
-                    drawing=svg2rlg(BytesIO(raw));
-                    if drawing:
-                        ratio=min(1,492/(drawing.width or 1),450/(drawing.height or 1));drawing.scale(ratio,ratio)
-                        drawing.width*=ratio;drawing.height*=ratio
-                        story.append(drawing)
-                except Exception:
-                    story.append(Paragraph('[Figure available as preserved SVG attachment]',styles['SCCaption']))
+                story.append(_pdf_svg_image(raw))
             else:story.append(Paragraph('[Figure source unavailable]',styles['SCCaption']))
             story.append(Paragraph(escape(block['caption']),styles['SCCaption']))
     def draw_footer(canvas, document):
