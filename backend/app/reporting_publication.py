@@ -32,6 +32,7 @@ from .schemas import ProjectStoreRequest
 from .wxr_private_projects import _subject, _write, _project, _locked_project, HEADERS
 from .reporting_project_catalog import read_legacy_artifacts
 from . import citation_studio as cite
+from . import publication_layout as layout
 
 router = APIRouter(prefix='/publication', tags=['Scientific Publication Studio'])
 SCHEMA = 'sc-scientific-publication/1.0'
@@ -63,6 +64,17 @@ class Draft(BaseModel):
     sourceArtifactId: str | None = Field(default=None, max_length=160)
     citationStyle: Literal[cite.STYLES] = cite.DEFAULT_STYLE
     publicationType: Literal['report', 'policy-brief', 'working-paper', 'interactive-analysis', 'overview'] = 'report'
+
+
+class FigureMove(BaseModel):
+    """Preview-only, explicit marker-to-project-SVG layout proposal."""
+    model_config = ConfigDict(extra='forbid')
+    title: str = Field(min_length=1, max_length=200)
+    markdown: str = Field(min_length=1, max_length=MAX_MANUSCRIPT)
+    expectedSHA256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    marker: str = Field(pattern=r'^FIGURE_[A-Z0-9_]{1,64}$')
+    assetId: str = Field(pattern=r'^[A-Za-z0-9_.-]{1,160}$')
+    caption: str = Field(default='', max_length=160)
 
 
 class Save(Draft):
@@ -206,10 +218,13 @@ def parse_blocks(markdown: str) -> list[dict]:
     return result
 
 
-def render_html(markdown: str, asset_uri=None) -> tuple[str,list[str]]:
+def render_html(markdown: str, asset_uri=None, *, document_title: str | None = None) -> tuple[str,list[str]]:
     """Return safe body HTML and referenced figure IDs; asset URI is trusted callback."""
     out=[]; figure_ids=[]
-    for node in parse_blocks(markdown):
+    blocks = parse_blocks(markdown)
+    if document_title is not None:
+        blocks = layout.without_repeated_title(blocks, document_title)
+    for node in blocks:
         kind=node['kind']
         if kind=='heading':
             n=node['level'];out.append(f'<h{n}>{_esc_line(node["text"])}</h{n}>')
@@ -409,12 +424,47 @@ def preview_document(project_id:str,body:Draft,request:Request):
         if body.sourceArtifactId:_source_meta(db,owner,project_id,body.sourceArtifactId)
         frozen=cite.freeze(body.markdown,cite.collection(row.package),body.citationStyle)
         path='/v1/private-research/reporting-studio/publication/projects/'+quote(project_id,safe='')
-        html,ids=render_html(cite.resolve(body.markdown,frozen),lambda aid:path+'/assets/'+quote(aid,safe='')+'/svg')
+        html,ids=render_html(cite.resolve(body.markdown,frozen),
+                            lambda aid:path+'/assets/'+quote(aid,safe='')+'/svg',
+                            document_title=body.title)
         sources=_verify_figures(db,owner,project_id,ids)
-    return JSONResponse({'html':html,'figures':sources,'sourceVerified':bool(body.sourceArtifactId),
+    return JSONResponse({'html':html,'figures':sources,
+                         'layout':layout.audit_layout(body.markdown,body.title),
+                         'sourceVerified':bool(body.sourceArtifactId),
                          'citations':frozen,
                          'equations':'LaTeX source displayed, not mathematically executed',
                          'scientificValidationPerformed':False},headers=HEADERS)
+
+
+@router.post('/projects/{project_id}/layout/move-figure')
+def propose_layout_figure_move(project_id: str, body: FigureMove, request: Request):
+    """Suggest, but never save, an explicit figure move against verified project sources."""
+    owner = _subject(request)
+    if hashlib.sha256(body.markdown.encode()).hexdigest() != body.expectedSHA256:
+        raise HTTPException(409,'Manuscript changed since layout selection. Refresh the audit.')
+    with session_scope() as db:
+        _project(db,owner,project_id)
+        meta,raw = _original_asset(db,owner,project_id,body.assetId)
+        if not meta['filename'].lower().endswith('.svg'):
+            raise HTTPException(422,'The selected research object is not an SVG figure.')
+        sanitize_svg(raw)
+        try:
+            proposal = layout.propose_figure_move(body.markdown,body.marker,body.assetId,body.caption)
+        except ValueError as exc:
+            raise HTTPException(422,str(exc)) from exc
+        if len(proposal['markdown']) > MAX_MANUSCRIPT:
+            raise HTTPException(413,'The proposed manuscript exceeds the authoring limit.')
+        _,figure_ids = render_html(proposal['markdown'])
+        _verify_figures(db,owner,project_id,figure_ids)
+    return JSONResponse({'proposedMarkdown':proposal['markdown'],
+                         'beforeSHA256':proposal['beforeSHA256'],
+                         'afterSHA256':proposal['afterSHA256'],
+                         'movedExistingPlacements':proposal['movedExistingPlacements'],
+                         'removedDuplicatePlacements':proposal['removedDuplicatePlacements'],
+                         'caption':proposal['caption'],
+                         'selectedFigure':{'artifactId':meta['artifactId'],'sha256':meta['sha256']},
+                         'layout':layout.audit_layout(proposal['markdown'],body.title),
+                         'saved':False,'sourceModified':False},headers=HEADERS)
 
 
 @router.get('/projects/{project_id}/documents')
@@ -499,7 +549,8 @@ def open_document(project_id:str,document_id:str,request:Request,revision:int|No
 
 def _as_html(pub:dict,figures:dict|None=None) -> bytes:
     figures=figures or {}
-    body,_=render_html(cite.resolve(pub['markdown'],pub.get('citations')),lambda aid:figures.get(aid,''))
+    body,_=render_html(cite.resolve(pub['markdown'],pub.get('citations')),
+                       lambda aid:figures.get(aid,''),document_title=pub['title'])
     title=escape(pub['title'])
     css='''@page{margin:20mm}body{font:11pt/1.65 Georgia,serif;max-width:760px;margin:40px auto;color:#171717;padding:0 18px}h1,h2,h3{font-family:Arial,sans-serif;color:#171717}h1{font-size:26pt}h2{font-size:17pt;margin-top:28px}table{border-collapse:collapse;width:100%;font:9pt Arial}td,th{border:1px solid #ccc;padding:7px;text-align:left}figure{text-align:center;margin:24px 0}figure img{max-width:100%}figcaption{font:9pt Arial;color:#555}pre{white-space:pre-wrap;background:#f7f7f7;padding:12px}.sc-brand{border-top:5px solid #b00020;padding-top:10px;font:700 15pt Arial,sans-serif;letter-spacing:.07em}.sc-type{font:9pt Arial,sans-serif;color:#555;letter-spacing:.09em;margin:4px 0 22px}.meta{font:9pt Arial;color:#666;border-bottom:1px solid #ccc;padding-bottom:16px}blockquote{border-left:3px solid #b00020;padding-left:16px}a{color:#b00020}@media print{body{margin:0;max-width:none}}'''
     meta=f'Saved revision {pub["revision"]} · SHA-256 {pub["markdownSHA256"]} · Scientific content not independently verified'
@@ -571,6 +622,12 @@ def _pdf_svg_image(raw: bytes):
                  hAlign='CENTER')
 
 
+def _publication_blocks(pub: dict) -> list[dict]:
+    """Derived export-only view. Saved Markdown and hash remain unchanged."""
+    resolved = cite.resolve(pub['markdown'],pub.get('citations'))
+    return layout.without_repeated_title(parse_blocks(resolved),pub['title'])
+
+
 def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
     from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Preformatted,Table,TableStyle,Image,KeepTogether
     from reportlab.lib.styles import getSampleStyleSheet,ParagraphStyle
@@ -589,7 +646,7 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
            Paragraph(escape(BRAND_LINE+' / '+_publication_label(pub)),styles['SCType']),
            Paragraph(escape(pub['title']),styles['Title']),Spacer(1,10),
            Paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed',styles['SCCaption'])]
-    for block in parse_blocks(cite.resolve(pub['markdown'],pub.get('citations'))):
+    for block in _publication_blocks(pub):
         k=block['kind']
         if k=='heading':story.append(Paragraph(_pdf_inline(block['text']),styles['Heading1' if block['level']<=2 else 'Heading2']))
         elif k=='paragraph':story.append(Paragraph(_pdf_inline(block['text']),styles['SCBody']))
@@ -657,7 +714,7 @@ def _docx(pub:dict,figure_bytes:dict[str,bytes]):
     doc.add_paragraph(_publication_label(pub).upper(),style='Subtitle')
     doc.add_heading(pub['title'],0)
     doc.add_paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed')
-    for block in parse_blocks(cite.resolve(pub['markdown'],pub.get('citations'))):
+    for block in _publication_blocks(pub):
         k=block['kind']
         if k=='heading':doc.add_heading(block['text'],level=min(block['level'],4))
         elif k=='paragraph':_docx_rich(doc,block['text'])
@@ -715,6 +772,7 @@ def export_publication(project_id:str,document_id:str,format:str,request:Request
     filename='scientific-publication-v'+str(pub['revision'])+'.'+format
     return Response(data,media_type=media,headers={**HEADERS,'Content-Disposition':f'attachment; filename="{filename}"',
                 'X-Publication-Revision-SHA256':pub['markdownSHA256'],
+                 'X-Publication-Layout-Status':layout.audit_layout(pub['markdown'],pub['title'])['status'],
                 'Content-Security-Policy':"sandbox" if format=='html' else "default-src 'none'"})
 
 
