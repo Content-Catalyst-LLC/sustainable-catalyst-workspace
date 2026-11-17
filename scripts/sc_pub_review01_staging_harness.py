@@ -84,7 +84,7 @@ def accept_invite():
                 "totp": idh.fresh_totp(st, username), "totpSecret": raw, "userLabel": "reviewer", "mode": "manual"})
         elif code in (302, 303):
             code, url, page = b.follow(urllib.parse.urljoin(url, hdrs["Location"]))
-        elif (m := re.search(r'href="([^"]*login-actions/[^"]*)"[^>]*>\s*(?:&raquo;\s*)?(?:Click here|Proceed)', page)):
+        elif (m := re.search(r'href="([^"]*login-actions/[^"]*)"[^>]*>\s*(?:&raquo;|\u00bb)?\s*(?:Click here|Proceed)', page)):
             steps.append("verify-email")
             code, url, page = b.follow(urllib.parse.urljoin(url, idh.html.unescape(m.group(1))))
         else:
