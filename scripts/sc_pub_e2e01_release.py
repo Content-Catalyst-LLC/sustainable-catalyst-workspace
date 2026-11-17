@@ -26,6 +26,8 @@ OVERLAY = "$HOME/sc-sci02/rd/reporting-studio.yml"
 REQUIRED_ENV = {
     "SC_WORKSPACE_RESEARCH_API_ORIGIN": "https://research-api.sustainablecatalyst.com",
     "SC_WORKSPACE_RESEARCH_SIGNING_BACKEND_URL": "http://sc-workspace-backend:8089",
+    # The overlay extends the backend's configuration, which names the key file; the Studio must clear it.
+    "SC_WORKSPACE_RESEARCH_EXPORT_SIGNING_KEY_FILE": "",
 }
 OUTPUTS = "http://127.0.0.1:20080/v1/private-research/reporting-studio/publication/projects/x/outputs"
 # Exact image check: the new modules import, the outputs UI ships, and the layout engine is present. Synthetic only.
@@ -59,7 +61,7 @@ def check_overlay():
     missing = [f'      {k}: "{v}"' for k, v in REQUIRED_ENV.items() if not re.search(rf"^\s+{k}:\s*\"?{re.escape(v)}\"?\s*$", text, re.M)]
     if missing:
         base.fail("Studio overlay lacks the Outputs & Publishing settings; add under environment:\n" + "\n".join(missing))
-    if re.search(r"SIGNING_KEY_FILE|export_seed|sc-research/", text):
+    if re.search(r"SIGNING_KEY_FILE:\s*\"?[^\"\s]", text) or re.search(r"export_seed|/run/sc-research", text):
         base.fail("Studio overlay must not give the Studio the Research signing key")
 
 
