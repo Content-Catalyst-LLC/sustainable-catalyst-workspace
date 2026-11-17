@@ -7,6 +7,7 @@ The production form of the SC-AUTH-02 staging realm (realm_setup.py + reset_flow
 * password policy, brute-force protection, short token and session lifetimes;
 * TOTP is a default required action, and the browser flow always asks for it (no password-only path);
 * recovery by e-mail requires the enrolled TOTP before a new password and never resets the second factor;
+* the password and OTP steps carry ``amr`` reference values (pwd, otp), so the second factor is in the token;
 * one confidential client for Workspace: authorization code + PKCE S256 only, exact redirect URIs,
   back-channel logout, and an ``amr`` claim so Workspace can verify the second factor;
 * SMTP from an operator-supplied JSON file (host, port, from, fromDisplayName, user, password, starttls, ssl).
@@ -26,6 +27,8 @@ import urllib.request
 
 BROWSER_FLOW = "sc-browser-mfa"
 RESET_FLOW = "sc-reset-mfa"
+# The amr mapper reports only authenticators that carry a reference value; without them no sign-in proves MFA.
+AMR_REFERENCES = {"auth-username-password-form": "pwd", "auth-otp-form": "otp"}
 
 
 class Admin:
@@ -133,6 +136,22 @@ def main(argv=None):
             ex["requirement"] = want
             ok(adm.call("PUT", f"{R}/authentication/flows/{BROWSER_FLOW}/executions", ex)[0], f"{name} -> {want}")
 
+    # amr reference values (set by hand in SC-AUTH-02 staging): Workspace refuses any sign-in whose amr lacks otp.
+    _, execs = adm.call("GET", f"{R}/authentication/flows/{BROWSER_FLOW}/executions")
+    for ex in execs:
+        ref = AMR_REFERENCES.get(ex.get("providerId"))
+        if not ref:
+            continue
+        config = {"default.reference.value": ref, "default.reference.maxAge": "28800"}
+        if ex.get("authenticationConfig"):
+            _, cfg = adm.call("GET", f"{R}/authentication/config/{ex['authenticationConfig']}")
+            if (cfg.get("config") or {}).get("default.reference.value") != ref:
+                cfg["config"] = {**(cfg.get("config") or {}), **config}
+                ok(adm.call("PUT", f"{R}/authentication/config/{cfg['id']}", cfg)[0], f"amr {ref} on {ex['providerId']}")
+        else:
+            ok(adm.call("POST", f"{R}/authentication/executions/{ex['id']}/config",
+                        {"alias": f"sc-amr-{ref}", "config": config})[0], f"amr {ref} on {ex['providerId']}")
+
     # Recovery: e-mail link -> enrolled OTP -> new password; the conditional "Reset OTP" is disabled.
     q = urllib.parse.quote(RESET_FLOW)
     ok(adm.call("POST", f"{R}/authentication/flows/reset%20credentials/copy", {"newName": RESET_FLOW})[0], "copy reset flow")
@@ -191,6 +210,11 @@ def main(argv=None):
     # Verification of what was configured (no secrets).
     _, cur = adm.call("GET", R)
     _, execs = adm.call("GET", f"{R}/authentication/flows/{BROWSER_FLOW}/executions")
+    amr_refs = set()
+    for e in execs:
+        if e.get("providerId") in AMR_REFERENCES and e.get("authenticationConfig"):
+            _, cfg = adm.call("GET", f"{R}/authentication/config/{e['authenticationConfig']}")
+            amr_refs.add((cfg.get("config") or {}).get("default.reference.value"))
     otp_required = any(e.get("providerId") == "auth-otp-form" and e.get("requirement") == "REQUIRED" for e in execs)
     password_alternatives = [e.get("providerId") for e in execs if e.get("requirement") == "ALTERNATIVE"
                              and e.get("providerId") in ("webauthn-authenticator", "auth-recovery-authn-code-form")]
@@ -201,7 +225,7 @@ def main(argv=None):
         "registrationAllowed": cur["registrationAllowed"], "verifyEmail": cur["verifyEmail"],
         "bruteForceProtected": cur["bruteForceProtected"], "browserFlow": cur["browserFlow"],
         "resetCredentialsFlow": cur["resetCredentialsFlow"], "otpRequired": otp_required,
-        "otherLoginAlternatives": password_alternatives, "smtpHost": cur.get("smtpServer", {}).get("host"),
+        "otherLoginAlternatives": password_alternatives, "amrReferences": sorted(r for r in amr_refs if r), "smtpHost": cur.get("smtpServer", {}).get("host"),
         "client": {"publicClient": c["publicClient"], "directAccessGrants": c["directAccessGrantsEnabled"],
                    "implicit": c["implicitFlowEnabled"], "redirectUris": c["redirectUris"],
                    "pkce": c["attributes"].get("pkce.code.challenge.method"),
@@ -214,7 +238,7 @@ def main(argv=None):
     good = (not summary["registrationAllowed"] and summary["verifyEmail"] and summary["bruteForceProtected"]
             and otp_required and not password_alternatives and summary["client"]["pkce"] == "S256"
             and not summary["client"]["publicClient"] and not summary["client"]["directAccessGrants"]
-            and summary["client"]["amrMapper"])
+            and summary["client"]["amrMapper"] and amr_refs >= set(AMR_REFERENCES.values()))
     print("REALM " + ("GO" if good else "NO-GO"))
     return 0 if good else 1
 
