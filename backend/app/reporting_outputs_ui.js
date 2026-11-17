@@ -110,25 +110,58 @@ async function outputCard(o){
  card.append(el('h4','Cited evidence'),await evidenceBlock(o),el('h4','Review and rights'),await approvalsBlock(o),
   el('h4','Research area'),await areaBlock(o),el('h4','Release'),releaseBlock(o));
  return card}
+// SC-PUB-REVIEW-01: an approval needs a fresh Sustainable Catalyst Identity sign-in (password and second factor).
+function stepUp(e){if(!/step-up-required/.test(e.message))throw e;location.assign('/v1/auth/login?stepUp=true&returnTo='+encodeURIComponent(location.pathname+location.search))}
+function packetBlock(p){
+ const b=el('div',null,'out-packet'),a=p.article;
+ if(!a){b.append(el('p','Subject: '+p.request.subjectRef+' — decide on this exact Research subject.','out-subject'));return b}
+ b.append(el('p','Research article '+a.articleSlug+' revision '+a.researchRevision+' · Research document SHA-256 '+(a.researchDocumentSha256||'—'),'out-subject'),
+  el('p','Built from Studio revision '+a.studioRevision+' · Markdown SHA-256 '+a.markdownSHA256+' · pushed '+(a.pushedAt||'—'),'out-subject'),
+  el('p','Scientific status: '+a.scientificStatus+' · Rights status: '+a.rightsStatus+' · Type: '+a.publicationType,'hint'));
+ const refs=a.references;b.append(el('h5','Cited Research evidence'));
+ if(!refs)b.append(el('p','Not recorded in Workspace for this revision.','hint'));else if(!refs.length)b.append(el('p','None cited.','hint'));
+ else{const u=el('ul');for(const r of refs)u.append(el('li',r.role+' · '+r.objectId+' · pin '+r.pin+(r.caption?' — '+r.caption:'')));b.append(u)}
+ b.append(el('h5','Figure sources and rights'));
+ if(a.source)b.append(el('p','Source: '+(a.source.filename||a.source.artifactId||'—')+(a.source.sha256?' · SHA-256 '+a.source.sha256:''),'hint'));
+ if(!a.figureSources.length)b.append(el('p','No figures.','hint'));else{const u=el('ul');for(const f of a.figureSources)u.append(el('li',f.artifactId+' · SHA-256 '+f.sha256));b.append(u)}
+ b.append(el('h5','Citations'),el('pre',a.citations?JSON.stringify(a.citations,null,1):'None.','out-pre'),el('h5','Document — '+(a.title||'')),el('pre',a.markdown||'','out-pre'));
+ return b}
 async function reviewerInbox(){
  const box=el('section',null,'out-inbox');box.append(el('h3','Reviews assigned to you'));
+ try{const me=await api('/v1/session');box.append(el('p','Your reviewer ID: '+me.subject+' · signed in with '+(me.authenticationMethod||'—'),'hint'))}catch(e){}
  let items=[];try{items=(await api(pub+'/research-approvals/inbox')).items}catch(e){box.append(el('p',e.message,'hint'));return box}
  if(!items.length){box.append(el('p','No pending reviews.','hint'));return box}
- for(const q of items){const d=el('div',null,'out-card');d.append(el('strong',q.dimension+' · '+q.subjectTitle),el('p','Exact subject: '+q.subjectRef,'out-subject'),el('p','Requested by '+q.requester,'hint'));
-  const note=input('Decision note',2000);d.append(field('Note',note));
-  for(const [label,decision] of [['Approve this exact revision','approve'],['Request revision','request_revision'],['Reject','reject']])
-   d.append(act(label,async()=>{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision,note:note.value,expectedSubjectRef:q.subjectRef});status('Decision signed by Workspace.')}));
+ for(const q of items){const d=el('div',null,'out-card');d.append(el('strong',q.dimension+' · '+q.subjectTitle),el('p','Exact subject: '+q.subjectRef,'out-subject'),el('p','Requested by '+q.requester+' · '+q.requestedAt,'hint'));
+  const note=input('Decision note',2000),slot=el('div'),decide=[];
+  const read=el('button','Read the review packet');read.type='button';
+  read.addEventListener('click',run(async()=>{slot.replaceChildren(packetBlock(await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/packet')));for(const x of decide)x.disabled=false}));
+  d.append(read,slot,field('Note',note));
+  for(const [label,decision] of [['Approve this exact revision','approve'],['Request revision','request_revision'],['Reject','reject']]){
+   const b=act(label,async()=>{try{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision,note:note.value,expectedSubjectRef:q.subjectRef})}catch(e){stepUp(e)}status('Decision signed by Workspace.')},false);
+   decide.push(b);d.append(b)}
   box.append(d)}
+ return box}
+async function reviewersPanel(){
+ const box=el('section',null,'out-inbox');box.append(el('h3','Reviewers'),el('p','Give a reviewer one approval role for this project. Reviewers sign in with Sustainable Catalyst Identity (password and second factor); nobody can approve their own request.','hint'));
+ let items=[],me='';try{items=(await api(pub+'/research-approvals/grants')).items;me=(await api('/v1/session')).subject}catch(e){box.append(el('p',e.message,'hint'));return box}
+ const mine=items.filter(g=>g.ownerScope==='workspace-user:'+me&&(g.projectId===state.project||g.projectId==='*'));
+ if(!mine.length)box.append(el('p','No reviewers yet.','hint'));
+ for(const g of mine){const r=el('div',null,'out-row');r.append(el('span',g.role+' · '+g.grantee+' · '+(g.projectId==='*'?'all projects':'this project')+' · granted '+g.grantedAt.slice(0,10)+(g.revokedAt?' · revoked '+g.revokedAt.slice(0,10):'')));
+  if(!g.revokedAt)r.append(act('Revoke',async()=>{await api(pub+'/research-approvals/grants/'+encodeURIComponent(g.grantId)+'/revoke',{})}));box.append(r)}
+ const who=input('Reviewer ID (sci:…)',128),role=el('select');
+ for(const x of ['scientific','rights','publication','area-publication']){const o=el('option',x);o.value='approver:'+x;role.append(o)}
+ box.append(field('Reviewer ID',who),field('Role',role),act('Assign role',async()=>{const area=role.value==='approver:area-publication';
+  await api(pub+'/research-approvals/grants',{granteeUserKey:who.value.trim(),role:role.value,projectId:area?'*':state.project});status('Role assigned.')}));
  return box}
 async function loadOutputs(){
  if(!OUT.open)return;const host=E('outputs');
- if(!state.project){host.replaceChildren(el('p','Select a research project.','hint'));return}
+ if(!state.project){host.replaceChildren(el('p','Select a research project.','hint'),await reviewerInbox());return}
  const data=await api(outPath(''));
  const list=el('div');
  if(!data.researchConfigured)list.append(el('p','Research publishing is not configured for this Workspace; outputs stay private.','hint warn'));
  if(!data.outputs.length)list.append(el('p','Save a manuscript revision to create an output.','hint'));
  for(const o of data.outputs)list.append(await outputCard(o));
- host.replaceChildren(list,await reviewerInbox());
+ host.replaceChildren(list,await reviewersPanel(),await reviewerInbox());
 }
 E('outputsOpen').addEventListener('click',run(async()=>{OUT.open=!OUT.open;E('outputsPanel').hidden=!OUT.open;E('outputsOpen').setAttribute('aria-expanded',String(OUT.open));OUT.objects=null;await loadOutputs()}));
 E('projects').addEventListener('change',run(async()=>{OUT.objects=null;await loadOutputs()}));

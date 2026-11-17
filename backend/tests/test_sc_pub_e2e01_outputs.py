@@ -521,3 +521,78 @@ def test_approval_decisions_are_signed_by_the_backend_not_the_studio(env, monkey
                             json={**good, "expectedSubjectRef": "object:o1#sha256:" + "b" * 64})
     assert stale.status_code == 409 and "review it again" in stale.text
     assert env.client.post("/research-approvals/approval_x/decide", headers=h(write=False), json=good).status_code == 403
+
+
+# --- SC-PUB-REVIEW-01: reviewer packet, reviewer roles, step-up -----------------------------------------------------
+
+def _pending(env, monkeypatch, assigned_to=("owner-b",)):
+    """One pending scientific request on the owner's pushed revision, assigned (by grant) to ``assigned_to``."""
+    from app import research_approvals as ra
+    bind(env)
+    env.client.post(f"{BASE}/publication-overview/research-revisions", headers=h(), json={
+        "studioRevision": 1, "publicationType": "report", "references": [{"objectId": "obj-1", "role": "dataset"}]})
+    subject = env.research.view("metrics-public-overview")["revisions"][0]["subjectRef"]
+    item = {"approvalId": "approval_r1", "ownerScope": "workspace-user:owner-a", "requester": "workspace-user:owner-a",
+            "projectId": "metrics", "dimension": "scientific", "subjectRef": subject, "status": "pending",
+            "subjectTitle": "metrics-public-overview revision 1", "requestedAt": "2026-11-17T00:00:00+00:00"}
+    monkeypatch.setattr(ra, "list_requests_route", lambda role, status, identity:
+                        {"items": [item] if role == "approver" and identity.user_key in assigned_to else []})
+    return item
+
+
+def rh(who="owner-b", write=False):
+    return {"x-test-owner": who, **({"origin": ORIGIN} if write else {})}
+
+
+def test_reviewer_packet_shows_the_exact_revision_and_its_evidence_only_to_assigned_reviewers(env, monkeypatch):
+    item = _pending(env, monkeypatch, assigned_to=("owner-b",))
+    out = env.client.get("/research-approvals/approval_r1/packet", headers=rh("owner-b"))
+    assert out.status_code == 200, out.text
+    art = out.json()["article"]
+    assert art["markdown"] == "# Overview\n\nOne." and art["studioRevision"] == 1 and art["researchRevision"] == 1
+    assert art["markdownSHA256"] == env.store[("owner-a", "metrics")]["history"][("publication-overview", 1)]["markdownSHA256"]
+    assert [r["objectId"] for r in art["references"]] == ["obj-1"] and art["rightsStatus"] == "not-redistribution-approved"
+    assert out.json()["request"]["subjectRef"] == item["subjectRef"]
+    assert "Private." not in out.text  # the sibling document stays private
+    # Unassigned people, including the owner who raised it, cannot read it.
+    assert env.client.get("/research-approvals/approval_r1/packet", headers=rh("owner-a")).status_code == 404
+    assert env.client.get("/research-approvals/approval_x/packet", headers=rh("owner-b")).status_code == 404
+    assert env.client.get("/research-approvals/approval_r1/packet").status_code == 401
+
+
+def test_reviewer_packet_refuses_a_saved_revision_that_no_longer_matches(env, monkeypatch):
+    _pending(env, monkeypatch, assigned_to=("owner-b",))
+    env.store[("owner-a", "metrics")]["history"][("publication-overview", 1)]["markdownSHA256"] = "0" * 64
+    out = env.client.get("/research-approvals/approval_r1/packet", headers=rh("owner-b"))
+    assert out.status_code == 409 and "do not decide" in out.text
+
+
+def test_owner_assigns_reviewer_roles_only_to_linked_identities(env, monkeypatch):
+    from app import research_approvals as ra
+    calls = []
+    monkeypatch.setattr(ra, "create_grant_route", lambda payload, identity: calls.append((payload, identity.user_key))
+                        or {"item": {"grantId": "rag_1", **payload.model_dump()}, "created": True})
+    monkeypatch.setattr(ro, "identity_linked", lambda key: key == "sci:reviewer")
+    body = {"granteeUserKey": "sci:reviewer", "role": "approver:rights", "projectId": "metrics"}
+    assert env.client.post("/research-approvals/grants", headers=h(), json=body).status_code == 201
+    assert calls[-1][0].granteeUserKey == "sci:reviewer" and calls[-1][1] == "owner-a"
+    assert env.client.post("/research-approvals/grants", headers=h(), json={**body, "granteeUserKey": "erw:sc:x"}).status_code == 422
+    assert env.client.post("/research-approvals/grants", headers=h(), json={**body, "projectId": "*"}).status_code == 422
+    assert env.client.post("/research-approvals/grants", headers=h(), json={**body, "role": "editor"}).status_code == 422
+    assert env.client.post("/research-approvals/grants", headers=h(write=False), json=body).status_code == 403
+    area = {**body, "role": "approver:area-publication", "projectId": "*"}
+    assert env.client.post("/research-approvals/grants", headers=h(), json=area).status_code == 201
+    assert len(calls) == 2
+
+
+def test_step_up_refusal_reaches_the_page_with_workspaces_own_sign_in_path(env, monkeypatch):
+    def backend(request: httpx.Request):
+        return httpx.Response(403, json={"detail": {"code": "step-up-required", "message": "Sign in again.",
+                                                    "loginUrl": "https://attacker.example/login"}})
+    _issuer_env(env, monkeypatch, backend)
+    env.client.cookies.set("sc_workspace_session", "cookie-of-reviewer")
+    out = env.client.post("/research-approvals/approval_r1/decide", headers=rh("owner-b", write=True),
+                          json={"decision": "approve", "expectedSubjectRef": "research-object:o#" + "a" * 64})
+    assert out.status_code == 403
+    assert out.json()["detail"] == {"code": "step-up-required", "message": "Sign in again.",
+                                    "loginUrl": "/v1/auth/login?stepUp=true"}
