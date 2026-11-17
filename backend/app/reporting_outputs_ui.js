@@ -149,7 +149,7 @@ async function reviewersPanel(){
  for(const g of mine){const r=el('div',null,'out-row');r.append(el('span',g.role+' · '+g.grantee+' · '+(g.projectId==='*'?'all projects':'this project')+' · granted '+g.grantedAt.slice(0,10)+(g.revokedAt?' · revoked '+g.revokedAt.slice(0,10):'')));
   if(!g.revokedAt)r.append(act('Revoke',async()=>{await api(pub+'/research-approvals/grants/'+encodeURIComponent(g.grantId)+'/revoke',{})}));box.append(r)}
  const who=input('Reviewer ID (sci:…)',128),role=el('select');
- for(const x of ['scientific','rights','publication','area-publication']){const o=el('option',x);o.value='approver:'+x;role.append(o)}
+ for(const x of ['scientific','rights','ownership','publication','area-publication']){const o=el('option',x);o.value='approver:'+x;role.append(o)}
  box.append(field('Reviewer ID',who),field('Role',role),act('Assign role',async()=>{const area=role.value==='approver:area-publication';
   await api(pub+'/research-approvals/grants',{granteeUserKey:who.value.trim(),role:role.value,projectId:area?'*':state.project});status('Role assigned.')}));
  return box}

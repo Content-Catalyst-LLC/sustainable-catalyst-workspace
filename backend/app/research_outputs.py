@@ -312,7 +312,8 @@ class AreaPublishIn(ObjectAttachIn):
 class GrantIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     granteeUserKey: str = Field(min_length=1, max_length=128)
-    role: Literal["approver:scientific", "approver:rights", "approver:publication", "approver:area-publication"]
+    role: Literal["approver:scientific", "approver:rights", "approver:ownership", "approver:publication",
+                  "approver:area-publication"]
     projectId: str = Field(min_length=1, max_length=160)
 
 
