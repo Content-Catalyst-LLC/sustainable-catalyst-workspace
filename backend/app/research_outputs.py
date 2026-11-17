@@ -87,10 +87,24 @@ def _backend(path: str, body: dict | None = None) -> httpx.Response:
     except httpx.HTTPError as exc:
         raise HTTPException(502, "Workspace is unavailable; nothing was changed.") from exc
     if response.status_code in (400, 401, 403, 404, 409, 422):
-        raise HTTPException(response.status_code, _detail(response))
+        raise HTTPException(response.status_code, _step_up(response) or _detail(response))
     if response.status_code != 200:
         raise HTTPException(502, "Workspace is unavailable; nothing was changed.")
     return response
+
+
+def _step_up(response: httpx.Response) -> dict | None:
+    """SC-PUB-REVIEW-01: the backend's step-up refusal keeps its code so the page can send the reviewer to sign in
+    again (password and second factor). Only Workspace's own sign-in path is passed on."""
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    detail = body.get("detail", body) if isinstance(body, dict) else None  # Workspace's handler flattens the detail
+    if response.status_code != 403 or not isinstance(detail, dict) or detail.get("code") != "step-up-required":
+        return None
+    return {"code": "step-up-required", "message": str(detail.get("message") or "Sign in again to approve.")[:300],
+            "loginUrl": "/v1/auth/login?stepUp=true"}
 
 
 def _issued_by_backend(identity) -> dict:
@@ -296,6 +310,24 @@ class AreaPublishIn(ObjectAttachIn):
     confirmAreaSlug: str = Field(min_length=1, max_length=120)
 
 
+class GrantIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    granteeUserKey: str = Field(min_length=1, max_length=128)
+    role: Literal["approver:scientific", "approver:rights", "approver:ownership", "approver:publication",
+                  "approver:area-publication"]
+    projectId: str = Field(min_length=1, max_length=160)
+
+
+def identity_linked(user_key: str) -> bool:
+    """True when ``user_key`` belongs to an active Sustainable Catalyst Identity link (SC-AUTH-02): reviewers sign in
+    with password and second factor, never with a shared or password-only account."""
+    from sqlalchemy import text
+    from .db import session_scope
+    with session_scope() as db:
+        return db.execute(text("SELECT 1 FROM workspace_identity_links WHERE user_key = :uk AND status = 'active'"),
+                          {"uk": user_key}).first() is not None
+
+
 class DecideIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     decision: Literal["approve", "reject", "request_revision"]
@@ -439,7 +471,8 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
             "sections": payload["sections"], "references": refs, "changeSummary": payload["changeSummary"],
             "publication": payload["publication"]})
         record(ident.user_key, project_id, document_id, receipt_entry(
-            "revision-pushed", created, studioRevision=pub["revision"], studioSha256=pub["markdownSHA256"]),
+            "revision-pushed", created, studioRevision=pub["revision"], studioSha256=pub["markdownSHA256"],
+            references=refs, subjectRef=created.get("subjectRef")),
             f"research-output-revision-{document_id}-{created.get('revision')}")
         return JSONResponse({"researchRevision": created.get("revision"), "documentSha256": created.get("documentSha256"),
                              "subjectRef": created.get("subjectRef"), "created": True,
@@ -662,6 +695,73 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
 
     # Reviewers: the approval inbox and decisions, through the existing SC-ED-01 rules (no self-approval, grants,
     # step-up where SC Identity is deployed, exact-revision confirmation).
+    @router.get("/research-approvals/grants")
+    def grants(request: Request):
+        """SC-PUB-REVIEW-01: the reviewer roles this person granted (as owner) or holds (as reviewer)."""
+        from . import research_approvals as ra
+        return JSONResponse(ra.list_grants_route(identity=identity(request)), headers=H)
+
+    @router.post("/research-approvals/grants")
+    def grant(body: GrantIn, request: Request):
+        """The project owner assigns one approver role to one reviewer. The reviewer must sign in with Sustainable
+        Catalyst Identity; Workspace still refuses self-grants and foreign projects."""
+        from . import research_approvals as ra
+        ident = writer(request)
+        if body.projectId == ra.ANY_PROJECT and body.role != "approver:area-publication":
+            raise HTTPException(422, "Article approver roles are granted for one project at a time.")
+        if body.granteeUserKey != ident.user_key and not identity_linked(body.granteeUserKey):
+            raise HTTPException(422, "That reviewer ID is not an active Sustainable Catalyst Identity account.")
+        out = ra.create_grant_route(ra.GrantRequest(**body.model_dump()), identity=ident)
+        return JSONResponse(out, status_code=201 if out.get("created") else 200, headers=H)
+
+    @router.post("/research-approvals/grants/{grant_id}/revoke")
+    def revoke(grant_id: str, request: Request):
+        from . import research_approvals as ra
+        return JSONResponse(ra.revoke_grant_route(grant_id, identity=writer(request)), headers=H)
+
+    def assigned(ident, approval_id: str) -> dict:
+        from . import research_approvals as ra
+        item = next((i for i in ra.list_requests_route(role="approver", status="pending", identity=ident)["items"]
+                     if i["approvalId"] == approval_id), None)
+        if item is None:
+            raise HTTPException(404, "Research approval request not found.")
+        return item
+
+    @router.get("/research-approvals/{approval_id}/packet")
+    def packet(approval_id: str, request: Request):
+        """What an assigned reviewer reads before deciding: the exact subject and, for an article revision, the saved
+        Studio revision Research's revision was built from, with its citations, cited Research evidence, figure
+        sources and rights status. Read-only, and only while the request is pending and assigned to this reviewer."""
+        from . import research_approvals as ra
+        item = assigned(identity(request), approval_id)
+        out: dict[str, Any] = {"request": item, "article": None}
+        slug, _, number = str(item.get("subjectTitle") or "").rpartition(" revision ")
+        if item["projectId"] == ra.ANY_PROJECT or not slug or not number.isdigit():
+            return JSONResponse(out, headers=H)
+        owner = item["ownerScope"].removeprefix("workspace-user:")
+        with deps["session"]() as db:
+            row = deps["project"](db, owner, item["projectId"])
+            found = [(doc, r) for doc, b in bindings(row.package).items() if b.get("articleSlug") == slug
+                     for r in b.get("receipts") or [] if r.get("action") == "revision-pushed"
+                     and (r.get("research") or {}).get("revision") == int(number)]
+            if not found:
+                raise HTTPException(409, "Workspace has no record of the Studio revision behind this subject.")
+            document_id, pushed = found[-1]
+            _, pub = deps["saved"](db, owner, item["projectId"], document_id, pushed["studioRevision"])
+        if pub.get("markdownSHA256") != pushed.get("studioSha256") or (
+                pushed.get("subjectRef") and pushed["subjectRef"] != item["subjectRef"]):
+            raise HTTPException(409, "The saved Studio revision no longer matches this subject; do not decide it.")
+        out["article"] = {
+            "articleSlug": slug, "researchRevision": int(number),
+            "researchDocumentSha256": (pushed.get("research") or {}).get("documentSha256"),
+            "studioRevision": pub["revision"], "markdownSHA256": pub["markdownSHA256"], "title": pub.get("title"),
+            "publicationType": pub.get("publicationType"), "markdown": pub.get("markdown"),
+            "citations": pub.get("citations"), "figureSources": pub.get("figureSources") or [],
+            "source": pub.get("source"), "scientificStatus": pub.get("scientificStatus"),
+            "rightsStatus": pub.get("rightsStatus"), "references": pushed.get("references"),
+            "pushedAt": pushed.get("at")}
+        return JSONResponse(out, headers=H)
+
     @router.get("/research-approvals/inbox")
     def inbox(request: Request):
         from . import research_approvals as ra
