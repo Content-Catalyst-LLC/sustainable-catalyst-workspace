@@ -97,9 +97,10 @@ def _step_up(response: httpx.Response) -> dict | None:
     """SC-PUB-REVIEW-01: the backend's step-up refusal keeps its code so the page can send the reviewer to sign in
     again (password and second factor). Only Workspace's own sign-in path is passed on."""
     try:
-        detail = response.json().get("detail")
-    except (ValueError, AttributeError):
+        body = response.json()
+    except ValueError:
         return None
+    detail = body.get("detail", body) if isinstance(body, dict) else None  # Workspace's handler flattens the detail
     if response.status_code != 403 or not isinstance(detail, dict) or detail.get("code") != "step-up-required":
         return None
     return {"code": "step-up-required", "message": str(detail.get("message") or "Sign in again to approve.")[:300],

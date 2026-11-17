@@ -585,10 +585,12 @@ def test_owner_assigns_reviewer_roles_only_to_linked_identities(env, monkeypatch
     assert len(calls) == 2
 
 
-def test_step_up_refusal_reaches_the_page_with_workspaces_own_sign_in_path(env, monkeypatch):
-    def backend(request: httpx.Request):
-        return httpx.Response(403, json={"detail": {"code": "step-up-required", "message": "Sign in again.",
-                                                    "loginUrl": "https://attacker.example/login"}})
+@pytest.mark.parametrize("shape", ["detail", "flattened"])
+def test_step_up_refusal_reaches_the_page_with_workspaces_own_sign_in_path(env, monkeypatch, shape):
+    refusal = {"code": "step-up-required", "message": "Sign in again.", "loginUrl": "https://attacker.example/login"}
+
+    def backend(request: httpx.Request):  # the backend's own error handler sends the flattened shape
+        return httpx.Response(403, json={"detail": refusal} if shape == "detail" else {"ok": False, **refusal})
     _issuer_env(env, monkeypatch, backend)
     env.client.cookies.set("sc_workspace_session", "cookie-of-reviewer")
     out = env.client.post("/research-approvals/approval_r1/decide", headers=rh("owner-b", write=True),
