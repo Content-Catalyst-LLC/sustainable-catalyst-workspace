@@ -333,6 +333,8 @@ class DecideIn(BaseModel):
     decision: Literal["approve", "reject", "request_revision"]
     note: str = Field(default="", max_length=2000)
     expectedSubjectRef: str = Field(min_length=1, max_length=300)
+    ownerSelfAuthorization: bool = False
+    attestation: str = Field(default="", max_length=2000)
 
 
 def build_router(deps: dict[str, Callable]) -> APIRouter:
@@ -723,6 +725,9 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         from . import research_approvals as ra
         item = next((i for i in ra.list_requests_route(role="approver", status="pending", identity=ident)["items"]
                      if i["approvalId"] == approval_id), None)
+        if item is None and ra.owner_self_authorization_enabled():  # SC-PUB-SELF-01: the owner reads their own packet
+            item = next((i for i in ra.list_requests_route(role="owner", status="pending", identity=ident)["items"]
+                         if i["approvalId"] == approval_id), None)
         if item is None:
             raise HTTPException(404, "Research approval request not found.")
         return item
@@ -731,7 +736,8 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
     def packet(approval_id: str, request: Request):
         """What an assigned reviewer reads before deciding: the exact subject and, for an article revision, the saved
         Studio revision Research's revision was built from, with its citations, cited Research evidence, figure
-        sources and rights status. Read-only, and only while the request is pending and assigned to this reviewer."""
+        sources and rights status. Read-only, and only while the request is pending and assigned to this reviewer (or is
+        the owner's own, where owner self-authorization is enabled)."""
         from . import research_approvals as ra
         item = assigned(identity(request), approval_id)
         out: dict[str, Any] = {"request": item, "article": None}
@@ -767,6 +773,16 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         from . import research_approvals as ra
         ident = identity(request)
         return JSONResponse(ra.list_requests_route(role="approver", status="pending", identity=ident), headers=H)
+
+    @router.get("/research-approvals/mine")
+    def mine(request: Request):
+        """SC-PUB-SELF-01: the owner's own pending requests, which only the owner may self-authorize (where enabled)."""
+        from . import research_approvals as ra
+        ident = identity(request)
+        enabled = ra.owner_self_authorization_enabled()
+        items = ra.list_requests_route(role="owner", status="pending", identity=ident)["items"] if enabled else []
+        return JSONResponse({"enabled": enabled, "disclosure": ra.SELF_AUTHORIZATION_DISCLOSURE,
+                             "minimumDeclaration": ra.MIN_ATTESTATION_CHARS, "items": items}, headers=H)
 
     @router.post("/research-approvals/{approval_id}/decide")
     def decide(approval_id: str, body: DecideIn, request: Request):

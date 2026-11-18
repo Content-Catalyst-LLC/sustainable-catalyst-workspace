@@ -141,8 +141,24 @@ async function reviewerInbox(){
    decide.push(b);d.append(b)}
   box.append(d)}
  return box}
+async function ownRequests(){
+ // SC-PUB-SELF-01: where enabled, the owner authorizes their own requests; the record and the public page say so.
+ let mine;try{mine=await api(pub+'/research-approvals/mine')}catch(e){return el('div')}
+ const box=el('section',null,'out-inbox');if(!mine.enabled)return box;
+ box.append(el('h3','Your own requests'),el('p','You may authorize publication of your own work. This is recorded and shown publicly as: '+mine.disclosure+' Sign-in with password and second factor is required each time.','hint'));
+ if(!mine.items.length){box.append(el('p','No pending requests of your own.','hint'));return box}
+ for(const q of mine.items){const d=el('div',null,'out-card');d.append(el('strong',q.dimension+' · '+q.subjectTitle),el('p','Exact subject: '+q.subjectRef,'out-subject'),el('p','Requested '+q.requestedAt,'hint'));
+  const decl=input('What you checked (at least '+mine.minimumDeclaration+' characters)',2000),slot=el('div'),ack=el('input');ack.type='checkbox';
+  const read=el('button','Read the review packet');read.type='button';
+  const go=act('Authorize as author (not independent review)',async()=>{if(!ack.checked)throw Error('Confirm the disclosure first.');
+   try{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision:'approve',expectedSubjectRef:q.subjectRef,ownerSelfAuthorization:true,attestation:decl.value})}catch(e){stepUp(e)}
+   status('Author authorization signed by Workspace and labelled not independently reviewed.')},false);
+  read.addEventListener('click',run(async()=>{slot.replaceChildren(packetBlock(await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/packet')));go.disabled=false}));
+  const lab=el('label');lab.append(ack,document.createTextNode(' I understand this is my own review and will be disclosed as not independently reviewed.'));
+  d.append(read,slot,field('Declaration',decl),lab,go);box.append(d)}
+ return box}
 async function reviewersPanel(){
- const box=el('section',null,'out-inbox');box.append(el('h3','Reviewers'),el('p','Give a reviewer one approval role for this project. Reviewers sign in with Sustainable Catalyst Identity (password and second factor); nobody can approve their own request.','hint'));
+ const box=el('section',null,'out-inbox');box.append(el('h3','Reviewers'),el('p','Give a reviewer one approval role for this project. Reviewers sign in with Sustainable Catalyst Identity (password and second factor); a reviewer never decides a request they made. Reviewers are optional where owner self-authorization is enabled.','hint'));
  let items=[],me='';try{items=(await api(pub+'/research-approvals/grants')).items;me=(await api('/v1/session')).subject}catch(e){box.append(el('p',e.message,'hint'));return box}
  const mine=items.filter(g=>g.ownerScope==='workspace-user:'+me&&(g.projectId===state.project||g.projectId==='*'));
  if(!mine.length)box.append(el('p','No reviewers yet.','hint'));
@@ -155,7 +171,7 @@ async function reviewersPanel(){
  return box}
 async function loadOutputs(){
  if(!OUT.open)return;const host=E('outputs');
- if(!state.project){host.replaceChildren(el('p','Select a research project.','hint'),await reviewerInbox());return}
+ if(!state.project){host.replaceChildren(el('p','Select a research project.','hint'),await reviewerInbox(),await ownRequests());return}
  const data=await api(outPath(''));
  const list=el('div');
  if(!data.researchConfigured)list.append(el('p','Research publishing is not configured for this Workspace; outputs stay private.','hint warn'));

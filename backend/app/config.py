@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # When true, legacy user context (service bearer + X-SC-User-ID) and the
     # trusted-service session exchange are refused.
     sc_identity_required: bool = False
+    # SC-PUB-SELF-01: single-operator deployments. The project owner may authorize publication of their own work
+    # through a separate, disclosed decision (fresh SC Identity step-up, exact revision, written declaration). The
+    # record is labelled not independently reviewed. Off by default; reviewer roles work either way.
+    research_owner_self_authorization: bool = False
     cors_allowed_origins: str = "https://workspace.sustainablecatalyst.com"
     # SC-SCI-02: Research Console origins added to the browser allowlist (CORS and the cookie-write Origin check),
     # without restating cors_allowed_origins.
