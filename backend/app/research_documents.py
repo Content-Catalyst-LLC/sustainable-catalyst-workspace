@@ -588,7 +588,8 @@ def index(request: Request):
     areas: dict[str, dict] = {}
     for p in projects:
         areas.setdefault(p['researchArea']['id'], {'name': p['researchArea']['name'], 'projects': []})['projects'].append(p)
-    parts = ['<nav class="crumbs"><a href="/v1/private-research/reporting-studio">Reporting Studio</a> › Research documents</nav>',
+    parts = ['<nav class="crumbs"><a href="/v1/private-research/reporting-studio">Reporting Studio</a> › '
+             '<a href="/v1/private-research/reporting-studio/research-projects">Research projects</a> › Research documents</nav>',
              '<header class="meta"><h1>Research documents</h1><p>Private to your account. Nothing here is public '
              'unless it is listed under an existing public record.</p></header><section class="index">']
     if not areas:
