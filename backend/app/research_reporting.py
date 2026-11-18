@@ -329,3 +329,7 @@ def export_pdf(project_id: str, revision: int, report_id: str, request: Request)
 # manuscript/publication workbench under /publication.
 from .reporting_publication import router as publication_router
 router.include_router(publication_router)
+
+# SC-RESEARCH-DOCS-01: owner-only register and full-document viewer under /documents.
+from .research_documents import router as documents_router
+router.include_router(documents_router)
