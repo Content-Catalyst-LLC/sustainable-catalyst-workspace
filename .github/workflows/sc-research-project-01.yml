@@ -1,0 +1,65 @@
+name: SC-RESEARCH-PROJECT-01 research project workspace
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/research_projects.py'
+      - 'backend/app/research_documents.py'
+      - 'backend/app/reporting_publication.py'
+      - 'backend/app/research_outputs.py'
+      - 'backend/app/citation_studio.py'
+      - 'backend/app/wxr_private_projects.py'
+      - 'backend/app/research_reporting.py'
+      - 'backend/app/research_reporting_ui.html'
+      - 'backend/app/reporting_project_catalog.py'
+      - 'backend/requirements-reporting.txt'
+      - 'backend/tests/test_sc_research_project01_*.py'
+      - 'backend/tests/test_sc_research_docs01_*.py'
+      - 'backend/tests/test_rd012_reporting_studio_recovery.py'
+      - '.github/workflows/sc-research-project-01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  project-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-reporting.txt
+      - name: Install Cairo build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
+      - name: Install the Reporting Studio dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-reporting.txt pytest
+          python -m pip check
+      - name: Project creation, isolation, recovery and dashboard; viewer, outputs and citation regressions (synthetic only)
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          SC_WORKSPACE_REPORTING_STUDIO_ENABLED: '1'
+        run: |
+          python -m pytest -q tests/test_sc_research_project01_project_workspace.py tests/test_sc_research_docs01_document_viewer.py \
+            tests/test_rd012_reporting_studio_recovery.py tests/test_sc_pub_e2e01_outputs.py tests/test_sc_cite01_citation_studio.py
+      - name: Page scripts parse
+        run: |
+          python -c "from app import research_projects as r; open('/tmp/hub.js','w').write(r.HUB_JS); open('/tmp/dash.js','w').write(r.DASH_JS)"
+          node --check /tmp/hub.js && node --check /tmp/dash.js
+      - name: The Studio entrypoint mounts the project workspace and the viewer
+        env:
+          SC_WORKSPACE_REPORTING_STUDIO_ENABLED: '1'
+          SC_WORKSPACE_DATABASE_URL: sqlite:////tmp/project01-mount.db
+        run: |
+          python -c "from app.reporting_production_entry import app; p={r.path for r in app.routes}; assert '/v1/private-research/reporting-studio/research-projects/api/projects' in p, 'project workspace not mounted'; assert '/v1/private-research/reporting-studio/documents/{project_id}/{document_id}' in p, 'viewer not mounted'"
