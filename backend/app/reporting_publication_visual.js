@@ -34,7 +34,19 @@ function prepareSourceInsertion() {
   t.setSelectionRange(t.value.length, t.value.length);
 }
 
+// Host services for the single-document editor (SC-EDITOR-DOCX-01).
+window.SCStudioAssetUrl = id => path('/assets/' + encodeURIComponent(id) + '/image');
+window.SCStudioCitations = () => (state.citations || []).map(item => ({
+  key: item.key,
+  label: item.formatted[E('citeStyle').value].inText + ' ' + (item.title || '').slice(0, 70),
+}));
+window.SCStudioCitationLabel = key => {
+  const item = (state.citations || []).find(x => x.key === key);
+  return item ? item.formatted[E('citeStyle').value].reference : '';
+};
+
 function addVisualMarkdown(snippet) {
+  if (visualMode && tiptapBridge && tiptapBridge.insertMarkdown && tiptapBridge.insertMarkdown(snippet)) return;
   const t = E('manuscript');
   t.value = t.value.replace(/\s*$/, '') + '\n\n' + snippet + '\n';
   markDirty();

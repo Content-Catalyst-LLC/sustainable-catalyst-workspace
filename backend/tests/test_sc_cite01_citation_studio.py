@@ -80,7 +80,8 @@ def test_a_manuscript_with_its_own_reference_list_is_exported_unchanged():
     assert cite.resolve(md, None) == md
     assert cite.resolve(md, cite.freeze(md, {'items': []}, 'harvard')) == md
     html = pub._as_html({'title': 'R', 'markdown': md, 'revision': 1, 'markdownSHA256': 'x'})
-    assert b'1. Beerling DJ et al. (2020). Nature 583:242' in html
+    # SC-EDITOR-DOCX-01: a numbered list is a real ordered list (the number is rendered by <ol>); text unchanged.
+    assert '<ol><li>Beerling DJ et al. (2020). Nature 583:242–248.</li></ol>'.encode() in html
 
 
 # --- 2. Styles, in-text citations and bibliographies -------------------------------------------------------------

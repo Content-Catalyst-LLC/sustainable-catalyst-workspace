@@ -498,6 +498,177 @@ def snapshot(sections: list[dict], current: dict, style: str) -> dict | None:
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# SC-EDITOR-DOCX-01: references already typed in a manuscript -> reviewed collection records
+
+REF_HEADING = re.compile(r'^(?:list of )?(?:references?|reference list|bibliography|works cited|literature cited|'
+                         r'sources cited)$', re.I)
+_UNESCAPE = re.compile(r'\\([\\`*_{}\[\]()#+\-.!|$<>~])')
+ORG_WORDS = re.compile(r'\b(?:group|service|department|agency|organi[sz]ation|institute|council|commission|bank|fund|'
+                       r'office|ministry|nations|unesco|unhcr|unfccc|unep|ocha|imf|acaps|watch|programme|program|'
+                       r'centre|center|university|association|foundation|treasury|transparency|registry)\b', re.I)
+
+
+def manuscript_references(markdown: str) -> list[str]:
+    """Entries (one paragraph each) under a References/Bibliography heading, without Markdown escapes."""
+    out, level = [], None
+    for raw in re.split(r'\n\s*\n', markdown.replace('\r\n', '\n')):
+        block = raw.strip()
+        heading = re.match(r'^(#{1,6})\s+(.+)$', block)
+        if heading and '\n' not in block:
+            text = _UNESCAPE.sub(r'\1', heading.group(2)).strip().rstrip(':')
+            if REF_HEADING.match(text):
+                level = len(heading.group(1))
+            elif level is not None and len(heading.group(1)) <= level:
+                level = None
+            continue
+        if level is not None and block and not block.startswith(('|', '![', '```', '$$')):
+            text = _UNESCAPE.sub(r'\1', re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', ' '.join(block.split())))
+            out.append(re.sub(r'^(?:[-*+]|\d{1,3}[.)])\s+', '', text))
+    return out[:MAX_ITEMS]
+
+
+def _people(text: str) -> tuple[list, list[str]]:
+    """Author list from an author-date reference; organisations stay literal. Returns (authors, issues)."""
+    text = text.strip().rstrip(',').strip()
+    if not text:
+        return [], ['no author']
+    person = re.compile(r"\s*(?:&\s*|and\s+)?([^,&]+?),\s*((?:[A-Z][a-z]?\.\s*-?\s*)+)\s*(?:,|&|\band\b|$)\s*")
+    people, pos = [], 0
+    while pos < len(text):
+        match = person.match(text, pos)
+        if not match or match.end() == pos:
+            break
+        people.append({'family': match.group(1).strip(), 'given': match.group(2).strip()})
+        pos = match.end()
+    if people and pos >= len(text.rstrip('.')):
+        return people, []
+    if ORG_WORDS.search(text) or not re.search(r',|\band\b|&', text):
+        return [{'literal': text.rstrip('.')}], []
+    return [{'literal': text.rstrip('.')}], ['author names could not be separated']
+
+
+def parse_reference_text(text: str) -> dict:
+    """Best-effort author-date parse (Harvard/APA). Never authoritative: the result is reviewed before import."""
+    issues = []
+    url_match = re.search(r'(https?://\S+?)[.,;)]?$', text) or re.search(r'https?://\S+', text)
+    url = (url_match.group(1) if url_match and url_match.lastindex else url_match.group(0) if url_match else '')
+    url = url.rstrip('.,;')
+    doi_match = re.search(r'(?:doi\.org/|doi:\s*)(10\.\d{4,9}/[^\s,;]+)', text, re.I) or \
+        re.search(r'\b(10\.\d{4,9}/[^\s,;]+)', text)
+    doi = doi_match.group(1).rstrip('.') if doi_match else ''
+    body = text
+    for marker in ('→', 'Available at:', 'Available from:', 'Retrieved from'):
+        body = body.split(marker)[0]
+    if url:
+        body = body.replace(url, '')
+    body = re.sub(r'https?://\S+', '', body).strip()
+    year_match = re.search(r'\((\d{4})[a-z]?(?:,[^)]*)?\)|\((n\.d\.)\)', body)
+    year = int(year_match.group(1)) if year_match and year_match.group(1) else None
+    if not year_match:
+        issues.append('no year in parentheses')
+        authors_text, rest = '', body
+    else:
+        authors_text, rest = body[:year_match.start()], body[year_match.end():]
+    authors, person_issues = _people(authors_text)
+    issues += person_issues
+    rest = rest.lstrip(' .,:')
+    quoted = re.match(r"^['‘\"“](.+?)['’\"”](?=[\s,.(]|$)", rest)
+    if quoted:
+        title, rest = quoted.group(1), rest[quoted.end():]
+    else:
+        stop = re.search(r'\.\s', rest)
+        title, rest = (rest[:stop.start()], rest[stop.end():]) if stop else (rest, '')
+        if ', ' in title:
+            issues.append('unquoted title; title and publisher boundary uncertain')
+    title = title.strip(' .,')
+    rest = re.sub(r'^\s*\([^)]*\)', '', rest).strip(' .,')  # "(report)"-style qualifiers
+    container = rest.split(',')[0].strip(' .') if rest else ''
+    volume = re.search(r'\b(\d{1,4})\s*\((\d{1,4})\)', rest)
+    pages = re.search(r'\bpp?\.\s*([\dA-Za-z]+\s*[–-]\s*[\dA-Za-z]+|\d+)', rest)
+    if container and volume and container.startswith(volume.group(0)):
+        container = ''
+    if not title:
+        issues.append('no title')
+    if not authors:
+        issues.append('no author')
+    kind = 'article-journal' if volume or doi else 'webpage' if url and not container else 'report'
+    fields = {'type': kind, 'authors': authors, 'year': year, 'title': title, 'container': container,
+              'volume': volume.group(1) if volume else '', 'issue': volume.group(2) if volume else '',
+              'pages': pages.group(1).replace(' ', '') if pages else '', 'doi': doi, 'url': '' if doi else url}
+    if fields['type'] == 'report' and container and not volume:
+        fields['publisher'], fields['container'] = container, ''
+    return {'fields': fields, 'issues': issues}
+
+
+def _norm_title(value: str) -> str:
+    return re.sub(r'[^a-z0-9]+', ' ', unicodedata.normalize('NFKD', value or '').lower()).strip()
+
+
+def review_manuscript_references(markdown: str, current: dict, library_search: Callable | None = None) -> dict:
+    """A read-only review of each manuscript reference: parsed fields, problems, duplicates, metadata checks."""
+    items = current.get('items', [])
+    by_doi = {x['doi'].lower(): x for x in items if x.get('doi')}
+    by_title: dict[str, list] = {}
+    for x in items:
+        by_title.setdefault(_norm_title(x['title']), []).append(x)
+    cut = re.search(r'^#{1,6}\s+(?:list of )?(?:references?|reference list|bibliography|works cited)\s*:?\s*$',
+                    markdown, re.I | re.M)
+    body = markdown[:cut.start()] if cut else markdown
+    entries, seen = [], {}
+    for text in manuscript_references(markdown):
+        proposal_id = hashlib.sha256(text.encode()).hexdigest()[:16]
+        parsed = parse_reference_text(text)
+        fields, issues = parsed['fields'], list(parsed['issues'])
+        status, existing = 'new', None
+        try:
+            item = make_item(fields, {})
+        except ValueError as exc:
+            item, status = None, 'invalid'
+            issues.append(str(exc))
+        if item:
+            twin = (by_doi.get(item['doi'].lower()) if item['doi'] else None) or next(
+                (x for x in by_title.get(_norm_title(item['title']), []) if x.get('year') == item['year']), None)
+            if twin:
+                status, existing = 'duplicate', twin['key']
+            elif _norm_title(item['title']) in seen:
+                status, existing = 'duplicate-in-manuscript', seen[_norm_title(item['title'])]
+            else:
+                seen[_norm_title(item['title'])] = proposal_id
+        if status == 'new' and issues:
+            status = 'ambiguous'
+        verification = {'doi': 'present-unresolved' if fields['doi'] else 'none',
+                        'url': 'present' if fields['url'] else 'none', 'library': 'not-checked'}
+        if library_search and item and status in ('new', 'ambiguous'):
+            try:
+                hits = (library_search(item['title'][:120]) or {}).get('items', [])
+            except HTTPException:
+                hits = None
+            if hits is None:
+                verification['library'] = 'unavailable'
+            else:
+                exact = [h for h in hits if _norm_title(h.get('title', '')) == _norm_title(item['title'])]
+                verification['library'] = 'match' if len(exact) == 1 else 'multiple' if exact else 'no-match'
+                if exact:
+                    verification['libraryRecordId'] = exact[0].get('libraryObjectId')
+                if len(exact) > 1 and status == 'new':
+                    status = 'ambiguous'; issues.append('several Library records share this title')
+        cited = 0
+        if item:
+            first = item['authors'][0] if item['authors'] else {}
+            name = first.get('family') or first.get('literal') or ''
+            if name and item['year']:
+                cited = len(re.findall(re.escape(name.split()[0]) + r'[^()]{0,60}?' + str(item['year']), body))
+        entries.append({'proposalId': proposal_id, 'text': text, 'fields': fields, 'status': status,
+                        'existingKey': existing, 'issues': issues, 'verification': verification,
+                        'proposedKey': item['key'] if item else None, 'inTextMentions': cited,
+                        'formatted': {s: reference(item, s) for s in STYLES} if item else None})
+    summary = {s: sum(1 for e in entries if e['status'] == s) for s in
+               ('new', 'ambiguous', 'duplicate', 'duplicate-in-manuscript', 'invalid')}
+    return {'schema': 'sc-manuscript-reference-review/1.0', 'manuscriptSha256': hashlib.sha256(markdown.encode()).hexdigest(),
+            'entries': entries, 'summary': summary}
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Routes (mounted under the Reporting Studio publication router)
 
 class ImportSource(BaseModel):
@@ -522,6 +693,21 @@ class SnapshotRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
     sections: list[SnapshotSection] = Field(min_length=1, max_length=40)
     style: str = DEFAULT_STYLE
+
+
+class ManuscriptReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    markdown: str = Field(min_length=1, max_length=400_000)
+    checkLibrary: bool = True
+
+
+class ManuscriptImport(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    markdown: str = Field(min_length=1, max_length=400_000)
+    manuscriptSha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    accept: list[str] = Field(min_length=1, max_length=MAX_ITEMS)
+    sourceArtifactId: str | None = Field(default=None, max_length=160)
+    expectedProjectRevision: int = Field(ge=1)
 
 
 class FormatRequest(BaseModel):
@@ -584,6 +770,41 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         def load(db, owner):
             fields, provenance = library_item(deps['library_record'](body.recordId))
             return [(fields, provenance)], {}
+        return _import(project_id, request, body.expectedProjectRevision, load)
+
+    @router.post('/projects/{project_id}/manuscript-references/review')
+    def manuscript_review(project_id: str, body: ManuscriptReview, request: Request):
+        """Read-only: nothing is stored until the owner accepts specific entries."""
+        owner = deps['subject'](request)
+        with deps['session']() as db:
+            current = collection(deps['project'](db, owner, project_id).package)
+        search = deps['library_search'] if body.checkLibrary else None
+        return JSONResponse(review_manuscript_references(body.markdown, current, search), headers=H)
+
+    @router.post('/projects/{project_id}/manuscript-references/import')
+    def manuscript_import(project_id: str, body: ManuscriptImport, request: Request):
+        """Import only the reviewed entries the owner accepted. Duplicates are never added; each record keeps the
+        exact manuscript text it came from."""
+        if hashlib.sha256(body.markdown.encode()).hexdigest() != body.manuscriptSha256:
+            raise HTTPException(409, 'The manuscript changed since review. Review the references again.')
+        def load(db, owner):
+            row = deps['project'](db, owner, project_id)
+            if body.sourceArtifactId:
+                deps['original_asset'](db, owner, project_id, body.sourceArtifactId)
+            review = review_manuscript_references(body.markdown, collection(row.package))
+            by_id = {e['proposalId']: e for e in review['entries']}
+            unknown = [x for x in body.accept if x not in by_id]
+            if unknown:
+                raise HTTPException(422, 'Unknown reviewed reference: ' + unknown[0])
+            chosen = [by_id[x] for x in dict.fromkeys(body.accept)
+                      if by_id[x]['status'] in ('new', 'ambiguous')]
+            from datetime import datetime, timezone
+            when = datetime.now(timezone.utc).isoformat()
+            return [(e['fields'], {'manuscriptReference': e['text'][:2000], 'reviewStatus': e['status'],
+                                   'reviewIssues': '; '.join(e['issues'])[:300], 'reviewedAt': when})
+                    for e in chosen], {'metadataAuthority': 'manuscript-reference-owner-reviewed',
+                                       'manuscriptSha256': body.manuscriptSha256,
+                                       'sourceArtifactId': body.sourceArtifactId or ''}
         return _import(project_id, request, body.expectedProjectRevision, load)
 
     @router.get('/library/search')
