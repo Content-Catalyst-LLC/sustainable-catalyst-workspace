@@ -5020,6 +5020,8 @@ from .research_approvals import router as research_approval_router
 app.include_router(research_approval_router)
 from .research_access import router as research_access_router
 app.include_router(research_access_router)
+from .research_sources import router as research_sources_router
+app.include_router(research_sources_router)
 # SC-PUB-M1: owner- and approver-facing approval desk (static, same-origin, strict CSP).
 from .approval_desk import router as approval_desk_router
 app.include_router(approval_desk_router)

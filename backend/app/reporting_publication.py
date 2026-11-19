@@ -1130,7 +1130,7 @@ router.include_router(outputs.build_router({'subject':_subject,'write':_write,'p
     'locked_project':_locked_project,'session':session_scope,'headers':HEADERS,'saved':_saved,
     'store':_store_collection,'research_revision':research_revision,
     'documents':lambda package:[{**d,**{k:s.get(k) for s in snapshots(package,d['documentId'])[-1:]
-                                          for k in ('publicationType','scientificStatus','rightsStatus','markdownSHA256')}}
+                                          for k in ('publicationType','scientificStatus','rightsStatus','markdownSHA256','source')}}
                                  for d in latest_documents(package)]}))
 router.include_router(cite.build_router({'subject':_subject,'write':_write,'project':_project,
     'locked_project':_locked_project,'original_asset':_original_asset,'store':_store_collection,'session':session_scope,
