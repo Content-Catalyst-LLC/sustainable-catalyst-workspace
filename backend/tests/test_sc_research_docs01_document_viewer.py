@@ -254,7 +254,9 @@ def test_viewer_index_original_and_rendition(monkeypatch):
 def test_access_is_owner_only_and_bytes_are_reverified(monkeypatch):
     store = Store([('r/' + rd.REGISTER_FILENAME, reg_bytes(register())), ('report.docx', ORIGINAL)])
     store.install(monkeypatch)
-    assert client(monkeypatch, subject=None).get(BASE + '/proj-1/synthetic-report').status_code == 401
+    signed_out = client(monkeypatch, subject=None).get(BASE + '/proj-1/synthetic-report', follow_redirects=False)
+    # SC-STUDIO-SIGNIN-01: a signed-out page visit is sent to sign-in (and back), never shown.
+    assert signed_out.status_code == 303 and signed_out.headers['location'].startswith('/v1/auth/login?stepUp=true&returnTo=')
     assert client(monkeypatch, subject='someone-else').get(BASE + '/proj-1/synthetic-report').status_code == 404
     assert client(monkeypatch, subject='someone-else').get(BASE + '/register.json').json()['projects'] == []
     c = client(monkeypatch)

@@ -24,6 +24,7 @@ from . import repository, object_store
 from .db import session_scope
 from .schemas import ProjectStoreRequest
 from .wxr_private_projects import _subject, _write, _project, _locked_project, HEADERS
+from .studio_signin import page_subject
 from .lab_publication_adapter_v3843 import Envelope, render
 from .lab_live_figure_acceptance_v3844 import _verify_lab
 from .lab_figure_reporting_v3842 import Figure, Scene, _result, _svg
@@ -296,7 +297,7 @@ def open_report(project_id: str, revision: int, report_id: str, request: Request
 
 @router.get('', response_class=HTMLResponse)
 def studio(request: Request):
-    _subject(request)
+    page_subject(request, _subject)
     script = Path(__file__).with_name('research_reporting_ui.js').read_text()
     html = Path(__file__).with_name('research_reporting_ui.html').read_text()
     script_hash = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()

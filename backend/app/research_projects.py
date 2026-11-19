@@ -40,6 +40,7 @@ from .research_documents import STYLE, _page, _summary, project_register, render
 from .research_outputs import bindings
 from .schemas import ArtifactStoreRequest, ProjectStoreRequest
 from .wxr_private_projects import HEADERS, _filename, _locked_project, _project, _subject, _write
+from .studio_signin import page_subject
 
 router = APIRouter(prefix='/research-projects')
 
@@ -515,7 +516,7 @@ def _native(db, owner: str, project_id: str, artifact_id: str):
 
 @router.get('/{project_id}/files/{artifact_id}', response_class=HTMLResponse)
 def view_file(project_id: str, artifact_id: str, request: Request):
-    owner = _subject(request)
+    owner = page_subject(request, _subject)
     with session_scope() as db:
         row = _project(db, owner, project_id)
         artifact, raw = _native(db, owner, project_id, artifact_id)
@@ -584,9 +585,11 @@ const $=id=>document.getElementById(id);
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs||{})){
  if(v==null||v===false)continue;if(k==='onclick'||k==='onsubmit'||k==='onchange')e[k]=v;else e.setAttribute(k,v===true?'':v)}
  for(const k of kids.flat()){if(k!=null&&k!==false)e.append(k)}return e}
+function signInPrompt(show){let b=document.getElementById('scSignIn');if(!show){if(b)b.remove();return}if(b)return;b=document.createElement('div');b.id='scSignIn';b.setAttribute('role','alert');b.style.cssText='position:sticky;top:0;z-index:9999;background:#7a1f1f;color:#fff;padding:10px 16px;font:14px system-ui;text-align:center';const a=document.createElement('a');a.href='/v1/auth/login?stepUp=true&returnTo='+encodeURIComponent(location.pathname+location.search);a.target='_blank';a.rel='noopener';a.style.color='#fff';a.style.fontWeight='600';a.textContent='Sign in again (new tab)';b.append('Your session has expired. This page and any unsaved work are kept. ',a,', then return here and retry.');document.body.prepend(b)}
 async function api(path,options={}){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...options,
  headers:{...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
  const t=await r.text();let d=null;try{d=JSON.parse(t)}catch(e){}
+ signInPrompt(r.status===401);
  if(!r.ok){const m=d&&d.detail?(typeof d.detail==='string'?d.detail:JSON.stringify(d.detail)):t.slice(0,200);throw Error(m||('Request failed ('+r.status+')'))}
  return d}
 function say(msg,error){const s=$('status');s.textContent=msg||'';s.className='status'+(error?' error':'')}
@@ -775,13 +778,13 @@ def _app_page(title: str, body: str, script: str) -> HTMLResponse:
 
 @router.get('', response_class=HTMLResponse)
 def hub(request: Request):
-    _subject(request)
+    page_subject(request, _subject)
     return _app_page('Research projects', HUB_HTML, HUB_JS)
 
 
 @router.get('/{project_id}', response_class=HTMLResponse)
 def project_page(project_id: str, request: Request):
-    owner = _subject(request)
+    owner = page_subject(request, _subject)
     with session_scope() as db:
         _project(db, owner, project_id)
     return _app_page('Research project', DASH_HTML, DASH_JS)
