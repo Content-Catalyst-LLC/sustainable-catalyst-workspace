@@ -13,6 +13,9 @@ on:
       - 'backend/app/research_reporting_ui.html'
       - 'backend/app/reporting_project_catalog.py'
       - 'backend/app/studio_signin.py'
+      - 'backend/app/document_lifecycle.py'
+      - 'backend/app/reporting_publication_ui.html'
+      - 'backend/tests/test_sc_pub_draft01_*.py'
       - 'backend/app/research_reporting_ui.js'
       - 'backend/app/reporting_publication_ui.js'
       - 'backend/tests/test_sc_studio_signin01_*.py'
@@ -57,7 +60,7 @@ jobs:
         run: |
           python -m pytest -q tests/test_sc_research_project01_project_workspace.py tests/test_sc_research_docs01_document_viewer.py \
             tests/test_rd012_reporting_studio_recovery.py tests/test_sc_pub_e2e01_outputs.py tests/test_sc_cite01_citation_studio.py \
-            tests/test_sc_studio_signin01_redirect.py
+            tests/test_sc_studio_signin01_redirect.py tests/test_sc_pub_draft01_trash.py tests/test_sc_editor_docx01_word_import.py
       - name: Page scripts parse
         run: |
           python -c "from app import research_projects as r; open('/tmp/hub.js','w').write(r.HUB_JS); open('/tmp/dash.js','w').write(r.DASH_JS)"

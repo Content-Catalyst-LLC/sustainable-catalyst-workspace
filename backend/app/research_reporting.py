@@ -25,6 +25,7 @@ from .db import session_scope
 from .schemas import ProjectStoreRequest
 from .wxr_private_projects import _subject, _write, _project, _locked_project, HEADERS
 from .studio_signin import page_subject
+from .document_lifecycle import hidden
 from .lab_publication_adapter_v3843 import Envelope, render
 from .lab_live_figure_acceptance_v3844 import _verify_lab
 from .lab_figure_reporting_v3842 import Figure, Scene, _result, _svg
@@ -203,8 +204,9 @@ def open_reporting_project(project_id: str, request: Request):
     subject = _subject(request)
     with session_scope() as db:
         row = _project(db, subject, project_id)
+        gone = hidden(row.package, 'file')  # SC-PUB-DRAFT-01: files in Trash are listed by the Trash view only
         native = [item for item in object_store.list_artifacts(db, subject)
-                  if item.get('projectId') == project_id]
+                  if item.get('projectId') == project_id and item.get('artifactId') not in gone]
         legacy, catalog_present = read_legacy_artifacts(db, subject, project_id)
         result = catalog_details(repository.project_metadata(row), row.package,
                                  native, legacy, catalog_present)
