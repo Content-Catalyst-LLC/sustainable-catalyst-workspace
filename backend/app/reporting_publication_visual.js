@@ -42,7 +42,7 @@ window.SCStudioCitations = () => (state.citations || []).map(item => ({
 }));
 window.SCStudioCitationLabel = key => {
   const item = (state.citations || []).find(x => x.key === key);
-  return item ? item.formatted[E('citeStyle').value].reference : '';
+  return item ? item.formatted[E('citeStyle').value].reference.replace(/\*([^*]+)\*/g, '$1') : '';
 };
 
 function addVisualMarkdown(snippet) {

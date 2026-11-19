@@ -455,6 +455,22 @@ def resolve(markdown: str, frozen: dict | None, references: bool = True) -> str:
     if not references:
         return body
     refs = sorted(frozen['items'], key=sort_key)
+    # SC-EDITOR-DOCX-01: a manuscript that already has a reference list keeps ONE References section. Cited records
+    # whose exact manuscript entry is already there are not repeated; any others join that section in place.
+    section = re.search(r'^(#{1,6})\s+(?:list of )?(?:references?|reference list|bibliography|works cited|'
+                        r'literature cited|sources cited)\s*:?\s*$', body, re.I | re.M)
+    if section:
+        level = len(section.group(1))
+        after = re.compile(r'^#{1,%d}\s' % level, re.M).search(body, section.end())
+        end = after.start() if after else len(body)
+        existing = ' '.join(_UNESCAPE.sub(r'\1', body[section.end():end]).split())
+        extra = [reference(x, style) for x in refs
+                 if ' '.join((x.get('provenance') or {}).get('manuscriptReference', '').split()) not in existing
+                 or not (x.get('provenance') or {}).get('manuscriptReference')]
+        if not extra:
+            return body
+        insert = '\n\n'.join(extra)
+        return body[:end].rstrip() + '\n\n' + insert + '\n' + (('\n' + body[end:]) if after else '')
     return body.rstrip() + '\n\n## References\n\n' + '\n\n'.join(reference(x, style) for x in refs) + '\n'
 
 

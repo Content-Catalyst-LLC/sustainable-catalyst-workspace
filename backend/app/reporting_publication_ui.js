@@ -286,7 +286,7 @@ E('citeReview').onclick=run(async()=>{
   const row=document.createElement('label');row.className='asset review-'+entry.status;
   const check=document.createElement('input');check.type='checkbox';check.value=entry.proposalId;
   check.checked=entry.status==='new';check.disabled=!['new','ambiguous'].includes(entry.status);
-  const text=document.createElement('b');text.textContent=entry.formatted?entry.formatted[style]:entry.text;
+  const text=document.createElement('b');text.textContent=entry.formatted?entry.formatted[style].replace(/\*([^*]+)\*/g,'$1'):entry.text;
   const detail=document.createElement('small');
   detail.textContent=({new:'New',ambiguous:'Needs review',duplicate:'Already in project as ['+entry.existingKey+']',
    'duplicate-in-manuscript':'Repeated in manuscript',invalid:'Cannot be parsed'})[entry.status]+

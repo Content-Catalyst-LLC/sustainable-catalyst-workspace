@@ -298,6 +298,21 @@ def test_manuscript_references_are_reviewed_flagged_and_imported_without_duplica
     assert [x['key'] for x in snapshot['items']] == [key] and snapshot['unresolved'] == []
     html = api(env, 'GET', f'/projects/{pid}/documents/{saved["document"]["documentId"]}/export.html').text
     assert '(Weisbrot and Sachs, 2019)' in html and f'[@{key}]' not in html
+    # One coherent References section: the manuscript's own entry is not repeated by the generated list.
+    assert html.count('<h2>List of References</h2>') == 1 and '<h2>References</h2>' not in html
+    assert html.count('<p class="reference">') == len(REFS)
+
+
+def test_generated_entries_join_an_existing_reference_section():
+    item = cite.make_item({'authors': ['Example, A.'], 'year': 2020, 'title': 'A synthetic study', 'container': 'J. Synth.'},
+                          {'manuscriptReference': 'not in this manuscript'})
+    frozen = {'style': 'harvard', 'items': [item]}
+    md = f'# T\n\nText [@{item["key"]}].\n\n## List of References\n\nOther, B. (2019) Kept entry.\n\n## Appendix\n\nA.\n'
+    out = cite.resolve(md, frozen)
+    assert out.count('References') == 1 and out.index('Example, A. (2020)') < out.index('## Appendix')
+    assert 'Other, B. (2019) Kept entry.' in out
+    plain = cite.resolve('# T\n\nText [@' + item['key'] + '].\n', frozen)
+    assert '## References' in plain  # no reference section yet: one is generated as before
 
 
 def test_reference_text_parser_handles_harvard_and_apa():
