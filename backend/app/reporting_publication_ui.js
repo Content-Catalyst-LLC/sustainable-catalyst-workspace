@@ -48,11 +48,16 @@ async function selectProject(id){
   const title=document.createElement('b');title.textContent=file.filename.split('/').pop();container.append(title);
   const meta=document.createElement('small');meta.textContent=file.filename;container.append(meta);
   const row=document.createElement('div');row.className='asset-row';
-  if(/\.(md|txt|docx)$/i.test(file.filename)){
+  if(/\.(md|txt)$/i.test(file.filename)){
    const open=document.createElement('button');open.textContent='Edit as draft';
    open.onclick=run(async()=>{const d=await api(path('/sources/'+encodeURIComponent(file.artifactId)));
      setDraft(state.catalog.project.title,d.markdown,file.artifactId);await preview();
-     status(d.conversion==='exact-utf8-source'?'Original Markdown opened as an editable draft. Source unchanged.':'DOCX extracted as editable text. Original formatting is not round-trip preserved.');});
+     status('Original Markdown opened as an editable draft. Source unchanged.');});
+   row.append(open);
+  }
+  if(/\.docx$/i.test(file.filename)){
+   const open=document.createElement('button');open.textContent='Import Word manuscript';
+   open.onclick=run(async()=>{await importWord(file)});
    row.append(open);
   }
   if(/\.svg$/i.test(file.filename)){
@@ -85,6 +90,27 @@ async function selectProject(id){
     status('Preserved manuscript loaded into editable publication preview. Save a revision to enable exports.');
   }else{setDraft(state.catalog.project.title,'# Introduction\n\n',null);await preview();status('New publication draft. Existing research files remain available in the asset panel.')}
  }
+}
+// SC-EDITOR-DOCX-01: structured Word import. The DOCX bytes stay unchanged; embedded figures become project images.
+async function importWord(file){
+ if(state.dirty&&!window.confirm('Discard unsaved changes in the current draft and import this Word manuscript?'))return;
+ const d=await api(path('/sources/'+encodeURIComponent(file.artifactId)+'/import-docx'),{});
+ setDraft(d.title||state.catalog.project.title,d.markdown,file.artifactId);
+ state.importReport=d.import;await preview();renderImportReport(d.import);
+ const o=d.import.outline;
+ status('Word manuscript imported as a new unsaved draft: '+o.headings.length+' headings, '+o.tables.length+' table(s), '+
+  o.figures+' figure(s), '+o.referenceEntries+' reference entries. Original DOCX unchanged; existing revisions untouched.');
+}
+function renderImportReport(report){
+ const box=E('provenance');box.replaceChildren();
+ const head=document.createElement('div');
+ head.textContent='Word import · '+report.converter+' · source SHA-256 '+report.sourceSha256.slice(0,16)+'… (unchanged)';box.append(head);
+ for(const f of report.figures){const x=document.createElement('div');x.textContent='Figure '+f.filename.split('/').pop()+' ← '+f.part+' · '+f.sha256.slice(0,12)+'…';box.append(x)}
+ for(const n of report.notes){const x=document.createElement('div');x.textContent=n;box.append(x)}
+ const list=document.createElement('ul');
+ for(const u of report.unsupported){const li=document.createElement('li');li.textContent=u.feature+' ('+u.count+'): '+u.detail;list.append(li)}
+ if(!report.unsupported.length){const li=document.createElement('li');li.textContent='No unsupported Word features detected.';list.append(li)}
+ box.append(list);
 }
 function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId,citationStyle:E('citeStyle').value,publicationType:E('publicationType').value}}
 function renderLayoutReport(report){
@@ -223,9 +249,12 @@ function renderCitations(collection){
  for(const item of collection.items){
   const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
   E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
+   // In the visual editor the citation goes in at the cursor; no switch to Markdown source.
+   if(visualMode&&tiptapBridge&&tiptapBridge.insertCitation(item.key)){status('Citation '+item.key+' inserted at the cursor.');return}
    prepareSourceInsertion();const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
    status('Citation '+item.key+' inserted. The reference list is generated from saved project records.');}));
  }
+ if(tiptapBridge&&tiptapBridge.refreshCitations)tiptapBridge.refreshCitations();
 }
 async function loadCitations(){
  const c=await api(citePath(''));renderCitations(c);return c;
@@ -244,6 +273,40 @@ E('citeSearch').onclick=run(async()=>{
  const r=await api(pub+'/citations/library/search?q='+encodeURIComponent(q));E('citeResults').replaceChildren();
  for(const ref of r.items)E('citeResults').append(citeRow(ref.title,ref.canonicalUrl+' · revision '+ref.revision,'Add to project',async()=>{await citeImport('/import-library',{recordId:ref.libraryObjectId})}));
  if(!r.items.length){const p=document.createElement('div');p.className='empty';p.textContent='No verified public Library records found.';E('citeResults').append(p)}
+});
+// SC-EDITOR-DOCX-01: reviewable import of the reference list already typed in the manuscript.
+E('citeReview').onclick=run(async()=>{
+ if(!state.project)throw Error('Select a project');
+ const markdown=E('manuscript').value;
+ const r=await api(citePath('/manuscript-references/review'),{markdown});
+ state.referenceReview={...r,markdown};const box=E('citeReviewList');box.replaceChildren();
+ if(!r.entries.length){const p=document.createElement('div');p.className='empty';p.textContent='No References or Bibliography section found in this manuscript.';box.append(p);E('citeReviewImport').hidden=true;return}
+ const style=E('citeStyle').value;
+ for(const entry of r.entries){
+  const row=document.createElement('label');row.className='asset review-'+entry.status;
+  const check=document.createElement('input');check.type='checkbox';check.value=entry.proposalId;
+  check.checked=entry.status==='new';check.disabled=!['new','ambiguous'].includes(entry.status);
+  const text=document.createElement('b');text.textContent=entry.formatted?entry.formatted[style].replace(/\*([^*]+)\*/g,'$1'):entry.text;
+  const detail=document.createElement('small');
+  detail.textContent=({new:'New',ambiguous:'Needs review',duplicate:'Already in project as ['+entry.existingKey+']',
+   'duplicate-in-manuscript':'Repeated in manuscript',invalid:'Cannot be parsed'})[entry.status]+
+   (entry.proposedKey&&!entry.existingKey?' · key ['+entry.proposedKey+']':'')+
+   (entry.issues.length?' · '+entry.issues.join('; '):'')+' · Library '+entry.verification.library+
+   (entry.verification.doi!=='none'?' · DOI present (not resolved)':'')+' · '+entry.inTextMentions+' in-text mention(s)';
+  const original=document.createElement('small');original.className='review-original';original.textContent='Manuscript: '+entry.text;
+  row.append(check,text,detail,original);box.append(row);
+ }
+ E('citeReviewImport').hidden=false;
+ status('Reference review: '+r.summary.new+' new, '+r.summary.ambiguous+' need review, '+(r.summary.duplicate+r.summary['duplicate-in-manuscript'])+' duplicates. Nothing is stored until you import selected entries.');
+});
+E('citeReviewImport').onclick=run(async()=>{
+ const review=state.referenceReview;if(!review)throw Error('Review the manuscript references first.');
+ if(review.markdown!==E('manuscript').value)throw Error('The manuscript changed since review. Review the references again.');
+ const accept=[...E('citeReviewList').querySelectorAll('input:checked')].map(x=>x.value);
+ if(!accept.length)throw Error('Select at least one reviewed reference.');
+ await citeImport('/manuscript-references/import',{markdown:review.markdown,manuscriptSha256:review.manuscriptSha256,
+  accept,sourceArtifactId:state.sourceId});
+ state.referenceReview=null;E('citeReviewList').replaceChildren();E('citeReviewImport').hidden=true;
 });
 E('citeBibButton').onclick=run(async()=>{
  const keys=[...E('manuscript').value.matchAll(/@([A-Za-z0-9_.:-]{1,80})/g)].map(m=>m[1]);

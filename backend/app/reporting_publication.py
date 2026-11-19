@@ -33,6 +33,7 @@ from .wxr_private_projects import _subject, _write, _project, _locked_project, H
 from .reporting_project_catalog import read_legacy_artifacts
 from . import citation_studio as cite
 from . import publication_layout as layout
+from . import docx_manuscript
 
 router = APIRouter(prefix='/publication', tags=['Scientific Publication Studio'])
 SCHEMA = 'sc-scientific-publication/1.0'
@@ -161,13 +162,53 @@ def latest_documents(package: dict) -> list[dict]:
                  updatedAt=x['createdAt'],projectRevision=x['projectRevision']) for x in sorted(result.values(),key=lambda obj:obj['projectRevision'],reverse=True)]
 
 
+# SC-EDITOR-DOCX-01: Markdown backslash escapes (written by the DOCX converter and by Tiptap) render literally.
+# Escaped ASCII punctuation is parked in the private-use plane while inline syntax is applied, then restored.
+_ESCAPED=re.compile(r'\\([\\`*_{}\[\]()#+\-.!|$<>~])')
+_PARKED=re.compile('[\ue000-\ue07f]')
+_LINK=re.compile(r'\[([^\]\n]{1,400})\]\(((?:https?://|mailto:)[^\s()<>"]{1,2000})\)')
+_BARE_URL=re.compile(r'(?<![="\w/>])(https?://[^\s<>"]{2,2000}[^\s<>".,;:!?)\]\ue000-\ue07f])')
+
+
+def _park(text: str) -> str:
+    return _ESCAPED.sub(lambda m: chr(0xE000+ord(m.group(1))),text)
+
+
+def _unpark(text: str, html: bool = True) -> str:
+    return _PARKED.sub(lambda m: (escape if html else str)(chr(ord(m.group(0))-0xE000)),text)
+
+
 def _esc_line(line: str) -> str:
-    safe=escape(line)
+    safe=escape(_park(line))
     safe=re.sub(r'`([^`]{1,240})`',r'<code>\1</code>',safe)
+    safe=_LINK.sub(lambda m:'<a href="'+m.group(2)+'" rel="noopener noreferrer">'+m.group(1)+'</a>',safe)
+    safe=_BARE_URL.sub(lambda m:'<a href="'+m.group(1)+'" rel="noopener noreferrer">'+m.group(1)+'</a>',safe)
     safe=re.sub(r'\*\*([^*]{1,400})\*\*',r'<strong>\1</strong>',safe)
     safe=re.sub(r'(?<!\*)\*([^*]{1,400})\*(?!\*)',r'<em>\1</em>',safe)
     safe=re.sub(r'\[@([A-Za-z0-9_.:-]{1,80})\]',r'<span class="citation">[\1]</span>',safe)
-    return safe
+    return _unpark(safe)
+
+
+def _cells(line: str) -> list[str]:
+    """Split a table row on unescaped pipes; an escaped pipe stays in the cell."""
+    row=line.strip()
+    row=row[1:] if row.startswith('|') else row
+    row=row[:-1] if row.endswith('|') and not row.endswith('\\|') else row
+    return [x.strip() for x in re.split(r'(?<!\\)\|',row)]
+
+
+def mark_references(blocks: list[dict]) -> list[dict]:
+    """Paragraphs under a References/Bibliography heading are bibliography entries (rendered with hanging indents)."""
+    out,level=[],None
+    for block in blocks:
+        if block['kind']=='heading':
+            if docx_manuscript.REFERENCES_HEADING.match(_unpark(_park(block['text']),False).strip().rstrip(':')):
+                level=block['level']
+            elif level is not None and block['level']<=level:level=None
+        elif block['kind']=='paragraph' and level is not None:
+            block={**block,'kind':'reference'}
+        out.append(block)
+    return out
 
 
 def parse_blocks(markdown: str) -> list[dict]:
@@ -198,21 +239,26 @@ def parse_blocks(markdown: str) -> list[dict]:
             level=len(line)-len(line.lstrip('#'))
             result.append({'kind':'heading','level':level,'text':line[level:].strip()})
         elif line.startswith('|') and i<len(lines) and re.fullmatch(r'[|\s:\-]+',lines[i].strip()):
-            headers=[x.strip() for x in line.strip('|').split('|')];i+=1
+            headers=_cells(line);i+=1
             rows=[]
             while i<len(lines) and lines[i].strip().startswith('|') and len(rows)<100:
-                rows.append([x.strip() for x in lines[i].strip().strip('|').split('|')]); i+=1
+                rows.append(_cells(lines[i])); i+=1
             result.append({'kind':'table','headers':headers[:16], 'rows':rows})
-        elif re.match(r'^[-*] ',line):
+        elif re.match(r'^[-*+] ',line):
             items=[line[2:].strip()]
-            while i<len(lines) and re.match(r'^\s*[-*] ',lines[i]):
-                items.append(re.sub(r'^\s*[-*] ','',lines[i]).strip());i+=1
+            while i<len(lines) and re.match(r'^\s*[-*+] ',lines[i]):
+                items.append(re.sub(r'^\s*[-*+] ','',lines[i]).strip());i+=1
             result.append({'kind':'list','items':items})
+        elif re.match(r'^\d{1,3}[.)] ',line):
+            items=[re.sub(r'^\d{1,3}[.)] ','',line).strip()]
+            while i<len(lines) and re.match(r'^\s*(?:\d{1,3}[.)]|[-*+]) ',lines[i]):
+                items.append(re.sub(r'^\s*(?:\d{1,3}[.)]|[-*+]) ','',lines[i]).strip());i+=1
+            result.append({'kind':'list','items':items,'ordered':True,'start':int(re.match(r'\d+',line).group(0))})
         elif line.startswith('> '):
             result.append({'kind':'quote','text':line[2:]})
         else:
             parts=[line]
-            while i<len(lines) and lines[i].strip() and not (lines[i].startswith(('#','```','|','> ','$$','![')) or re.match(r'^[-*] ',lines[i])):
+            while i<len(lines) and lines[i].strip() and not (lines[i].startswith(('#','```','|','> ','$$','![')) or re.match(r'^(?:[-*+]|\d{1,3}[.)]) ',lines[i])):
                 parts.append(lines[i].strip());i+=1
             result.append({'kind':'paragraph','text':' '.join(parts)})
     return result
@@ -224,15 +270,19 @@ def render_html(markdown: str, asset_uri=None, *, document_title: str | None = N
     blocks = parse_blocks(markdown)
     if document_title is not None:
         blocks = layout.without_repeated_title(blocks, document_title)
-    for node in blocks:
+    for node in mark_references(blocks):
         kind=node['kind']
         if kind=='heading':
             n=node['level'];out.append(f'<h{n}>{_esc_line(node["text"])}</h{n}>')
         elif kind=='paragraph':out.append('<p>'+_esc_line(node['text'])+'</p>')
+        elif kind=='reference':out.append('<p class="reference">'+_esc_line(node['text'])+'</p>')
         elif kind=='quote':out.append('<blockquote>'+_esc_line(node['text'])+'</blockquote>')
         elif kind in ('code','math'):
             out.append('<pre class="'+('equation' if kind=='math' else 'code')+'"><code>'+escape(node['text'])+'</code></pre>')
-        elif kind=='list':out.append('<ul>'+''.join('<li>'+_esc_line(i)+'</li>' for i in node['items'])+'</ul>')
+        elif kind=='list':
+            tag='ol' if node.get('ordered') else 'ul'
+            start=f' start="{node["start"]}"' if node.get('start',1)!=1 else ''
+            out.append(f'<{tag}{start}>'+''.join('<li>'+_esc_line(i)+'</li>' for i in node['items'])+f'</{tag}>')
         elif kind=='table':
             cols=len(node['headers']);out.append('<table><thead><tr>'+''.join('<th>'+_esc_line(x)+'</th>' for x in node['headers'])+'</tr></thead><tbody>')
             for row in node['rows']:
@@ -240,7 +290,7 @@ def render_html(markdown: str, asset_uri=None, *, document_title: str | None = N
             out.append('</tbody></table>')
         elif kind=='figure':
             figure_ids.append(node['assetId'])
-            cap=escape(node['caption'])
+            cap=_unpark(escape(_park(node['caption'])))
             if asset_uri:
                 src=escape(asset_uri(node['assetId']),quote=True)
                 out.append(f'<figure><img src="{src}" alt="{cap}"><figcaption>{cap}</figcaption></figure>')
@@ -345,16 +395,39 @@ def _saved(db, owner, project_id, document_id, rev=None):
     if not candidates:raise HTTPException(404,'Publication not found in this project.')
     return row, candidates[-1]
 
+RASTER_MAGIC={b'\x89PNG\r\n\x1a\n':'image/png',b'\xff\xd8\xff':'image/jpeg'}
+MAX_RASTER_PIXELS=40_000_000
+
+
+def figure_payload(filename: str, raw: bytes) -> tuple[str, bytes]:
+    """(media type, bytes safe to embed) for a verified figure source: sanitized SVG, or a decodable PNG/JPEG
+    (SC-EDITOR-DOCX-01: images extracted from Word manuscripts). Anything else is refused."""
+    if filename.lower().endswith('.svg'):
+        return 'image/svg+xml',sanitize_svg(raw)
+    media=next((m for magic,m in RASTER_MAGIC.items() if raw.startswith(magic)),None)
+    if media is None or not filename.lower().endswith(('.png','.jpg','.jpeg')):
+        raise HTTPException(422,'Figure ID is not an SVG, PNG or JPEG research source.')
+    from PIL import Image as PILImage
+    try:
+        with PILImage.open(BytesIO(raw)) as image:
+            if image.width*image.height>MAX_RASTER_PIXELS:raise HTTPException(413,'Figure image is too large.')
+            image.verify()
+    except HTTPException:raise
+    except Exception:
+        raise HTTPException(422,'Figure image could not be decoded.') from None
+    return media,raw
+
+
 def _verify_figures(db, owner, project_id, figure_ids):
     if len(figure_ids) > 12:
         raise HTTPException(413, 'A publication supports up to 12 linked figures per revision.')
     source=[]
     for aid in figure_ids:
         info,raw=_original_asset(db,owner,project_id,aid)
-        if not info['filename'].lower().endswith('.svg'):
-            raise HTTPException(422,'Figure ID is not an SVG research source.')
-        clean=sanitize_svg(raw)
-        source.append({'artifactId':aid,'sha256':info['sha256'],'bytes':len(clean)})
+        media,clean=figure_payload(info['filename'],raw)
+        entry={'artifactId':aid,'sha256':info['sha256'],'bytes':len(clean)}
+        if media!='image/svg+xml':entry['mediaType']=media
+        source.append(entry)
     return source
 
 
@@ -398,10 +471,75 @@ def open_source(project_id:str,artifact_id:str,request:Request):
         except UnicodeError as exc:raise HTTPException(422,'Source is not UTF-8 text.') from exc
         conversion='exact-utf8-source'
     elif ext.endswith('.docx'):
-        content=docx_to_markdown(raw);conversion='docx-text-extraction-not-fidelity-preserving'
+        # Read-only dry run. Figures are stored by POST .../import-docx before the draft is opened.
+        report=_docx_conversion(project_id,meta,raw)
+        return JSONResponse({'source':meta,'markdown':report['markdown'],'title':report['title'],
+                             'conversion':'docx-structured','import':_public_report(report),
+                             'sourcePreserved':True},headers=HEADERS)
     else:raise HTTPException(415,'Choose an existing Markdown, text or DOCX manuscript.')
     return JSONResponse({'source':meta,'markdown':content,'conversion':conversion,
                          'sourcePreserved':True},headers=HEADERS)
+
+
+def _docx_figure_id(project_id: str, source_sha256: str):
+    """Deterministic, project-scoped asset id: re-importing the same DOCX reuses its figures."""
+    return lambda media:'docx-figure-'+hashlib.sha256(
+        f'{project_id}\0{source_sha256}\0{media["sha256"]}'.encode()).hexdigest()[:24]
+
+
+def _docx_conversion(project_id: str, meta: dict, raw: bytes) -> dict:
+    if len(raw)>MAX_ASSET:raise HTTPException(413,'DOCX exceeds the import limit.')
+    report=docx_manuscript.convert_docx(raw,_docx_figure_id(project_id,meta['sha256']))
+    if len(report['markdown'])>MAX_MANUSCRIPT:raise HTTPException(413,'Converted manuscript exceeds the authoring limit.')
+    if len(report['media'])>12:raise HTTPException(413,'A publication supports up to 12 linked figures per revision.')
+    stem=re.sub(r'[^A-Za-z0-9._-]+','_',meta['filename'].rsplit('/',1)[-1].rsplit('.',1)[0])[:80] or 'manuscript'
+    for media in report['media']:
+        media['filename']=f'docx-import/{stem}/figure-{media["index"]}{media["extension"]}'
+    return report
+
+
+def _public_report(report: dict) -> dict:
+    return {'converter':report['converter'],'sourceSha256':report['sourceSha256'],
+            'convertedMarkdownSha256':report['markdownSha256'],'outline':report['outline'],
+            'unsupported':report['unsupported'],'notes':report['notes'],
+            'figures':[{k:m[k] for k in ('assetId','filename','part','sha256','bytes','mediaType')}
+                       for m in report['media']]}
+
+
+@router.post('/projects/{project_id}/sources/{artifact_id}/import-docx',status_code=201)
+def import_docx(project_id:str,artifact_id:str,request:Request):
+    """SC-EDITOR-DOCX-01: structured import of an existing Word manuscript. The DOCX bytes are never modified; each
+    embedded PNG/JPEG becomes an immutable project-owned image with its package provenance (idempotent). The draft
+    is returned unsaved; saving it starts a new publication lineage, so existing revisions are untouched."""
+    owner=_subject(request);_write(request)
+    with session_scope() as db:
+        _locked_project(db,owner,project_id)
+        meta,raw=_original_asset(db,owner,project_id,artifact_id)
+        if not meta['filename'].lower().endswith('.docx'):raise HTTPException(415,'Choose a DOCX manuscript.')
+        report=_docx_conversion(project_id,meta,raw)
+        stored=[]
+        from datetime import datetime,timezone
+        for media in report['media']:
+            existing=object_store.get_artifact(db,owner,media['assetId'])
+            if existing is not None:
+                if existing.project_id!=project_id or existing.sha256!=media['sha256']:
+                    raise HTTPException(409,'An extracted figure id is already used by different content.')
+                stored.append({'assetId':media['assetId'],'status':'reused'})
+                continue
+            from .schemas import ArtifactStoreRequest
+            object_store.store_artifact(db,owner,ArtifactStoreRequest.model_validate({
+                'schema':'sc-workspace-artifact-store/1.0','artifactId':media['assetId'],'projectId':project_id,
+                'filename':media['filename'],'mediaType':media['mediaType'],
+                'contentBase64':base64.b64encode(media['raw']).decode('ascii'),'expectedRevision':0,
+                'metadata':{'source':'docx-import','converter':report['converter'],
+                            'sourceArtifactId':meta['artifactId'],'sourceFilename':meta['filename'],
+                            'sourceSha256':meta['sha256'],'sourcePart':media['part'],'mediaSha256':media['sha256'],
+                            'altText':media['alt'][:300],'widthEmu':media['widthEmu'],
+                            'extractedAt':datetime.now(timezone.utc).isoformat()}}))
+            stored.append({'assetId':media['assetId'],'status':'created'})
+    return JSONResponse({'source':meta,'markdown':report['markdown'],'title':report['title'],
+                         'conversion':'docx-structured','import':_public_report(report),'figures':stored,
+                         'sourcePreserved':True,'saved':False},status_code=201,headers=HEADERS)
 
 
 @router.get('/projects/{project_id}/assets/{asset_id}/svg')
@@ -416,6 +554,18 @@ def svg_asset(project_id:str,asset_id:str,request:Request):
         'Content-Security-Policy':"default-src 'none'; style-src 'none'; sandbox",'X-Research-SHA256':info['sha256']})
 
 
+@router.get('/projects/{project_id}/assets/{asset_id}/image')
+def figure_asset(project_id:str,asset_id:str,request:Request):
+    """A verified project figure (sanitized SVG or decoded PNG/JPEG) for the preview and the visual editor."""
+    owner=_subject(request)
+    with session_scope() as db:
+        _project(db,owner,project_id)
+        info,raw=_original_asset(db,owner,project_id,asset_id)
+        media,data=figure_payload(info['filename'],raw)
+    return Response(data,media_type=media,headers={**HEADERS,'X-Content-Type-Options':'nosniff',
+        'Content-Security-Policy':"default-src 'none'; style-src 'none'; sandbox",'X-Research-SHA256':info['sha256']})
+
+
 @router.post('/projects/{project_id}/preview')
 def preview_document(project_id:str,body:Draft,request:Request):
     owner=_subject(request)
@@ -426,7 +576,7 @@ def preview_document(project_id:str,body:Draft,request:Request):
         frozen=cite.freeze(body.markdown,cite.collection(row.package),body.citationStyle)
         path='/v1/private-research/reporting-studio/publication/projects/'+quote(project_id,safe='')
         html,ids=render_html(cite.resolve(body.markdown,frozen),
-                            lambda aid:path+'/assets/'+quote(aid,safe='')+'/svg',
+                            lambda aid:path+'/assets/'+quote(aid,safe='')+'/image',
                             document_title=body.title)
         sources=_verify_figures(db,owner,project_id,ids)
     return JSONResponse({'html':html,'figures':sources,
@@ -446,9 +596,7 @@ def propose_layout_figure_move(project_id: str, body: FigureMove, request: Reque
     with session_scope() as db:
         _project(db,owner,project_id)
         meta,raw = _original_asset(db,owner,project_id,body.assetId)
-        if not meta['filename'].lower().endswith('.svg'):
-            raise HTTPException(422,'The selected research object is not an SVG figure.')
-        sanitize_svg(raw)
+        figure_payload(meta['filename'],raw)
         try:
             proposal = layout.propose_figure_move(body.markdown,body.marker,body.assetId,body.caption)
         except ValueError as exc:
@@ -493,6 +641,10 @@ def save_document(project_id:str,body:Save,request:Request):
         if last and body.sourceArtifactId!=(last.get('source') or {}).get('artifactId'):
             raise HTTPException(409,'Source cannot be changed within a publication lineage.')
         source=_source_meta(db,owner,project_id,body.sourceArtifactId)
+        import_record=(last or {}).get('importRecord')
+        if last is None and source and source['filename'].lower().endswith('.docx'):
+            _,raw=_original_asset(db,owner,project_id,source['artifactId'])
+            import_record=_public_report(_docx_conversion(project_id,source,raw))
         _,figures=render_html(body.markdown)
         figure_sources=_verify_figures(db,owner,project_id,figures)
         document_id=body.documentId or 'publication-'+uuid4().hex
@@ -505,6 +657,7 @@ def save_document(project_id:str,body:Save,request:Request):
               'projectRevision':row.revision+1,'markdownSHA256':hashlib.sha256(body.markdown.encode()).hexdigest(),
               'scientificStatus':'unreviewed','rightsStatus':'not-redistribution-approved',
               'computationsExecuted':False,'sourceBytesModified':False}
+        if import_record:publication['importRecord']=import_record
         project=deepcopy(row.package['project'])
         # Keep one live head per document. Earlier versions are preserved by
         # Workspace's immutable project-revision repository, not duplicated in
@@ -553,7 +706,7 @@ def _as_html(pub:dict,figures:dict|None=None) -> bytes:
     body,_=render_html(cite.resolve(pub['markdown'],pub.get('citations')),
                        lambda aid:figures.get(aid,''),document_title=pub['title'])
     title=escape(pub['title'])
-    css='''@page{margin:20mm}body{font:11pt/1.65 Georgia,serif;max-width:760px;margin:40px auto;color:#171717;padding:0 18px}h1,h2,h3{font-family:Arial,sans-serif;color:#171717}h1{font-size:26pt}h2{font-size:17pt;margin-top:28px}table{border-collapse:collapse;width:100%;font:9pt Arial}td,th{border:1px solid #ccc;padding:7px;text-align:left}figure{text-align:center;margin:24px 0}figure img{max-width:100%}figcaption{font:9pt Arial;color:#555}pre{white-space:pre-wrap;background:#f7f7f7;padding:12px}.sc-brand{border-top:5px solid #b00020;padding-top:10px;font:700 15pt Arial,sans-serif;letter-spacing:.07em}.sc-type{font:9pt Arial,sans-serif;color:#555;letter-spacing:.09em;margin:4px 0 22px}.meta{font:9pt Arial;color:#666;border-bottom:1px solid #ccc;padding-bottom:16px}blockquote{border-left:3px solid #b00020;padding-left:16px}a{color:#b00020}@media print{body{margin:0;max-width:none}}'''
+    css='''@page{margin:20mm}body{font:11pt/1.65 Georgia,serif;max-width:760px;margin:40px auto;color:#171717;padding:0 18px}h1,h2,h3{font-family:Arial,sans-serif;color:#171717}h1{font-size:26pt}h2{font-size:17pt;margin-top:28px}table{border-collapse:collapse;width:100%;font:9pt Arial}td,th{border:1px solid #ccc;padding:7px;text-align:left}figure{text-align:center;margin:24px 0}figure img{max-width:100%}figcaption{font:9pt Arial;color:#555}pre{white-space:pre-wrap;background:#f7f7f7;padding:12px}.sc-brand{border-top:5px solid #b00020;padding-top:10px;font:700 15pt Arial,sans-serif;letter-spacing:.07em}.sc-type{font:9pt Arial,sans-serif;color:#555;letter-spacing:.09em;margin:4px 0 22px}.meta{font:9pt Arial;color:#666;border-bottom:1px solid #ccc;padding-bottom:16px}blockquote{border-left:3px solid #b00020;padding-left:16px}a{color:#b00020;overflow-wrap:anywhere}p.reference{padding-left:2em;text-indent:-2em;margin:0 0 .55em}@media print{body{margin:0;max-width:none}}'''
     meta=f'Saved revision {pub["revision"]} · SHA-256 {pub["markdownSHA256"]} · Scientific content not independently verified'
     masthead='<header class="sc-brand">SUSTAINABLE CATALYST</header><p class="sc-type">'+escape(BRAND_LINE+' / '+_publication_label(pub))+'</p>'
     return ('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>'+title+'</title><style>'+css+'</style></head><body>'+masthead+'<h1>'+title+'</h1><p class="meta">'+escape(meta)+'</p>'+body+'</body></html>').encode()
@@ -566,7 +719,8 @@ def _pdf_inline(value: str) -> str:
             .replace('</span>','</font>')
             .replace('<strong>','<b>').replace('</strong>','</b>')
             .replace('<em>','<i>').replace('</em>','</i>')
-            .replace('<code>','<font name="Courier">').replace('</code>','</font>'))
+            .replace('<code>','<font name="Courier">').replace('</code>','</font>')
+            .replace(' rel="noopener noreferrer">','>'))
 
 
 def _pdf_svg_image(raw: bytes):
@@ -626,7 +780,17 @@ def _pdf_svg_image(raw: bytes):
 def _publication_blocks(pub: dict) -> list[dict]:
     """Derived export-only view. Saved Markdown and hash remain unchanged."""
     resolved = cite.resolve(pub['markdown'],pub.get('citations'))
-    return layout.without_repeated_title(parse_blocks(resolved),pub['title'])
+    return mark_references(layout.without_repeated_title(parse_blocks(resolved),pub['title']))
+
+
+def _pdf_raster_image(raw: bytes):
+    """A verified PNG/JPEG figure scaled into the A4 frame, keeping its aspect ratio."""
+    from PIL import Image as PILImage
+    from reportlab.platypus import Image
+    with PILImage.open(BytesIO(raw)) as image:
+        width,height=image.size
+    scale=min(492.0/width,450.0/height)
+    return Image(BytesIO(raw),width=width*scale,height=height*scale,hAlign='CENTER')
 
 
 def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
@@ -637,6 +801,8 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
     from reportlab.lib.pagesizes import A4
     styles=getSampleStyleSheet()
     styles.add(ParagraphStyle(name='SCBody',parent=styles['BodyText'],fontSize=10.5,leading=16,spaceAfter=9))
+    styles.add(ParagraphStyle(name='SCReference',parent=styles['BodyText'],fontSize=10,leading=14,spaceAfter=6,
+                              leftIndent=22,firstLineIndent=-22))
     styles.add(ParagraphStyle(name='SCCaption',parent=styles['Normal'],fontSize=9,alignment=TA_CENTER,spaceAfter=12,textColor=colors.HexColor('#555555')))
     styles.add(ParagraphStyle(name='SCBrand',parent=styles['Normal'],fontName='Helvetica-Bold',fontSize=15,
                               leading=19,spaceAfter=5,textColor=colors.HexColor(BRAND_RED)))
@@ -651,22 +817,24 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
         k=block['kind']
         if k=='heading':story.append(Paragraph(_pdf_inline(block['text']),styles['Heading1' if block['level']<=2 else 'Heading2']))
         elif k=='paragraph':story.append(Paragraph(_pdf_inline(block['text']),styles['SCBody']))
-        elif k=='quote':story.append(Paragraph(escape(block['text']),styles['SCBody']))
+        elif k=='reference':story.append(Paragraph(_pdf_inline(block['text']),styles['SCReference']))
+        elif k=='quote':story.append(Paragraph(_pdf_inline(block['text']),styles['SCBody']))
         elif k in ('code','math'):story.append(Preformatted(block['text'][:4000],styles['Code']))
         elif k=='list':
-            story.append(KeepTogether([Paragraph('&#8226; '+_pdf_inline(item),styles['SCBody']) for item in block['items']]))
+            story.append(KeepTogether([Paragraph((f'{n}.' if block.get('ordered') else '&#8226;')+' '+_pdf_inline(item),styles['SCBody'])
+                                       for n,item in enumerate(block['items'],block.get('start',1))]))
         elif k=='table':
             rows=[block['headers']]+block['rows']
-            data=[[Paragraph(escape(v[:300]),styles['Normal']) for v in row] for row in rows[:31]]
+            data=[[Paragraph(_pdf_inline(v[:600]),styles['Normal']) for v in row] for row in rows[:101]]
             ncols=len(block['headers']);data=[(r+['']*ncols)[:ncols] for r in data]
             t=Table(data,repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('GRID',(0,0),(-1,-1),.3,colors.grey),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e6eee9')),('VALIGN',(0,0),(-1,-1),'TOP')]))
             story.append(t);story.append(Spacer(1,12))
         elif k=='figure':
             raw=figure_bytes.get(block['assetId'])
             if raw:
-                story.append(_pdf_svg_image(raw))
+                story.append(_pdf_svg_image(raw) if raw.lstrip()[:1]==b'<' else _pdf_raster_image(raw))
             else:story.append(Paragraph('[Figure source unavailable]',styles['SCCaption']))
-            story.append(Paragraph(escape(block['caption']),styles['SCCaption']))
+            story.append(Paragraph(_pdf_inline(block['caption']),styles['SCCaption']))
     def draw_footer(canvas, document):
         canvas.saveState()
         canvas.setStrokeColor(colors.HexColor(BRAND_RED))
@@ -680,18 +848,43 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
     return out.getvalue()
 
 
-def _docx_rich(doc, content: str, style: str | None = None):
-    para=doc.add_paragraph(style=style)
-    parts=re.split(r'(\*\*[^*]+\*\*|(?<!\*)\*[^*]+\*(?!\*)|`[^`]+`)',content)
-    for part in parts:
+def _docx_link(para, text: str, url: str, bold=False, italic=False):
+    """A real Word hyperlink (external relationship), not URL text."""
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    from docx.opc.constants import RELATIONSHIP_TYPE
+    rid=para.part.relate_to(url,RELATIONSHIP_TYPE.HYPERLINK,is_external=True)
+    link=OxmlElement('w:hyperlink');link.set(qn('r:id'),rid)
+    run=OxmlElement('w:r');props=OxmlElement('w:rPr')
+    style=OxmlElement('w:rStyle');style.set(qn('w:val'),'Hyperlink');props.append(style)
+    colour=OxmlElement('w:color');colour.set(qn('w:val'),'B00020');props.append(colour)
+    for flag,on in (('w:b',bold),('w:i',italic)):
+        if on:props.append(OxmlElement(flag))
+    run.append(props);t=OxmlElement('w:t');t.text=text;t.set(qn('xml:space'),'preserve');run.append(t)
+    link.append(run);para._p.append(link)
+
+
+def _docx_rich(doc, content: str, style: str | None = None, para=None):
+    para=para if para is not None else doc.add_paragraph(style=style)
+    parked=_park(content)
+    pattern=re.compile(r'(\[[^\]\n]{1,400}\]\((?:https?://|mailto:)[^\s()<>"]{1,2000}\)|https?://[^\s<>"]{2,2000}[^\s<>".,;:!?)\]\ue000-\ue07f]'
+                       r'|\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|(?<!\*)\*[^*]+\*(?!\*)|`[^`]+`)')
+    for part in pattern.split(parked):
         if not part:continue
-        if part.startswith('**') and part.endswith('**'):
-            para.add_run(part[2:-2]).bold=True
-        elif part.startswith('*') and part.endswith('*'):
-            para.add_run(part[1:-1]).italic=True
+        link=_LINK.fullmatch(part)
+        if link:
+            inner=link.group(1);b=inner.startswith('**');i=inner.startswith('***') or (inner.startswith('*') and not b)
+            _docx_link(para,_unpark(inner.strip('*'),False),_unpark(link.group(2),False),b,i)
+        elif re.fullmatch(r'https?://\S+',part):_docx_link(para,_unpark(part,False),_unpark(part,False))
+        elif part.startswith('***') and part.endswith('***'):
+            run=para.add_run(_unpark(part[3:-3],False));run.bold=True;run.italic=True
+        elif part.startswith('**') and part.endswith('**'):
+            para.add_run(_unpark(part[2:-2],False)).bold=True
+        elif part.startswith('*') and part.endswith('*') and len(part)>2:
+            para.add_run(_unpark(part[1:-1],False)).italic=True
         elif part.startswith('`') and part.endswith('`'):
-            run=para.add_run(part[1:-1]);run.font.name='Consolas'
-        else:para.add_run(part)
+            run=para.add_run(_unpark(part[1:-1],False));run.font.name='Consolas'
+        else:para.add_run(_unpark(part,False))
     return para
 
 
@@ -717,21 +910,29 @@ def _docx(pub:dict,figure_bytes:dict[str,bytes]):
     doc.add_paragraph('Saved revision '+str(pub['revision'])+' · Scientific verification not performed')
     for block in _publication_blocks(pub):
         k=block['kind']
-        if k=='heading':doc.add_heading(block['text'],level=min(block['level'],4))
+        if k=='heading':
+            heading=doc.add_heading('',level=min(block['level'],4));_docx_rich(doc,block['text'],para=heading)
         elif k=='paragraph':_docx_rich(doc,block['text'])
-        elif k=='quote':doc.add_paragraph(block['text'],style='Quote')
+        elif k=='reference':
+            entry=_docx_rich(doc,block['text'])
+            entry.paragraph_format.left_indent=Inches(0.5);entry.paragraph_format.first_line_indent=Inches(-0.5)
+        elif k=='quote':_docx_rich(doc,block['text'],'Quote')
         elif k in ('code','math'):doc.add_paragraph(block['text'],style='Normal')
         elif k=='list':
-            for item in block['items']:_docx_rich(doc,item,'List Bullet')
+            for item in block['items']:_docx_rich(doc,item,'List Number' if block.get('ordered') else 'List Bullet')
         elif k=='table':
             cols=len(block['headers']);t=doc.add_table(rows=1,cols=cols);t.style='Table Grid'
-            for i,v in enumerate(block['headers']):t.rows[0].cells[i].text=v
+            for i,v in enumerate(block['headers']):
+                cell=t.rows[0].cells[i].paragraphs[0];_docx_rich(doc,v,para=cell)
+                for run in cell.runs:run.bold=True
             for row in block['rows']:
                 cells=t.add_row().cells
-                for i,v in enumerate(row[:cols]):cells[i].text=v
+                for i,v in enumerate(row[:cols]):_docx_rich(doc,v,para=cells[i].paragraphs[0])
         elif k=='figure':
             raw=figure_bytes.get(block['assetId'])
-            if raw:
+            if raw and raw.lstrip()[:1]!=b'<':
+                doc.add_picture(BytesIO(raw),width=Inches(6.0))
+            elif raw:
                 try:
                     import cairosvg
                     png=cairosvg.svg2png(bytestring=raw,output_width=1100)
@@ -739,7 +940,7 @@ def _docx(pub:dict,figure_bytes:dict[str,bytes]):
                 except Exception:
                     doc.add_paragraph('[Preserved SVG figure; embedding unavailable]')
             else:doc.add_paragraph('[Figure source unavailable]')
-            doc.add_paragraph(block['caption'],style='Caption')
+            doc.add_paragraph(_unpark(_park(block['caption']),False),style='Caption')
     buf=BytesIO();doc.save(buf);return buf.getvalue()
 
 
@@ -750,17 +951,17 @@ def export_publication(project_id:str,document_id:str,format:str,request:Request
     with session_scope() as db:
         _,pub=_saved(db,owner,project_id,document_id,revision)
         expected={x['artifactId']:x['sha256'] for x in pub.get('figureSources',[])}
-        figures={}
+        figures,media_types={},{}
         for aid,digest in expected.items():
             meta,raw=_original_asset(db,owner,project_id,aid)
             if meta['sha256']!=digest:raise HTTPException(409,'Saved figure source hash changed.')
-            figures[aid]=sanitize_svg(raw)
+            media_types[aid],figures[aid]=figure_payload(meta['filename'],raw)
         if pub.get('source'):
             source_id=pub['source']['artifactId'];meta,_=_original_asset(db,owner,project_id,source_id)
             if meta['sha256']!=pub['source']['sha256']:
                 raise HTTPException(409,'Original manuscript hash changed.')
     if format=='html':
-        uri={k:'data:image/svg+xml;base64,'+base64.b64encode(v).decode('ascii') for k,v in figures.items()}
+        uri={k:'data:'+media_types[k]+';base64,'+base64.b64encode(v).decode('ascii') for k,v in figures.items()}
         data=_as_html(pub,uri); media='text/html; charset=utf-8'
     elif format=='pdf':
         try:data=_pdf(pub,figures)

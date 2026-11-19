@@ -33,10 +33,10 @@ test('untouched report markdown reconstructs byte for byte', () => {
  assert.ok(data.parts.length>=6);
 });
 
-test('mathematics, code, pinned figures, tables remain protected',()=>{
+test('mathematics, code and pinned figures remain protected',()=>{
  const {parts}=splitMarkdown(wexford);
  for (const part of parts) {
-  if (/^\$\$|^!|^\||^~{3}/.test(part.raw.trimStart())) {
+  if (/^\$\$|^!|^~{3}/.test(part.raw.trimStart())) {
    assert.equal(classifyMarkdownBlock(part.raw),'protected',part.raw);
   }
  }
@@ -65,8 +65,9 @@ test('editing one text block cannot rewrite neighboring source islands',()=>{
 test('nested content and embedded HTML require source mode',()=>{
  for (const s of [
   '<img onerror="alert(1)" src=x>',
-  '| a | b |\n|---|---|\n| 1 | 2 |',
-  '### Nested heading',
+  '| a | $x$ |\n|---|---|\n| 1 | 2 |',
+  '| a | b |\n| 1 | 2 |',
+  '##### Deep heading',
   '- [x] Approved',
   '$E=mc^2$',
  ])assert.equal(classifyMarkdownBlock(s),'protected',s);
@@ -93,3 +94,18 @@ test('Tiptap serializer escapes brackets, but original citation markers survive'
  assert.equal(restoreCitationMarkers('Combined \\[@a2020, p. 4; @b2021\\] evidence',multi),multi);
 });
 
+
+
+test('SC-EDITOR-DOCX-01: tables, ordered lists and H3/H4 are editable structures',()=>{
+ assert.equal(classifyMarkdownBlock('| Issue | Why | Barrier |\n|---|---|---|\n| CLAP | Food | Payments \\| rails |'),'table');
+ assert.equal(classifyMarkdownBlock('### Sanctions and oil'),'heading');
+ assert.equal(classifyMarkdownBlock('#### Detail'),'heading');
+ assert.equal(classifyMarkdownBlock('1. First\n2. Second\n  - nested'),'list');
+ assert.equal(classifyMarkdownBlock('Rates rose by 5\\% and \\$3 \\[1\\] were spent.'),'paragraph');
+ assert.equal(classifyMarkdownBlock('See [IMF](https://www.imf.org/) data.'),'paragraph');
+});
+
+test('a citation inserted through the editor is restored, other brackets are not',()=>{
+ assert.equal(restoreCitationMarkers('Text \\[@imf2022\\] and \\[@other\\].','Text',['[@imf2022]']),
+   'Text [@imf2022] and \\[@other\\].');
+});
