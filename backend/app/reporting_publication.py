@@ -35,6 +35,7 @@ from .reporting_project_catalog import read_legacy_artifacts
 from . import citation_studio as cite
 from . import publication_layout as layout
 from . import docx_manuscript
+from . import document_lifecycle as lifecycle
 
 router = APIRouter(prefix='/publication', tags=['Scientific Publication Studio'])
 SCHEMA = 'sc-scientific-publication/1.0'
@@ -77,6 +78,15 @@ class FigureMove(BaseModel):
     marker: str = Field(pattern=r'^FIGURE_[A-Z0-9_]{1,64}$')
     assetId: str = Field(pattern=r'^[A-Za-z0-9_.-]{1,160}$')
     caption: str = Field(default='', max_length=160)
+
+
+class LifecycleIn(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    expectedProjectRevision:int=Field(ge=1)
+
+
+class PurgeIn(LifecycleIn):
+    confirmTitle:str=Field(min_length=1,max_length=300)
 
 
 class Save(Draft):
@@ -156,8 +166,11 @@ def snapshots(package: dict, document_id: str | None = None) -> list[dict]:
 
 
 def latest_documents(package: dict) -> list[dict]:
+    """Active saved publications. Drafts in Trash (SC-PUB-DRAFT-01) are listed by the Trash view instead."""
     result={}
+    gone=lifecycle.hidden(package,'publication')
     for obj in snapshots(package):
+        if obj['documentId'] in gone:continue
         result[obj['documentId']] = obj
     return [dict(documentId=x['documentId'],title=x['title'],revision=x['revision'],
                  updatedAt=x['createdAt'],projectRevision=x['projectRevision']) for x in sorted(result.values(),key=lambda obj:obj['projectRevision'],reverse=True)]
@@ -389,6 +402,8 @@ def _historical_versions(db, owner, project_id, document_id, max_revisions=250):
 
 def _saved(db, owner, project_id, document_id, rev=None):
     row=_project(db, owner, project_id)
+    if document_id in lifecycle.purged(row.package,'publication'):
+        raise HTTPException(404,'Publication not found in this project.')
     candidates=snapshots(row.package,document_id)
     if rev is not None and not any(x['revision']==rev for x in candidates):
         candidates=_historical_versions(db,owner,project_id,document_id)
@@ -417,6 +432,13 @@ def figure_payload(filename: str, raw: bytes) -> tuple[str, bytes]:
     except Exception:
         raise HTTPException(422,'Figure image could not be decoded.') from None
     return media,raw
+
+
+def _require_active_files(row, artifact_ids):
+    """SC-PUB-DRAFT-01: a file in Trash cannot become the source or a figure of new work until it is restored."""
+    waiting=[a for a in artifact_ids if a and a in lifecycle.hidden(row.package,'file')]
+    if waiting:
+        raise HTTPException(409,{'message':'A file this draft uses is in Trash. Restore it first.','files':waiting})
 
 
 def _verify_figures(db, owner, project_id, figure_ids):
@@ -464,7 +486,7 @@ def tiptap_editor_bundle(request:Request):
 def open_source(project_id:str,artifact_id:str,request:Request):
     owner=_subject(request)
     with session_scope() as db:
-        _project(db,owner,project_id)
+        _require_active_files(_project(db,owner,project_id),[artifact_id])
         meta,raw=_original_asset(db,owner,project_id,artifact_id)
     ext=meta['filename'].lower()
     if ext.endswith('.md') or ext.endswith('.txt'):
@@ -514,7 +536,7 @@ def import_docx(project_id:str,artifact_id:str,request:Request):
     is returned unsaved; saving it starts a new publication lineage, so existing revisions are untouched."""
     owner=_subject(request);_write(request)
     with session_scope() as db:
-        _locked_project(db,owner,project_id)
+        _require_active_files(_locked_project(db,owner,project_id),[artifact_id])
         meta,raw=_original_asset(db,owner,project_id,artifact_id)
         if not meta['filename'].lower().endswith('.docx'):raise HTTPException(415,'Choose a DOCX manuscript.')
         report=_docx_conversion(project_id,meta,raw)
@@ -633,6 +655,9 @@ def save_document(project_id:str,body:Save,request:Request):
         row=_locked_project(db,owner,project_id)
         if row.revision!=body.expectedProjectRevision:
             raise HTTPException(409,'Workspace project changed. Reload before saving.')
+        if body.documentId and body.documentId in lifecycle.hidden(row.package,'publication'):
+            raise HTTPException(409,'This draft is in Trash. Restore it before saving a new revision.')
+        _require_active_files(row,[body.sourceArtifactId] if body.documentId is None else [])
         former=snapshots(row.package,body.documentId) if body.documentId else []
         last=former[-1] if former else None
         if (last['revision'] if last else 0)!=body.expectedDocumentRevision:
@@ -647,6 +672,7 @@ def save_document(project_id:str,body:Save,request:Request):
             _,raw=_original_asset(db,owner,project_id,source['artifactId'])
             import_record=_public_report(_docx_conversion(project_id,source,raw))
         _,figures=render_html(body.markdown)
+        _require_active_files(row,figures)
         figure_sources=_verify_figures(db,owner,project_id,figures)
         document_id=body.documentId or 'publication-'+uuid4().hex
         version=(last['revision']+1) if last else 1
@@ -681,13 +707,51 @@ def save_document(project_id:str,body:Save,request:Request):
                             status_code=201,headers=HEADERS)
 
 
+# SC-PUB-DRAFT-01: Trash, Restore and permanent deletion of private drafts (see document_lifecycle).
+@router.get('/projects/{project_id}/trash')
+def project_trash(project_id:str,request:Request):
+    owner=_subject(request)
+    with session_scope() as db:
+        return JSONResponse(lifecycle.trash_view(_project(db,owner,project_id)),headers=HEADERS)
+
+
+@router.post('/projects/{project_id}/documents/{document_id}/trash')
+def trash_document(project_id:str,document_id:str,body:LifecycleIn,request:Request):
+    owner=_subject(request);_write(request)
+    with session_scope() as db:
+        updated,record=lifecycle.trash_publication(db,owner,_locked_project(db,owner,project_id),document_id,
+                                                   body.expectedProjectRevision)
+        return JSONResponse({'trashed':record,'project':repository.project_metadata(updated)},headers=HEADERS)
+
+
+@router.post('/projects/{project_id}/documents/{document_id}/restore')
+def restore_document(project_id:str,document_id:str,body:LifecycleIn,request:Request):
+    owner=_subject(request);_write(request)
+    with session_scope() as db:
+        updated,pub=lifecycle.restore_publication(db,owner,_locked_project(db,owner,project_id),document_id,
+                                                  body.expectedProjectRevision)
+        return JSONResponse({'restored':{'documentId':document_id,'title':(pub or {}).get('title'),
+                                         'revision':(pub or {}).get('revision')},
+                             'project':repository.project_metadata(updated)},headers=HEADERS)
+
+
+@router.post('/projects/{project_id}/documents/{document_id}/purge')
+def purge_document(project_id:str,document_id:str,body:PurgeIn,request:Request):
+    owner=_subject(request);_write(request)
+    with session_scope() as db:
+        updated,tombstone=lifecycle.purge_publication(db,owner,_locked_project(db,owner,project_id),document_id,
+                                                      body.expectedProjectRevision,body.confirmTitle)
+        return JSONResponse({'deleted':tombstone,'project':repository.project_metadata(updated)},headers=HEADERS)
+
+
 @router.get('/projects/{project_id}/documents/{document_id}/history')
 def document_history(project_id:str,document_id:str,request:Request):
     owner=_subject(request)
     with session_scope() as db:
         row=_project(db,owner,project_id)
         versions=_historical_versions(db,owner,project_id,document_id)
-        if not versions:raise HTTPException(404,'Publication not found.')
+        if not versions or document_id in lifecycle.purged(row.package,'publication'):
+            raise HTTPException(404,'Publication not found.')
         return JSONResponse({'documentId':document_id,'versions':[
             {'revision':x['revision'],'createdAt':x['createdAt'],
              'projectRevision':x['projectRevision'],'markdownSHA256':x['markdownSHA256']}

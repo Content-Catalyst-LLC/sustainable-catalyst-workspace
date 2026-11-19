@@ -11,7 +11,9 @@ async function api(url,body){
  if(body!==undefined){opt.method='POST';opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
  const r=await fetch(url,opt);const text=await r.text();
  signInPrompt(r.status===401);
- if(!r.ok)throw Error('HTTP '+r.status+': '+text.slice(0,250));
+ if(!r.ok){let msg=text;try{const d=JSON.parse(text),x=d.message??d.detail;msg=typeof x==='string'?x:(x&&x.message)||text;
+  const used=d.usedBy||(x&&x.usedBy);if(used)msg+=' ('+used.map(u=>u.title||u.kind).join(', ')+')'}catch{}
+  throw Error('HTTP '+r.status+': '+msg.slice(0,250))}
  try{return JSON.parse(text)}catch{throw Error('Unexpected server response')}
 }
 function run(fn){return async()=>{try{await fn()}catch(err){status(err.message,true);console.error(err)}}}
@@ -80,7 +82,6 @@ async function selectProject(id){
  await loadCitations();
  const docs=await api(path('/documents'));
  await renderHistoryButtons(docs.documents);
- if(!docs.documents.length){const p=document.createElement('div');p.className='empty';p.textContent='No saved publications yet.';E('versions').append(p)}
  // Prefer the preserved manuscript when there is no saved publication to reopen.
  if(docs.documents.length){const last=docs.documents[0];const r=await api(path('/documents/'+encodeURIComponent(last.documentId)));
   setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,r.document.documentId,r.document.revision,r.document.publicationType||'report');
@@ -185,6 +186,43 @@ async function save(){
  refreshExport();status('Publication revision '+state.documentRevision+' saved immutably. Manuscript source unchanged.');
  await updateVersions();
 }
+// SC-PUB-DRAFT-01: Trash, Restore and permanent deletion of private drafts. The server enforces protection rules.
+async function lifecycleCall(url,extra={}){
+ const head=await api(base+'/catalog/projects/'+encodeURIComponent(state.project));
+ if(state.projectRevision!==undefined && state.projectRevision!==head.project.revision)
+  throw Error('Project changed since loading. Reopen it before changing Trash.');
+ const r=await api(url,{expectedProjectRevision:head.project.revision,...extra});
+ state.projectRevision=r.project.revision;return r;
+}
+async function trashDraft(doc){
+ if(!window.confirm('Move “'+doc.title+'” to Trash?\n\nIt disappears from Saved publications. Nothing is erased: every revision, export and the original source file are kept, and you can restore it from Trash.'))return;
+ await lifecycleCall(path('/documents/'+encodeURIComponent(doc.documentId)+'/trash'));
+ if(state.documentId===doc.documentId){const kind=E('publicationType').value;setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);await preview()}
+ await updateVersions();status('“'+doc.title+'” moved to Trash. Restore it from Trash at any time.');
+}
+async function loadTrash(){
+ const t=await api(path('/trash'));E('trash').replaceChildren();
+ E('trashPolicy').textContent=t.policy.trash+' '+t.policy.permanentDeletion;
+ for(const x of t.publications){
+  const box=document.createElement('div');box.className='asset';
+  const b=document.createElement('b');b.textContent=x.title;box.append(b);
+  const m=document.createElement('small');m.textContent='Draft · revision '+x.revision+' · in Trash since '+x.trashedAt.slice(0,10);box.append(m);
+  const row=document.createElement('div');row.className='asset-row';
+  const restore=document.createElement('button');restore.textContent='Restore';
+  restore.onclick=run(async()=>{await lifecycleCall(path('/documents/'+encodeURIComponent(x.id)+'/restore'));await updateVersions();status('“'+x.title+'” restored to Saved publications.')});
+  row.append(restore);box.append(row);
+  if(x.purgeEligible){
+   const input=document.createElement('input');input.placeholder='Type the title to delete permanently';input.setAttribute('aria-label','Confirm permanent deletion of '+x.title);
+   const purge=document.createElement('button');purge.textContent='Delete permanently';purge.className='trash-doc';
+   purge.onclick=run(async()=>{if(input.value.trim()!==x.title.trim())throw Error('Type the draft title exactly to delete it permanently.');
+    await lifecycleCall(path('/documents/'+encodeURIComponent(x.id)+'/purge'),{confirmTitle:input.value});await updateVersions();
+    status('“'+x.title+'” permanently deleted from this project. Its earlier revisions remain in the immutable project history.')});
+   box.append(input,purge);
+  }else{const w=document.createElement('small');w.textContent='Permanent deletion available from '+x.purgeEligibleAt.slice(0,10)+'.';box.append(w)}
+  E('trash').append(box);
+ }
+ if(!t.publications.length){const p=document.createElement('div');p.className='empty';p.textContent='Trash is empty.';E('trash').append(p)}
+}
 async function renderHistoryButtons(documents){
   E('versions').replaceChildren();
   for(const doc of documents){
@@ -203,7 +241,11 @@ async function renderHistoryButtons(documents){
       });
       E('versions').append(button);
     }
+    const del=document.createElement('button');del.className='revision trash-doc';del.textContent='Delete draft “'+doc.title+'”';
+    del.onclick=run(async()=>trashDraft(doc));E('versions').append(del);
   }
+  if(!documents.length){const p=document.createElement('div');p.className='empty';p.textContent='No saved publications yet.';E('versions').append(p)}
+  await loadTrash();
 }
 
 async function updateVersions(){
@@ -230,9 +272,21 @@ function newReportTemplate(kind){
 }
 E('new').onclick=run(async()=>{
  if(!state.project)throw Error('Select a project');
+ if(state.dirty&&!window.confirm('Discard unsaved changes in the current draft and start a new one?'))return;
  const kind=E('publicationType').value;
  setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);
  await preview();status('New private '+E('publicationType').selectedOptions[0].textContent+' draft. Other reports and preserved sources are unchanged.');
+});
+// SC-PUB-DRAFT-01: discard the unsaved editor draft. A saved draft returns to its last saved revision; nothing stored changes.
+E('discardDraft').onclick=run(async()=>{
+ if(!state.dirty){status('No unsaved changes to discard.');return}
+ if(!window.confirm('Discard all unsaved changes in the editor? Saved revisions and source files are not affected.'))return;
+ if(state.documentId){
+  const r=await api(path('/documents/'+encodeURIComponent(state.documentId)+'?revision='+state.documentRevision));
+  setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,r.document.documentId,r.document.revision,r.document.publicationType||'report');
+  state.saved=true;refreshExport();await preview();status('Unsaved changes discarded. Revision '+r.document.revision+' reopened.');
+ }else{const kind=E('publicationType').value;setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);
+  await preview();status('Unsaved draft discarded. Nothing was saved.')}
 });
 E('previewButton').onclick=run(async()=>{await preview();status('Publication preview updated. Research source hashes verified where used.')});
 E('save').onclick=run(save);

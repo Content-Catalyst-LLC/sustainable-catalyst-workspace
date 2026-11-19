@@ -41,6 +41,7 @@ from .research_outputs import bindings
 from .schemas import ArtifactStoreRequest, ProjectStoreRequest
 from .wxr_private_projects import HEADERS, _filename, _locked_project, _project, _subject, _write
 from .studio_signin import page_subject
+from . import document_lifecycle as lifecycle
 
 router = APIRouter(prefix='/research-projects')
 
@@ -111,6 +112,10 @@ class UploadIn(Strict):
     filename: str = Field(min_length=1, max_length=255)
     contentBase64: str = Field(min_length=1, max_length=35_000_000)
     role: Literal[DOCUMENT_ROLES] = 'draft'
+
+
+class LifecycleIn(Strict):
+    expectedProjectRevision: int = Field(ge=1)
 
 
 class DeleteIn(Strict):
@@ -329,7 +334,9 @@ def dashboard(db, owner: str, project_id: str) -> dict:
     notebooks = _notebooks(db, owner, project_id)
     cites = collection(row.package)['items']
     links = bindings(row.package)
-    files = [_file_view(project_id, f) for f in native]
+    gone = lifecycle.hidden(row.package, 'file')
+    files = [{**_file_view(project_id, f), **_removal(db, owner, row, f)} for f in native if f['artifactId'] not in gone]
+    trash = lifecycle.trash_view(row)
     pid = quote(project_id, safe='')
     outputs = []
     for doc in latest_documents(row.package):
@@ -386,7 +393,20 @@ def dashboard(db, owner: str, project_id: str) -> dict:
             'disclosure': DISCLOSURE,
         },
         'deletable': deletable(row, native, legacy, notebooks, db, owner),
+        'trash': {'publications': trash['publications'], 'files': trash['files'], 'policy': trash['policy'],
+                  'studioTrashUrl': BASE + '/publication/projects/' + pid + '/trash'},
     }
+
+
+def _removal(db, owner: str, row, item: dict) -> dict:
+    """SC-PUB-DRAFT-01: whether Remove (move to Trash) is offered for this uploaded file, and why not."""
+    if (item.get('metadata') or {}).get('source') == 'docx-import':
+        return {'removable': False, 'protection': 'Extracted from an imported Word manuscript; managed with its drafts.'}
+    used = lifecycle.file_references(db, owner, row, item['artifactId'])['active']
+    if used:
+        names = ', '.join(u.get('title') or u.get('kind') for u in used[:3])
+        return {'removable': False, 'protection': 'Used by ' + names}
+    return {'removable': True, 'protection': None}
 
 
 # API ------------------------------------------------------------------------------------------------------------------
@@ -465,8 +485,12 @@ def api_add_document(project_id: str, body: UploadIn, request: Request):
         raise HTTPException(400, 'Empty file.')
     digest = hashlib.sha256(raw).hexdigest()
     with session_scope() as db:
-        _locked_project(db, owner, project_id)
+        row = _locked_project(db, owner, project_id)
+        gone = lifecycle.hidden(row.package, 'file')
         for item in _files_for(db, owner, project_id):
+            if item['sha256'] == digest and item['artifactId'] in gone:
+                raise HTTPException(409, {'message': 'This file is in Trash. Restore it instead of uploading it again.',
+                                          'artifactId': item['artifactId']})
             if item['sha256'] == digest:
                 raise HTTPException(409, 'This file already exists in the project.')
             if item['filename'] == filename:
@@ -499,6 +523,38 @@ def api_delete(project_id: str, body: DeleteIn, request: Request):
         # delete_project records a deletion receipt and commits the store row removal in the same transaction.
         repository.delete_project(db, owner, project_id)
     return JSONResponse({'deleted': project_id}, headers=HEADERS)
+
+
+# SC-PUB-DRAFT-01: Remove (move to Trash) and Restore uploaded files. Bytes are never deleted.
+
+@router.get('/api/projects/{project_id}/trash')
+def api_trash(project_id: str, request: Request):
+    owner = _subject(request)
+    with session_scope() as db:
+        return JSONResponse(lifecycle.trash_view(_project(db, owner, project_id)), headers=HEADERS)
+
+
+@router.post('/api/projects/{project_id}/files/{artifact_id}/remove')
+def api_remove_file(project_id: str, artifact_id: str, body: LifecycleIn, request: Request):
+    owner = _subject(request)
+    _write(request)
+    with session_scope() as db:
+        row = _locked_project(db, owner, project_id)
+        artifact = object_store.get_artifact(db, owner, artifact_id)
+        if artifact is None or artifact.project_id != project_id:
+            raise HTTPException(404, 'Research file not found in this project.')
+        updated, record = lifecycle.trash_file(db, owner, row, artifact, body.expectedProjectRevision)
+        return JSONResponse({'trashed': record, 'project': repository.project_metadata(updated)}, headers=HEADERS)
+
+
+@router.post('/api/projects/{project_id}/files/{artifact_id}/restore')
+def api_restore_file(project_id: str, artifact_id: str, body: LifecycleIn, request: Request):
+    owner = _subject(request)
+    _write(request)
+    with session_scope() as db:
+        updated, record = lifecycle.restore_file(db, owner, _locked_project(db, owner, project_id), artifact_id,
+                                                 body.expectedProjectRevision)
+        return JSONResponse({'restored': record, 'project': repository.project_metadata(updated)}, headers=HEADERS)
 
 
 # Native project files -------------------------------------------------------------------------------------------------
@@ -652,7 +708,17 @@ window.onhashchange=tab;
 const encode=b=>{let o='';for(let i=0;i<b.length;i+=32768)o+=String.fromCharCode(...b.subarray(i,i+32768));return btoa(o)};
 const short=s=>s?s.slice(0,12)+'…':'';
 function fileItem(f){return h('li',{},f.viewUrl?h('a',{href:f.viewUrl},f.filename):h('span',{},f.filename),' ',
- h('span',{class:'muted'},'· '+f.role+' · '+f.bytes+' bytes · sha256 '+short(f.sha256)+' · '),h('a',{href:f.downloadUrl},'download'))}
+ h('span',{class:'muted'},'· '+f.role+' · '+f.bytes+' bytes · sha256 '+short(f.sha256)+' · '),h('a',{href:f.downloadUrl},'download'),' ',
+ f.removable?h('button',{type:'button',class:'secondary',onclick:e=>removeFile(e.target,f)},'Remove'):h('span',{class:'muted',title:f.protection||''},'· protected'))}
+function removeFile(btn,f){if(!window.confirm('Move “'+f.filename+'” to Trash?\n\nIt disappears from this project’s lists. Nothing is erased: you can restore it from Trash, and drafts and revisions that used it are unchanged.'))return;
+ busy(btn,async()=>{await api(PURL+'/files/'+encodeURIComponent(f.artifactId)+'/remove',{method:'POST',body:JSON.stringify({expectedProjectRevision:D.project.revision})});
+  await reload();say(f.filename+' moved to Trash. Restore it from Trash at any time.')})}
+const STUDIO_DOCS='/v1/private-research/reporting-studio/publication/projects/'+encodeURIComponent(PID)+'/documents/';
+function trashItem(x){const label=x.kind==='file'?x.filename:x.title,when=(x.trashedAt||'').slice(0,16).replace('T',' ');
+ return h('li',{},h('span',{},label),h('span',{class:'muted'},' · '+(x.kind==='file'?'file':'draft')+' · in Trash since '+when+' '),
+  h('button',{type:'button',class:'secondary',onclick:e=>busy(e.target,async()=>{
+   await api((x.kind==='file'?PURL+'/files/':STUDIO_DOCS)+encodeURIComponent(x.id)+'/restore',{method:'POST',body:JSON.stringify({expectedProjectRevision:D.project.revision})});
+   await reload();say(label+' restored.')})},'Restore'))}
 function empty(list,msg){if(!list.childElementCount)list.append(h('li',{class:'muted'},msg))}
 function render(){const p=D.project,o=D.overview;document.title=p.title+' | Research projects';
  $('title').textContent=p.title;
@@ -688,6 +754,8 @@ function render(){const p=D.project,o=D.overview;document.title=p.title+' | Rese
  $('pub-area').textContent=D.publications.defaultArea?D.publications.defaultArea.title+' ('+D.publications.defaultArea.slug+')':'None set';
  const po=$('pub-outputs');po.replaceChildren(...D.publications.outputs.map(x=>h('li',{},h('a',{href:D.publications.studioUrl},x.title),
   h('span',{class:'muted'},' · '+(x.publicationType||'output')+' · revision '+x.revision+' · '+x.visibility))));empty(po,'No outputs yet.');
+ const tr=$('doc-trash');tr.replaceChildren(...[...D.trash.publications,...D.trash.files].map(trashItem));empty(tr,'Trash is empty.');
+ $('trash-policy').textContent=D.trash.policy.trash+' '+D.trash.policy.files+' '+D.trash.policy.permanentDeletion;
  $('danger').hidden=!D.deletable}
 async function reload(){D=await api(PURL);render();tab()}
 function fillOverview(){const o=D.overview;$('f-question').value=o.researchQuestion||'';$('f-description').value=o.description||'';
@@ -740,7 +808,8 @@ DASH_HTML = """<main class="app"><nav class="crumbs"><a href="/v1/private-resear
 <option value="paper">Paper</option><option value="source">Source file</option><option value="reference">References (.ris / .json)</option><option value="data">Data</option><option value="figure">Figure</option><option value="other">Other</option></select>
 <button type="submit">Add</button></form><p class="hint">Files are private and immutable; a changed file is added as a new file, never a replacement.</p></div>
 <h2>Registered documents</h2><ul class="items" id="doc-registered"></ul><h2>Project files</h2><ul class="items" id="doc-files"></ul>
-<div id="doc-legacy-wrap" hidden><h2>Imported research records</h2><ul class="items" id="doc-legacy"></ul></div></section>
+<div id="doc-legacy-wrap" hidden><h2>Imported research records</h2><ul class="items" id="doc-legacy"></ul></div>
+<h2>Trash</h2><p class="hint" id="trash-policy"></p><ul class="items" id="doc-trash"></ul></section>
 <section class="panel" id="library" hidden><p id="lib-count"></p><div class="card"><h3>Import references from a project file</h3><div class="row">
 <select id="lib-file" style="flex:1 1 260px"></select><button id="lib-import" type="button">Import</button></div></div>
 <div class="card"><h3>Find in Sustainable Catalyst Library</h3><form id="lib-search-form" class="row"><input id="lib-q" required style="flex:1 1 260px" placeholder="Search published Library records">
