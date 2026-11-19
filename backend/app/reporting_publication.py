@@ -30,6 +30,7 @@ from .config import get_settings
 from .db import session_scope
 from .schemas import ProjectStoreRequest
 from .wxr_private_projects import _subject, _write, _project, _locked_project, HEADERS
+from .studio_signin import page_subject
 from .reporting_project_catalog import read_legacy_artifacts
 from . import citation_studio as cite
 from . import publication_layout as layout
@@ -433,7 +434,7 @@ def _verify_figures(db, owner, project_id, figure_ids):
 
 @router.get('',response_class=HTMLResponse)
 def publication_ui(request:Request):
-    _subject(request)
+    page_subject(request, _subject)
     script=Path(__file__).with_name('reporting_publication_ui.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_outputs_ui.js').read_text()

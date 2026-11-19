@@ -5,10 +5,12 @@ const E=id=>document.getElementById(id);
 const state={project:null,catalog:null,documentId:null,documentRevision:0,sourceId:null,saved:false,dirty:false,figures:[],layoutAudit:null};
 function status(s,error=false){E('status').textContent=s;E('status').classList.toggle('warn',error)}
 function path(s){return pub+'/projects/'+encodeURIComponent(state.project)+s}
+function signInPrompt(show){let b=document.getElementById('scSignIn');if(!show){if(b)b.remove();return}if(b)return;b=document.createElement('div');b.id='scSignIn';b.setAttribute('role','alert');b.style.cssText='position:sticky;top:0;z-index:9999;background:#7a1f1f;color:#fff;padding:10px 16px;font:14px system-ui;text-align:center';const a=document.createElement('a');a.href='/v1/auth/login?stepUp=true&returnTo='+encodeURIComponent(location.pathname+location.search);a.target='_blank';a.rel='noopener';a.style.color='#fff';a.style.fontWeight='600';a.textContent='Sign in again (new tab)';b.append('Your session has expired. This page and any unsaved work are kept. ',a,', then return here and retry.');document.body.prepend(b)}
 async function api(url,body){
  const opt={credentials:'same-origin',cache:'no-store'};
  if(body!==undefined){opt.method='POST';opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
  const r=await fetch(url,opt);const text=await r.text();
+ signInPrompt(r.status===401);
  if(!r.ok)throw Error('HTTP '+r.status+': '+text.slice(0,250));
  try{return JSON.parse(text)}catch{throw Error('Unexpected server response')}
 }

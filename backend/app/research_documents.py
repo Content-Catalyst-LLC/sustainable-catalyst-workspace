@@ -32,6 +32,7 @@ from .db import session_scope
 from .reporting_project_catalog import read_legacy_artifacts
 from .repository import list_projects
 from .wxr_private_projects import HEADERS, _project, _subject
+from .studio_signin import page_subject
 
 router = APIRouter(prefix='/documents', tags=['Research documents'])
 
@@ -582,7 +583,7 @@ def register_json(request: Request):
 
 @router.get('', response_class=HTMLResponse)
 def index(request: Request):
-    owner = _subject(request)
+    owner = page_subject(request, _subject)
     with session_scope() as db:
         projects = owner_registers(db, owner)
     areas: dict[str, dict] = {}
@@ -608,7 +609,7 @@ def index(request: Request):
 
 @router.get('/{project_id}/{document_id}', response_class=HTMLResponse)
 def view(project_id: str, document_id: str, request: Request):
-    owner = _subject(request)
+    owner = page_subject(request, _subject)
     with session_scope() as db:
         _project(db, owner, project_id)
         found, entry = _document(db, owner, project_id, document_id)
