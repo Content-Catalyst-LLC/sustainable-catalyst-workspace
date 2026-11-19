@@ -310,6 +310,13 @@ class AreaPublishIn(ObjectAttachIn):
     confirmAreaSlug: str = Field(min_length=1, max_length=120)
 
 
+class SourceIn(BaseModel):
+    studioRevision: int = Field(ge=1)
+    rightsBasis: Literal["author-owned", "licensed", "public-domain", "other"]
+    rightsHolder: str = Field(min_length=1, max_length=300)
+    rightsStatement: str = Field(min_length=20, max_length=2000)
+
+
 class GrantIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     granteeUserKey: str = Field(min_length=1, max_length=128)
@@ -479,6 +486,32 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         return JSONResponse({"researchRevision": created.get("revision"), "documentSha256": created.get("documentSha256"),
                              "subjectRef": created.get("subjectRef"), "created": True,
                              "notCarried": payload["notCarried"]}, status_code=201, headers=H)
+
+    @router.post("/projects/{project_id}/outputs/{document_id}/source-registration")
+    def register_source(project_id: str, document_id: str, body: SourceIn, request: Request):
+        """RH-PUB-01: register the original file this output was imported from as a private Research source the
+        article can cite. Workspace re-hashes the original and signs; Research keeps the record, never the bytes."""
+        from .research_sources import SourceRequest, issue_source_record
+        ident = writer(request)
+        with deps["session"]() as db:
+            _, binding = bound(db, ident.user_key, project_id, document_id)
+        payload = {"projectId": project_id, "documentId": document_id, **body.model_dump()}
+        if signing_backend():
+            try:
+                signed = _backend("/v1/research-access/source-documents", payload).json()
+            except ValueError:
+                raise HTTPException(502, "Workspace is unavailable; nothing was changed.") from None
+        else:
+            signed = issue_source_record(ident, SourceRequest(**payload))
+        done = call(ident, "POST", f"/editorial/articles/{quote(binding['articleSlug'], safe='')}/sources",
+                    {"document": signed})
+        if done.get("created"):
+            record(ident.user_key, project_id, document_id, receipt_entry(
+                "source-registered", done, objectId=done.get("objectId"), sourceSha256=done.get("sourceSha256"),
+                studioRevision=body.studioRevision, rightsBasis=body.rightsBasis),
+                f"research-output-source-{document_id}-{done.get('sourceSha256', '')[:16]}")
+        return JSONResponse({k: done.get(k) for k in ("objectId", "kind", "role", "sourceSha256", "visibility", "pin",
+                                                       "studioRevision", "created")}, headers=H)
 
     @router.post("/projects/{project_id}/outputs/{document_id}/submit")
     def submit(project_id: str, document_id: str, body: ResearchRevisionIn, request: Request):

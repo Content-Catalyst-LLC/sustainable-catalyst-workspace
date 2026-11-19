@@ -16,6 +16,20 @@ function bindForm(o){
   await api(outPath(o.documentId,'/bind'),{areaSlug:area.value.trim(),articleSlug:slug.value.trim(),title:o.title});
   status('Bound to Research article '+slug.value.trim()+' (confirmed by Research).')}));
  return box}
+// RH-PUB-01: the original file this output was imported from, registered privately so the article can cite it.
+function sourceForm(o){
+ const box=el('div',null,'out-actions');const src=o.source||{};
+ if(!src.artifactId){box.append(el('p','This output was not imported from an original file.','hint'));return box}
+ box.append(el('p','Original: '+(src.filename||src.artifactId)+' · SHA-256 '+String(src.sha256||'').slice(0,12)+'. Research keeps its hash, provenance and your rights declaration privately, never the file.','hint'));
+ const rev=el('select');for(let n=o.revision;n>=1;n--){const op=el('option','Studio revision '+n);op.value=n;rev.append(op)}
+ const basis=el('select');for(const [v,t] of [['author-owned','I wrote it and hold the rights'],['licensed','Used under a licence'],['public-domain','Public domain'],['other','Other (explain below)']]){const op=el('option',t);op.value=v;basis.append(op)}
+ const holder=input('Rights holder',300),statement=input('What the rights cover, e.g. third-party material (at least 20 characters)',2000);
+ box.append(field('Derived Studio revision',rev),field('Rights basis',basis),field('Rights holder',holder),field('Rights statement',statement),
+  act('Register original with Research (private)',async()=>{
+   const out=await api(outPath(o.documentId,'/source-registration'),{studioRevision:+rev.value,rightsBasis:basis.value,rightsHolder:holder.value,rightsStatement:statement.value});
+   OUT.objects=null;
+   status((out.created?'Registered':'Already registered')+' as a private Research source ('+String(out.sourceSha256).slice(0,12)+'); cite it as a citation in the revision below.')},o.controls.pushRevision));
+ return box}
 async function revisionForm(o){
  const box=el('div',null,'out-actions');
  const rev=el('select');for(let n=o.revision;n>=1;n--){const op=el('option','Studio revision '+n);op.value=n;rev.append(op)}
@@ -105,7 +119,7 @@ async function outputCard(o){
  if(r&&r.publicUrl){const a=el('a','View public research page');a.href=r.publicUrl;a.target='_blank';a.rel='noopener';card.append(a)}
  if(!o.binding){if(o.controls.bind)card.append(bindForm(o));return card}
  if(!r)return card;
- card.append(el('h4','Revision'),await revisionForm(o));
+ card.append(el('h4','Original manuscript'),sourceForm(o),el('h4','Revision'),await revisionForm(o));
  if(o.controls.submit)card.append(act('Submit Research revision '+r.headRevision+' for review',async()=>{await api(outPath(o.documentId,'/submit'),{researchRevision:r.headRevision});status('Submitted for review (confirmed by Research).')}));
  card.append(el('h4','Cited evidence'),await evidenceBlock(o),el('h4','Review and rights'),await approvalsBlock(o),
   el('h4','Research area'),await areaBlock(o),el('h4','Release'),releaseBlock(o));
