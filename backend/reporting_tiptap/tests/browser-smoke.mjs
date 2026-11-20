@@ -99,6 +99,8 @@ try {
   const editor=page.locator('.sc-doc-page .tiptap');
   // Put the caret after `text` inside the first block containing it (DOM selection, as a click would).
   const caretAfter=async(selector,text)=>{
+    // A real click first: insertions need a cursor the researcher placed (SC-FIG-PLACE-01).
+    await editor.locator(selector,{hasText:text}).first().click();
     await page.evaluate(([selector,text])=>{
       const node=[...document.querySelectorAll('.sc-doc-page .tiptap '+selector)].find(n=>n.textContent.includes(text));
       const walker=document.createTreeWalker(node,NodeFilter.SHOW_TEXT);
@@ -176,7 +178,7 @@ try {
       .replace('\n\n| ---', '\n| ---').replace('|\n\n| 1', '|\n| 1').replace('|\n\n| 2', '|\n| 2');
     await caretAfter('p','More research.');
     const before=revised;
-    assert.ok(await page.evaluate(md=>window.editorAdapter.insertOutput(md),output),'insertOutput available');
+    assert.ok(await page.evaluate(md=>window.editorAdapter.insertBlocks(md),output),'insertBlocks available');
     revised=await value();
     assert.match(revised,/^!\[SYNTHETIC fitted response with its 95% confidence band\]\(asset:sco-0123456789-SYN-dose-v1-chart\)$/m,
       'figure line written byte for byte');
