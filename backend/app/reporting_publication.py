@@ -36,6 +36,7 @@ from . import citation_studio as cite
 from . import publication_layout as layout
 from . import docx_manuscript
 from . import document_lifecycle as lifecycle
+from . import scientific_outputs as sco
 
 router = APIRouter(prefix='/publication', tags=['Scientific Publication Studio'])
 SCHEMA = 'sc-scientific-publication/1.0'
@@ -460,6 +461,7 @@ def publication_ui(request:Request):
     script=Path(__file__).with_name('reporting_publication_ui.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_outputs_ui.js').read_text()
+    script+='\n'+Path(__file__).with_name('reporting_scientific_outputs_ui.js').read_text()
     html=Path(__file__).with_name('reporting_publication_ui.html').read_text()
     script_hash=base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     # Self-hosted Tiptap bundle. No CDN or external editor service.
@@ -674,6 +676,9 @@ def save_document(project_id:str,body:Save,request:Request):
         _,figures=render_html(body.markdown)
         _require_active_files(row,figures)
         figure_sources=_verify_figures(db,owner,project_id,figures)
+        # SC-OUTPUT-01: pin the exact registered output versions this revision inserts (rights gate enforced here).
+        output_sources=sco.pins(row.package,figures,parse_blocks(body.markdown))
+        sco.verify_pins(db,owner,project_id,{'outputSources':output_sources},_original_asset)
         document_id=body.documentId or 'publication-'+uuid4().hex
         version=(last['revision']+1) if last else 1
         from datetime import datetime,timezone
@@ -685,6 +690,7 @@ def save_document(project_id:str,body:Save,request:Request):
               'scientificStatus':'unreviewed','rightsStatus':'not-redistribution-approved',
               'computationsExecuted':False,'sourceBytesModified':False}
         if import_record:publication['importRecord']=import_record
+        if output_sources:publication['outputSources']=output_sources
         project=deepcopy(row.package['project'])
         # Keep one live head per document. Earlier versions are preserved by
         # Workspace's immutable project-revision repository, not duplicated in
@@ -1021,6 +1027,7 @@ def export_publication(project_id:str,document_id:str,format:str,request:Request
             meta,raw=_original_asset(db,owner,project_id,aid)
             if meta['sha256']!=digest:raise HTTPException(409,'Saved figure source hash changed.')
             media_types[aid],figures[aid]=figure_payload(meta['filename'],raw)
+        sco.verify_pins(db,owner,project_id,pub,_original_asset)
         if pub.get('source'):
             source_id=pub['source']['artifactId'];meta,_=_original_asset(db,owner,project_id,source_id)
             if meta['sha256']!=pub['source']['sha256']:
@@ -1132,6 +1139,9 @@ router.include_router(outputs.build_router({'subject':_subject,'write':_write,'p
     'documents':lambda package:[{**d,**{k:s.get(k) for s in snapshots(package,d['documentId'])[-1:]
                                           for k in ('publicationType','scientificStatus','rightsStatus','markdownSHA256','source')}}
                                  for d in latest_documents(package)]}))
+router.include_router(sco.build_router({'subject':_subject,'write':_write,'project':_project,
+    'locked_project':_locked_project,'store':_store_collection,'session':session_scope,'headers':HEADERS,
+    'original_asset':_original_asset,'sanitize_svg':sanitize_svg}))
 router.include_router(cite.build_router({'subject':_subject,'write':_write,'project':_project,
     'locked_project':_locked_project,'original_asset':_original_asset,'store':_store_collection,'session':session_scope,
     'headers':HEADERS,'library_record':_library_record,'library_search':_library_search}))

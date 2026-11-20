@@ -166,11 +166,34 @@ try {
     assert.match(revised,/\$\$\nCO_2 \+ basalt\n\$\$/);
     assert.match(revised,/!\[Figure 1\. Binding constraint pathway\]\(asset:docx-figure-0123456789abcdef01234567\)/);
 
+    // SC-OUTPUT-01: Insert -> Scientific output at the cursor. The figure stays a protected atom pinned to the
+    // output version's chart; the caption, table and source note are editable; every other block is untouched.
+    const output=['![SYNTHETIC fitted response with its 95% confidence band](asset:sco-0123456789-SYN-dose-v1-chart)',
+      '**Table: SYNTHETIC fitted response by dose** Values rounded to 4 significant figures.',
+      '| Dose (mg) | Fitted response (units) | Lower bound (units) | Upper bound (units) |',
+      '| --- | --- | --- | --- |', '| 1 | 2.05 | 1.512 | 2.588 |', '| 2 | 3.1 | 2.7 | 3.5 |',
+      '*Source:* Synthetic Author (2026) SYNTHETIC dose response. Scientific output SYN-dose version 1.'].join('\n\n')
+      .replace('\n\n| ---', '\n| ---').replace('|\n\n| 1', '|\n| 1').replace('|\n\n| 2', '|\n| 2');
+    await caretAfter('p','More research.');
+    const before=revised;
+    assert.ok(await page.evaluate(md=>window.editorAdapter.insertOutput(md),output),'insertOutput available');
+    revised=await value();
+    assert.match(revised,/^!\[SYNTHETIC fitted response with its 95% confidence band\]\(asset:sco-0123456789-SYN-dose-v1-chart\)$/m,
+      'figure line written byte for byte');
+    const cells=revised.split('\n').filter(l=>/^\| (1|2|Dose) /.test(l)).map(l=>l.split('|').map(c=>c.trim()).filter(Boolean));
+    assert.deepEqual(cells,[['Dose (mg)','Fitted response (units)','Lower bound (units)','Upper bound (units)'],
+      ['1','2.05','1.512','2.588'],['2','3.1','2.7','3.5']],'table cells inserted verbatim');
+    assert.ok(revised.indexOf('asset:sco-')>revised.indexOf('diversified production')
+      && revised.indexOf('asset:sco-')<revised.indexOf('asset:docx-figure'),'inserted at the cursor');
+    for(const line of before.split('\n').filter(Boolean))assert.ok(revised.includes(line),'existing line kept: '+line);
+    assert.equal(await editor.locator('figure.sc-doc-figure').count(),figures+1);
+    assert.equal(await editor.locator('table').count(),tables+1);
+
     // Reopen: the saved Markdown renders back to the same document without changes.
     await page.evaluate(()=>{window.editorAdapter.destroy();window.editorAdapter.render()});
     assert.equal(await value(),revised,'reopening does not rewrite the manuscript');
-    assert.equal(await editor.locator('table').count(),tables);
-    assert.equal(await editor.locator('figure.sc-doc-figure').count(),figures);
+    assert.equal(await editor.locator('table').count(),tables+1);
+    assert.equal(await editor.locator('figure.sc-doc-figure').count(),figures+1);
   }
   if(process.env.SC_SMOKE_SCREENSHOT)await page.screenshot({path:process.env.SC_SMOKE_SCREENSHOT,fullPage:false});
   await page.evaluate(()=>window.editorAdapter.destroy());
