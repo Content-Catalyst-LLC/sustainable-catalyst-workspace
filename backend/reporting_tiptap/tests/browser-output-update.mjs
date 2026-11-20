@@ -25,7 +25,7 @@ const group = v => [`![SYNTHETIC estimated CO2 removal by basalt application rat
   '| Basalt application rate (t/ha) | Estimated CO2 removal (t CO2/ha) |\n| --- | --- |\n' +
     ROWS[v].map(r => `| ${r.join(' | ')} |`).join('\n'),
   `*Source:* Synthetic Author (2026). Scientific output SYN-basalt-cdr version ${v} (bundle sha256 ${String(v).repeat(16)}), ` +
-    'computed by Workbench workspace.workbench.uncertainty-propagation-rows through its governed Workspace adapter.'].join('\n\n');
+    'computed by Workbench workspace.workbench.uncertainty-propagation through its governed Workspace adapter.'].join('\n\n');
 const before = ['# Synthetic Paper', '', '## Results', '', 'Results paragraph.', '', group(1), '', '## Discussion', '',
   'Final paragraph.', ''].join('\n');
 
