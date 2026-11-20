@@ -1,0 +1,37 @@
+name: Workspace reproduction artifact integrity
+on:
+  pull_request:
+    paths:
+      - 'backend/app/reproduction*.py'
+      - 'backend/app/cross_runtime_verification.py'
+      - 'backend/app/object_store.py'
+      - 'backend/app/models.py'
+      - 'backend/requirements.txt'
+      - 'backend/tests/test_reproduction_integrity_postgres.py'
+      - 'backend/tests/test_scientific_execution_provenance_workspace_v3400.py'
+      - 'backend/tests/test_cross_runtime_verification_v2170.py'
+      - 'scripts/sc_run_reproduction_integrity.sh'
+      - '.github/workflows/sc-run-reproduction-integrity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r backend/requirements.txt pytest==9.0.2
+      - run: docker pull postgres:16-alpine
+      - run: bash scripts/sc_run_reproduction_integrity.sh "$(command -v python)" "$RUNNER_TEMP/reproduction-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reproduction-integrity-evidence
+          path: ${{ runner.temp }}/reproduction-evidence

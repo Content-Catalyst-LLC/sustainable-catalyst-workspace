@@ -1,11 +1,7 @@
-import json
 from pathlib import Path
-from types import SimpleNamespace
-from app.config import Settings
 from app.cross_runtime_verification import _compare_json, profile_catalog
 
-def test_version_and_profiles():
-    assert Settings().service_version == "3.0.0"
+def test_cross_runtime_comparison_profiles():
     modes={x["mode"] for x in profile_catalog()}
     assert modes=={"auto","exact-digest","tolerance-aware-json"}
 

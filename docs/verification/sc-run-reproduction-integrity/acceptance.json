@@ -1,0 +1,101 @@
+{
+  "schema": "sc-run-reproduction-integrity-acceptance/1.0",
+  "date": "2026-11-19",
+  "timezone": "America/Chicago",
+  "repository": "Content-Catalyst-LLC/sustainable-catalyst-workspace",
+  "original_pull_request": 78,
+  "original_evidence_revision": "5a3d9f3a634e17c94d970a110b72ce6555e47e98",
+  "corrective_pull_request": 79,
+  "application_baseline": "6c5dfee4803ace1dbb2aca563b0bb80f3bfbdd2b",
+  "corrective_candidate": "362354da4bbbf5a7bc0bcf2db572dcb5f5ebfad5",
+  "acceptance": "isolated_candidate_only",
+  "application_tests": {
+    "routes": [
+      "/v1/reproduction-verifications",
+      "/v1/reproduction/cross-runtime/verifications"
+    ],
+    "intact": "exact with independently verified bytes",
+    "historical_artifact_revision_after_head_changed": "exact with independently verified historical bytes",
+    "same_length_corruption": "incomplete despite matching registered digests",
+    "missing_blob": "incomplete despite matching registered digests",
+    "missing_artifact_record": "incomplete despite matching registered digests",
+    "unavailable_blob": "incomplete despite matching registered digests",
+    "digest_only": "incomplete because no independently readable bytes are registered",
+    "tolerance_aware_json": "equivalent from checked bytes, divergent in exact-digest mode",
+    "legacy_receipt": "original row and fingerprint retained, positive classification presented as incomplete",
+    "scientific_validation_performed": false
+  },
+  "release_contract_investigation": {
+    "provenance": {
+      "release_artifact": "backend/RELEASE_NOTES_3.4.0.md",
+      "assertions_updated": 2
+    },
+    "cross_runtime": {
+      "release_artifact": "backend/RELEASE_NOTES_2.17.0.md",
+      "assertions_updated": 1
+    }
+  },
+  "execution": {
+    "dependency_install": "python -m pip install -r backend/requirements.txt pytest==9.0.2",
+    "schema": "fresh SQLAlchemy schema; no new migration",
+    "service": "host FastAPI ASGI, real Workspace worker claim and processing functions, Docker PostgreSQL",
+    "local": {
+      "source_commit": "362354da4bbbf5a7bc0bcf2db572dcb5f5ebfad5",
+      "command": "bash scripts/sc_run_reproduction_integrity.sh \"$PWD/../venv/bin/python\" \"$PWD/../corrective-final\"",
+      "postgres_version": "16.15",
+      "postgres_image_identity": "sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139 [\"postgres@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139\"] linux/arm64",
+      "python_version": "Python 3.12.12",
+      "workspace_backend_version": "3.83.0",
+      "results": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "postgres_integration": 10,
+        "release_contract_and_unit": 9
+      },
+      "junit": "evidence/local/test-results.xml"
+    },
+    "ci": {
+      "source_commit": "362354da4bbbf5a7bc0bcf2db572dcb5f5ebfad5",
+      "command": "bash scripts/sc_run_reproduction_integrity.sh \"$(command -v python)\" \"$RUNNER_TEMP/reproduction-evidence\"",
+      "postgres_version": "16.16",
+      "postgres_image_identity": "sha256:a3c40a6a77a9a545ed6d766860c45f82ab8bc254148266e56c4139f91beec635 [\"postgres@sha256:1d5b02d3a9941fbd52437db4107f8c52d6297dac553ca1e5c299ebb3756b4857\"] linux/amd64",
+      "python_version": "Python 3.12.16",
+      "workspace_backend_version": "3.83.0",
+      "results": {
+        "passed": 19,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "postgres_integration": 10,
+        "release_contract_and_unit": 9
+      },
+      "junit": "evidence/ci/test-results.xml",
+      "actions_url": "https://github.com/Content-Catalyst-LLC/sustainable-catalyst-workspace/actions/runs/44682116615"
+    }
+  },
+  "deployment": {
+    "staging": "blocked; authorized service endpoints and fixture tenancy, scoped accounts, deployed API contracts, image digests and migration ledger required",
+    "lab_library_research": "untested",
+    "production": "untested; no deployment or data changes",
+    "deployed_product_version": null,
+    "scientific_validation": "untested"
+  },
+  "artifact_sha256": {
+    "evidence/ci/postgres-image.txt": "7cc3a4bd3d3141c3ffb5cffa5562e00a2205bde90f96b3a1de01889b131aca53",
+    "evidence/ci/postgres-version.txt": "b19faade358f8458c4d7fa851b692e4faacf868c2febf664f3d9e8a685622d54",
+    "evidence/ci/pytest-summary.txt": "5bcc2c2aede879ac578c8c67481b32a33fa9dfbb3f1b36291c632709bf6f4460",
+    "evidence/ci/python-dependencies.txt": "7bafa477ff34a74fe26213b66418a4c26d797378164a5cec11c019e62a0a2cc3",
+    "evidence/ci/python-version.txt": "9d0ae83e540febd225949f3df4aba97c7a9f79fcf745d6c835780f52a57b50cf",
+    "evidence/ci/source-commit.txt": "35c2359cb186b7f982b83deb41e3c0a8738e3e586cfbe738af872ff3b6fd2735",
+    "evidence/ci/test-results.xml": "8daf10be827d5fd057c5f8ffa328d1822446c7fd6222e878acd32cf76b04c8c8",
+    "evidence/local/postgres-image.txt": "4d218f0c367264c3a4aa47facd606c7e67a97b584be7cbd15cbe6b8c3a93a3da",
+    "evidence/local/postgres-version.txt": "891e4fd21666e66b5362e2b13d1bda45cc4402505a2a1548fd6c5ca7cdaae9da",
+    "evidence/local/pytest-summary.txt": "2c202158bc7022a28d9fc3bf53dcbdaceb1cb5f956738aef6c15c249c1ffa9da",
+    "evidence/local/python-dependencies.txt": "638de1ecd9646da8983ab64f9c79666e3fd6c8a68ed27febfb8694e7377bf0b0",
+    "evidence/local/python-version.txt": "11127b908355ca05c3fd89fb6e7622ae40cd54419cb5d62508fd633c259ee313",
+    "evidence/local/source-commit.txt": "35c2359cb186b7f982b83deb41e3c0a8738e3e586cfbe738af872ff3b6fd2735",
+    "evidence/local/test-results.xml": "71e737fe9eb1fcf6058c84626eaf9b2a467ccfc009327c2f3e9d6aefe16f7a2e"
+  }
+}
