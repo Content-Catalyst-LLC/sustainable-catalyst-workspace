@@ -107,6 +107,8 @@ def test_run_lifecycle_and_independent_replay():
             update = {"projectId": PROJECT, "name": "Updated", key: identifier, **fields}
             if resource == "parameter-sets":
                 update["parameters"] = {"columns": ["missing"]}
+            if resource == "execution-environments":
+                update["runtime"] = {"language": "python", "version": "3.12", "fixtureRevision": 2}
             revised = post(client, resource, schema, expectedRevision=1, **update)["item"]
             assert revised["revision"] == 2 and revised["fingerprint"] != first[resource]["fingerprint"]
             post(client, resource, schema, status=409, expectedRevision=1, **update)
