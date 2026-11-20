@@ -151,7 +151,7 @@
     "numerical_check_scope": "one synthetic descriptive statistics fixture"
   },
   "evidence_artifacts": {
-    "evidence/ci/integration.log": "a8d1a110ac3d09552df44cf335ecf492f77a7371a710ec37f77a0522f746035b",
+    "evidence/ci/integration-log.txt": "a8d1a110ac3d09552df44cf335ecf492f77a7371a710ec37f77a0522f746035b",
     "evidence/ci/integration.xml": "441c3b961774e2f121a51e0202b2fbc800f232d78ad9e1805fdb3060429fef92",
     "evidence/ci/lifecycle.json": "d688462b2100f6177d637588eee208386a6625e797e591bd757d4b3e70eb9cf2",
     "evidence/ci/postgres-version.txt": "4b69b3d958f3438396521f7d1d51bd7b6f05151851f49462f85f9eacfb573f26",
@@ -159,10 +159,10 @@
     "evidence/ci/python-version.txt": "9d0ae83e540febd225949f3df4aba97c7a9f79fcf745d6c835780f52a57b50cf",
     "evidence/ci/schema.txt": "85c85b563ee1b14f8325e83413a39d06d5f3095853afd1c303933a63060b01aa",
     "evidence/ci/source-commit.txt": "8b6193c61c53335500b0826071af845878b16f3c2817695254de1421b57ba9ec",
-    "evidence/existing.xml": "086a73493af915c955dab396320490a75beee268a4824c1357aaaf81425dec2e",
-    "evidence/input-integrity-postgres.log": "22285141fe9b30041fd0c8857893477be8fee0fc758cd0ef619735e223a32587",
+    "evidence/existing.xml": "fb9dc1211ed458dcf676e18631e168ece941e3a1254df182b64c67ec15efeb36",
+    "evidence/input-integrity-postgres-log.txt": "22285141fe9b30041fd0c8857893477be8fee0fc758cd0ef619735e223a32587",
     "evidence/input-integrity-postgres.xml": "7c0cade611abbbf633e743f7e7168765fc81f657835e0f4bd13795ea22006407",
-    "evidence/integration.log": "951525b92ea2d659feb828afa03cf86b73ff6a43fb440d0897d128ceeedaad5c",
+    "evidence/integration-log.txt": "951525b92ea2d659feb828afa03cf86b73ff6a43fb440d0897d128ceeedaad5c",
     "evidence/integration.xml": "c2b0b05770e7ec0a6932639bc62ff3aaacf64a61709bf8868ef623c86c82c9ce",
     "evidence/lifecycle.json": "a01916425696b3c8cac9fa4e1257569065e824b80d269d7398b46e1c79ccfc8f",
     "evidence/migrations.sha256": "5a69701f9b5995fae4ffe8f9fe44c6de5d9d3c280bbb6ed504fe68feccab65bb",

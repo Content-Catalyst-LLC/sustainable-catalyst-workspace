@@ -63,8 +63,8 @@ intermediate states. It did not run a separate API listener or the worker daemon
 | Output integrity and provenance | Both successful jobs registered artifacts with matching byte counts and independently computed SHA-256. Run provenance resolved the pinned inputs, registered output and execution receipt. A stored snapshot, run, output reference and ordered run/job event sequences were readable after closing the client and disposing the database connection pool. |
 | Numerical replay | A second run and job executed the same pinned fixture. Mean, sample standard deviation, median, minimum and maximum matched Python's standard-library oracle and each other with both absolute and relative tolerances of `1e-12`. The result artifacts had identical SHA-256. |
 
-The [integration JUnit result](evidence/integration.xml), [execution log](evidence/integration.log)
-and [observations](evidence/lifecycle.json) provide the test evidence. JUnit XML omits the local hostname.
+The [integration JUnit result](evidence/integration.xml), [execution log](evidence/integration-log.txt)
+and [observations](evidence/lifecycle.json) provide the test evidence. JUnit XML omits runner hostnames. Trailing spaces were removed from the legacy failure excerpts.
 Persistence was checked across fresh database connections. Server restart, backup and
 restore, and crash recovery after a live worker disappears remain untested.
 

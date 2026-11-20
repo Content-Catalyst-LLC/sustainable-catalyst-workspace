@@ -3,7 +3,7 @@
         item = profile()
 &gt;       assert item['workspaceVersion'] == '3.4.0'
 E       AssertionError: assert '3.5.0' == '3.4.0'
-E         
+E
 E         - 3.4.0
 E         ?   ^
 E         + 3.5.0
@@ -17,14 +17,14 @@ backend/tests/test_scientific_execution_provenance_workspace_v3400.py:14: Assert
         health = c.get('/health').json()
 &gt;       assert health['version'] == '3.4.0'
 E       AssertionError: assert '3.83.0' == '3.4.0'
-E         
+E
 E         - 3.4.0
 E         + 3.83.0
 
 backend/tests/test_scientific_execution_provenance_workspace_v3400.py:64: AssertionError</failure></testcase><testcase classname="backend.tests.test_scientific_execution_provenance_workspace_v3400" name="test_v3400_execution_provenance_routes_are_protected" time="0.080" /><testcase classname="backend.tests.test_cross_runtime_verification_v2170" name="test_version_and_profiles" time="0.019"><failure message="AssertionError: assert '3.83.0' == '3.0.0'&#10;  &#10;  - 3.0.0&#10;  + 3.83.0">def test_version_and_profiles():
 &gt;       assert Settings().service_version == "3.0.0"
 E       AssertionError: assert '3.83.0' == '3.0.0'
-E         
+E
 E         - 3.0.0
 E         + 3.83.0
 
