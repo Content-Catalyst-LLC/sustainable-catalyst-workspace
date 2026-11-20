@@ -269,7 +269,7 @@ def test_save_pins_exact_versions_refuses_pending_rights_and_exports_render_the_
            'markdownSHA256': hashlib.sha256(md.encode()).hexdigest(), 'figureSources': [], 'outputSources': pins}
     chart = v1['artifacts']['chart']['artifactId']
     out = pub._as_html(doc, {chart: 'data:image/svg+xml;base64,' + __import__('base64').b64encode(svg).decode()}).decode()
-    assert '<img src="data:image/svg+xml;base64,' in out and '<th>Dose (mg)</th>' in out and '<td>2.588</td>' in out and '<td>2.050</td>' in out
+    assert '<img src="data:image/svg+xml;base64,' in out and '<th scope="col">Dose (mg)</th>' in out and '<td>2.588</td>' in out and '<td>2.050</td>' in out
     assert 'Scientific output SYN-dose-response version 1' in out
     pdf = pub._pdf(doc, {chart: svg})
     assert pdf.startswith(b'%PDF')

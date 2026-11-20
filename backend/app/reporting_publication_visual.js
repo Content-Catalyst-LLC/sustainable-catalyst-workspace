@@ -103,6 +103,32 @@ function insertManuscriptBlocks(snippet) {
   }
 }
 
+// SC-OUTPUT-02: "Update to version N" swaps one inserted output group (figure, table caption, table, source note) for the
+// newer version's blocks, only while the group is still exactly as inserted (same table cells, same version note).
+// Saved revisions keep the version they pinned; anything else is refused, never guessed.
+function outputGroup(text, chartId, fromVersion, rows) {
+  const blocks = sourceBlocks(text), part = ([start, end]) => text.slice(start, end).trim();
+  const i = blocks.findIndex(b => figureAssets(part(b)).length === 1 && figureAssets(part(b))[0] === chartId && /^!\[/.test(part(b)));
+  if (i < 0 || i + 3 >= blocks.length) return null;
+  const [caption, table, note] = blocks.slice(i + 1, i + 4).map(part);
+  const cells = table.split('\n').slice(2).map(line => line.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+  if (!caption.startsWith('**Table:') || !note.startsWith('*Source:*') || !note.includes(' version ' + fromVersion + ' (') ||
+      JSON.stringify(cells) !== JSON.stringify(rows)) return null;
+  return [blocks[i][0], blocks[i + 3][1]];
+}
+
+function replaceManuscriptOutput(chartId, fromVersion, rows, snippet) {
+  const t = E('manuscript'), range = outputGroup(t.value, chartId, fromVersion, rows);
+  if (!range) {
+    throw Error('Version ' + fromVersion + ' of this output was edited or split up in the manuscript, so it was not replaced. ' +
+                'Nothing was changed; insert the new version at the cursor and delete the old one yourself.');
+  }
+  t.value = t.value.slice(0, range[0]) + snippet + t.value.slice(range[1]);
+  sourceCursor = null;
+  markDirty();
+  renderVisualBlocks();
+}
+
 function insertManuscriptCitation(key) {
   if (visualMode && tiptapBridge && tiptapBridge.insertCitation(key)) return;
   const cursor = knownSourceCursor(), t = E('manuscript'), at = cursor.start;
