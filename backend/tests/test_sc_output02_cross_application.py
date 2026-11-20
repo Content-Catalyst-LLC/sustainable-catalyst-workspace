@@ -18,7 +18,7 @@ pub = importlib.import_module('app.reporting_publication')
 o1 = importlib.import_module('tests.test_sc_output01_scientific_outputs')
 
 PROJECT, SOURCE = o1.PROJECT, o1.SOURCE
-OP = 'workspace.workbench.uncertainty-propagation-rows'
+OP = 'workspace.workbench.uncertainty-propagation'  # with dataset-bound rows (Workbench #54)
 # What the Workbench adapter returns for rate*f*k per plot (first-order, ± one standard uncertainty), inside the
 # polyglot envelope Workspace stores for the run.
 ROWS = [{'rate': 0.0, 'value': 0.0, 'standardUncertainty': 0.0, 'lower': 0.0, 'upper': 0.0},
