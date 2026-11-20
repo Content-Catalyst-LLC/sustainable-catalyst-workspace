@@ -33,6 +33,7 @@ const MAX_PARTS = 3000;
 let editor = null;
 let shell = null;
 let sourceParts = [];
+let partSizes = [];
 let sourcePrefix = '';
 let baseline = [];
 let inserted = new Set();
@@ -50,11 +51,44 @@ const el = (tag, props = {}, ...children) => {
   return node;
 };
 
-// Each top-level block remembers the source part it came from (never rendered).
+// Each top-level block remembers the source part it came from (never rendered). scPart groups blocks that are one
+// source part; scFrom only remembers where a block's text came from (for citation-marker restoration).
+// SC-FIG-PLACE-02: a block made with Enter is its own block, so scPart is not kept on a split, and a same-type split
+// (which ProseMirror makes by copying every attribute to both halves) is separated by the plugin below.
 const SourceParts = Extension.create({
   name: 'scSourceParts',
   addGlobalAttributes() {
-    return [{types: PART_TYPES, attributes: {scPart: {default: null, rendered: false, keepOnSplit: true}}}];
+    return [{types: PART_TYPES, attributes: {
+      scPart: {default: null, rendered: false, keepOnSplit: false},
+      scFrom: {default: null, rendered: false, keepOnSplit: true}}}];
+  },
+  addProseMirrorPlugins() {
+    return [new Plugin({
+      key: new PluginKey('scSplitBoundaries'),
+      appendTransaction(transactions, oldState, state) {
+        if (!editor || !transactions.some(tr => tr.docChanged)) return null;
+        const runs = [];
+        state.doc.forEach((node, offset) => {
+          const key = node.attrs.scPart;
+          const last = runs[runs.length - 1];
+          if (key != null && last && last.key === key) last.nodes.push({node, offset});
+          else if (key != null) runs.push({key, nodes: [{node, offset}]});
+          else runs.push({key: null, nodes: []});
+        });
+        let tr = null;
+        for (const run of runs) {
+          // Only a part loaded as one block can have been split; the half still matching the saved source keeps it.
+          if (run.key === null || partSizes[run.key] !== 1 || run.nodes.length < 2) continue;
+          const kept = Math.max(0, run.nodes.findIndex(x => serialize([x.node.toJSON()]) === baseline[run.key]));
+          run.nodes.forEach((x, i) => {
+            if (i === kept) return;
+            tr = tr || state.tr;
+            tr.setNodeMarkup(x.offset, undefined, {...x.node.attrs, scPart: null, scFrom: run.key});
+          });
+        }
+        return tr;
+      },
+    })];
   },
 });
 
@@ -133,14 +167,14 @@ const Scholarly = Extension.create({
 });
 
 function serialize(nodes) {
-  const content = nodes.map(node => ({...node, attrs: {...(node.attrs || {}), scPart: null}}));
+  const content = nodes.map(node => ({...node, attrs: {...(node.attrs || {}), scPart: null, scFrom: null}}));
   return editor.markdown.serialize({type: 'doc', content}).replace(/\n+$/, '');
 }
 
 // Source parts -> one document. Unsupported structures become protected atoms.
 function documentFor(source) {
   const {prefix, parts} = splitMarkdown(source);
-  sourcePrefix = prefix; sourceParts = parts;
+  sourcePrefix = prefix; sourceParts = parts; partSizes = [];
   const content = [];
   parts.forEach((part, index) => {
     const kind = classifyMarkdownBlock(part.raw);
@@ -148,7 +182,8 @@ function documentFor(source) {
       try {
         const nodes = (editor.markdown.parse(part.raw).content || []);
         if (nodes.length && nodes.every(n => PART_TYPES.includes(n.type))) {
-          for (const node of nodes) content.push({...node, attrs: {...(node.attrs || {}), scPart: index}});
+          for (const node of nodes) content.push({...node, attrs: {...(node.attrs || {}), scPart: index, scFrom: index}});
+          partSizes[index] = nodes.length;
           return;
         }
       } catch (error) { /* fall through: keep the block as preserved source */ }
@@ -156,6 +191,7 @@ function documentFor(source) {
     const figure = part.raw.trim().match(FIGURE);
     content.push({type: 'scSource', attrs: {raw: part.raw, kind: figure ? 'figure' : 'source',
       assetId: figure ? figure[2] : null, caption: figure ? figure[1] : '', scPart: index}});
+    partSizes[index] = 1;
   });
   return {type: 'doc', content: content.length ? content : [{type: 'paragraph'}]};
 }
@@ -186,7 +222,9 @@ export function currentMarkdown() {
       if (!markdown.trim()) continue;
       if (part && markdown === baseline[group.key]) text = part.raw;
       else {
-        const restored = restoreCitationMarkers(markdown, part ? part.raw : '', [...inserted]);
+        // A block split off a saved block may restore that block's existing citations, and only those.
+        const from = group.nodes[0].attrs && sourceParts[group.nodes[0].attrs.scFrom];
+        const restored = restoreCitationMarkers(markdown, part ? part.raw : from ? from.raw : '', [...inserted]);
         text = part ? replaceEditedBlock(part.raw, restored) : restored + '\n';
         if (!/\n$/.test(text)) text += '\n';
       }
@@ -354,7 +392,8 @@ function render() {
         TableKit.configure({table: {resizable: false}}), SourceParts, ScientificSource, Scholarly],
       editorProps: {attributes: {'aria-label': 'Manuscript', 'data-sc-research-editor': 'tiptap', spellcheck: 'true'}},
     });
-    editor.commands.setContent(documentFor(source), {emitUpdate: false});
+    // Loading is not an edit: Undo must never step back past the saved manuscript to an empty editor.
+    editor.chain().setMeta('addToHistory', false).setContent(documentFor(source), {emitUpdate: false}).run();
     baseline = [];
     for (const group of groups()) {
       if (group.key !== null && !(group.nodes.length === 1 && group.nodes[0].type === 'scSource')) {
@@ -381,7 +420,8 @@ function render() {
 
 // SC-FIG-PLACE-01: where inserted blocks go. Always between top-level blocks, never inside a sentence, list or table and
 // never over existing content: before the block when the caret is at its start, otherwise after it (after the whole
-// source block it came from). An empty paragraph at the caret is replaced. Null when the position is unknown.
+// source block it came from: a paragraph typed with Enter is its own block). An empty paragraph at the caret is
+// replaced. Null when the position is unknown.
 function blockInsertionRange() {
   if (!cursorKnown) return null;
   const {selection, doc} = editor.state;
