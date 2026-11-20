@@ -1,0 +1,77 @@
+{
+  "backend_version": "3.83.0",
+  "input_fingerprint": "9ea77d75a72f3e46f6b9ca1de19a879daa6d7dc47fcb38086d6c47561c6d874b",
+  "parameter_fingerprint": "7af0e5c335ebd96f98b2f2a438b1e4b256ab3a591ad1efeb4f63b4c8be224226",
+  "output_sha256": [
+    "7c12d663231fb7cd864792c5110e0ada3432373a06dbfdf25f22ed66ade39c76",
+    "7c12d663231fb7cd864792c5110e0ada3432373a06dbfdf25f22ed66ade39c76"
+  ],
+  "original_worker_failure": "worker-exception",
+  "run_event_statuses": [
+    "planned",
+    "queued",
+    "running",
+    "running",
+    "failed",
+    "queued",
+    "running",
+    "running",
+    "running",
+    "running",
+    "running",
+    "running",
+    "succeeded"
+  ],
+  "job_event_types": [
+    "queued",
+    "started",
+    "progress",
+    "failed",
+    "retried",
+    "started",
+    "progress",
+    "progress",
+    "progress",
+    "progress",
+    "succeeded"
+  ],
+  "snapshot_fingerprint": "b71b9e585fee9d4f937d19b72c5d09048ddac69a4c65a6cb6762499ca433e803",
+  "replay": {
+    "oracle": {
+      "mean": 4.125,
+      "std": 2.9615592739861434,
+      "median": 3.625,
+      "min": 1.25,
+      "max": 8.0
+    },
+    "observed": [
+      {
+        "count": 4,
+        "max": 8.0,
+        "mean": 4.125,
+        "median": 3.625,
+        "min": 1.25,
+        "q25": 2.1875,
+        "q75": 5.5625,
+        "std": 2.9615592739861434
+      },
+      {
+        "count": 4,
+        "max": 8.0,
+        "mean": 4.125,
+        "median": 3.625,
+        "min": 1.25,
+        "q25": 2.1875,
+        "q75": 5.5625,
+        "std": 2.9615592739861434
+      }
+    ],
+    "absolute_tolerance": 1e-12,
+    "relative_tolerance": 1e-12,
+    "workspace_classification": "exact"
+  },
+  "corrupted_output": {
+    "artifact_read_http": 503,
+    "reproduction_metadata_classification": "exact"
+  }
+}

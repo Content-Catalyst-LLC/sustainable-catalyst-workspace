@@ -1,0 +1,36 @@
+name: SC-RUN-VERIFY-01 isolated PostgreSQL
+on:
+  pull_request:
+    paths:
+      - 'backend/app/**'
+      - 'backend/migrations/**'
+      - 'backend/requirements.txt'
+      - 'backend/tests/test_sc_run_verify01_postgres.py'
+      - 'scripts/sc_run_verify01_local.sh'
+      - '.github/workflows/sc-run-verify-01.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PostgreSQL 16 binaries
+        run: sudo apt-get update && sudo apt-get install -y postgresql-16 postgresql-server-dev-16
+      - name: Install Workspace test dependencies
+        run: python -m pip install -r backend/requirements.txt pytest==9.0.2
+      - name: Run implementation against a private PostgreSQL cluster
+        run: bash scripts/sc_run_verify01_local.sh "$(command -v python)" "$RUNNER_TEMP/sc-run-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sc-run-verify-01-evidence
+          path: ${{ runner.temp }}/sc-run-evidence
