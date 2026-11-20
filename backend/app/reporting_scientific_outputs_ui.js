@@ -55,9 +55,8 @@ async function scoInspect(id,version){
 async function scoInsert(){
  const v=SCO.selected;if(!v)return;
  const r=await api(scoPath('/outputs/'+encodeURIComponent(v.outputId)+'/versions/'+v.version+'/insertion'));
- if(!(visualMode&&tiptapBridge&&tiptapBridge.insertOutput&&tiptapBridge.insertOutput(r.markdown))){
-  const t=E('manuscript');const pos=t.selectionStart;t.setRangeText('\n\n'+r.markdown+'\n',pos,t.selectionEnd,'end');markDirty();
- }
+ // Figure, caption, table and source note go in together at the cursor, or not at all (SC-FIG-PLACE-01).
+ insertManuscriptBlocks(r.markdown.trim());
  await preview();
  status('Scientific output '+v.outputId+' v'+v.version+' inserted. Saving pins this exact version to the revision.');
 }

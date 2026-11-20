@@ -64,11 +64,14 @@ async function selectProject(id){
    open.onclick=run(async()=>{await importWord(file)});
    row.append(open);
   }
-  if(/\.svg$/i.test(file.filename)){
+  // A registered scientific output's chart goes in only through Insert -> Scientific output, with its table and provenance.
+  if(/\.svg$/i.test(file.filename)&&/^scientific-outputs\//.test(file.filename)){
+   const hint=document.createElement('small');hint.textContent='Use Insert → Scientific output (keeps the table and provenance)';row.append(hint);
+  }else if(/\.svg$/i.test(file.filename)){
    const insert=document.createElement('button');insert.textContent='Insert figure';
-   insert.onclick=run(async()=>{const caption=file.filename.split('/').pop().replace(/\.svg$/i,'').replace(/_/g,' ');
-    prepareSourceInsertion();const textarea=E('manuscript');const snippet='\n\n!['+caption+'](asset:'+file.artifactId+')\n\n';
-    const pos=textarea.selectionStart;textarea.setRangeText(snippet,pos,textarea.selectionEnd,'end');markDirty();await preview();});
+   insert.onclick=run(async()=>{const caption=file.filename.split('/').pop().replace(/\.svg$/i,'').replace(/_/g,' ').replace(/[\[\]]/g,'');
+    insertManuscriptBlocks('!['+caption+'](asset:'+file.artifactId+')');await preview();
+    status('Figure '+caption+' inserted at the cursor.');});
    row.append(insert);
   }
   if(/\.(ris|json)$/i.test(file.filename)&&/(^|\/)[^/]*(ref|bib|citation)[^/]*$/i.test(file.filename)){
@@ -306,9 +309,8 @@ function renderCitations(collection){
   const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
   E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
    // In the visual editor the citation goes in at the cursor; no switch to Markdown source.
-   if(visualMode&&tiptapBridge&&tiptapBridge.insertCitation(item.key)){status('Citation '+item.key+' inserted at the cursor.');return}
-   prepareSourceInsertion();const t=E('manuscript'),at=t.selectionStart,lead=at>0&&!/\s/.test(t.value[at-1])?' ':'';t.setRangeText(lead+'[@'+item.key+']',at,t.selectionEnd,'end');markDirty();await preview();
-   status('Citation '+item.key+' inserted. The reference list is generated from saved project records.');}));
+   insertManuscriptCitation(item.key);if(!visualMode)await preview();
+   status('Citation '+item.key+' inserted at the cursor. The reference list is generated from saved project records.');}));
  }
  if(tiptapBridge&&tiptapBridge.refreshCitations)tiptapBridge.refreshCitations();
 }

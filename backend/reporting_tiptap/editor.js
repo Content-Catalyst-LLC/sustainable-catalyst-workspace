@@ -39,6 +39,10 @@ let inserted = new Set();
 let pendingPreview = null;
 let pendingOutline = null;
 let citationVersion = 0;
+// SC-FIG-PLACE-01: true once the researcher has placed the cursor in this editor (click or keyboard). A fresh editor's
+// selection is a default, not an intended position, so insertions refuse rather than guess.
+let cursorKnown = false;
+const NO_CURSOR = 'Click in the manuscript where this should go, then insert again. Nothing was inserted.';
 const e = id => document.getElementById(id);
 const el = (tag, props = {}, ...children) => {
   const node = Object.assign(document.createElement(tag), props);
@@ -233,6 +237,7 @@ function citationOptions() {
 
 export function insertCitation(key) {
   if (!editor || !/^[A-Za-z0-9_.:-]{1,80}$/.test(key)) return false;
+  if (!cursorKnown) throw Error(NO_CURSOR);
   const marker = '[@' + key + ']';
   inserted.add(marker);
   const {from} = editor.state.selection;
@@ -264,7 +269,9 @@ function buildToolbar() {
   const cite = el('select', {className: 'sc-cite-select'});
   cite.setAttribute('aria-label', 'Insert citation');
   cite.addEventListener('change', () => {
-    if (cite.value && insertCitation(cite.value)) status('Citation [@' + cite.value + '] inserted at the cursor.');
+    try {
+      if (cite.value && insertCitation(cite.value)) status('Citation [@' + cite.value + '] inserted at the cursor.');
+    } catch (error) { status(error.message, true); }
     cite.value = '';
   });
   toolbar.append(
@@ -304,6 +311,7 @@ function renderOutline() {
     const button = el('button', {type: 'button', textContent: node.textContent});
     button.className = 'sc-outline-h' + node.attrs.level;
     button.addEventListener('click', () => {
+      cursorKnown = true;
       editor.chain().focus().setTextSelection(offset + 1).scrollIntoView().run();
       const dom = editor.view.nodeDOM(offset);
       if (dom && dom.scrollIntoView) dom.scrollIntoView({block: 'start', behavior: 'smooth'});
@@ -338,6 +346,7 @@ function render() {
   container.append(bar.toolbar, el('div', {className: 'sc-doc-shell'}, outline, page));
   shell = {...bar, outline, page};
   inserted = new Set();
+  cursorKnown = false;
   try {
     editor = new Editor({
       element: page,
@@ -361,6 +370,7 @@ function render() {
     console.error(error);
     return;
   }
+  for (const type of ['pointerdown', 'keydown']) editor.view.dom.addEventListener(type, () => { cursorKnown = true; });
   editor.on('update', sync);
   editor.on('selectionUpdate', refreshToolbar);
   editor.on('transaction', refreshToolbar);
@@ -369,17 +379,38 @@ function render() {
   refreshToolbar();
 }
 
-function insertMarkdown(snippet) {
-  if (!editor) return false;
-  const nodes = editor.markdown.parse(snippet).content || [];
-  editor.chain().focus().insertContent(nodes).run();
-  return true;
+// SC-FIG-PLACE-01: where inserted blocks go. Always between top-level blocks, never inside a sentence, list or table and
+// never over existing content: before the block when the caret is at its start, otherwise after it (after the whole
+// source block it came from). An empty paragraph at the caret is replaced. Null when the position is unknown.
+function blockInsertionRange() {
+  if (!cursorKnown) return null;
+  const {selection, doc} = editor.state;
+  const $from = selection.$from;
+  if ($from.depth === 0) {
+    const at = selection.node ? selection.to : selection.from;  // a selected figure or table: after it
+    return {from: at, to: at};
+  }
+  let index = $from.index(0);
+  const block = doc.child(index);
+  const start = $from.before(1);
+  if (block.type.name === 'paragraph' && block.content.size === 0) return {from: start, to: start + block.nodeSize};
+  if (selection.empty && $from.depth === 1 && $from.parentOffset === 0) return {from: start, to: start};
+  let end = $from.after(1);
+  const part = block.attrs.scPart;
+  while (part != null && index + 1 < doc.childCount && doc.child(index + 1).attrs.scPart === part) {
+    index += 1;
+    end += doc.child(index).nodeSize;
+  }
+  return {from: end, to: end};
 }
 
-// SC-OUTPUT-01: a registered scientific output at the cursor. The figure line stays a protected source atom (its
-// asset id names the exact output version); the caption, table and source note become ordinary editable blocks.
-function insertOutput(snippet) {
+// Insert -> Scientific output, Insert figure and the + block buttons. A figure line stays a protected source atom (its
+// asset id names the exact file or output version); caption, table and source note become ordinary editable blocks and
+// go in together, in order, as one step.
+function insertBlocks(snippet) {
   if (!editor) return false;
+  const range = blockInsertionRange();
+  if (!range) throw Error(NO_CURSOR);
   const nodes = [];
   for (const part of splitMarkdown(snippet).parts) {
     const figure = part.raw.trim().match(FIGURE);
@@ -389,7 +420,7 @@ function insertOutput(snippet) {
       nodes.push(...(editor.markdown.parse(part.raw).content || []));
     }
   }
-  editor.chain().focus().insertContent(nodes).run();
+  editor.chain().insertContentAt(range, nodes).focus().scrollIntoView().run();
   return true;
 }
 
@@ -403,5 +434,5 @@ function refreshCitations() {
 if (!window.SCStudioRegisterTiptap) {
   throw Error('Sustainable Catalyst Publication Studio host is not loaded');
 }
-window.SCStudioRegisterTiptap({render, destroy: release, insertCitation, insertMarkdown, insertOutput, refreshCitations,
+window.SCStudioRegisterTiptap({render, destroy: release, insertCitation, insertBlocks, refreshCitations,
   markdown: () => (editor ? currentMarkdown() : null)});
