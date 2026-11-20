@@ -26,6 +26,6 @@ RUN cd reporting_tiptap \
     && test -s ../app/reporting_publication_tiptap.bundle.js \
     && rm -rf node_modules /root/.npm /usr/local/lib/node_modules/npm
 COPY migrations ./migrations
-RUN test -s reporting_math/heatmap.cjs && node --version
+RUN test -s reporting_math/heatmap.cjs && test -s reporting_math/output_chart.cjs && node --version
 EXPOSE 8089
 CMD ["uvicorn", "app.reporting_production_entry:app", "--host", "0.0.0.0", "--port", "8089", "--proxy-headers", "--forwarded-allow-ips=*"]

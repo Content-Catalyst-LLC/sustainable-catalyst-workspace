@@ -376,6 +376,23 @@ function insertMarkdown(snippet) {
   return true;
 }
 
+// SC-OUTPUT-01: a registered scientific output at the cursor. The figure line stays a protected source atom (its
+// asset id names the exact output version); the caption, table and source note become ordinary editable blocks.
+function insertOutput(snippet) {
+  if (!editor) return false;
+  const nodes = [];
+  for (const part of splitMarkdown(snippet).parts) {
+    const figure = part.raw.trim().match(FIGURE);
+    if (figure) {
+      nodes.push({type: 'scSource', attrs: {raw: part.raw.trim() + '\n', kind: 'figure', assetId: figure[2], caption: figure[1]}});
+    } else {
+      nodes.push(...(editor.markdown.parse(part.raw).content || []));
+    }
+  }
+  editor.chain().focus().insertContent(nodes).run();
+  return true;
+}
+
 function refreshCitations() {
   if (!editor) return;
   citationOptions();
@@ -386,5 +403,5 @@ function refreshCitations() {
 if (!window.SCStudioRegisterTiptap) {
   throw Error('Sustainable Catalyst Publication Studio host is not loaded');
 }
-window.SCStudioRegisterTiptap({render, destroy: release, insertCitation, insertMarkdown, refreshCitations,
+window.SCStudioRegisterTiptap({render, destroy: release, insertCitation, insertMarkdown, insertOutput, refreshCitations,
   markdown: () => (editor ? currentMarkdown() : null)});
