@@ -41,7 +41,7 @@ async function open(manuscript = original, visual = true) {
   page.on('pageerror', e => errors.push(e.message));
   await page.setContent(`<!doctype html><html><body>
     <div id="status"></div>
-    <section><input id="scoQuery"><button id="scoSearch">Search</button><button id="scoOpen">Insert</button>
+    <section><input id="scoQuery"><select id="scoApp"></select><button id="scoSearch">Search</button><button id="scoOpen">Insert</button>
       <div id="scoPanel"></div><div id="scoResults"></div><div id="scoPreview"></div>
       <button id="insertOutput" type="button">Insert at cursor</button>
       <button id="insertFigure" type="button">Insert figure</button></section>

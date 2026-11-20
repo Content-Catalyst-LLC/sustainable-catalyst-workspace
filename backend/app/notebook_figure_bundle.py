@@ -314,7 +314,8 @@ def build_package(rev: Any, cell_id: str, cell_sha: str, ev: dict[str, Any], res
         "schema": PACKAGE_SCHEMA, "bundleSha256": bundle_sha, "figureId": req.figureId,
         "notebook": {"notebookId": rev.notebook_id, "revision": rev.revision, "cellId": cell_id, "cellSha256": cell_sha},
         "run": {"runId": ev["runId"], "receiptId": receipt["receiptId"], "resultSha256": receipt["resultSha256"],
-                "verification": v["status"], "inputLineage": v.get("inputLineage")},
+                "verification": v["status"], "inputLineage": v.get("inputLineage"),
+                "language": receipt.get("language"), "runtime": receipt.get("runtime"), "operation": receipt.get("operation")},
         "files": [
             {"name": f"{req.figureId}.bundle.json", "role": "bundle", "mediaType": "application/json",
              "sha256": bundle_sha, "text": bundle_text},
