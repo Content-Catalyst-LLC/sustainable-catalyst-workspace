@@ -1,0 +1,2 @@
+Workspace security migrations 054, 055, 056 applied; no destructive downgrade
+Workspace backend schema initialized.

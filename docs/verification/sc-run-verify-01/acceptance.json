@@ -1,0 +1,176 @@
+{
+  "schema": "sc-run-verify-01-acceptance/1.0",
+  "date": "2026-11-19",
+  "timezone": "America/Chicago",
+  "repository": "Content-Catalyst-LLC/sustainable-catalyst-workspace",
+  "overall": "partial_acceptance",
+  "pull_request": 78,
+  "source": {
+    "github_main_commit": "6c5dfee4803ace1dbb2aca563b0bb80f3bfbdd2b",
+    "harness_commit": "4a135e84e96a2d7c4c7140a39f6c1a620e1d835b",
+    "application_diff_against_main": "none for backend/app, backend/migrations, backend/Dockerfile and backend/requirements.txt",
+    "last_commits_touching_selected_paths": {
+      "backend/app/main.py": "a7e175483ed878c4808e5f142a8f9fd8df82c457",
+      "backend/app/registry.py": "66a619aac3118dda272832a8d0d5d55ac1f663d2",
+      "backend/app/worker.py": "09143c3895e088213162056221aca59d4e0916cd",
+      "backend/app/jobs.py": "fb932c18f4f88985297ef770128157795a5892f8",
+      "backend/app/environments.py": "fb932c18f4f88985297ef770128157795a5892f8",
+      "backend/app/config.py": "5c8c91a566f57bf6c269dbded2df17aa8b867a6b",
+      "backend/app/execution_provenance.py": "fb932c18f4f88985297ef770128157795a5892f8",
+      "backend/app/compute.py": "d7dbb3c61463eac5ba954f44fa63d0255baaf0f6",
+      "backend/app/input_integrity.py": "b0cf56596a91ee00197a0c50fc048fb8d2292860",
+      "backend/app/reproduction.py": "fb932c18f4f88985297ef770128157795a5892f8",
+      "backend/app/object_store.py": "fb932c18f4f88985297ef770128157795a5892f8",
+      "backend/app/security.py": "f8194c3d4f75f2bd458402ec4a0bb3c807376bd3",
+      "backend/app/session_revocation.py": "27209480d84a0bd94bfcec617b332ec8929fd318",
+      "backend/docker-compose.example.yml": "fb932c18f4f88985297ef770128157795a5892f8",
+      "backend/Dockerfile": "98a228098d44ff20594f491b02404642e3a3544d",
+      "release-manifest-v3.70.0.json": "fb932c18f4f88985297ef770128157795a5892f8",
+      "wordpress/sustainable-catalyst-workspace/sustainable-catalyst-workspace.php": "fb932c18f4f88985297ef770128157795a5892f8"
+    },
+    "reference_migration_checksums": "evidence/migrations.sha256"
+  },
+  "component_versions": {
+    "workspace_backend": {
+      "version": "3.83.0",
+      "evidence": "local health and source default"
+    },
+    "wordpress_plugin": {
+      "version": "3.70.0",
+      "evidence": "source header and release manifest only"
+    },
+    "execution_provenance_profile_declared_version": "3.5.0",
+    "knowledge_base_verified_component": "Workspace Backend 3.83.0 \u2014 isolated implementation verification",
+    "deployed_workspace_product_version": null
+  },
+  "local_integration": {
+    "status": "executed",
+    "test_results": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "checks": {
+      "run_creation": "pass",
+      "historical_dataset_model_parameter_and_environment_references": "pass",
+      "parameter_descriptor_fingerprint": "pass",
+      "job_state_and_failed_execution_retry": "pass",
+      "sequential_run_and_job_idempotency": "pass",
+      "stale_write_and_missing_revision_conflict": "pass",
+      "anonymous_and_cross_owner_access": "pass",
+      "durable_session_revocation": "pass",
+      "output_registration_and_content_integrity": "pass",
+      "run_job_audit_events_and_provenance_snapshot": "pass",
+      "persistence_across_new_connections": "pass",
+      "local_native_numerical_replay": "pass",
+      "live_byte_integrity_of_reproduction_exact_classification": "failed_acceptance_property",
+      "concurrent_duplicate_requests": "untested",
+      "permission_revocation_beyond_test_session": "untested",
+      "worker_process_crash_and_database_restart": "untested"
+    },
+    "services": {
+      "api": "Sustainable Catalyst Workspace Backend 3.83.0, FastAPI ASGI in host Python",
+      "worker": "sc-run-verify-local-worker invoking app.jobs.claim_next_job and app.worker.process_job",
+      "api_image_digest": null,
+      "worker_image_digest": null,
+      "python_version": "Python 3.12.12",
+      "postgres_version": "16.15",
+      "postgres_platform": "linux/arm64",
+      "postgres_image_identity": "sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139 [\"postgres@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139\"] linux/arm64",
+      "explicitly_applied_sql_migrations": [
+        "054",
+        "055",
+        "056"
+      ],
+      "remaining_fresh_schema": "SQLAlchemy metadata via app.init_db"
+    },
+    "commands": [
+      "python3.12 -m venv work/venv",
+      "work/venv/bin/pip --no-cache-dir install -r work/repo/backend/requirements.txt pytest==9.0.2",
+      "cd work/repo",
+      "SC_RUN_VERIFY_POSTGRES_IMAGE=postgres:16-alpine bash scripts/sc_run_verify01_local.sh \"$PWD/../venv/bin/python\" \"$PWD/../docker-final\""
+    ],
+    "observations": "evidence/lifecycle.json"
+  },
+  "existing_tests": {
+    "focused_no_database": {
+      "passed": 23,
+      "failed": 3,
+      "skipped": 6,
+      "command": "PYTHONPATH=backend pytest -q -ra backend/tests/test_registry.py backend/tests/test_jobs.py backend/tests/test_scientific_execution_provenance_workspace_v3400.py backend/tests/test_cross_runtime_verification_v2170.py backend/tests/test_input_integrity_sc_nb01.py",
+      "failures": "Historical version assertions. Actual values and test names are in evidence/existing.xml."
+    },
+    "input_integrity_postgresql": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "command": "PYTHONPATH=backend SC_TEST_KEY_DIR=<private_tmp_dir> SC_WORKSPACE_DATABASE_URL=<disposable_postgresql_url> pytest -q -ra --disable-warnings backend/tests/test_input_integrity_sc_nb01.py",
+      "postgres_image": "sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139 [\"postgres@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139\"] linux/arm64",
+      "external_r_and_julia_http": "stubbed",
+      "evidence": "evidence/input-integrity-postgres.xml"
+    }
+  },
+  "github_actions": {
+    "scope": "Isolated CI PostgreSQL",
+    "workflow": ".github/workflows/sc-run-verify-01.yml",
+    "harness_commit": "4a135e84e96a2d7c4c7140a39f6c1a620e1d835b",
+    "id": 44680727472,
+    "url": "https://github.com/Content-Catalyst-LLC/sustainable-catalyst-workspace/actions/runs/44680727472",
+    "conclusion": "success",
+    "test_results": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postgres_version": "16.16 (Ubuntu 16.16-1.pgdg24.04+1)",
+    "python_version": "Python 3.12.16",
+    "observations": "evidence/ci/lifecycle.json"
+  },
+  "deployment": {
+    "github_deployments_for_source_commit": [],
+    "candidate_image_workflow_runs_for_source_commit": [],
+    "staging": {
+      "status": "blocked",
+      "lab": "untested",
+      "library": "untested",
+      "research": "untested",
+      "missing": [
+        "authorized staging endpoints and fixture tenancy",
+        "running service and container digest inventory",
+        "applied migration ledger",
+        "scoped credentials and deployed interface identities"
+      ]
+    },
+    "production": {
+      "status": "untested",
+      "changes_made": false
+    }
+  },
+  "scientific_validation": {
+    "status": "untested",
+    "numerical_check_scope": "one synthetic descriptive statistics fixture"
+  },
+  "evidence_artifacts": {
+    "evidence/ci/integration.log": "a8d1a110ac3d09552df44cf335ecf492f77a7371a710ec37f77a0522f746035b",
+    "evidence/ci/integration.xml": "441c3b961774e2f121a51e0202b2fbc800f232d78ad9e1805fdb3060429fef92",
+    "evidence/ci/lifecycle.json": "d688462b2100f6177d637588eee208386a6625e797e591bd757d4b3e70eb9cf2",
+    "evidence/ci/postgres-version.txt": "4b69b3d958f3438396521f7d1d51bd7b6f05151851f49462f85f9eacfb573f26",
+    "evidence/ci/python-dependencies.txt": "7bafa477ff34a74fe26213b66418a4c26d797378164a5cec11c019e62a0a2cc3",
+    "evidence/ci/python-version.txt": "9d0ae83e540febd225949f3df4aba97c7a9f79fcf745d6c835780f52a57b50cf",
+    "evidence/ci/schema.txt": "85c85b563ee1b14f8325e83413a39d06d5f3095853afd1c303933a63060b01aa",
+    "evidence/ci/source-commit.txt": "8b6193c61c53335500b0826071af845878b16f3c2817695254de1421b57ba9ec",
+    "evidence/existing.xml": "086a73493af915c955dab396320490a75beee268a4824c1357aaaf81425dec2e",
+    "evidence/input-integrity-postgres.log": "22285141fe9b30041fd0c8857893477be8fee0fc758cd0ef619735e223a32587",
+    "evidence/input-integrity-postgres.xml": "7c0cade611abbbf633e743f7e7168765fc81f657835e0f4bd13795ea22006407",
+    "evidence/integration.log": "951525b92ea2d659feb828afa03cf86b73ff6a43fb440d0897d128ceeedaad5c",
+    "evidence/integration.xml": "c2b0b05770e7ec0a6932639bc62ff3aaacf64a61709bf8868ef623c86c82c9ce",
+    "evidence/lifecycle.json": "a01916425696b3c8cac9fa4e1257569065e824b80d269d7398b46e1c79ccfc8f",
+    "evidence/migrations.sha256": "5a69701f9b5995fae4ffe8f9fe44c6de5d9d3c280bbb6ed504fe68feccab65bb",
+    "evidence/postgres-image.txt": "4d218f0c367264c3a4aa47facd606c7e67a97b584be7cbd15cbe6b8c3a93a3da",
+    "evidence/postgres-version.txt": "891e4fd21666e66b5362e2b13d1bda45cc4402505a2a1548fd6c5ca7cdaae9da",
+    "evidence/python-dependencies.txt": "638de1ecd9646da8983ab64f9c79666e3fd6c8a68ed27febfb8694e7377bf0b0",
+    "evidence/python-version.txt": "11127b908355ca05c3fd89fb6e7622ae40cd54419cb5d62508fd633c259ee313",
+    "evidence/schema.txt": "85c85b563ee1b14f8325e83413a39d06d5f3095853afd1c303933a63060b01aa",
+    "evidence/source-commit.txt": "8b6193c61c53335500b0826071af845878b16f3c2817695254de1421b57ba9ec"
+  }
+}
