@@ -165,9 +165,13 @@ def source_reference(version: dict, project_id: str) -> dict:
 
 
 def _library_origin() -> str:
-    """Library origin for dataset profiles: the certified public Library, or (staging) an internal service host."""
+    """Library origin for dataset profiles: the certified public Library, or (staging) an internal service host.
+
+    Opt-in through its own setting only. The discovery origin (SC_WORKSPACE_LIBRARY_PUBLIC_API_ORIGIN) is not reused, so
+    configuring Library discovery never also sends dataset descriptors to the Library.
+    """
     from urllib.parse import urlsplit
-    base = (os.getenv('SC_WORKSPACE_LIBRARY_PROFILE_ORIGIN') or os.getenv('SC_WORKSPACE_LIBRARY_PUBLIC_API_ORIGIN') or '').rstrip('/')
+    base = (os.getenv('SC_WORKSPACE_LIBRARY_PROFILE_ORIGIN') or '').rstrip('/')
     p = urlsplit(base)
     public = p.scheme == 'https' and p.hostname == 'library.sustainablecatalyst.com' and p.port in (None, 443)
     internal = p.scheme == 'http' and bool(re.fullmatch(r'[a-z][a-z0-9-]{1,62}', p.hostname or ''))
