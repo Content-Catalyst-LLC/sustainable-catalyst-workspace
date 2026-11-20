@@ -37,6 +37,11 @@ KEY = re.compile(r'^[A-Za-z0-9_.:-]{1,80}$')
 # One marker holds one or more ``@key`` cites, each with an optional locator: [@a2020], [@a2020, p. 4; @b2021].
 MARKER = re.compile(r'\[(@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?(?:;\s*@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?)*)\]')
 SITE_AUTHORS = {'wordpress-main': 'Sustainable Catalyst'}  # Library sources whose organisational author is known
+# A Markdown link inside a reference: ``[Title](https://…)`` is the title and its URL, never part of either.
+MD_LINK = re.compile(r'\[([^\]\n]{1,500})\]\((https?://[^)\s]{1,2000})\)')
+ACCESSED = re.compile(r'\(?\s*\bAccessed:?\s+([^()]{3,40}?)\s*\)?\s*\.?\s*$', re.I)
+CORRECTABLE = ('type', 'authors', 'year', 'yearSuffix', 'title', 'container', 'volume', 'issue', 'pages', 'publisher', 'doi',
+               'url', 'accessed')
 MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November',
           'December')
 # Provenance a CSL-JSON row may carry in ``custom`` when its metadata was checked against the publisher's own catalog.
@@ -141,6 +146,8 @@ def _date_text(value: Any) -> str:
 def item_fingerprint(item: dict) -> str:
     basis = {k: item.get(k) for k in ('type', 'authors', 'year', 'title', 'container', 'volume', 'issue', 'pages',
                                       'publisher', 'doi', 'url', 'accessed')}
+    if item.get('yearSuffix'):  # only when present, so records without one keep their fingerprint
+        basis['yearSuffix'] = item['yearSuffix']
     return hashlib.sha256(json.dumps(basis, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
@@ -154,6 +161,13 @@ def make_item(fields: dict, provenance: dict) -> dict:
             'url': _url(fields.get('url')), 'accessed': _clean(fields.get('accessed'), 40)}
     if not item['title']:
         raise ValueError('A citation needs a title')
+    suffix = _clean(fields.get('yearSuffix'), 2).lower()
+    if suffix:
+        if not re.fullmatch(r'[a-z]', suffix):
+            raise ValueError('A year suffix is one letter, a to z')
+        if not item['year']:
+            raise ValueError('A year suffix needs a year')
+        item['yearSuffix'] = suffix
     item['fingerprint'] = item_fingerprint(item)
     item['provenance'] = {k: v for k, v in provenance.items() if v not in (None, '')}
     item['key'] = base_key(item)
@@ -302,6 +316,11 @@ def _join(names: list[str], amp: str) -> str:
     return names[0] if len(names) == 1 else ', '.join(names[:-1]) + (',' if amp == '&' and len(names) > 2 else '') + f' {amp} ' + names[-1]
 
 
+def year_label(item: dict) -> str:
+    """``2024``, ``2024a`` when two works by one author share a year, or ``n.d.``."""
+    return str(item['year']) + (item.get('yearSuffix') or '') if item['year'] else 'n.d.'
+
+
 def in_text(item: dict, style: str = DEFAULT_STYLE, locator: str = '') -> str:
     if style == 'harvard-erw-v132':
         legacy = (item.get('provenance') or {}).get('erwV132InText')
@@ -310,7 +329,7 @@ def in_text(item: dict, style: str = DEFAULT_STYLE, locator: str = '') -> str:
     names = [_surname(p) for p in item['authors']] or [item['title']]
     amp = '&' if style == 'apa' else 'and'
     label = names[0] if len(names) == 1 else f'{names[0]} {amp} {names[1]}' if len(names) == 2 else names[0] + ' et al.'
-    year = str(item['year']) if item['year'] else 'n.d.'
+    year = year_label(item)
     locator = (locator or '').strip()
     loc = ', ' + locator if locator else ''
     return f'({label}, {year}{loc})'
@@ -326,7 +345,7 @@ def reference(item: dict, style: str = DEFAULT_STYLE) -> str:
                                  'journal': item['container'], 'volume': item['volume'], 'issue': item['issue'],
                                  'pages': item['pages'], 'publisher': item['publisher'], 'doi': item['doi'],
                                  'url': item['url'], 'verifiedByResearcher': True})['reference'] or ''
-    year = str(item['year']) if item['year'] else 'n.d.'
+    year = year_label(item)
     names = [_name(p, style) for p in item['authors']]
     if style == 'apa':
         who = _join(names[:20], '&') if names else item['title']
@@ -364,7 +383,8 @@ def reference(item: dict, style: str = DEFAULT_STYLE) -> str:
 
 def sort_key(item: dict):
     first = item['authors'][0] if item['authors'] else {}
-    return ((_surname(first) or item['title']).casefold(), item['year'] or 0, item['title'].casefold())
+    return ((_surname(first) or item['title']).casefold(), item['year'] or 0, item.get('yearSuffix') or '',
+            item['title'].casefold())
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -408,6 +428,36 @@ def add_items(current: dict, entries: list[tuple[dict, dict]], common: dict) -> 
         item['addedId'] = uuid4().hex
         items.append(item); added.append(item['key'])
     return result, {'added': added, 'reused': reused, 'rejected': rejected}
+
+
+class DuplicateRecord(ValueError):
+    pass
+
+
+def correct_item(current: dict, key: str, fields: dict, reason: str, at: str) -> tuple[dict, dict]:
+    """Correct one record in place. Its key (and so every ``[@key]`` cite), provenance and import id are kept; the
+    previous fields are kept in ``corrections``. Saved revisions are unaffected: each froze its own bibliography."""
+    result = deepcopy(current)
+    items = result['items']
+    item = next((x for x in items if x.get('key') == key), None)
+    if item is None:
+        raise LookupError(key)
+    unknown = sorted(set(fields) - set(CORRECTABLE))
+    if unknown:
+        raise ValueError('Not a correctable field: ' + ', '.join(unknown))
+    fixed = make_item({**{k: item.get(k) for k in CORRECTABLE}, **fields}, item.get('provenance') or {})
+    if fixed['fingerprint'] == item['fingerprint']:
+        raise ValueError('The correction changes nothing')
+    twin = next((x for x in items if x is not item and (x['fingerprint'] == fixed['fingerprint'] or (
+        fixed['doi'] and (x.get('doi') or '').lower() == fixed['doi'].lower()))), None)
+    if twin:
+        raise DuplicateRecord('The corrected record would duplicate ' + twin['key'])
+    previous = {k: item[k] for k in (*CORRECTABLE, 'fingerprint') if k in item}
+    for k in CORRECTABLE:
+        item.pop(k, None)
+    item.update({k: fixed[k] for k in (*CORRECTABLE, 'fingerprint') if k in fixed})
+    item['corrections'] = [*item.get('corrections', []), {'at': at, 'reason': reason, 'previous': previous}]
+    return result, {'key': key, 'fingerprint': item['fingerprint'], 'corrections': len(item['corrections'])}
 
 
 def cited_keys(markdown: str) -> list[str]:
@@ -566,9 +616,16 @@ def _people(text: str) -> tuple[list, list[str]]:
 def parse_reference_text(text: str) -> dict:
     """Best-effort author-date parse (Harvard/APA). Never authoritative: the result is reviewed before import."""
     issues = []
+    link = MD_LINK.search(text)
+    if link:
+        text = text[:link.start()] + link.group(1) + text[link.end():]
+    accessed_match = ACCESSED.search(text)
+    accessed = accessed_match.group(1).strip(' .') if accessed_match else ''
+    if accessed_match:
+        text = text[:accessed_match.start()].rstrip()
     url_match = re.search(r'(https?://\S+?)[.,;)]?$', text) or re.search(r'https?://\S+', text)
     url = (url_match.group(1) if url_match and url_match.lastindex else url_match.group(0) if url_match else '')
-    url = url.rstrip('.,;')
+    url = link.group(2) if link else url.rstrip('.,;')
     doi_match = re.search(r'(?:doi\.org/|doi:\s*)(10\.\d{4,9}/[^\s,;]+)', text, re.I) or \
         re.search(r'\b(10\.\d{4,9}/[^\s,;]+)', text)
     doi = doi_match.group(1).rstrip('.') if doi_match else ''
@@ -578,8 +635,9 @@ def parse_reference_text(text: str) -> dict:
     if url:
         body = body.replace(url, '')
     body = re.sub(r'https?://\S+', '', body).strip()
-    year_match = re.search(r'\((\d{4})[a-z]?(?:,[^)]*)?\)|\((n\.d\.)\)', body)
+    year_match = re.search(r'\((\d{4})([a-z])?(?:,[^)]*)?\)|\((n\.d\.)\)', body)
     year = int(year_match.group(1)) if year_match and year_match.group(1) else None
+    suffix = (year_match.group(2) or '') if year_match else ''
     if not year_match:
         issues.append('no year in parentheses')
         authors_text, rest = '', body
@@ -607,11 +665,14 @@ def parse_reference_text(text: str) -> dict:
         issues.append('no title')
     if not authors:
         issues.append('no author')
-    kind = 'article-journal' if volume or doi else 'webpage' if url and not container else 'report'
-    fields = {'type': kind, 'authors': authors, 'year': year, 'title': title, 'container': container,
-              'volume': volume.group(1) if volume else '', 'issue': volume.group(2) if volume else '',
-              'pages': pages.group(1).replace(' ', '') if pages else '', 'doi': doi, 'url': '' if doi else url}
-    if fields['type'] == 'report' and container and not volume:
+    # "Place: Publisher" after the title is a book (Harvard), whether or not a web address follows.
+    book = bool(container and re.fullmatch(r"[A-Z][^:,.]{1,60}:\s*[^:]{2,120}", container))
+    kind = 'article-journal' if volume or doi else 'book' if book else 'webpage' if url and not container else 'report'
+    fields = {'type': kind, 'authors': authors, 'year': year, 'yearSuffix': suffix, 'title': title,
+              'container': container, 'volume': volume.group(1) if volume else '',
+              'issue': volume.group(2) if volume else '', 'pages': pages.group(1).replace(' ', '') if pages else '',
+              'doi': doi, 'url': '' if doi else url, 'accessed': accessed}
+    if fields['type'] in ('report', 'book') and container and not volume:
         fields['publisher'], fields['container'] = container, ''
     return {'fields': fields, 'issues': issues}
 
@@ -672,8 +733,9 @@ def review_manuscript_references(markdown: str, current: dict, library_search: C
         if item:
             first = item['authors'][0] if item['authors'] else {}
             name = first.get('family') or first.get('literal') or ''
-            if name and item['year']:
-                cited = len(re.findall(re.escape(name.split()[0]) + r'[^()]{0,60}?' + str(item['year']), body))
+            if name:
+                cited = len(re.findall(re.escape(name.split()[0]) + r'[^()]{0,60}?' + re.escape(year_label(item))
+                                       + r'(?![a-z0-9])', body))
         entries.append({'proposalId': proposal_id, 'text': text, 'fields': fields, 'status': status,
                         'existingKey': existing, 'issues': issues, 'verification': verification,
                         'proposedKey': item['key'] if item else None, 'inTextMentions': cited,
@@ -723,6 +785,13 @@ class ManuscriptImport(BaseModel):
     manuscriptSha256: str = Field(pattern=r'^[a-f0-9]{64}$')
     accept: list[str] = Field(min_length=1, max_length=MAX_ITEMS)
     sourceArtifactId: str | None = Field(default=None, max_length=160)
+    expectedProjectRevision: int = Field(ge=1)
+
+
+class CorrectItem(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    fields: dict = Field(min_length=1, max_length=len(CORRECTABLE))
+    reason: str = Field(min_length=10, max_length=500)
     expectedProjectRevision: int = Field(ge=1)
 
 
@@ -827,6 +896,29 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
     def library_search(q: str, request: Request):
         deps['subject'](request)
         return JSONResponse(deps['library_search'](q), headers=H)
+
+    @router.post('/projects/{project_id}/items/{key}/correct')
+    def correct_record(project_id: str, key: str, body: CorrectItem, request: Request):
+        """The owner corrects one record's metadata; the record keeps its key and the previous fields are kept."""
+        from datetime import datetime, timezone
+        owner = deps['subject'](request); deps['write'](request)
+        if not KEY.fullmatch(key):
+            raise HTTPException(404, 'Citation record not found.')
+        with deps['session']() as db:
+            row = deps['locked_project'](db, owner, project_id)
+            if row.revision != body.expectedProjectRevision:
+                raise HTTPException(409, 'Workspace project changed. Reload before correcting.')
+            try:
+                current, report = correct_item(collection(row.package), key, body.fields, body.reason.strip(),
+                                               datetime.now(timezone.utc).isoformat())
+            except LookupError:
+                raise HTTPException(404, 'Citation record not found.')
+            except DuplicateRecord as exc:
+                raise HTTPException(409, str(exc))
+            except ValueError as exc:
+                raise HTTPException(422, str(exc))
+            row = save(db, owner, row, current, 'citation-correct-' + uuid4().hex)
+            return JSONResponse({**view(row, current), 'correction': report}, headers=H)
 
     @router.post('/projects/{project_id}/bibliography')
     def bibliography(project_id: str, body: FormatRequest, request: Request):
