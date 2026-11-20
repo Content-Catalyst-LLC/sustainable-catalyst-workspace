@@ -73,10 +73,17 @@ async function open(manuscript = original, visual = true) {
   assert.equal(await value(), manuscript, 'opening does not change the manuscript');
 }
 
+// ProseMirror reads a click's DOM selection asynchronously; a person never types faster than that, a test can.
+const settled = () => page.waitForFunction(() => {
+  const view = document.querySelector('.sc-doc-page .tiptap').editor.view, dom = getSelection();
+  return dom.anchorNode && view.posAtDOM(dom.anchorNode, dom.anchorOffset) === view.state.selection.anchor;
+});
+
 // A real click on the block containing `text`, then keys to the wanted caret position.
 async function clickIn(text, key) {
   await editor().locator('h1,h2,p,li', {hasText: text}).first().click();
-  if (key) await page.keyboard.press(key);
+  await settled();
+  if (key) { await page.keyboard.press(key); await settled(); }
 }
 
 // Top-level blocks of the Markdown, abbreviated, to assert order.
@@ -259,6 +266,115 @@ try {
     assert.equal(await value(), md);
     assert.equal(await editor().locator('figure.sc-doc-figure').count(), 1);
     assert.equal(await editor().locator('table').count(), 1);
+  });
+
+  // SC-FIG-PLACE-02: paragraphs made with Enter are their own blocks -------------------------------------------
+  const TYPED = ['Typed one about the plots.', 'Typed two about the method.', 'Typed three before the next section.'];
+  const typeParagraphs = async () => {
+    await clickIn('Introduction', 'End');
+    for (const text of TYPED) { await page.keyboard.press('Enter');
+      await page.keyboard.type(text); }
+  };
+  const withTyped = original.replace('## Introduction\n\n', '## Introduction\n\n' + TYPED.join('\n\n') + '\n\n');
+
+  await check('Enter-typed paragraphs are separate blocks and every saved block keeps its bytes', async () => {
+    await open();
+    await typeParagraphs();
+    assert.equal(await value(), withTyped, 'the Markdown is the original plus three paragraphs');
+    assert.equal(await editor().locator('p', {hasText: 'Typed'}).count(), 3);
+  });
+
+  for (const [where, at, key, anchor] of [
+    ['beginning', 0, 'Home', '## Introduction'],
+    ['middle', 1, 'End', TYPED[1].slice(0, 24)],
+    ['middle (first typed paragraph, the SC-OUTPUT-02 staging case)', 0, 'End', TYPED[0].slice(0, 24)],
+    ['end', 2, 'End', TYPED[2].slice(0, 24)],
+  ]) {
+    await check(`Enter-typed paragraphs: ${where} inserts at that paragraph boundary`, async () => {
+      await open();
+      await typeParagraphs();
+      await clickIn(TYPED[at], key);
+      await page.click('#insertOutput');
+      const md = await value();
+      assertOutputAfter(md, anchor, where);
+      assertOriginalKept(md, where, withTyped);
+      const order = await editor().evaluate(r => [...r.children].map(n => n.tagName + ':' + n.textContent.slice(0, 12)));
+      const fig = order.findIndex(x => x.startsWith('FIGURE'));
+      assert.equal(order[fig + 4], key === 'Home' ? 'P:' + TYPED[0].slice(0, 12) : at < 2 ? 'P:' + TYPED[at + 1].slice(0, 12) : 'P:Intro senten',
+        where + ': the next paragraph follows the output in the editor');
+    });
+  }
+
+  await check('Enter-typed paragraphs: a source-file figure goes to the same boundary, then save and reopen', async () => {
+    await open();
+    await typeParagraphs();
+    await clickIn(TYPED[1], 'End');
+    await page.click('#insertFigure');
+    const md = await value();
+    assert.ok(md.includes(TYPED[1] + '\n\n' + FIGURE + '\n\n' + TYPED[2]), 'figure between typed paragraphs two and three');
+    await page.evaluate(() => { tiptapBridge.destroy(); tiptapBridge.render(); });
+    assert.equal(await value(), md, 'reopened unchanged');
+    await clickIn(TYPED[0], 'End');
+    await page.click('#insertOutput');
+    const again = await value();
+    assertOutputAfter(again, TYPED[0].slice(0, 24), 'after reopen');
+    assert.ok(again.includes(TYPED[1] + '\n\n' + FIGURE), 'figure kept in place');
+  });
+
+  const CITED = original.replace('Intro sentence one. Intro sentence two.',
+    'Intro sentence one [@Alpha2020]. Intro sentence two [@Beta2021; @Gamma2022, p. 4] and \\[@Literal\\].');
+
+  await check('splitting a saved paragraph keeps its citations active in both halves and a literal stays literal', async () => {
+    await open(CITED);
+    await clickIn('Intro sentence one', 'Home');
+    for (let i = 0; i < 'Intro sentence one [@Alpha2020]. '.length; i += 1) await page.keyboard.press('ArrowRight');
+    await settled();
+    await page.keyboard.press('Enter');
+    let md = await value();
+    assert.equal(md, CITED.replace('[@Alpha2020]. Intro sentence two', '[@Alpha2020]. \n\nIntro sentence two'),
+      'two paragraphs, split after the space; markers [@Beta2021; @Gamma2022, p. 4] restored and \\[@Literal\\] still escaped');
+    await clickIn('Intro sentence one', 'End');
+    await page.click('#insertOutput');
+    md = await value();
+    assertOutputAfter(md, 'Intro sentence one [@Alp', 'split');
+    assert.ok(md.includes('version 1.\n\nIntro sentence two [@Beta2021; @Gamma2022, p. 4] and \\[@Literal\\].'), 'tail after the output');
+  });
+
+  await check('Enter at the start or end of a saved paragraph leaves that paragraph byte for byte', async () => {
+    await open(CITED);
+    await clickIn('Intro sentence one', 'Home');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowUp');
+    await settled();
+    await page.keyboard.type('New lead paragraph.');
+    const para = CITED.split('\n\n')[2];
+    assert.equal(await value(), CITED.replace(para, 'New lead paragraph.\n\n' + para));
+    await open(CITED);
+    await clickIn('Intro sentence one', 'End');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('New closing paragraph.');
+    assert.equal(await value(), CITED.replace(para, para + '\n\nNew closing paragraph.'));
+  });
+
+  await check('undoing the split restores the saved manuscript exactly', async () => {
+    await open(CITED);
+    await clickIn('sentence two', 'End');
+    for (let i = 0; i < 14; i += 1) await page.keyboard.press('ArrowLeft');
+    await settled();
+    await page.waitForTimeout(700);  // not grouped with the load in Undo history (fixed in the next commit)
+    await page.keyboard.press('Enter');
+    assert.notEqual(await value(), CITED);
+    await page.keyboard.press('ControlOrMeta+z');
+    assert.equal(await value(), CITED);
+  });
+
+  await check('a click and caret movement alone never change a saved manuscript', async () => {
+    for (const manuscript of [original, CITED, withTyped]) {
+      await open(manuscript);
+      for (const text of ['Synthetic Paper', 'Intro sentence', 'First step', 'Final paragraph.']) await clickIn(text, 'End');
+      await page.keyboard.press('ArrowDown');
+      assert.equal(await value(), manuscript);
+    }
   });
 
   // Markdown source mode ----------------------------------------------------------------------------------------
