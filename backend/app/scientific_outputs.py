@@ -145,10 +145,13 @@ def render_chart(spec: dict) -> bytes:
 
 
 def _sig(value: Any, digits: int) -> str:
+    """Display value at the declared significant figures, trailing zeros kept (1.0999 -> 1.100); integers as given."""
     if value is None:
         return '—'
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return format(value, f'.{digits}g')
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return format(value, f'#.{digits}g').rstrip('.')
     return str(value).replace('|', '/')
 
 

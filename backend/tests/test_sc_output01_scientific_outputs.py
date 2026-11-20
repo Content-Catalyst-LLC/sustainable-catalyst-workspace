@@ -77,6 +77,7 @@ def test_the_table_keeps_exact_values_in_the_csv_and_rounds_only_the_display():
     assert table['headers'] == ['Dose (mg)', 'Fitted response (units)', 'Lower bound (95% confidence interval) (units)',
                                 'Upper bound (95% confidence interval) (units)']
     assert table['rows'][0] == ['1', '2.05', '1.51', '2.59']
+    assert [sco._sig(v, 4) for v in (1.09999, 0.95184, 4.03, 1234.0, 2, None)] == ['1.100', '0.9518', '4.030', '1234', '2', '—']
     assert raw.decode().splitlines()[1] == '1,2.05,1.5124,2.5876,modelled'
 
 
@@ -215,7 +216,7 @@ def test_rights_gate_then_insertion_of_the_exact_version(env):
     ins = call(client, 'GET', url + '/insertion').json()
     md = ins['markdown']
     assert md.startswith(f"![SYNTHETIC fitted response by dose with its 95% confidence band](asset:{v['artifacts']['chart']['artifactId']})\n")
-    assert '| 1 | 2.05 | 1.512 | 2.588 |' in md and 'Evidence class: modelled.' in md and 'licence CC0-1.0' in md
+    assert '| 1 | 2.050 | 1.512 | 2.588 |' in md and 'Evidence class: modelled.' in md and 'licence CC0-1.0' in md
     blocks = pub.parse_blocks(md)
     assert [b['kind'] for b in blocks] == ['figure', 'paragraph', 'table', 'paragraph']
     csv = call(client, 'GET', url + '/table.csv')
@@ -247,7 +248,8 @@ def test_save_pins_exact_versions_refuses_pending_rights_and_exports_render_the_
     assert pins == [{'outputId': 'SYN-dose-response', 'version': 1,
                      **{f'{k}ArtifactId': a['artifactId'] for k, a in v1['artifacts'].items()},
                      **{f'{k}Sha256': a['sha256'] for k, a in v1['artifacts'].items()}, 'tableVerbatim': True}]
-    edited = md.replace('| 2 | 3.1 |', '| 2 | 3.2 |')
+    edited = md.replace('| 2 | 3.100 |', '| 2 | 3.200 |')
+    assert edited != md
     assert sco.pins(s.row.package, figures, pub.parse_blocks(edited))[0]['tableVerbatim'] is False
     sco.verify_pins(None, 'owner', PROJECT, {'outputSources': pins}, s.read)
     s.artifacts[('owner', v1['artifacts']['bundle']['artifactId'])]['raw'] += b' '
@@ -267,7 +269,7 @@ def test_save_pins_exact_versions_refuses_pending_rights_and_exports_render_the_
            'markdownSHA256': hashlib.sha256(md.encode()).hexdigest(), 'figureSources': [], 'outputSources': pins}
     chart = v1['artifacts']['chart']['artifactId']
     out = pub._as_html(doc, {chart: 'data:image/svg+xml;base64,' + __import__('base64').b64encode(svg).decode()}).decode()
-    assert '<img src="data:image/svg+xml;base64,' in out and '<th>Dose (mg)</th>' in out and '<td>2.588</td>' in out
+    assert '<img src="data:image/svg+xml;base64,' in out and '<th>Dose (mg)</th>' in out and '<td>2.588</td>' in out and '<td>2.050</td>' in out
     assert 'Scientific output SYN-dose-response version 1' in out
     pdf = pub._pdf(doc, {chart: svg})
     assert pdf.startswith(b'%PDF')
