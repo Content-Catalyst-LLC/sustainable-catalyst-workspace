@@ -172,6 +172,16 @@ def test_library_gates_units_inputs_and_bad_profiles(env, monkeypatch):
         assert exc.value.status_code == 503, origin
     monkeypatch.setenv('SC_WORKSPACE_LIBRARY_PROFILE_ORIGIN', 'https://library.sustainablecatalyst.com')
     assert sco._library_origin() == 'https://library.sustainablecatalyst.com'
+    # The discovery origin alone never enables dataset profiles: a descriptor is refused (503) and nothing is sent.
+    monkeypatch.delenv('SC_WORKSPACE_LIBRARY_PROFILE_ORIGIN')
+    monkeypatch.setenv('SC_WORKSPACE_LIBRARY_PUBLIC_API_ORIGIN', 'https://library.sustainablecatalyst.com')
+    with pytest.raises(HTTPException) as exc:
+        sco._library_origin()
+    assert exc.value.status_code == 503
+    sent = []
+    with pytest.raises(HTTPException) as exc:
+        sco.library_profile(sco.LibraryDescriptor(**DESCRIPTOR), lambda u, b: sent.append(u))
+    assert exc.value.status_code == 503 and sent == []
     # Without a Library descriptor the output still registers (the descriptor is optional), as before.
     assert call(client, 'POST', f'{PROJECT}/register', json=body(s, library=None)).status_code == 201
 
