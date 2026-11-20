@@ -361,11 +361,18 @@ try {
     await clickIn('sentence two', 'End');
     for (let i = 0; i < 14; i += 1) await page.keyboard.press('ArrowLeft');
     await settled();
-    await page.waitForTimeout(700);  // not grouped with the load in Undo history (fixed in the next commit)
     await page.keyboard.press('Enter');
     assert.notEqual(await value(), CITED);
     await page.keyboard.press('ControlOrMeta+z');
     assert.equal(await value(), CITED);
+  });
+
+  await check('Undo right after opening never empties the saved manuscript', async () => {
+    await open(CITED);
+    await clickIn('Final paragraph.', 'End');
+    for (let i = 0; i < 3; i += 1) await page.keyboard.press('ControlOrMeta+z');
+    assert.equal(await value(), CITED);
+    assert.equal(await editor().locator('h2').count(), 3);
   });
 
   await check('a click and caret movement alone never change a saved manuscript', async () => {

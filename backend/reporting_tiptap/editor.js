@@ -392,7 +392,8 @@ function render() {
         TableKit.configure({table: {resizable: false}}), SourceParts, ScientificSource, Scholarly],
       editorProps: {attributes: {'aria-label': 'Manuscript', 'data-sc-research-editor': 'tiptap', spellcheck: 'true'}},
     });
-    editor.commands.setContent(documentFor(source), {emitUpdate: false});
+    // Loading is not an edit: Undo must never step back past the saved manuscript to an empty editor.
+    editor.chain().setMeta('addToHistory', false).setContent(documentFor(source), {emitUpdate: false}).run();
     baseline = [];
     for (const group of groups()) {
       if (group.key !== null && !(group.nodes.length === 1 && group.nodes[0].type === 'scSource')) {
