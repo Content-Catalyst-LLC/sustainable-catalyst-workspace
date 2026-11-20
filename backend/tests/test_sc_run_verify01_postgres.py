@@ -184,7 +184,7 @@ def test_run_lifecycle_and_independent_replay():
         assert provenance["inputs"]["datasets"][0]["ref"]["revision"] == 1
         assert provenance["inputs"]["parameterSet"]["ref"]["fingerprint"] == fingerprint
         assert provenance["outputs"][0]["sha256"] == output["sha256"]
-        assert provenance["receipts"]
+        assert provenance["scientificReceipts"]
         snapshot = post(client, f"execution-provenance/projects/{PROJECT}/snapshots",
                         "scientific-execution-provenance-snapshot-request", runId="original")["item"]
 
