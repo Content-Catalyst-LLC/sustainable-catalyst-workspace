@@ -98,7 +98,9 @@ function insertManuscriptBlocks(snippet) {
     throw Error('This figure is already in the manuscript (' + repeated.join(', ') + '). Nothing was inserted; ' +
                 'move or delete the existing copy instead.');
   }
-  if (!(visualMode && tiptapBridge && tiptapBridge.insertBlocks(snippet))) insertSourceBlocks(snippet);
+  if (!(visualMode && tiptapBridge && tiptapBridge.insertBlocks && tiptapBridge.insertBlocks(snippet))) {
+    insertSourceBlocks(snippet);
+  }
 }
 
 function insertManuscriptCitation(key) {
