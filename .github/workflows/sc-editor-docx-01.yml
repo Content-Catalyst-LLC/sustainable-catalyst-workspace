@@ -6,6 +6,10 @@ on:
       - 'backend/app/docx_manuscript.py'
       - 'backend/app/reporting_publication*'
       - 'backend/app/reporting_scientific_outputs_ui.js'
+      - 'backend/app/scientific_outputs.py'
+      - 'backend/app/notebook_figure_bundle.py'
+      - 'backend/reporting_math/output_chart.cjs'
+      - 'backend/tests/test_sc_output0*.py'
       - 'backend/app/citation_studio.py'
       - 'backend/app/research_documents.py'
       - 'backend/reporting_tiptap/**'
@@ -43,6 +47,12 @@ jobs:
         run: |
           python -m pip install -r requirements.txt -r requirements-reporting.txt pytest pypdf
           python -m pip check
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install the pinned Lab chart engine dependencies (scientific-output charts)
+        working-directory: backend/reporting_math
+        run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund
       - name: Structured import, figures, save/reopen, semantic HTML/PDF/DOCX exports, reference review (synthetic)
         env:
           PYTHONDONTWRITEBYTECODE: '1'
@@ -50,10 +60,8 @@ jobs:
         run: |
           python -m pytest -q tests/test_sc_editor_docx01_word_import.py tests/test_sc_cite01_citation_studio.py \
             tests/test_rd012_reporting_studio_recovery.py tests/test_sc_pub_layout01.py tests/test_sc_pub_e2e01_outputs.py \
-            tests/test_sc_research_docs01_document_viewer.py tests/test_sc_research_project01_project_workspace.py
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+            tests/test_sc_research_docs01_document_viewer.py tests/test_sc_research_project01_project_workspace.py \
+            tests/test_sc_output01_scientific_outputs.py tests/test_sc_output02_cross_application.py
       - name: Build the editor and run the source-preservation tests
         working-directory: backend/reporting_tiptap
         run: |
@@ -68,3 +76,6 @@ jobs:
       - name: Figure and scientific-output placement in Chromium (beginning, middle, end, focus, duplicates)
         working-directory: backend/reporting_tiptap
         run: node tests/browser-insertion.mjs
+      - name: Cross-application outputs in the picker and explicit update to a new version in Chromium (SC-OUTPUT-02)
+        working-directory: backend/reporting_tiptap
+        run: node tests/browser-output-update.mjs

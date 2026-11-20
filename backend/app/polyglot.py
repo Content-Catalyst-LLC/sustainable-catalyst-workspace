@@ -219,7 +219,8 @@ RUNTIMES: tuple[RuntimeSpec, ...] = (
     # SC-SIM-01 G7/G8: Workspace orchestrates and issues the receipt; the calculation stays in its product.
     RuntimeSpec("workbench", "workbench-calculation-engine", "server-configured-http", (
         "workspace.workbench.uncertainty-propagation", "workspace.workbench.dynamical-simulation",
-    ), "Governed adapter into existing Workbench uncertainty propagation and dynamical simulation."),
+        "workspace.workbench.uncertainty-propagation-rows",
+    ), "Governed adapter into existing Workbench uncertainty propagation (scalar or per dataset row) and dynamical simulation."),
     RuntimeSpec("decision-studio", "decision-studio-analysis", "server-configured-http", (
         "workspace.decision-studio.scenario-comparison", "workspace.decision-studio.sensitivity-analysis",
     ), "Governed adapter into existing Decision Studio scenario comparison and sensitivity analysis; no decision objects change."),

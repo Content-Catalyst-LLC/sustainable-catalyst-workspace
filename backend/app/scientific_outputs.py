@@ -12,6 +12,13 @@ computes science or draws charts of its own:
 Versions are append-only. A new computation registers version N+1 under new artifact ids; saved manuscript revisions
 keep pointing at the exact version they inserted. Every output is private and owner-scoped: there is no route that
 makes one public, and insertion is refused until the owner has declared rights for it and for every input dataset.
+
+SC-OUTPUT-02 — cross-application outputs. The producing application is the runtime that issued the cell's Workspace
+receipt (a Workbench calculation through its governed adapter, or a Workspace notebook runtime); every version carries
+one common source reference (``sc-scientific-source-reference/1.0``). A Library dataset descriptor, normalised and
+fingerprinted by the Library's own ``sc-library-dataset-profile/1.0`` contract, can be bound to the input dataset at
+registration; its units must agree with the figure's. Verification covers receipts, input bytes and output bytes only,
+never the scientific conclusions.
 """
 from __future__ import annotations
 
@@ -36,6 +43,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from . import notebook_figure_bundle as fb
 from . import object_store
+from .library_discovery_v3841 import _NoRedirect
 from .schemas import ArtifactStoreRequest
 
 REGISTRY_SCHEMA = 'sc-scientific-output-registry/1.0'
@@ -47,6 +55,13 @@ ENGINE = {'name': 'Lab scientific visualization engine', 'version': '0.44.0',
 MAX_TABLE_ROWS = 200
 CAPTION = re.compile(r'^[^\[\]\n]{15,160}$')
 OUTPUT_ID = fb.FIGURE_ID
+SOURCE_REFERENCE_SCHEMA = 'sc-scientific-source-reference/1.0'
+LIBRARY_PROFILE_SCHEMA = 'sc-library-dataset-profile/1.0'
+# Applications whose outputs reach the Studio through a Workspace receipt (by the receipt's runtime language).
+APPLICATIONS = {'workspace-notebook': 'Workspace Notebook Desk', 'workbench': 'Workbench',
+                'decision-studio': 'Decision Studio'}
+VERIFICATION_STATEMENT = ('Workspace verified the computation receipt, the pinned input bytes and these output bytes. '
+                          'Neither these checks nor the rendering verify the scientific conclusions.')
 
 
 class Rights(BaseModel):
@@ -57,6 +72,27 @@ class Rights(BaseModel):
     statement: str = Field(min_length=20, max_length=600)
     # Each input dataset needs its own licence; holding a dataset is not a right to publish it (SC-FIG-02B).
     sourceLicences: dict[str, str] = Field(default_factory=dict, max_length=12)
+
+
+class LibraryVariable(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    name: str = Field(pattern=fb.FIELD.pattern)
+    label: str = Field(default='', max_length=200)
+    type: Literal['numeric', 'integer', 'categorical', 'boolean', 'date', 'string', 'geospatial', 'other'] = 'numeric'
+    role: Literal['outcome', 'exposure', 'treatment', 'predictor', 'covariate', 'identifier', 'stratum', 'time',
+                  'geography', 'other'] = 'other'
+    unit: str = Field(default='', max_length=40)
+
+
+class LibraryDescriptor(BaseModel):
+    """The input dataset as the Library describes it: variables, roles and units (no rows leave Workspace)."""
+    model_config = ConfigDict(extra='forbid')
+    sourceId: str = Field(min_length=3, max_length=200)
+    title: str = Field(min_length=8, max_length=300)
+    kind: Literal['experimental', 'observational', 'simulation', 'survey', 'time-series', 'geospatial', 'other']
+    provider: str = Field(min_length=2, max_length=200)
+    description: str = Field(default='', max_length=2000)
+    variables: list[LibraryVariable] = Field(min_length=1, max_length=40)
 
 
 class TableSpec(BaseModel):
@@ -74,6 +110,7 @@ class Register(BaseModel):
     table: TableSpec
     rights: Rights
     citation: str = Field(min_length=20, max_length=600)
+    library: LibraryDescriptor | None = None
     expectedProjectRevision: int = Field(ge=1)
 
 
@@ -93,6 +130,97 @@ def registry(package: dict) -> dict:
 def versions_by_chart(package: dict) -> dict[str, dict]:
     """Every registered version, keyed by its chart artifact id (the id a manuscript figure line names)."""
     return {v['artifacts']['chart']['artifactId']: v for o in registry(package)['outputs'] for v in o['versions']}
+
+
+def application_of(version: dict) -> str:
+    """The producing application: the runtime language on the cell's Workspace receipt (SC-OUTPUT-01 versions predate
+    the field and were all Workspace notebook runtimes)."""
+    language = (version.get('run') or {}).get('language') or ''
+    return language if language in APPLICATIONS and language != 'workspace-notebook' else 'workspace-notebook'
+
+
+def source_reference(version: dict, project_id: str) -> dict:
+    """The common cross-application source reference for one immutable output version (derived, never stored alone)."""
+    rights, asset, run = version['rights'][-1], version['asset'], version['run']
+    app = application_of(version)
+    return {
+        'schema': SOURCE_REFERENCE_SCHEMA, 'application': app, 'applicationLabel': APPLICATIONS[app],
+        'binding': {'ownerScope': asset['owner_scope'], 'projectId': project_id, 'visibility': asset['visibility'],
+                    'publicApproval': version['publicApproval']},
+        'artifact': {'outputId': version['outputId'], 'version': version['version'],
+                     'immutableVersion': f"{version['outputId']}@v{version['version']}",
+                     'hashes': {role: a['sha256'] for role, a in version['artifacts'].items()}},
+        'computedBy': {k: run.get(k) for k in ('runId', 'receiptId', 'resultSha256', 'language', 'runtime', 'operation')},
+        'rights': {'status': rights['status'], 'license': rights['license'], 'rightsHolder': rights['rightsHolder'],
+                   'sourceLicences': rights.get('sourceLicences') or {}},
+        'citation': version['citation'], 'units': asset['units'], 'evidenceClass': version['evidenceClass'],
+        'uncertainty': asset['uncertainty'],
+        'lineage': {'datasets': [{k: s.get(k) for k in ('sourceId', 'sha256', 'identityStatus')} for s in version['dataset']],
+                    'library': version.get('library'), 'notebook': version['notebook'], 'refs': asset['lineage']},
+        'calculation': [c['method'] for c in version['calculation']],
+        'verification': {'status': 'receipt-and-bytes-verified' if run.get('verification') == 'executed-verified'
+                         else 'unverified', 'inputLineage': run.get('inputLineage'),
+                         'scientificConclusions': 'not-independently-verified', 'statement': VERIFICATION_STATEMENT},
+    }
+
+
+def _library_origin() -> str:
+    """Library origin for dataset profiles: the certified public Library, or (staging) an internal service host."""
+    from urllib.parse import urlsplit
+    base = (os.getenv('SC_WORKSPACE_LIBRARY_PROFILE_ORIGIN') or os.getenv('SC_WORKSPACE_LIBRARY_PUBLIC_API_ORIGIN') or '').rstrip('/')
+    p = urlsplit(base)
+    public = p.scheme == 'https' and p.hostname == 'library.sustainablecatalyst.com' and p.port in (None, 443)
+    internal = p.scheme == 'http' and bool(re.fullmatch(r'[a-z][a-z0-9-]{1,62}', p.hostname or ''))
+    if not (public or internal) or p.username or p.password or p.query or p.fragment or p.path not in ('', '/'):
+        raise HTTPException(503, 'Library dataset profiles are not configured for this Studio.')
+    return base
+
+
+def library_profile(descriptor: LibraryDescriptor, post: Callable | None = None) -> dict:
+    """The Library's normalised, fingerprinted descriptor (``sc-library-dataset-profile/1.0``) for the input dataset."""
+    body = {'dataset_id': descriptor.sourceId, 'datasets': [{
+        'dataset_id': descriptor.sourceId, 'title': descriptor.title, 'kind': descriptor.kind,
+        'provider': descriptor.provider, 'description': descriptor.description, 'access_mode': 'restricted',
+        'provenance_state': 'complete',
+        'variables': [{'name': v.name, 'label': v.label, 'type': v.type, 'role': v.role, 'unit': v.unit}
+                      for v in descriptor.variables]}]}
+    url = _library_origin() + '/api/library/v1/statistical-evidence/dataset-profile'
+    try:
+        if post is not None:
+            data = post(url, body)
+        else:
+            from urllib.request import Request as UrlRequest, build_opener
+            req = UrlRequest(url, json.dumps(body).encode(), {'Content-Type': 'application/json',
+                             'Accept': 'application/json', 'User-Agent': 'SC-Workspace-Studio/sc-output-02'})
+            with build_opener(_NoRedirect).open(req, timeout=8) as r:
+                data = json.loads(r.read(1_000_001))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, 'The Library dataset profile service is unavailable.') from exc
+    ds = (data or {}).get('dataset') or {}
+    fp = str((data or {}).get('profile_fingerprint_sha256') or '')
+    if data.get('schema') != LIBRARY_PROFILE_SCHEMA or ds.get('dataset_id') != descriptor.sourceId or not re.fullmatch(r'[0-9a-f]{64}', fp):
+        raise HTTPException(502, 'The Library returned an unexpected dataset profile.')
+    variables = [{'name': v.get('name'), 'role': v.get('role'), 'unit': v.get('unit') or ''} for v in ds.get('variables') or []]
+    if [(v['name'], v['unit']) for v in variables] != [(v.name, v.unit) for v in descriptor.variables]:
+        raise HTTPException(502, 'The Library profile does not echo the declared variables and units.')
+    return {'schema': LIBRARY_PROFILE_SCHEMA, 'datasetId': descriptor.sourceId, 'title': ds.get('title'),
+            'profileId': data.get('profile_id'), 'profileSha256': fp, 'libraryVersion': data.get('library_version'),
+            'backendVersion': data.get('backend_version'), 'variables': variables,
+            'note': 'Descriptor normalised and fingerprinted by the Library; the bytes are pinned by the Workspace '
+                    'dataset revision. The Library holds no copy of the rows.'}
+
+
+def check_library_units(profile: dict, figure: fb.FigureRequest, sources: list[dict]) -> None:
+    if profile['datasetId'] not in {s['sourceId'] for s in sources}:
+        raise HTTPException(422, {'code': 'library-dataset-not-an-input',
+                                  'message': f"{profile['datasetId']} is not an input of this run."})
+    units = {v['name']: v['unit'] for v in profile['variables']}
+    for f in (figure.x, figure.y):
+        if f.field in units and units[f.field] != f.unit:
+            raise HTTPException(422, {'code': 'library-unit-mismatch', 'message':
+                                      f"Field {f.field} is in {f.unit} in the figure but {units[f.field]} in the Library descriptor."})
 
 
 def rights_blockers(version: dict) -> list[str]:
@@ -185,15 +313,22 @@ def insertion_markdown(v: dict) -> str:
     src = '; '.join(f"input {s['sourceId']}" + (f" (sha256 {s['sha256'][:12]})" if s.get('sha256') else '')
                     + f", licence {v['rights'][-1]['sourceLicences'].get(s['sourceId'], 'not declared')}" for s in v['dataset'])
     t = v['table']
+    app, run = application_of(v), v['run']
+    by = (f"{APPLICATIONS[app]} {run['operation']} through its governed Workspace adapter, called from notebook "
+          if app != 'workspace-notebook' else 'notebook ')
+    lib = v.get('library')
+    lib_note = (f" Input variables and units as described by the Library dataset profile {lib['profileId']} "
+                f"(sha256 {lib['profileSha256'][:12]}).") if lib else ''
     return '\n\n'.join([
         f"![{v['caption']}](asset:{v['artifacts']['chart']['artifactId']})",
         f"**Table: {t['caption']}** Values rounded to {t['significantFigures']} significant figures; the exact values "
         f"are in the pinned CSV (sha256 {v['artifacts']['table']['sha256'][:12]}).",
         table_markdown(t),
         f"*Source:* {v['citation']} Scientific output {v['outputId']} version {v['version']} (bundle sha256 "
-        f"{v['artifacts']['bundle']['sha256'][:16]}), computed by notebook {v['notebook']['notebookId']} revision "
-        f"{v['notebook']['revision']}, cell {v['notebook']['cellId']}, run {v['run']['runId']}; {src}. "
-        f"Evidence class: {v['evidenceClass']}. {v['asset']['uncertainty']['statement']} Licence: {v['asset']['license']}.",
+        f"{v['artifacts']['bundle']['sha256'][:16]}), computed by {by}{v['notebook']['notebookId']} revision "
+        f"{v['notebook']['revision']}, cell {v['notebook']['cellId']}, run {v['run']['runId']}; {src}.{lib_note} "
+        f"Evidence class: {v['evidenceClass']}. {v['asset']['uncertainty']['statement']} Licence: {v['asset']['license']}. "
+        f"Verified: computation receipt and bytes; the scientific conclusions are not independently verified.",
     ]) + '\n'
 
 
@@ -230,6 +365,13 @@ def pins(package: dict, figure_ids: list[str], blocks: list[dict]) -> list[dict]
     are not declared: the insertion gate is enforced on save, not only in the browser."""
     known = versions_by_chart(package)
     tables = [(b['headers'], b['rows']) for b in blocks if b['kind'] == 'table']
+    placed = [b['assetId'] for b in blocks if b['kind'] == 'figure']
+    for aid in dict.fromkeys(placed):
+        if aid in known and placed.count(aid) > 1:
+            v = known[aid]
+            raise HTTPException(409, {'code': 'output-duplicate', 'message':
+                                      f"Scientific output {v['outputId']} v{v['version']} appears {placed.count(aid)} times. "
+                                      'Delete the extra copy before saving.'})
     out = []
     for aid in figure_ids:
         v = known.get(aid)
@@ -276,28 +418,37 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         raise HTTPException(404, 'Scientific output version not found in this project.')
 
     def summary(v):
+        app = application_of(v)
         return {'version': v['version'], 'registeredAt': v['registeredAt'], 'title': v['title'], 'caption': v['caption'],
+                'application': app, 'applicationLabel': APPLICATIONS[app], 'kinds': ['figure', 'table'],
                 'evidenceClass': v['evidenceClass'], 'units': v['asset']['units'], 'uncertainty': v['asset']['uncertainty'],
                 'rightsStatus': v['rights'][-1]['status'], 'license': v['asset']['license'],
                 'insertable': not rights_blockers(v), 'blockers': rights_blockers(v),
-                'chart': v['artifacts']['chart'], 'visibility': v['asset']['visibility'], 'run': v['run']['runId']}
+                'chart': v['artifacts']['chart'], 'visibility': v['asset']['visibility'], 'run': v['run']['runId'],
+                'library': (v.get('library') or {}).get('profileSha256')}
 
     @router.get('/projects/{project_id}')
-    def search(project_id: str, request: Request, q: str = ''):
+    def search(project_id: str, request: Request, q: str = '', application: str = ''):
         owner = deps['subject'](request)
         needle = q.strip().lower()[:120]
+        if application and application not in APPLICATIONS:
+            raise HTTPException(422, f'Unknown source application. Known: {sorted(APPLICATIONS)}.')
         with deps['session']() as db:
             row = deps['project'](db, owner, project_id)
-            outputs = []
+            outputs, counts = [], {}
             for o in registry(row.package)['outputs']:
                 latest = o['versions'][-1]
-                text = ' '.join([o['outputId'], latest['title'], latest['caption'], latest['citation'],
-                                 json.dumps(latest['asset']['units'])]).lower()
-                if needle and needle not in text:
+                app = application_of(latest)
+                counts[app] = counts.get(app, 0) + 1
+                text = ' '.join([o['outputId'], latest['title'], latest['caption'], latest['citation'], APPLICATIONS[app],
+                                 json.dumps(latest['asset']['units']), json.dumps(latest.get('library') or {})]).lower()
+                if (needle and needle not in text) or (application and app != application):
                     continue
-                outputs.append({'outputId': o['outputId'], 'latest': summary(latest),
-                                'versions': [summary(v) for v in reversed(o['versions'])]})
+                outputs.append({'outputId': o['outputId'], 'application': app, 'latestVersion': latest['version'],
+                                'latest': summary(latest), 'versions': [summary(v) for v in reversed(o['versions'])]})
             return JSONResponse({'schema': REGISTRY_SCHEMA, 'projectRevision': row.revision, 'outputs': outputs,
+                                 'applications': [{'application': a, 'label': APPLICATIONS[a], 'outputs': counts.get(a, 0)}
+                                                  for a in APPLICATIONS],
                                  'visibility': 'private', 'publicRoute': None}, headers=H)
 
     @router.post('/projects/{project_id}/register', status_code=201)
@@ -318,10 +469,15 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
             unknown = set(body.rights.sourceLicences) - {s['sourceId'] for s in bundle['sourceRefs']}
             if unknown:
                 raise HTTPException(422, f'Licences were declared for inputs this run does not use: {sorted(unknown)}.')
+            library = None
+            if body.library is not None:
+                library = library_profile(body.library, deps.get('library_post'))
+                check_library_units(library, body.figure, bundle['sourceRefs'])
             table, csv_bytes = table_of(view, body.table.significantFigures)
             current = deepcopy(registry(row.package))
             entry = next((o for o in current['outputs'] if o['outputId'] == body.figure.figureId), None)
-            if entry and entry['versions'][-1]['artifacts']['bundle']['sha256'] == package['bundleSha256']:
+            if entry and entry['versions'][-1]['artifacts']['bundle']['sha256'] == package['bundleSha256'] \
+                    and entry['versions'][-1].get('library') == library:
                 last = entry['versions'][-1]
                 return JSONResponse({'created': False, 'output': summary(last), 'projectRevision': row.revision},
                                     status_code=200, headers=H)
@@ -348,6 +504,7 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
                 'scientificContext': bundle['scientificContext'], 'renderer': ENGINE,
                 'table': {**table, 'caption': body.table.caption}, 'artifacts': artifacts, 'rights': [rights],
                 'review': bundle['review'], 'publicApproval': 'not-approved',
+                **({'library': library} if library else {}),
                 # RH-ASSET-01 cross-service contract minimum (SC-UP-01, UP-03).
                 'asset': {'source_service': 'workspace-notebook', 'source_object_id':
                           f"workspace-notebook:{rev.notebook_id}#{body.cellId}",
@@ -378,9 +535,11 @@ def build_router(deps: dict[str, Callable]) -> APIRouter:
         with deps['session']() as db:
             row = deps['project'](db, owner, project_id)
             v = find(row.package, output_id, version)
+            latest = max(x['version'] for o in registry(row.package)['outputs'] if o['outputId'] == output_id for x in o['versions'])
             integrity = verify_artifacts(db, owner, project_id, v, deps['original_asset'])
         return JSONResponse({**v, 'integrity': integrity, 'insertable': not rights_blockers(v),
-                             'blockers': rights_blockers(v)}, headers=H)
+                             'blockers': rights_blockers(v), 'latestVersion': latest,
+                             'sourceReference': source_reference(v, project_id)}, headers=H)
 
     @router.get('/projects/{project_id}/outputs/{output_id}/versions/{version}/insertion')
     def insertion(project_id: str, output_id: str, version: int, request: Request):

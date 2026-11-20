@@ -136,7 +136,7 @@ def test_rendering_honours_escapes_links_tables_lists_and_hanging_references():
     report = docx_manuscript.convert_docx(manuscript_docx())
     html, ids = pub.render_html(report['markdown'], lambda a: '/img/' + a, document_title=TITLE)
     assert ids == [report['media'][0]['assetId']]
-    assert '<table><thead><tr><th>Issue area</th><th>Why it matters</th><th>Barriers</th></tr>' in html
+    assert '<table><thead><tr><th scope="col">Issue area</th><th scope="col">Why it matters</th><th scope="col">Barriers</th></tr>' in html
     assert '<td>Import dependence | payment rails</td>' in html and '<td><strong>Food security</strong></td>' in html
     assert '<p># not a heading, just text</p>' in html
     assert '$3 [1] * 2_ times' in html and '\\' not in re.sub(r'<[^>]+>', '', html)
@@ -219,7 +219,7 @@ def test_edit_save_reopen_and_exports_preserve_the_document(env):
     html = api(env, 'GET', base + '.html?revision=1')
     assert html.status_code == 200
     text = html.text
-    assert text.count('<table>') == len(original['tables']) and text.count('<th>') == 3
+    assert text.count('<table>') == len(original['tables']) and text.count('<th scope="col">') == 3
     assert text.count('<figure><img src="data:image/png;base64,') == original['figures']
     assert text.count('<p class="reference">') == original['referenceEntries']
     for _, heading in original['headings'][1:]:
