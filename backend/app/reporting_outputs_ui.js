@@ -1,6 +1,13 @@
 // SC-PUB-ENDTOEND-01: Outputs & Publishing. Every state shown is Research's confirmed response; controls follow the
 // server's `controls`, and the server and Research re-check each action. No credential ever reaches this page.
-const OUT={open:false,objects:null};
+const OUT={open:false,objects:null,drafts:null,read:new Set()};
+const DRAFT_KEY='sc-outputs-drafts';
+function drafts(){if(!OUT.drafts){OUT.drafts={};try{OUT.drafts=JSON.parse(sessionStorage.getItem(DRAFT_KEY)||'{}')||{}}catch{}}return OUT.drafts}
+function saveDrafts(){try{const d=drafts();if(Object.keys(d).length)sessionStorage.setItem(DRAFT_KEY,JSON.stringify(d));else sessionStorage.removeItem(DRAFT_KEY)}catch{}}
+function keepDraft(key,node,prop='value'){const d=drafts();if(key in d)node[prop]=d[key];
+ node.addEventListener(prop==='checked'?'change':'input',()=>{d[key]=node[prop];saveDrafts()});return node}
+function dropDrafts(...keys){const d=drafts();for(const k of keys)delete d[k];saveDrafts()}
+async function readPacket(id,slot,enable){slot.replaceChildren(packetBlock(await api(pub+'/research-approvals/'+encodeURIComponent(id)+'/packet')));OUT.read.add(id);for(const x of enable)x.disabled=false}
 const DIMS=['scientific','rights','ownership','publication'];
 function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined&&text!==null)n.textContent=String(text);if(cls)n.className=cls;return n}
 function field(label,input){const w=el('label',label,'out-field');w.append(input);return w}
@@ -74,7 +81,7 @@ async function evidenceBlock(o){
    for(const q of req)if(q.status==='approved'&&!signed[d])line.append(act('Record in Research',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/approvals/attach'),{approvalId:q.approvalId});status(d+' approval recorded for the cited object.')}));
    if(!signed[d]&&!req.some(q=>q.status==='pending'||q.status==='approved'))line.append(act('Request review',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/approval-requests'),{dimension:d});status(d+' review requested for the cited object.')}));
    row.append(line)}
-  if(obj.visibility!=='public-approved')row.append(act('Release for citation',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/release'));status('Research released the object for citation; it stays invisible until the article and area are published.')},DIMS.every(d=>signed[d])));
+  if(obj.visibility!=='public-approved')row.append(act('Release for citation',async()=>{await api(projPath('/research-objects/'+encodeURIComponent(obj.id)+'/release'),{});status('Research released the object for citation; it stays invisible until the article and area are published.')},DIMS.every(d=>signed[d])));
   box.append(row)}
  return box}
 async function areaBlock(o){
@@ -125,7 +132,11 @@ async function outputCard(o){
   el('h4','Research area'),await areaBlock(o),el('h4','Release'),releaseBlock(o));
  return card}
 // SC-PUB-REVIEW-01: an approval needs a fresh Sustainable Catalyst Identity sign-in (password and second factor).
-function stepUp(e){if(!/step-up-required/.test(e.message))throw e;location.assign('/v1/auth/login?stepUp=true&returnTo='+encodeURIComponent(location.pathname+location.search))}
+// SC-RESEARCH-LINK-01: the refusal's code travels on the error (the message is human text); unsaved declarations
+// and notes are kept for the tab so they survive the sign-in round trip.
+function stepUp(e){if(!(e&&e.status===403&&e.code==='step-up-required'))throw e;saveDrafts();
+ status('Sign in again (password and second factor) to authorize. Your declarations are kept.',true);
+ location.assign('/v1/auth/login?stepUp=true&returnTo='+encodeURIComponent(location.pathname+location.search))}
 function packetBlock(p){
  const b=el('div',null,'out-packet'),a=p.article;
  if(!a){b.append(el('p','Subject: '+p.request.subjectRef+' — decide on this exact Research subject.','out-subject'));return b}
@@ -146,13 +157,15 @@ async function reviewerInbox(){
  let items=[];try{items=(await api(pub+'/research-approvals/inbox')).items}catch(e){box.append(el('p',e.message,'hint'));return box}
  if(!items.length){box.append(el('p','No pending reviews.','hint'));return box}
  for(const q of items){const d=el('div',null,'out-card');d.append(el('strong',q.dimension+' · '+q.subjectTitle),el('p','Exact subject: '+q.subjectRef,'out-subject'),el('p','Requested by '+q.requester+' · '+q.requestedAt,'hint'));
-  const note=input('Decision note',2000),slot=el('div'),decide=[];
+  const note=keepDraft('note:'+q.approvalId,input('Decision note',2000)),slot=el('div'),decide=[];
   const read=el('button','Read the review packet');read.type='button';
-  read.addEventListener('click',run(async()=>{slot.replaceChildren(packetBlock(await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/packet')));for(const x of decide)x.disabled=false}));
+  read.addEventListener('click',run(()=>readPacket(q.approvalId,slot,decide)));
   d.append(read,slot,field('Note',note));
   for(const [label,decision] of [['Approve this exact revision','approve'],['Request revision','request_revision'],['Reject','reject']]){
-   const b=act(label,async()=>{try{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision,note:note.value,expectedSubjectRef:q.subjectRef})}catch(e){stepUp(e)}status('Decision signed by Workspace.')},false);
+   const b=act(label,async()=>{try{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision,note:note.value,expectedSubjectRef:q.subjectRef})}catch(e){stepUp(e);return}
+    dropDrafts('note:'+q.approvalId);status('Decision signed by Workspace.')},false);
    decide.push(b);d.append(b)}
+  if(OUT.read.has(q.approvalId))await readPacket(q.approvalId,slot,decide).catch(()=>{});
   box.append(d)}
  return box}
 async function ownRequests(){
@@ -162,12 +175,14 @@ async function ownRequests(){
  box.append(el('h3','Your own requests'),el('p','You may authorize publication of your own work. This is recorded and shown publicly as: '+mine.disclosure+' Sign-in with password and second factor is required each time.','hint'));
  if(!mine.items.length){box.append(el('p','No pending requests of your own.','hint'));return box}
  for(const q of mine.items){const d=el('div',null,'out-card');d.append(el('strong',q.dimension+' · '+q.subjectTitle),el('p','Exact subject: '+q.subjectRef,'out-subject'),el('p','Requested '+q.requestedAt,'hint'));
-  const decl=input('What you checked (at least '+mine.minimumDeclaration+' characters)',2000),slot=el('div'),ack=el('input');ack.type='checkbox';
+  const decl=keepDraft('self:'+q.approvalId,input('What you checked (at least '+mine.minimumDeclaration+' characters)',2000)),slot=el('div'),ack=el('input');ack.type='checkbox';
+  keepDraft('ack:'+q.approvalId,ack,'checked');
   const read=el('button','Read the review packet');read.type='button';
   const go=act('Authorize as author (not independent review)',async()=>{if(!ack.checked)throw Error('Confirm the disclosure first.');
-   try{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision:'approve',expectedSubjectRef:q.subjectRef,ownerSelfAuthorization:true,attestation:decl.value})}catch(e){stepUp(e)}
-   status('Author authorization signed by Workspace and labelled not independently reviewed.')},false);
-  read.addEventListener('click',run(async()=>{slot.replaceChildren(packetBlock(await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/packet')));go.disabled=false}));
+   try{await api(pub+'/research-approvals/'+encodeURIComponent(q.approvalId)+'/decide',{decision:'approve',expectedSubjectRef:q.subjectRef,ownerSelfAuthorization:true,attestation:decl.value})}catch(e){stepUp(e);return}
+   dropDrafts('self:'+q.approvalId,'ack:'+q.approvalId);status('Author authorization signed by Workspace and labelled not independently reviewed.')},false);
+  read.addEventListener('click',run(()=>readPacket(q.approvalId,slot,[go])));
+  if(OUT.read.has(q.approvalId))await readPacket(q.approvalId,slot,[go]).catch(()=>{});
   const lab=el('label');lab.append(ack,document.createTextNode(' I understand this is my own review and will be disclosed as not independently reviewed.'));
   d.append(read,slot,field('Declaration',decl),lab,go);box.append(d)}
  return box}
