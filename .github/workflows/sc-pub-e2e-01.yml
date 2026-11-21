@@ -9,6 +9,7 @@ on:
       - 'backend/app/reporting_outputs_ui.js'
       - 'backend/app/reporting_publication*'
       - 'backend/tests/test_sc_pub_e2e01_outputs.py'
+      - 'backend/tests/test_sc_research_link01_studio_defects.py'
       - 'scripts/sc_pub_e2e01_staging_harness.py'
       - 'scripts/sc_pub_e2e01_release.py'
       - 'scripts/sc_pub_pdfsvg_re*'
@@ -23,6 +24,7 @@ on:
       - 'backend/app/reporting_outputs_ui.js'
       - 'backend/app/reporting_publication*'
       - 'backend/tests/test_sc_pub_e2e01_outputs.py'
+      - 'backend/tests/test_sc_research_link01_studio_defects.py'
       - 'scripts/sc_pub_e2e01_release.py'
       - '.github/workflows/sc-pub-e2e-01.yml'
 
@@ -62,6 +64,7 @@ jobs:
         run: |
           cd backend && python -m pytest -q \
             tests/test_sc_pub_e2e01_outputs.py \
+            tests/test_sc_research_link01_studio_defects.py \
             tests/test_sc_pub_e2e01_release_tool.py \
             tests/test_sc_up01_research_access.py \
             tests/test_research_approvals_sc_ed01.py \

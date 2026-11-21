@@ -11,9 +11,10 @@ async function api(url,body){
  if(body!==undefined){opt.method='POST';opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
  const r=await fetch(url,opt);const text=await r.text();
  signInPrompt(r.status===401);
- if(!r.ok){let msg=text;try{const d=JSON.parse(text),x=d.message??d.detail;msg=typeof x==='string'?x:(x&&x.message)||text;
+ if(!r.ok){let msg=text,code;try{const d=JSON.parse(text),x=d.message??d.detail;msg=typeof x==='string'?x:(x&&x.message)||text;
+  code=(x&&typeof x==='object'&&x.code)||d.code;
   const used=d.usedBy||(x&&x.usedBy);if(used)msg+=' ('+used.map(u=>u.title||u.kind).join(', ')+')'}catch{}
-  throw Error('HTTP '+r.status+': '+msg.slice(0,250))}
+  const err=Error('HTTP '+r.status+': '+msg.slice(0,250));err.status=r.status;if(typeof code==='string')err.code=code;throw err}
  try{return JSON.parse(text)}catch{throw Error('Unexpected server response')}
 }
 function run(fn){return async()=>{try{await fn()}catch(err){status(err.message,true);console.error(err)}}}
