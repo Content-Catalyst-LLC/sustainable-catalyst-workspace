@@ -14,6 +14,9 @@ RESULT_SCHEMA = "sc-workspace-human-governance-result/1.0"
 POLICY_SCHEMA = "sc-workspace-human-governance-policy/1.0"
 APPROVAL_SCHEMA = "sc-workspace-human-approval-request/1.0"
 DECISION_SCHEMA = "sc-workspace-human-approval-decision/1.0"
+# SC-PUB-SELF-01: the one role that may decide its own request, and only when the caller asks for it explicitly and
+# the policy lists the role. The decision then says so: it is never presented as an independent review.
+OWNER_SELF_AUTHORIZATION_ROLE = "research_owner_self_authorization"
 INTERVENTION_SCHEMA = "sc-workspace-human-intervention/1.0"
 STATE_SCHEMA = "sc-workspace-human-governance-state/1.0"
 SNAPSHOT_SCHEMA = "sc-workspace-human-governance-snapshot/1.0"
@@ -151,7 +154,8 @@ def decide(payload: Mapping[str, Any]) -> Dict[str, Any]:
     actor = _human_actor(payload.get("actor") or {})
     if actor["role"] not in set(policy.get("approverRoles") or []):
         raise ValueError("actor role is not authorized to approve")
-    if actor["actorId"] == str((approval.get("requester") or {}).get("actorId") or ""):
+    self_authorized = bool(payload.get("ownerSelfAuthorization")) and actor["role"] == OWNER_SELF_AUTHORIZATION_ROLE
+    if actor["actorId"] == str((approval.get("requester") or {}).get("actorId") or "") and not self_authorized:
         raise ValueError("self-approval is prohibited")
     decision = str(payload.get("decision") or "").strip()
     if decision not in {"approve", "reject", "request_revision"}:
@@ -168,6 +172,9 @@ def decide(payload: Mapping[str, Any]) -> Dict[str, Any]:
         "immutable": True,
         "provenanceRefs": list(payload.get("provenanceRefs") or []),
     }
+    if self_authorized:
+        record["reviewKind"] = "owner-self-authorization"
+        record["independentReview"] = False
     approval["decisionRef"] = record["decisionId"]
     approval["status"] = {
         "approve": "approved",

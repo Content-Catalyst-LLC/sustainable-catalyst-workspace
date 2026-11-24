@@ -1,0 +1,54 @@
+name: SC-RESEARCH-DOCS-01 document viewer
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/research_documents.py'
+      - 'backend/app/research_reporting.py'
+      - 'backend/app/research_reporting_ui.html'
+      - 'backend/app/reporting_project_catalog.py'
+      - 'backend/requirements-reporting.txt'
+      - 'backend/tests/test_sc_research_docs01_*.py'
+      - 'backend/tests/test_rd012_reporting_studio_recovery.py'
+      - '.github/workflows/sc-research-docs-01.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  viewer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-reporting.txt
+      - name: Install Cairo build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
+      - name: Install the Reporting Studio dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-reporting.txt pytest
+          python -m pip check
+      - name: Viewer, register and Studio regressions (synthetic documents only)
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          SC_WORKSPACE_REPORTING_STUDIO_ENABLED: '1'
+        run: |
+          python -m pytest -q tests/test_sc_research_docs01_document_viewer.py tests/test_rd012_reporting_studio_recovery.py
+      - name: The Studio entrypoint mounts the viewer
+        env:
+          SC_WORKSPACE_REPORTING_STUDIO_ENABLED: '1'
+          SC_WORKSPACE_DATABASE_URL: sqlite:////tmp/docs01-mount.db
+        run: |
+          python -c "from app.reporting_production_entry import app; p={r.path for r in app.routes}; assert '/v1/private-research/reporting-studio/documents/{project_id}/{document_id}' in p, 'viewer not mounted'"

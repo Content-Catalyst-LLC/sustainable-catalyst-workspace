@@ -1,0 +1,222 @@
+{
+ "description": "SC-CITE-01 regression fixture: the six researcher-reviewed Harvard citation snapshots recorded by the Workbench ERW v1.3.2 Citation Studio for the Wexford ERW project, in creation order. Public bibliographic metadata and the stored formatter output only; no owner, project or source identifiers. Record 2 carries the superseded DOI exactly as stored (append-only history).",
+ "records": [
+  {
+   "schema": "sc.erw.approved-citation.v1.3.2",
+   "fields": {
+    "authors": [
+     "Beerling, David J.",
+     "Kantzas, Euripides P.",
+     "Lomas, Mark R.",
+     "Wade, Peter",
+     "Eufrasio, Rafael M.",
+     "Renforth, Phil",
+     "Sarkar, Binoy",
+     "Andrews, M. Grace",
+     "James, Rachael H.",
+     "Pearce, Christopher R.",
+     "Mercure, Jean-Francois",
+     "Pollitt, Hector",
+     "Holden, Philip B.",
+     "Edwards, Neil R.",
+     "Khanna, Madhu",
+     "Koh, Lenny",
+     "Quegan, Shaun",
+     "Pidgeon, Nick F.",
+     "Janssens, Ivan A.",
+     "Hansen, James",
+     "Banwart, Steven A."
+    ],
+    "doi": "10.1038/s41586-020-2448-9",
+    "issue": "7815",
+    "journal": "Nature",
+    "pages": "242–248",
+    "publisher": "",
+    "title": "Potential for large-scale CO2 removal via enhanced rock weathering with croplands",
+    "url": "",
+    "verifiedByResearcher": true,
+    "volume": "583",
+    "year": 2020
+   },
+   "formattedCitation": {
+    "inText": "(Beerling, David J. et al., 2020)",
+    "reference": "Beerling, David J., Kantzas, Euripides P., Lomas, Mark R., Wade, Peter, Eufrasio, Rafael M., Renforth, Phil, Sarkar, Binoy, Andrews, M. Grace, James, Rachael H., Pearce, Christopher R., Mercure, Jean-Francois, Pollitt, Hector, Holden, Philip B., Edwards, Neil R., Khanna, Madhu, Koh, Lenny, Quegan, Shaun, Pidgeon, Nick F., Janssens, Ivan A., Hansen, James and Banwart, Steven A. (2020) 'Potential for large-scale CO2 removal via enhanced rock weathering with croplands'. Nature, 583(7815), pp. 242–248. https://doi.org/10.1038/s41586-020-2448-9",
+    "warnings": [
+     "Harvard styles vary by institution; confirm against UCD instructions. Metadata is researcher-reviewed, not independently verified."
+    ]
+   }
+  },
+  {
+   "schema": "sc.erw.approved-citation.v1.3.2",
+   "fields": {
+    "authors": [
+     "Beerling, David J.",
+     "Epihov, Dimitar Z.",
+     "Kantola, Ilsa B.",
+     "Masters, Michael D.",
+     "Reershemius, Tom",
+     "Planavsky, Noah J.",
+     "Reinhard, Christopher T.",
+     "Jordan, Jacob S.",
+     "Thorne, Sarah J.",
+     "Weber, James",
+     "Val Martin, Maria",
+     "Freckleton, Robert P.",
+     "Hartley, Sue E.",
+     "James, Rachael H.",
+     "Pearce, Christopher R.",
+     "DeLucia, Evan H.",
+     "Banwart, Steven A."
+    ],
+    "doi": "10.1038/s41586-020-2448-9",
+    "issue": "7815",
+    "journal": "Proceedings of the National Academy of Sciences",
+    "pages": "242–248",
+    "publisher": "",
+    "title": "Enhanced weathering in the US Corn Belt delivers carbon removal with agronomic benefits",
+    "url": "",
+    "verifiedByResearcher": true,
+    "volume": "583",
+    "year": 2024
+   },
+   "formattedCitation": {
+    "inText": "(Beerling, David J. et al., 2024)",
+    "reference": "Beerling, David J., Epihov, Dimitar Z., Kantola, Ilsa B., Masters, Michael D., Reershemius, Tom, Planavsky, Noah J., Reinhard, Christopher T., Jordan, Jacob S., Thorne, Sarah J., Weber, James, Val Martin, Maria, Freckleton, Robert P., Hartley, Sue E., James, Rachael H., Pearce, Christopher R., DeLucia, Evan H. and Banwart, Steven A. (2024) 'Enhanced weathering in the US Corn Belt delivers carbon removal with agronomic benefits'. Proceedings of the National Academy of Sciences, 583(7815), pp. 242–248. https://doi.org/10.1038/s41586-020-2448-9",
+    "warnings": [
+     "Harvard styles vary by institution; confirm against UCD instructions. Metadata is researcher-reviewed, not independently verified."
+    ]
+   }
+  },
+  {
+   "schema": "sc.erw.approved-citation.v1.3.2",
+   "fields": {
+    "authors": [
+     "Beerling, David J.",
+     "Epihov, Dimitar Z.",
+     "Kantola, Ilsa B.",
+     "Masters, Michael D.",
+     "Reershemius, Tom",
+     "Planavsky, Noah J.",
+     "Reinhard, Christopher T.",
+     "Jordan, Jacob S.",
+     "Thorne, Sarah J.",
+     "Weber, James",
+     "Val Martin, Maria",
+     "Freckleton, Robert P.",
+     "Hartley, Sue E.",
+     "James, Rachael H.",
+     "Pearce, Christopher R.",
+     "DeLucia, Evan H.",
+     "Banwart, Steven A."
+    ],
+    "doi": "10.1073/pnas.2319436121",
+    "issue": "9",
+    "journal": "Proceedings of the National Academy of Sciences",
+    "pages": "e2319436121",
+    "publisher": "",
+    "title": "Enhanced weathering in the US Corn Belt delivers carbon removal with agronomic benefits",
+    "url": "",
+    "verifiedByResearcher": true,
+    "volume": "121",
+    "year": 2024
+   },
+   "formattedCitation": {
+    "inText": "(Beerling, David J. et al., 2024)",
+    "reference": "Beerling, David J., Epihov, Dimitar Z., Kantola, Ilsa B., Masters, Michael D., Reershemius, Tom, Planavsky, Noah J., Reinhard, Christopher T., Jordan, Jacob S., Thorne, Sarah J., Weber, James, Val Martin, Maria, Freckleton, Robert P., Hartley, Sue E., James, Rachael H., Pearce, Christopher R., DeLucia, Evan H. and Banwart, Steven A. (2024) 'Enhanced weathering in the US Corn Belt delivers carbon removal with agronomic benefits'. Proceedings of the National Academy of Sciences, 121(9), pp. e2319436121. https://doi.org/10.1073/pnas.2319436121",
+    "warnings": [
+     "Harvard styles vary by institution; confirm against UCD instructions. Metadata is researcher-reviewed, not independently verified."
+    ]
+   }
+  },
+  {
+   "schema": "sc.erw.approved-citation.v1.3.2",
+   "fields": {
+    "authors": [
+     "Clarkson, Matthew O.",
+     "Larkin, Christina S.",
+     "Swoboda, Philipp",
+     "Reershemius, Tom",
+     "Suhrhoff, T. Jesper",
+     "Maesano, Cara N.",
+     "Campbell, James S."
+    ],
+    "doi": "10.3389/fclim.2024.1345224",
+    "issue": "",
+    "journal": "Frontiers in Climate",
+    "pages": "1345224",
+    "publisher": "",
+    "title": "A review of measurement for quantification of carbon dioxide removal by enhanced weathering in soil",
+    "url": "",
+    "verifiedByResearcher": true,
+    "volume": "6",
+    "year": 2024
+   },
+   "formattedCitation": {
+    "inText": "(Clarkson, Matthew O. et al., 2024)",
+    "reference": "Clarkson, Matthew O., Larkin, Christina S., Swoboda, Philipp, Reershemius, Tom, Suhrhoff, T. Jesper, Maesano, Cara N. and Campbell, James S. (2024) 'A review of measurement for quantification of carbon dioxide removal by enhanced weathering in soil'. Frontiers in Climate, 6, pp. 1345224. https://doi.org/10.3389/fclim.2024.1345224",
+    "warnings": [
+     "Harvard styles vary by institution; confirm against UCD instructions. Metadata is researcher-reviewed, not independently verified."
+    ]
+   }
+  },
+  {
+   "schema": "sc.erw.approved-citation.v1.3.2",
+   "fields": {
+    "authors": [
+     "European Parliament",
+     "Council of the European Union"
+    ],
+    "doi": "",
+    "issue": "",
+    "journal": "Official Journal of the European Union",
+    "pages": "",
+    "publisher": "",
+    "title": "Regulation (EU) 2024/3012 of the European Parliament and of the Council of 27 November 2024 establishing a Union certification framework for permanent carbon removals, carbon farming and carbon storage in products",
+    "url": "",
+    "verifiedByResearcher": true,
+    "volume": "",
+    "year": 2024
+   },
+   "formattedCitation": {
+    "inText": "(European Parliament and Council of the European Union, 2024)",
+    "reference": "European Parliament and Council of the European Union (2024) 'Regulation (EU) 2024/3012 of the European Parliament and of the Council of 27 November 2024 establishing a Union certification framework for permanent carbon removals, carbon farming and carbon storage in products'. Official Journal of the European Union.",
+    "warnings": [
+     "Harvard styles vary by institution; confirm against UCD instructions. Metadata is researcher-reviewed, not independently verified."
+    ]
+   }
+  },
+  {
+   "schema": "sc.erw.approved-citation.v1.3.2",
+   "fields": {
+    "authors": [
+     "Maxbauer, Daniel P.",
+     "Milliken, Ella",
+     "Yambing, Jahmaine Renzo",
+     "Watson, Emma",
+     "Gregg, Rachel B.",
+     "Swanson, Liza",
+     "Sohng, Jaeeun",
+     "Sokol, Noah W.",
+     "Planavsky, Noah J."
+    ],
+    "doi": "10.3389/fclim.2025.1657058",
+    "issue": "",
+    "journal": "Frontiers in Climate",
+    "pages": "1657058",
+    "publisher": "",
+    "title": "Evidence for carbon dioxide removal via enhanced rock weathering with steel slag, though not basalt, in a midwestern U.S. field trial",
+    "url": "",
+    "verifiedByResearcher": true,
+    "volume": "7",
+    "year": 2026
+   },
+   "formattedCitation": {
+    "inText": "(Maxbauer, Daniel P. et al., 2026)",
+    "reference": "Maxbauer, Daniel P., Milliken, Ella, Yambing, Jahmaine Renzo, Watson, Emma, Gregg, Rachel B., Swanson, Liza, Sohng, Jaeeun, Sokol, Noah W. and Planavsky, Noah J. (2026) 'Evidence for carbon dioxide removal via enhanced rock weathering with steel slag, though not basalt, in a midwestern U.S. field trial'. Frontiers in Climate, 7, pp. 1657058. https://doi.org/10.3389/fclim.2025.1657058",
+    "warnings": [
+     "Harvard styles vary by institution; confirm against UCD instructions. Metadata is researcher-reviewed, not independently verified."
+    ]
+   }
+  }
+ ]
+}

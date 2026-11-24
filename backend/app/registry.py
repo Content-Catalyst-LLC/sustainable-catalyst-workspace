@@ -74,6 +74,8 @@ def dataset_metadata(row) -> dict:
         "datasetType": row.dataset_type,
         "sourceKind": row.source_kind,
         "artifactId": row.artifact_id,
+        "artifactRevision": getattr(row, "artifact_revision", 0) or None,
+        "artifactSha256": getattr(row, "artifact_sha256", "") or None,
         "externalUri": row.external_uri,
         "revision": row.revision,
         "fingerprint": row.fingerprint,
@@ -243,7 +245,8 @@ def store_dataset(db: Session, user_key: str, payload: DatasetStoreRequest):
         count = int(db.scalar(select(func.count()).select_from(DatasetHead).where(DatasetHead.user_key == user_key)) or 0)
         if count >= settings.max_datasets_per_account:
             raise HTTPException(status_code=409, detail="Workspace dataset registry limit reached.")
-    if descriptor["artifactId"] and db.get(ArtifactHead, {"user_key": user_key, "artifact_id": descriptor["artifactId"]}) is None:
+    artifact = db.get(ArtifactHead, {"user_key": user_key, "artifact_id": descriptor["artifactId"]}) if descriptor["artifactId"] else None
+    if descriptor["artifactId"] and artifact is None:
         raise HTTPException(status_code=409, detail="Dataset artifactId does not reference an existing Workspace artifact.")
     now = _now()
     revision = current + 1
@@ -257,6 +260,8 @@ def store_dataset(db: Session, user_key: str, payload: DatasetStoreRequest):
     existing.source_kind = descriptor["sourceKind"]
     existing.artifact_id = descriptor["artifactId"]
     existing.external_uri = descriptor["externalUri"]
+    existing.artifact_revision = artifact.revision if artifact is not None else 0
+    existing.artifact_sha256 = artifact.sha256 if artifact is not None else ""
     existing.revision = revision
     existing.fingerprint = fingerprint
     existing.last_operation_id = operation_id
@@ -269,6 +274,7 @@ def store_dataset(db: Session, user_key: str, payload: DatasetStoreRequest):
         user_key=user_key, dataset_id=dataset_id, revision=revision, project_id=existing.project_id,
         name=existing.name, description=existing.description, dataset_type=existing.dataset_type,
         source_kind=existing.source_kind, artifact_id=existing.artifact_id, external_uri=existing.external_uri,
+        artifact_revision=existing.artifact_revision, artifact_sha256=existing.artifact_sha256,
         fingerprint=fingerprint, operation_id=operation_id, schema_json=existing.schema_json,
         lineage_json=existing.lineage_json, tags_json=tags, metadata_json=existing.metadata_json, created_at=now,
     ))

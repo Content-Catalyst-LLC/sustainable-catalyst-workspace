@@ -5,5 +5,6 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
 COPY app ./app
+COPY migrations ./migrations
 EXPOSE 8089
 CMD ["sh", "-c", "python -m app.init_db && uvicorn app.main:app --host 0.0.0.0 --port 8089 --proxy-headers --forwarded-allow-ips='*'"]

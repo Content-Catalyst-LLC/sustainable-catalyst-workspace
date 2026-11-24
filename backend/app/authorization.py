@@ -17,7 +17,8 @@ POLICY_ID = "workspace-authenticated-user-v1"
 POLICY_REVISION = 1
 SERVICE_PRINCIPAL = "wordpress-proxy"
 SESSION_SERVICE_PRINCIPAL = "workspace-session"
-TRUSTED_SERVICE_PRINCIPALS = frozenset({SERVICE_PRINCIPAL, SESSION_SERVICE_PRINCIPAL})
+SC_IDENTITY_BEARER_PRINCIPAL = "sc-identity-bearer"  # SC-AUTH-02 verified Core access tokens
+TRUSTED_SERVICE_PRINCIPALS = frozenset({SERVICE_PRINCIPAL, SESSION_SERVICE_PRINCIPAL, SC_IDENTITY_BEARER_PRINCIPAL})
 
 ACTIONS = (
     "workspace.read",
@@ -95,6 +96,9 @@ def principal_payload(identity: Any) -> dict[str, Any]:
     }
 
 
+# Route classification is deliberately coarse: it maps HTTP methods/selected
+# paths to an action, but does not inspect resource ownership. A route handler
+# must use user_key-scoped storage and validate any cross-project association.
 def action_for_request(method: str, path: str) -> str:
     method = method.upper()
     if path.startswith("/v1/authorization"):
@@ -114,6 +118,9 @@ def action_for_request(method: str, path: str) -> str:
     return "workspace.read"
 
 
+# The current policy grants every known action to either trusted authenticated
+# principal type. resource_id/project_id are recorded in the decision but do
+# not narrow the grant; they are not evidence of per-project permission.
 def evaluate(identity: Any, action: str, resource_kind: str = "workspace", resource_id: str = "", project_id: str = "", context: dict[str, Any] | None = None) -> dict[str, Any]:
     known_action = action in ACTIONS
     known_resource = resource_kind in RESOURCE_KINDS

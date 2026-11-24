@@ -25,6 +25,18 @@ final class SC_Workspace_Backend {
         return self::mode() === 'primary' && self::configured();
     }
 
+    // SC-AUTH-01 F4: account persistence must not silently move to another
+    // store. The legacy WordPress user-meta store is served only on a site
+    // that explicitly opts in and has no dedicated backend configured at all.
+    public static function legacy_store_allowed() {
+        return defined('SC_WORKSPACE_LEGACY_ACCOUNT_STORE') && SC_WORKSPACE_LEGACY_ACCOUNT_STORE === true
+            && !defined('SC_WORKSPACE_BACKEND_MODE') && self::base_url() === '';
+    }
+
+    public static function fail_closed() {
+        return new WP_Error('scw_backend_unavailable_fail_closed', 'Workspace account storage is not available. No fallback store was used.', array('status' => 503));
+    }
+
     public static function contract() {
         return array(
             'schema' => self::CONTRACT_SCHEMA,
@@ -196,21 +208,24 @@ final class SC_Workspace_Backend {
         if ($user_id <= 0) {
             return new WP_Error('scw_backend_auth_required', 'A signed-in Workspace account is required.', array('status' => 401));
         }
+        $target = '/' . ltrim((string) $path, '/');
+        $body_bytes = $body !== null ? wp_json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : '';
         $args = array(
             'method' => strtoupper((string) $method),
             'timeout' => 15,
             'redirection' => 0,
-            'headers' => array(
-                'Authorization' => 'Bearer ' . self::token(),
-                'X-SC-User-ID' => (string) $user_id,
-                'Accept' => 'application/json',
-            ),
+            'headers' => array('Accept' => 'application/json'),
         );
+        // SC-AUTH-02: WordPress is not a platform identity source. This legacy
+        // proxy is refused by a Workspace backend running with SC Identity
+        // required; it remains only for deployments not yet migrated.
+        $args['headers']['Authorization'] = 'Bearer ' . self::token();
+        $args['headers']['X-SC-User-ID'] = (string) $user_id;
         if ($body !== null) {
             $args['headers']['Content-Type'] = 'application/json';
-            $args['body'] = wp_json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $args['body'] = $body_bytes;
         }
-        $response = wp_remote_request(self::base_url() . '/' . ltrim((string) $path, '/'), $args);
+        $response = wp_remote_request(self::base_url() . $target, $args);
         if (is_wp_error($response)) {
             return new WP_Error('scw_backend_unreachable', 'Workspace backend is unavailable. No fallback write was attempted.', array('status' => 503));
         }

@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import get_settings
+from .config import browser_origins, get_settings
 from .user_workspace import profile as user_workspace_profile, bootstrap as user_workspace_bootstrap, project_package as user_workspace_project_package
 from .workspace_navigation import profile as workspace_navigation_profile, recent as workspace_navigation_recent
 from .research_object_browser import profile as research_object_browser_profile, browse as browse_research_objects
@@ -434,7 +434,7 @@ app = FastAPI(
 )
 
 # v3.71 standalone authenticated browser transport.
-_allowed_origins = [origin.strip() for origin in settings.cors_allowed_origins.split(",") if origin.strip()]
+_allowed_origins = sorted(browser_origins(settings))
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
@@ -442,7 +442,17 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "X-SC-User-ID", "X-SC-Display-Name", "X-SC-Runtime-Attestation-Token"],
 )
+# SC-AUTH-01 F3 (kept by SC-AUTH-02): every API response is marked no-store.
+from .auth_hygiene import AuthHygieneMiddleware
+app.add_middleware(AuthHygieneMiddleware)
 app.include_router(session_router)
+from .sc_identity import router as sc_identity_router
+app.include_router(sc_identity_router)
+# Production WXR-09 private research (recovered from the running production image, SC-RELEASE-01).
+from .private_research import router as private_research_router
+app.include_router(private_research_router)
+from .private_research_ui import router as private_research_ui_router
+app.include_router(private_research_ui_router)
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
@@ -4243,7 +4253,7 @@ def quantitative_analysis_workspace(identity:ServiceIdentity=Depends(require_ser
 @app.post("/v1/quantitative-analysis-workspace/reconstructions")
 def quantitative_reconstruction_store(payload:QuantitativeReconstructionRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":store_reconstruction(db,identity.user_key,payload)}
+        with session_scope() as db:item=store_reconstruction(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":payload.projectId})
     except ValueError as exc: raise HTTPException(status_code=409,detail={"code":"quantitative-reconstruction-conflict","message":str(exc)})
 @app.get("/v1/quantitative-analysis-workspace/reconstructions")
@@ -4261,7 +4271,7 @@ def quantitative_reconstruction_revision_list(reconstruction_id:str,limit:int=Qu
 @app.post("/v1/quantitative-analysis-workspace/input-bindings")
 def quantitative_input_binding_create(payload:QuantitativeInputBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_quantitative_input_binding(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_quantitative_input_binding(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-reconstruction-not-found","reconstructionId":payload.reconstructionId})
 @app.get("/v1/quantitative-analysis-workspace/input-bindings")
 def quantitative_input_bindings(projectId:str|None=None,reconstructionId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
@@ -4269,7 +4279,7 @@ def quantitative_input_bindings(projectId:str|None=None,reconstructionId:str|Non
 @app.post("/v1/quantitative-analysis-workspace/handoffs")
 def quantitative_analysis_handoff_create(payload:QuantitativeAnalysisHandoffRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_quantitative_analysis_handoff(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_quantitative_analysis_handoff(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-reconstruction-not-found","reconstructionId":payload.reconstructionId})
     except ValueError as exc: raise HTTPException(status_code=422,detail={"code":"unsupported-analysis-destination","message":str(exc)})
 @app.get("/v1/quantitative-analysis-workspace/handoffs")
@@ -4284,13 +4294,13 @@ def quantitative_analysis_handoff(handoff_id:str,identity:ServiceIdentity=Depend
 @app.post("/v1/quantitative-analysis-workspace/handoffs/{handoff_id}/status")
 def quantitative_analysis_handoff_status(handoff_id:str,payload:QuantitativeAnalysisHandoffStatusRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":update_quantitative_analysis_handoff_status(db,identity.user_key,handoff_id,payload)}
+        with session_scope() as db:item=update_quantitative_analysis_handoff_status(db,identity.user_key,handoff_id,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-analysis-handoff-not-found","handoffId":handoff_id})
     except ValueError as exc: raise HTTPException(status_code=422,detail={"code":"unsupported-handoff-status","message":str(exc)})
 @app.post("/v1/quantitative-analysis-workspace/result-bindings")
 def quantitative_result_binding_create(payload:QuantitativeResultBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_quantitative_result_binding(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_quantitative_result_binding(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"quantitative-analysis-handoff-not-found","handoffId":payload.handoffId})
 @app.get("/v1/quantitative-analysis-workspace/result-bindings")
 def quantitative_result_bindings(projectId:str|None=None,handoffId:str|None=None,reconstructionId:str|None=None,limit:int=Query(1000,ge=1,le=5000),identity:ServiceIdentity=Depends(require_service_identity)):
@@ -4313,7 +4323,7 @@ def quantitative_analysis_diagnostics_route(project_id:str,identity:ServiceIdent
 @app.post("/v1/quantitative-analysis-workspace/projects/{project_id}/snapshots")
 def quantitative_analysis_snapshot_create(project_id:str,payload:QuantitativeAnalysisSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_quantitative_analysis_snapshot(db,identity.user_key,project_id,payload)}
+        with session_scope() as db:item=create_quantitative_analysis_snapshot(db,identity.user_key,project_id,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
 @app.get("/v1/quantitative-analysis-workspace/projects/{project_id}/snapshots")
 def quantitative_analysis_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
@@ -4327,7 +4337,7 @@ def uncertainty_investigation_workspace(identity:ServiceIdentity=Depends(require
 @app.post("/v1/uncertainty-investigation-workspace/assessments")
 def uncertainty_assessment_store(payload:UncertaintyAssessmentRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":store_uncertainty_assessment(db,identity.user_key,payload)}
+        with session_scope() as db:item=store_uncertainty_assessment(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError as e: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":str(e.args[0])})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"uncertainty-assessment-invalid","message":str(e)})
 @app.get("/v1/uncertainty-investigation-workspace/assessments")
@@ -4345,7 +4355,7 @@ def uncertainty_assessment_revision_list(assessment_id:str,limit:int=Query(100,g
 @app.post("/v1/uncertainty-investigation-workspace/parameters")
 def uncertainty_parameter_create(payload:UncertaintyParameterRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_uncertainty_parameter(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_uncertainty_parameter(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"uncertainty-parameter-invalid","message":str(e)})
 @app.get("/v1/uncertainty-investigation-workspace/parameters")
@@ -4354,7 +4364,7 @@ def uncertainty_parameters(projectId:str|None=None,assessmentId:str|None=None,li
 @app.post("/v1/uncertainty-investigation-workspace/scenarios")
 def uncertainty_scenario_create(payload:UncertaintyScenarioRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_uncertainty_scenario(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_uncertainty_scenario(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"uncertainty-scenario-invalid","message":str(e)})
 @app.get("/v1/uncertainty-investigation-workspace/scenarios")
@@ -4363,7 +4373,7 @@ def uncertainty_scenarios(projectId:str|None=None,assessmentId:str|None=None,lim
 @app.post("/v1/uncertainty-investigation-workspace/sensitivity-requests")
 def sensitivity_analysis_request_create(payload:SensitivityAnalysisRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_sensitivity_request(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_sensitivity_request(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"sensitivity-request-invalid","message":str(e)})
 @app.get("/v1/uncertainty-investigation-workspace/sensitivity-requests")
@@ -4372,7 +4382,7 @@ def sensitivity_analysis_requests(projectId:str|None=None,assessmentId:str|None=
 @app.post("/v1/uncertainty-investigation-workspace/result-bindings")
 def probabilistic_result_binding_create(payload:ProbabilisticResultBindingRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_probabilistic_result_binding(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_probabilistic_result_binding(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"uncertainty-assessment-not-found","assessmentId":payload.assessmentId})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"probabilistic-result-binding-invalid","message":str(e)})
 @app.get("/v1/uncertainty-investigation-workspace/result-bindings")
@@ -4396,7 +4406,7 @@ def uncertainty_project_diagnostics(project_id:str,identity:ServiceIdentity=Depe
 @app.post("/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots")
 def uncertainty_project_snapshot_create(project_id:str,payload:UncertaintyInvestigationSnapshotRequest,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_uncertainty_investigation_snapshot(db,identity.user_key,project_id,payload)}
+        with session_scope() as db:item=create_uncertainty_investigation_snapshot(db,identity.user_key,project_id,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
 @app.get("/v1/uncertainty-investigation-workspace/projects/{project_id}/snapshots")
 def uncertainty_project_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
@@ -4487,7 +4497,7 @@ def predictive_investigation_workspace(identity:ServiceIdentity=Depends(require_
 @app.post("/v1/predictive-investigation-workspace/scenarios")
 def predictive_scenario_store(payload:PredictiveScenarioRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":store_predictive_scenario(db,identity.user_key,payload)}
+        with session_scope() as db:item=store_predictive_scenario(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError as e: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":str(e.args[0])})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-scenario-invalid","message":str(e)})
 @app.get("/v1/predictive-investigation-workspace/scenarios")
@@ -4505,7 +4515,7 @@ def predictive_scenario_revision_list(scenario_id:str,limit:int=Query(100,ge=1,l
 @app.post("/v1/predictive-investigation-workspace/model-bindings")
 def predictive_model_binding_create(payload:PredictiveModelBindingRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_predictive_model_binding(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_predictive_model_binding(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-scenario-not-found","referenceId":str(e.args[0])})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-model-binding-invalid","message":str(e)})
 @app.get("/v1/predictive-investigation-workspace/model-bindings")
@@ -4514,7 +4524,7 @@ def predictive_model_bindings(projectId:str|None=None,scenarioId:str|None=None,l
 @app.post("/v1/predictive-investigation-workspace/forecast-requests")
 def predictive_forecast_request_create(payload:PredictiveForecastRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_predictive_forecast_request(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_predictive_forecast_request(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-reference-not-found","referenceId":str(e.args[0])})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-forecast-request-invalid","message":str(e)})
 @app.get("/v1/predictive-investigation-workspace/forecast-requests")
@@ -4523,7 +4533,7 @@ def predictive_forecast_requests(projectId:str|None=None,scenarioId:str|None=Non
 @app.post("/v1/predictive-investigation-workspace/result-bindings")
 def predictive_forecast_result_binding_create(payload:PredictiveForecastResultBindingRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_predictive_forecast_result_binding(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_predictive_forecast_result_binding(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-reference-not-found","referenceId":str(e.args[0])})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-result-binding-invalid","message":str(e)})
 @app.get("/v1/predictive-investigation-workspace/result-bindings")
@@ -4532,7 +4542,7 @@ def predictive_forecast_result_bindings(projectId:str|None=None,scenarioId:str|N
 @app.post("/v1/predictive-investigation-workspace/comparisons")
 def predictive_scenario_comparison_create(payload:PredictiveScenarioComparisonRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_predictive_scenario_comparison(db,identity.user_key,payload)}
+        with session_scope() as db:item=create_predictive_scenario_comparison(db,identity.user_key,payload);db.commit();return {"ok":True,"item":item}
     except KeyError as e: raise HTTPException(status_code=404,detail={"code":"predictive-reference-not-found","referenceId":str(e.args[0])})
     except ValueError as e: raise HTTPException(status_code=409,detail={"code":"predictive-comparison-invalid","message":str(e)})
 @app.get("/v1/predictive-investigation-workspace/comparisons")
@@ -4556,7 +4566,7 @@ def predictive_project_diagnostics(project_id:str,identity:ServiceIdentity=Depen
 @app.post("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshot_create(project_id:str,payload:PredictiveInvestigationSnapshotRequestModel,identity:ServiceIdentity=Depends(require_service_identity)):
     try:
-        with session_scope() as db:return {"ok":True,"item":create_predictive_investigation_snapshot(db,identity.user_key,project_id,payload)}
+        with session_scope() as db:item=create_predictive_investigation_snapshot(db,identity.user_key,project_id,payload);db.commit();return {"ok":True,"item":item}
     except KeyError: raise HTTPException(status_code=404,detail={"code":"workspace-project-not-found","projectId":project_id})
 @app.get("/v1/predictive-investigation-workspace/projects/{project_id}/snapshots")
 def predictive_investigation_snapshots(project_id:str,limit:int=Query(100,ge=1,le=1000),identity:ServiceIdentity=Depends(require_service_identity)):
@@ -4992,3 +5002,48 @@ app.include_router(lab_publication_v3843_router, dependencies=[Depends(require_s
 # v3.84.4: explicit-approval Lab ECDF acceptance; existing Workspace service auth
 from .lab_live_figure_acceptance_v3844 import router as lab_live_v3844_router
 app.include_router(lab_live_v3844_router, dependencies=[Depends(require_service_identity)])
+
+# SC-MODEL-01: owner-granted, signed execution exports for Research (disabled unless configured).
+from .research_exports import router as research_export_router
+from .notebook_export import router as notebook_export_router
+from .notebook_figure_bundle import router as notebook_figure_bundle_router
+
+app.include_router(research_export_router)
+# SC-RIGHTS-02: private operator view of source-rights delivery to Research (operator credential only).
+from .rights_delivery import router as rights_delivery_router
+
+app.include_router(rights_delivery_router)
+# SC-NB-01: portable exports of immutable notebook revisions (owner-scoped).
+app.include_router(notebook_export_router)
+# SC-ED-01: authenticated, persisted, signed approvals for Research publication.
+from .research_approvals import router as research_approval_router
+app.include_router(research_approval_router)
+from .research_access import router as research_access_router
+app.include_router(research_access_router)
+from .seo_access import router as seo_access_router
+app.include_router(seo_access_router)
+from .research_sources import router as research_sources_router
+app.include_router(research_sources_router)
+# SC-PUB-M1: owner- and approver-facing approval desk (static, same-origin, strict CSP).
+from .approval_desk import router as approval_desk_router
+app.include_router(approval_desk_router)
+# SC-FIG-02B: Vega-Lite figure package from a verified notebook cell run.
+app.include_router(notebook_figure_bundle_router)
+# SC-SCI-01: the owner's notebook workspace page and its cell status read.
+from .notebook_desk import page_router as notebook_desk_router, status_router as notebook_status_router
+app.include_router(notebook_desk_router)
+app.include_router(notebook_status_router)
+
+# Production Wexford routes, recovered from the running production image (SC-RELEASE-01).
+# WXR-08.1.3 identity bridge
+from .erw_identity_bridge import router as erw_identity_bridge_router
+app.include_router(erw_identity_bridge_router)
+# WXR-08.3.0 legacy ERW owner-scoped registry overlay
+from .wxr083_legacy import router as wxr083_legacy_router
+app.include_router(wxr083_legacy_router)
+# WXR-08.3.8.3.5 private route activation
+from app.wxr083835.route import router as wxr083835_router
+app.include_router(wxr083835_router)
+# Wexford account-pinned permanent access route
+from .wxr_permanent_auth import router as _wxr_permanent_auth_router
+app.include_router(_wxr_permanent_auth_router)

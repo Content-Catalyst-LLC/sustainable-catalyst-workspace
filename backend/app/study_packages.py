@@ -19,7 +19,7 @@ from .config import get_settings
 from .models import (
     ArtifactHead, CommandReceipt, ComputeExecutionReceipt, CrossRuntimeVerificationReceipt,
     DatasetHead, DecisionOptimizationReceipt, DomainMutationReceipt, ExecutionEnvironmentHead,
-    ExecutionRun, ForecastEvaluationReceipt, ForecastReceipt, InterchangeReceipt, JobRecord,
+    ExecutionRun, ExecutionRunOutput, ForecastEvaluationReceipt, ForecastReceipt, InterchangeReceipt, JobRecord,
     ModelEvaluationReceipt, ModelHead, NotebookExecutionPlan, NotebookHead, NotebookOrchestrationReceipt,
     NumericalSimulationReceipt, OptimizationReceipt, ParameterSetHead, PolyglotExecutionReceipt,
     PredictiveModelReceipt, ProbabilisticInferenceReceipt, ProjectHead, ReliabilityAnalysisReceipt,
@@ -105,6 +105,24 @@ def _receipt_rows(db: Session, user_key: str, job_ids: set[str], run_ids: set[st
     return dict(sorted(out.items()))
 
 
+def _execution_lineage(db: Session, user_key: str, runs: list[ExecutionRun]) -> list[dict[str, Any]]:
+    """Per-run verified input lineage: pinned datasets or upstream-cell chains, and the notebook cell behind it."""
+    from .notebook_orchestration import verified_cell_run
+    from .research_exports import _verification
+    out = []
+    for run in sorted(runs, key=lambda r: r.run_id):
+        outputs = list(db.scalars(select(ExecutionRunOutput).where(
+            ExecutionRunOutput.user_key == user_key, ExecutionRunOutput.run_id == run.run_id)).all())
+        v = _verification(db, user_key, run, outputs)
+        cell = verified_cell_run(db, user_key, run)
+        if cell is not None:
+            cell = {k: val for k, val in cell.items() if k != "currency"}  # head currency is time-dependent
+        out.append({"runId": run.run_id, "verificationStatus": v["status"], "inputLineage": v["inputLineage"],
+                    "inputBindings": v["inputBindings"], "runtimeReceiptIds": [r["receiptId"] for r in v["runtimeReceipts"]],
+                    "notebookCell": cell})
+    return out
+
+
 def compile_manifest(db: Session, user_key: str, request: ScientificStudyPackageCreateRequest) -> tuple[dict[str, Any], list[ArtifactHead]]:
     project=db.get(ProjectHead,{"user_key":user_key,"project_id":request.projectId})
     if project is None:
@@ -165,6 +183,7 @@ def compile_manifest(db: Session, user_key: str, request: ScientificStudyPackage
         "executionEnvironments":_sort_rows(envs,"environment_id"),
         "runtimeAdapters":_sort_rows(adapters,"adapter_id"),
         "executionRuns":_sort_rows(runs,"run_id"),
+        "executionLineage":_execution_lineage(db,user_key,runs),
         "notebookExecutionPlans":_sort_rows(plans,"plan_id"),
         "jobs":_sort_rows(jobs,"job_id"),
         "visualizationSpecs":_sort_rows(visualization_specs,"visualization_id"),

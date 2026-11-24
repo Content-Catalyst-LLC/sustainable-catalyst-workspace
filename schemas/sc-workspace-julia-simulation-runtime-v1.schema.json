@@ -25,7 +25,8 @@
         "workspace.polyglot.julia.eigen-analysis",
         "workspace.polyglot.julia.integrate-series",
         "workspace.polyglot.julia.polynomial-roots",
-        "workspace.polyglot.julia.parameter-sweep"
+        "workspace.polyglot.julia.parameter-sweep",
+        "workspace.polyglot.julia.expression-evaluate"
       ]
     },
     "payload": {

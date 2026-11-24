@@ -1,0 +1,948 @@
+"""SC-CITE-01: Citation Studio as a shared publishing capability.
+
+Recovered from the Workbench ERW v1.3.2 Citation Studio (``erw_v132_sources.harvard``, live in production and on the
+Workbench recovery branch). Its Harvard output is kept byte-for-byte as the ``harvard-erw-v132`` style so existing
+Wexford citations never change; ``harvard`` and ``apa`` are added for new work.
+
+Bibliographic records are never retyped. They enter a project's citation collection only from:
+  * the project's own preserved reference files (CSL-JSON, Crossref-verified JSON, RIS, or exported ERW v1.3.2
+    approved-citation records), keeping the source artifact ID and SHA-256 as provenance; or
+  * verified public Knowledge Library records, keeping Library's record ID, revision and content hash.
+Collection items are immutable by key. Each publication revision freezes the items it cites, so its bibliography
+survives later collection changes, editorial revisions and every export format.
+"""
+from __future__ import annotations
+
+from copy import deepcopy
+import hashlib
+import json
+import re
+import unicodedata
+from typing import Any, Callable, Iterable
+from urllib.parse import urlparse
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field
+
+COLLECTION_SCHEMA = 'sc-citation-collection/1.0'
+ITEM_SCHEMA = 'sc-citation-item/1.0'
+FROZEN_SCHEMA = 'sc-publication-bibliography/1.0'
+STYLES = ('harvard', 'apa', 'harvard-erw-v132')
+DEFAULT_STYLE = 'harvard'
+MAX_ITEMS = 500
+DOI = re.compile(r'^10\.\d{4,9}/\S+$', re.I)
+KEY = re.compile(r'^[A-Za-z0-9_.:-]{1,80}$')
+# One marker holds one or more ``@key`` cites, each with an optional locator: [@a2020], [@a2020, p. 4; @b2021].
+MARKER = re.compile(r'\[(@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?(?:;\s*@[A-Za-z0-9_.:-]{1,80}(?:,[^;\]\n]{1,40})?)*)\]')
+SITE_AUTHORS = {'wordpress-main': 'Sustainable Catalyst'}  # Library sources whose organisational author is known
+# A Markdown link inside a reference: ``[Title](https://…)`` is the title and its URL, never part of either.
+MD_LINK = re.compile(r'\[([^\]\n]{1,500})\]\((https?://[^)\s]{1,2000})\)')
+ACCESSED = re.compile(r'\(?\s*\bAccessed:?\s+([^()]{3,40}?)\s*\)?\s*\.?\s*$', re.I)
+CORRECTABLE = ('type', 'authors', 'year', 'yearSuffix', 'title', 'container', 'volume', 'issue', 'pages', 'publisher', 'doi',
+               'url', 'accessed')
+MONTHS = ('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November',
+          'December')
+# Provenance a CSL-JSON row may carry in ``custom`` when its metadata was checked against the publisher's own catalog.
+CATALOG_PROVENANCE = ('metadataUrl', 'metadataVerifiedAt', 'catalogUrl', 'license', 'contentSha256', 'retrievedUtc')
+
+
+def _clean(value: Any, limit: int = 600) -> str:
+    return ' '.join(str(value if value is not None else '').strip().split())[:limit]
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# ERW v1.3.2 Harvard formatter, preserved exactly (input: the v1.3.2 CitationFields dict).
+
+def harvard_erw_v132(fields: dict) -> dict:
+    if not fields.get('verifiedByResearcher'):
+        return {'reference': None, 'inText': None,
+                'warnings': ['Researcher must review bibliographic metadata before a final reference is generated']}
+    missing = [k for k in ('authors', 'year', 'title') if not fields.get(k)]
+    if missing:
+        return {'reference': None, 'inText': None, 'warnings': ['Missing required fields: ' + ', '.join(missing)]}
+    doi = str(fields.get('doi') or '').strip().removeprefix('https://doi.org/')
+    if doi and not DOI.fullmatch(doi):
+        raise ValueError('Invalid DOI format')
+    names = [_clean(n, 10_000) for n in fields['authors']]
+    if any(not n or len(n) > 150 for n in names):
+        raise ValueError('Invalid author name')
+    label = names[0] if len(names) == 1 else names[0] + ' et al.' if len(names) > 2 else names[0] + ' and ' + names[1]
+    authors = ', '.join(names[:-1]) + ' and ' + names[-1] if len(names) > 1 else names[0]
+    ref = authors + ' (' + str(fields['year']) + ") '" + _clean(fields['title'], 10_000) + "'."
+    for key, prefix, suffix in (('journal', ' ', ''), ('volume', ', ', ''), ('issue', '(', ')'), ('pages', ', pp. ', '')):
+        if fields.get(key):
+            ref += prefix + _clean(fields[key], 10_000) + suffix
+    if fields.get('publisher') and not fields.get('journal'):
+        ref += ' ' + _clean(fields['publisher'], 10_000)
+    ref += '.'
+    if doi:
+        ref += ' https://doi.org/' + doi
+    elif fields.get('url'):
+        ref += ' ' + _clean(fields['url'], 10_000)
+    return {'reference': ref, 'inText': '(' + label + ', ' + str(fields['year']) + ')',
+            'warnings': ['Harvard styles vary by institution; confirm against UCD instructions. '
+                         'Metadata is researcher-reviewed, not independently verified.']}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Normalised items
+
+def _person(value: Any) -> dict | None:
+    if isinstance(value, dict):
+        family, given = _clean(value.get('family'), 150), _clean(value.get('given'), 150)
+        literal = _clean(value.get('literal') or value.get('name'), 300)
+        if family:
+            return {'family': family, 'given': given}
+        return {'literal': literal} if literal else None
+    text = _clean(value, 300)
+    if not text:
+        return None
+    if ',' in text:
+        family, given = [x.strip() for x in text.split(',', 1)]
+        return {'family': family, 'given': given}
+    return {'literal': text}
+
+
+def _doi(value: Any) -> str:
+    raw = _clean(value, 250)
+    raw = re.sub(r'^(https?://(dx\.)?doi\.org/|doi:)', '', raw, flags=re.I)
+    if raw and not DOI.fullmatch(raw):
+        raise ValueError('Invalid DOI format')
+    return raw
+
+
+def _url(value: Any) -> str:
+    raw = _clean(value, 2000)
+    return raw if raw and urlparse(raw).scheme in ('http', 'https') else ''
+
+
+def _year(value: Any) -> int | None:
+    if isinstance(value, dict):  # CSL / Crossref date-parts
+        parts = value.get('date-parts') or [[None]]
+        value = parts[0][0] if parts and parts[0] else None
+    match = re.search(r'(1[5-9]\d\d|2[01]\d\d)', str(value or ''))
+    return int(match.group(1)) if match else None
+
+
+def _date_text(value: Any) -> str:
+    """A CSL date (``date-parts`` or literal) as written in a reference: ``22 October 2026``. Missing parts stay missing."""
+    if isinstance(value, dict):
+        if value.get('literal'):
+            return _clean(value['literal'], 40)
+        parts = (value.get('date-parts') or [[]])[0] or []
+        try:
+            nums = [int(x) for x in parts[:3]]
+        except (TypeError, ValueError):
+            return ''
+        if not nums or not 1500 <= nums[0] <= 2199 or any(not 1 <= n <= 12 for n in nums[1:2]):
+            return ''
+        return ' '.join(([str(nums[2])] if len(nums) > 2 else []) + ([MONTHS[nums[1] - 1]] if len(nums) > 1 else [])
+                        + [str(nums[0])])
+    return _clean(value, 40)
+
+
+def item_fingerprint(item: dict) -> str:
+    basis = {k: item.get(k) for k in ('type', 'authors', 'year', 'title', 'container', 'volume', 'issue', 'pages',
+                                      'publisher', 'doi', 'url', 'accessed')}
+    if item.get('yearSuffix'):  # only when present, so records without one keep their fingerprint
+        basis['yearSuffix'] = item['yearSuffix']
+    return hashlib.sha256(json.dumps(basis, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def make_item(fields: dict, provenance: dict) -> dict:
+    authors = [p for p in (_person(a) for a in (fields.get('authors') or [])[:100]) if p]
+    item = {'schema': ITEM_SCHEMA, 'type': _clean(fields.get('type') or 'article-journal', 40),
+            'authors': authors, 'year': _year(fields.get('year')), 'title': _clean(fields.get('title'), 500),
+            'container': _clean(fields.get('container'), 350), 'volume': _clean(fields.get('volume'), 50),
+            'issue': _clean(fields.get('issue'), 50), 'pages': _clean(fields.get('pages'), 100),
+            'publisher': _clean(fields.get('publisher'), 200), 'doi': _doi(fields.get('doi')),
+            'url': _url(fields.get('url')), 'accessed': _clean(fields.get('accessed'), 40)}
+    if not item['title']:
+        raise ValueError('A citation needs a title')
+    suffix = _clean(fields.get('yearSuffix'), 2).lower()
+    if suffix:
+        if not re.fullmatch(r'[a-z]', suffix):
+            raise ValueError('A year suffix is one letter, a to z')
+        if not item['year']:
+            raise ValueError('A year suffix needs a year')
+        item['yearSuffix'] = suffix
+    item['fingerprint'] = item_fingerprint(item)
+    item['provenance'] = {k: v for k, v in provenance.items() if v not in (None, '')}
+    item['key'] = base_key(item)
+    return item
+
+
+def base_key(item: dict) -> str:
+    first = item['authors'][0] if item['authors'] else {}
+    name = first.get('family') or first.get('literal') or 'anon'
+    word = next((w for w in re.findall(r'[A-Za-z]+', item['title']) if len(w) > 3), 'work')
+    name = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode()  # Éireann -> Eireann, not ireann
+    raw = re.sub(r'[^A-Za-z0-9]', '', name)[:30].lower() + str(item['year'] or 'nd') + word.lower()[:12]
+    return raw or 'ref'
+
+
+def from_crossref_verified(rows: list) -> list[dict]:
+    """Research-package ``references-verified.json``: Crossref metadata with a verification timestamp."""
+    out = []
+    for row in rows:
+        journal = row.get('journal')
+        out.append(({'authors': row.get('authors') or [], 'year': row.get('published'), 'title': row.get('title'),
+                     'container': journal[0] if isinstance(journal, list) and journal else journal,
+                     'volume': row.get('volume'), 'issue': row.get('issue'),
+                     'pages': row.get('page') or row.get('article_number'), 'doi': row.get('doi'),
+                     'url': row.get('publisher_url')},
+                    {'metadataAuthority': 'crossref', 'metadataUrl': row.get('metadata_url'),
+                     'metadataVerifiedAt': row.get('verified_utc')}))
+    return out
+
+
+def _csl_provenance(row: dict) -> dict:
+    custom = row.get('custom') if isinstance(row.get('custom'), dict) else {}
+    checked = custom.get('metadataAuthority') == 'publisher-catalog' and _url(custom.get('metadataUrl'))
+    out = {'metadataAuthority': 'publisher-catalog' if checked else 'csl-json'}
+    if checked:
+        out.update({k: _clean(custom.get(k), 2000) for k in CATALOG_PROVENANCE if custom.get(k)})
+    if row.get('ISBN'):
+        out['isbn'] = _clean(row['ISBN'], 40)
+    return out
+
+
+def from_csl(rows: list) -> list[dict]:
+    """CSL-JSON, as exported by the Knowledge Library citation workspace or written from a publisher's catalog
+    record (``custom.metadataAuthority = 'publisher-catalog'`` with the catalog URL it was checked against)."""
+    return [({'type': r.get('type'), 'authors': r.get('author') or [], 'year': r.get('issued'), 'title': r.get('title'),
+              'container': r.get('container-title'), 'volume': r.get('volume'), 'issue': r.get('issue'),
+              'pages': r.get('page'), 'publisher': r.get('publisher'), 'doi': r.get('DOI'), 'url': r.get('URL'),
+              'accessed': _date_text(r.get('accessed'))},
+             _csl_provenance(r)) for r in rows]
+
+
+def from_erw_v132(rows: list) -> list[dict]:
+    """Exported Workbench ERW v1.3.2 approved-citation records; only researcher-reviewed ones are accepted."""
+    out = []
+    for r in rows:
+        f = r.get('fields') or {}
+        if r.get('schema') != 'sc.erw.approved-citation.v1.3.2' or not f.get('verifiedByResearcher'):
+            continue
+        out.append(({'authors': f.get('authors'), 'year': f.get('year'), 'title': f.get('title'),
+                     'container': f.get('journal'), 'volume': f.get('volume'), 'issue': f.get('issue'),
+                     'pages': f.get('pages'), 'publisher': f.get('publisher'), 'doi': f.get('doi'), 'url': f.get('url'),
+                     'type': 'article-journal' if f.get('journal') else 'report'},
+                    {'metadataAuthority': 'workbench-erw-v1.3.2-researcher-reviewed',
+                     'erwV132Reference': (r.get('formattedCitation') or {}).get('reference'),
+                     'erwV132InText': (r.get('formattedCitation') or {}).get('inText')}))
+    return out
+
+
+def from_ris(text: str) -> list[dict]:
+    out, cur = [], None
+    tags = {'TI': 'title', 'T1': 'title', 'JO': 'container', 'JF': 'container', 'T2': 'container', 'VL': 'volume',
+            'IS': 'issue', 'PY': 'year', 'Y1': 'year', 'DO': 'doi', 'UR': 'url', 'PB': 'publisher'}
+    for line in text.splitlines():
+        m = re.match(r'^([A-Z][A-Z0-9])  - ?(.*)$', line)
+        if not m:
+            continue
+        tag, value = m.group(1), m.group(2).strip()
+        if tag == 'TY':
+            cur = {'authors': [], 'type': 'article-journal' if value == 'JOUR' else 'report'}
+        elif cur is None:
+            continue
+        elif tag == 'ER':
+            out.append((cur, {'metadataAuthority': 'ris'})); cur = None
+        elif tag in ('AU', 'A1'):
+            cur['authors'].append(value)
+        elif tag == 'SP':
+            cur['pages'] = value
+        elif tag == 'EP' and cur.get('pages'):
+            cur['pages'] += '–' + value
+        elif tag in tags and not cur.get(tags[tag]):
+            cur[tags[tag]] = value
+    return out
+
+
+def parse_reference_file(filename: str, raw: bytes) -> list[tuple[dict, dict]]:
+    name = filename.lower()
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeError as exc:
+        raise ValueError('Reference file is not UTF-8') from exc
+    if name.endswith('.ris'):
+        return from_ris(text)
+    if not name.endswith('.json'):
+        raise ValueError('Choose a .ris or .json reference file')
+    data = json.loads(text)
+    rows = data if isinstance(data, list) else data.get('items') or data.get('references') or []
+    if not isinstance(rows, list) or not rows:
+        raise ValueError('No references found in this file')
+    first = rows[0] if isinstance(rows[0], dict) else {}
+    if first.get('schema') == 'sc.erw.approved-citation.v1.3.2':
+        return from_erw_v132(rows)
+    if 'metadata_url' in first or 'verified_utc' in first:
+        return from_crossref_verified(rows)
+    return from_csl(rows)
+
+
+def library_item(record: dict) -> tuple[dict, dict]:
+    """A verified public Library research object, cited as a web source. No author is invented."""
+    identity, desc, pub, source = (record.get(k) or {} for k in ('identity', 'descriptive', 'publication', 'source'))
+    author = SITE_AUTHORS.get(source.get('source_key'))
+    return ({'type': 'webpage', 'authors': [{'literal': author}] if author else [], 'year': pub.get('published_at'),
+             'title': desc.get('title'), 'publisher': author or '', 'url': source.get('canonical_url')},
+            {'metadataAuthority': 'knowledge-library', 'libraryRecordId': identity.get('record_id'),
+             'libraryRevision': str(identity.get('revision')), 'libraryContentSha256': identity.get('content_hash'),
+             'authorStatus': 'organisation-from-library-source' if author else 'missing-review-required'})
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Styles
+
+def _initials(given: str, sep: str) -> str:
+    return sep.join(p[0] + '.' for p in re.split(r'[\s.\-]+', given) if p)
+
+
+def _name(p: dict, style: str) -> str:
+    if 'literal' in p:
+        return p['literal']
+    return p['family'] + (', ' + _initials(p['given'], ' ' if style == 'apa' else '') if p.get('given') else '')
+
+
+def _surname(p: dict) -> str:
+    return p.get('family') or p.get('literal') or ''
+
+
+def _join(names: list[str], amp: str) -> str:
+    return names[0] if len(names) == 1 else ', '.join(names[:-1]) + (',' if amp == '&' and len(names) > 2 else '') + f' {amp} ' + names[-1]
+
+
+def year_label(item: dict) -> str:
+    """``2024``, ``2024a`` when two works by one author share a year, or ``n.d.``."""
+    return str(item['year']) + (item.get('yearSuffix') or '') if item['year'] else 'n.d.'
+
+
+def in_text(item: dict, style: str = DEFAULT_STYLE, locator: str = '') -> str:
+    if style == 'harvard-erw-v132':
+        legacy = (item.get('provenance') or {}).get('erwV132InText')
+        if legacy and not locator:
+            return legacy
+    names = [_surname(p) for p in item['authors']] or [item['title']]
+    amp = '&' if style == 'apa' else 'and'
+    label = names[0] if len(names) == 1 else f'{names[0]} {amp} {names[1]}' if len(names) == 2 else names[0] + ' et al.'
+    year = year_label(item)
+    locator = (locator or '').strip()
+    loc = ', ' + locator if locator else ''
+    return f'({label}, {year}{loc})'
+
+
+def reference(item: dict, style: str = DEFAULT_STYLE) -> str:
+    if style == 'harvard-erw-v132':
+        legacy = (item.get('provenance') or {}).get('erwV132Reference')
+        if legacy:
+            return legacy
+        names = [p.get('literal') or (p['family'] + (', ' + p['given'] if p.get('given') else '')) for p in item['authors']]
+        return harvard_erw_v132({'authors': names, 'year': item['year'], 'title': item['title'],
+                                 'journal': item['container'], 'volume': item['volume'], 'issue': item['issue'],
+                                 'pages': item['pages'], 'publisher': item['publisher'], 'doi': item['doi'],
+                                 'url': item['url'], 'verifiedByResearcher': True})['reference'] or ''
+    year = year_label(item)
+    names = [_name(p, style) for p in item['authors']]
+    if style == 'apa':
+        who = _join(names[:20], '&') if names else item['title']
+        out = f'{who} ({year}). '
+        out += (f"{item['title']}. *{item['container']}*" if item['container'] else f"*{item['title']}*")
+        if item['volume']:
+            out += f", *{item['volume']}*" + (f"({item['issue']})" if item['issue'] else '')
+        if item['pages']:
+            out += f", {item['pages']}"
+        out += '.'
+        if item['publisher'] and not item['container'] and item['publisher'] not in names:
+            out += f" {item['publisher']}."
+    else:  # Harvard (author-date, Cite Them Right conventions)
+        who = _join(names, 'and') if names else item['title']
+        if item['type'] == 'webpage':
+            out = f"{who} ({year}) *{item['title']}*."
+        elif item['container']:
+            out = f"{who} ({year}) '{item['title']}', *{item['container']}*"
+            if item['volume']:
+                out += f", {item['volume']}" + (f"({item['issue']})" if item['issue'] else '')
+            if item['pages']:
+                out += f", pp. {item['pages']}" if not item['pages'].isdigit() and not item['pages'].startswith('e') else f", {item['pages']}"
+            out += '.'
+        else:
+            out = f"{who} ({year}) *{item['title']}*." + (f" {item['publisher']}." if item['publisher'] and item['publisher'] != who else '')
+    if item['doi']:
+        out += f" https://doi.org/{item['doi']}"
+    elif item['url']:
+        out += f" Available at: {item['url']}" if style == 'harvard' else f" {item['url']}"
+        if item.get('accessed') and style == 'harvard':
+            out += f" (Accessed: {item['accessed']})"
+        out += '.' if style == 'harvard' else ''
+    return out
+
+
+def sort_key(item: dict):
+    first = item['authors'][0] if item['authors'] else {}
+    return ((_surname(first) or item['title']).casefold(), item['year'] or 0, item.get('yearSuffix') or '',
+            item['title'].casefold())
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Collections, markers and frozen bibliographies
+
+def collection(package: dict) -> dict:
+    for obj in package.get('project', {}).get('objects', []):
+        if isinstance(obj, dict) and obj.get('type') == 'citation-collection' and \
+                (obj.get('collection') or {}).get('schema') == COLLECTION_SCHEMA:
+            return obj['collection']
+    return {'schema': COLLECTION_SCHEMA, 'items': []}
+
+
+def add_items(current: dict, entries: list[tuple[dict, dict]], common: dict) -> tuple[dict, dict]:
+    """Append items; identical records are reused, so re-importing never duplicates. Keys are never reassigned."""
+    result = deepcopy(current)
+    items = result['items']
+    by_fp = {x['fingerprint']: x for x in items}
+    by_doi = {x['doi'].lower(): x for x in items if x.get('doi')}
+    keys = {x['key'] for x in items}
+    added, reused, rejected = [], [], []
+    for fields, provenance in entries:
+        try:
+            item = make_item(fields, {**common, **provenance})
+        except ValueError as exc:
+            rejected.append({'title': _clean(fields.get('title'), 120), 'reason': str(exc)})
+            continue
+        twin = by_fp.get(item['fingerprint']) or (by_doi.get(item['doi'].lower()) if item['doi'] else None)
+        if twin:
+            reused.append(twin['key'])
+            continue
+        if len(items) >= MAX_ITEMS:
+            raise HTTPException(413, 'Citation collection is full.')
+        base, n = item['key'], 0
+        while item['key'] in keys:
+            n += 1
+            item['key'] = base + chr(ord('a') + n - 1) if n <= 26 else f'{base}-{n}'
+        keys.add(item['key']); by_fp[item['fingerprint']] = item
+        if item['doi']:
+            by_doi[item['doi'].lower()] = item
+        item['addedId'] = uuid4().hex
+        items.append(item); added.append(item['key'])
+    return result, {'added': added, 'reused': reused, 'rejected': rejected}
+
+
+class DuplicateRecord(ValueError):
+    pass
+
+
+def correct_item(current: dict, key: str, fields: dict, reason: str, at: str) -> tuple[dict, dict]:
+    """Correct one record in place. Its key (and so every ``[@key]`` cite), provenance and import id are kept; the
+    previous fields are kept in ``corrections``. Saved revisions are unaffected: each froze its own bibliography."""
+    result = deepcopy(current)
+    items = result['items']
+    item = next((x for x in items if x.get('key') == key), None)
+    if item is None:
+        raise LookupError(key)
+    unknown = sorted(set(fields) - set(CORRECTABLE))
+    if unknown:
+        raise ValueError('Not a correctable field: ' + ', '.join(unknown))
+    fixed = make_item({**{k: item.get(k) for k in CORRECTABLE}, **fields}, item.get('provenance') or {})
+    if fixed['fingerprint'] == item['fingerprint']:
+        raise ValueError('The correction changes nothing')
+    twin = next((x for x in items if x is not item and (x['fingerprint'] == fixed['fingerprint'] or (
+        fixed['doi'] and (x.get('doi') or '').lower() == fixed['doi'].lower()))), None)
+    if twin:
+        raise DuplicateRecord('The corrected record would duplicate ' + twin['key'])
+    previous = {k: item[k] for k in (*CORRECTABLE, 'fingerprint') if k in item}
+    for k in CORRECTABLE:
+        item.pop(k, None)
+    item.update({k: fixed[k] for k in (*CORRECTABLE, 'fingerprint') if k in fixed})
+    item['corrections'] = [*item.get('corrections', []), {'at': at, 'reason': reason, 'previous': previous}]
+    return result, {'key': key, 'fingerprint': item['fingerprint'], 'corrections': len(item['corrections'])}
+
+
+def cited_keys(markdown: str) -> list[str]:
+    keys = []
+    for m in MARKER.finditer(markdown):
+        for part in m.group(1).split(';'):
+            key = part.strip().lstrip('@').split(',')[0].strip()
+            if key not in keys:
+                keys.append(key)
+    return keys
+
+
+def freeze(markdown: str, current: dict, style: str) -> dict | None:
+    """The per-publication bibliography stored with a revision; None when the text cites nothing."""
+    keys = cited_keys(markdown)
+    if not keys:
+        return None
+    if style not in STYLES:
+        raise HTTPException(422, 'Unknown citation style.')
+    found = {x['key']: x for x in current.get('items', [])}
+    items = [deepcopy(found[k]) for k in keys if k in found]
+    return {'schema': FROZEN_SCHEMA, 'style': style, 'items': items,
+            'unresolved': [k for k in keys if k not in found]}
+
+
+def render_marker(m: re.Match, found: dict, style: str) -> str | None:
+    """The in-text citation for one ``[@key, locator; @key2]`` marker; None if any key is not in ``found``."""
+    parts = []
+    for part in m.group(1).split(';'):
+        key, _, loc = part.strip().lstrip('@').partition(',')
+        item = found.get(key.strip())
+        if item is None:
+            return None
+        parts.append(in_text(item, style, loc))
+    return parts[0] if len(parts) == 1 else '(' + '; '.join(p[1:-1] for p in parts) + ')'
+
+
+def resolve(markdown: str, frozen: dict | None, references: bool = True) -> str:
+    """Replace markers with in-text citations and append the reference list (unless ``references`` is False, when the
+    list travels separately). Text without citations is unchanged."""
+    if not frozen or not frozen.get('items'):
+        return markdown
+    style, found = frozen['style'], {x['key']: x for x in frozen['items']}
+    body = MARKER.sub(lambda m: render_marker(m, found, style) or m.group(0), markdown)  # unresolved stay visible
+    if not references:
+        return body
+    refs = sorted(frozen['items'], key=sort_key)
+    # SC-EDITOR-DOCX-01: a manuscript that already has a reference list keeps ONE References section. Cited records
+    # whose exact manuscript entry is already there are not repeated; any others join that section in place.
+    section = re.search(r'^(#{1,6})\s+(?:list of )?(?:references?|reference list|bibliography|works cited|'
+                        r'literature cited|sources cited)\s*:?\s*$', body, re.I | re.M)
+    if section:
+        level = len(section.group(1))
+        after = re.compile(r'^#{1,%d}\s' % level, re.M).search(body, section.end())
+        end = after.start() if after else len(body)
+        existing = ' '.join(_UNESCAPE.sub(r'\1', body[section.end():end]).split())
+        extra = [reference(x, style) for x in refs
+                 if ' '.join((x.get('provenance') or {}).get('manuscriptReference', '').split()) not in existing
+                 or not (x.get('provenance') or {}).get('manuscriptReference')]
+        if not extra:
+            return body
+        insert = '\n\n'.join(extra)
+        return body[:end].rstrip() + '\n\n' + insert + '\n' + (('\n' + body[end:]) if after else '')
+    return body.rstrip() + '\n\n## References\n\n' + '\n\n'.join(reference(x, style) for x in refs) + '\n'
+
+
+def _library(item: dict) -> dict | None:
+    prov = item.get('provenance') or {}
+    if prov.get('metadataAuthority') != 'knowledge-library' or not prov.get('libraryRecordId'):
+        return None
+    return {'recordId': prov['libraryRecordId'], 'revision': prov.get('libraryRevision') or '',
+            'contentSha256': prov.get('libraryContentSha256') or ''}
+
+
+def bibliography_record(frozen: dict | None, texts: Iterable[str] = ()) -> dict | None:
+    """A frozen bibliography as formatted text (sc-publication-bibliography/1.0), for editors that do not format
+    citations themselves (Research editorial and the Research Console). ``markers`` maps every citation marker in
+    ``texts`` to the in-text string rendered here, so those editors keep markers editable and substitute exactly
+    what Workspace rendered. Library provenance travels with each item; private source ids stay in Workspace."""
+    if not frozen or not frozen.get('items'):
+        return None
+    style, found = frozen['style'], {x['key']: x for x in frozen['items']}
+    markers = {}
+    for text in texts:
+        for m in MARKER.finditer(text):
+            rendered = render_marker(m, found, style)
+            if rendered:
+                markers[m.group(0)] = rendered
+    items = []
+    for x in sorted(frozen['items'], key=sort_key):
+        item = {'key': x['key'], 'reference': reference(x, style), 'inText': in_text(x, style), 'doi': x.get('doi') or ''}
+        if _library(x):
+            item['library'] = _library(x)
+        items.append(item)
+    return {'schema': FROZEN_SCHEMA, 'style': style, 'unresolved': list(frozen.get('unresolved') or []),
+            'items': items, 'markers': markers}
+
+
+def snapshot(sections: list[dict], current: dict, style: str) -> dict | None:
+    """The bibliography snapshot an editor stores with one publication revision: the cited works of these sections,
+    frozen from the project's collection, with every marker rendered."""
+    texts = [str(s.get('body') or '') for s in sections]
+    return bibliography_record(freeze('\n\n'.join(texts), current, style), texts)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# SC-EDITOR-DOCX-01: references already typed in a manuscript -> reviewed collection records
+
+REF_HEADING = re.compile(r'^(?:list of )?(?:references?|reference list|bibliography|works cited|literature cited|'
+                         r'sources cited)$', re.I)
+_UNESCAPE = re.compile(r'\\([\\`*_{}\[\]()#+\-.!|$<>~])')
+ORG_WORDS = re.compile(r'\b(?:group|service|department|agency|organi[sz]ation|institute|council|commission|bank|fund|'
+                       r'office|ministry|nations|unesco|unhcr|unfccc|unep|ocha|imf|acaps|watch|programme|program|'
+                       r'centre|center|university|association|foundation|treasury|transparency|registry)\b', re.I)
+
+
+def manuscript_references(markdown: str) -> list[str]:
+    """Entries (one paragraph each) under a References/Bibliography heading, without Markdown escapes."""
+    out, level = [], None
+    for raw in re.split(r'\n\s*\n', markdown.replace('\r\n', '\n')):
+        block = raw.strip()
+        heading = re.match(r'^(#{1,6})\s+(.+)$', block)
+        if heading and '\n' not in block:
+            text = _UNESCAPE.sub(r'\1', heading.group(2)).strip().rstrip(':')
+            if REF_HEADING.match(text):
+                level = len(heading.group(1))
+            elif level is not None and len(heading.group(1)) <= level:
+                level = None
+            continue
+        if level is not None and block and not block.startswith(('|', '![', '```', '$$')):
+            text = _UNESCAPE.sub(r'\1', re.sub(r'\*{1,3}([^*]+)\*{1,3}', r'\1', ' '.join(block.split())))
+            out.append(re.sub(r'^(?:[-*+]|\d{1,3}[.)])\s+', '', text))
+    return out[:MAX_ITEMS]
+
+
+def _people(text: str) -> tuple[list, list[str]]:
+    """Author list from an author-date reference; organisations stay literal. Returns (authors, issues)."""
+    text = text.strip().rstrip(',').strip()
+    if not text:
+        return [], ['no author']
+    person = re.compile(r"\s*(?:&\s*|and\s+)?([^,&]+?),\s*((?:[A-Z][a-z]?\.\s*-?\s*)+)\s*(?:,|&|\band\b|$)\s*")
+    people, pos = [], 0
+    while pos < len(text):
+        match = person.match(text, pos)
+        if not match or match.end() == pos:
+            break
+        people.append({'family': match.group(1).strip(), 'given': match.group(2).strip()})
+        pos = match.end()
+    if people and pos >= len(text.rstrip('.')):
+        return people, []
+    if ORG_WORDS.search(text) or not re.search(r',|\band\b|&', text):
+        return [{'literal': text.rstrip('.')}], []
+    return [{'literal': text.rstrip('.')}], ['author names could not be separated']
+
+
+def parse_reference_text(text: str) -> dict:
+    """Best-effort author-date parse (Harvard/APA). Never authoritative: the result is reviewed before import."""
+    issues = []
+    link = MD_LINK.search(text)
+    if link:
+        text = text[:link.start()] + link.group(1) + text[link.end():]
+    accessed_match = ACCESSED.search(text)
+    accessed = accessed_match.group(1).strip(' .') if accessed_match else ''
+    if accessed_match:
+        text = text[:accessed_match.start()].rstrip()
+    url_match = re.search(r'(https?://\S+?)[.,;)]?$', text) or re.search(r'https?://\S+', text)
+    url = (url_match.group(1) if url_match and url_match.lastindex else url_match.group(0) if url_match else '')
+    url = link.group(2) if link else url.rstrip('.,;')
+    doi_match = re.search(r'(?:doi\.org/|doi:\s*)(10\.\d{4,9}/[^\s,;]+)', text, re.I) or \
+        re.search(r'\b(10\.\d{4,9}/[^\s,;]+)', text)
+    doi = doi_match.group(1).rstrip('.') if doi_match else ''
+    body = text
+    for marker in ('→', 'Available at:', 'Available from:', 'Retrieved from'):
+        body = body.split(marker)[0]
+    if url:
+        body = body.replace(url, '')
+    body = re.sub(r'https?://\S+', '', body).strip()
+    year_match = re.search(r'\((\d{4})([a-z])?(?:,[^)]*)?\)|\((n\.d\.)\)', body)
+    year = int(year_match.group(1)) if year_match and year_match.group(1) else None
+    suffix = (year_match.group(2) or '') if year_match else ''
+    if not year_match:
+        issues.append('no year in parentheses')
+        authors_text, rest = '', body
+    else:
+        authors_text, rest = body[:year_match.start()], body[year_match.end():]
+    authors, person_issues = _people(authors_text)
+    issues += person_issues
+    rest = rest.lstrip(' .,:')
+    quoted = re.match(r"^['‘\"“](.+?)['’\"”](?=[\s,.(]|$)", rest)
+    if quoted:
+        title, rest = quoted.group(1), rest[quoted.end():]
+    else:
+        stop = re.search(r'\.\s', rest)
+        title, rest = (rest[:stop.start()], rest[stop.end():]) if stop else (rest, '')
+        if ', ' in title:
+            issues.append('unquoted title; title and publisher boundary uncertain')
+    title = title.strip(' .,')
+    rest = re.sub(r'^\s*\([^)]*\)', '', rest).strip(' .,')  # "(report)"-style qualifiers
+    container = rest.split(',')[0].strip(' .') if rest else ''
+    volume = re.search(r'\b(\d{1,4})\s*\((\d{1,4})\)', rest)
+    pages = re.search(r'\bpp?\.\s*([\dA-Za-z]+\s*[–-]\s*[\dA-Za-z]+|\d+)', rest)
+    if container and volume and container.startswith(volume.group(0)):
+        container = ''
+    if not title:
+        issues.append('no title')
+    if not authors:
+        issues.append('no author')
+    # "Place: Publisher" after the title is a book (Harvard), whether or not a web address follows.
+    book = bool(container and re.fullmatch(r"[A-Z][^:,.]{1,60}:\s*[^:]{2,120}", container))
+    kind = 'article-journal' if volume or doi else 'book' if book else 'webpage' if url and not container else 'report'
+    fields = {'type': kind, 'authors': authors, 'year': year, 'yearSuffix': suffix, 'title': title,
+              'container': container, 'volume': volume.group(1) if volume else '',
+              'issue': volume.group(2) if volume else '', 'pages': pages.group(1).replace(' ', '') if pages else '',
+              'doi': doi, 'url': '' if doi else url, 'accessed': accessed}
+    if fields['type'] in ('report', 'book') and container and not volume:
+        fields['publisher'], fields['container'] = container, ''
+    return {'fields': fields, 'issues': issues}
+
+
+def _norm_title(value: str) -> str:
+    return re.sub(r'[^a-z0-9]+', ' ', unicodedata.normalize('NFKD', value or '').lower()).strip()
+
+
+def review_manuscript_references(markdown: str, current: dict, library_search: Callable | None = None) -> dict:
+    """A read-only review of each manuscript reference: parsed fields, problems, duplicates, metadata checks."""
+    items = current.get('items', [])
+    by_doi = {x['doi'].lower(): x for x in items if x.get('doi')}
+    by_title: dict[str, list] = {}
+    for x in items:
+        by_title.setdefault(_norm_title(x['title']), []).append(x)
+    cut = re.search(r'^#{1,6}\s+(?:list of )?(?:references?|reference list|bibliography|works cited)\s*:?\s*$',
+                    markdown, re.I | re.M)
+    body = markdown[:cut.start()] if cut else markdown
+    entries, seen = [], {}
+    for text in manuscript_references(markdown):
+        proposal_id = hashlib.sha256(text.encode()).hexdigest()[:16]
+        parsed = parse_reference_text(text)
+        fields, issues = parsed['fields'], list(parsed['issues'])
+        status, existing = 'new', None
+        try:
+            item = make_item(fields, {})
+        except ValueError as exc:
+            item, status = None, 'invalid'
+            issues.append(str(exc))
+        if item:
+            twin = (by_doi.get(item['doi'].lower()) if item['doi'] else None) or next(
+                (x for x in by_title.get(_norm_title(item['title']), []) if x.get('year') == item['year']), None)
+            if twin:
+                status, existing = 'duplicate', twin['key']
+            elif _norm_title(item['title']) in seen:
+                status, existing = 'duplicate-in-manuscript', seen[_norm_title(item['title'])]
+            else:
+                seen[_norm_title(item['title'])] = proposal_id
+        if status == 'new' and issues:
+            status = 'ambiguous'
+        verification = {'doi': 'present-unresolved' if fields['doi'] else 'none',
+                        'url': 'present' if fields['url'] else 'none', 'library': 'not-checked'}
+        if library_search and item and status in ('new', 'ambiguous'):
+            try:
+                hits = (library_search(item['title'][:120]) or {}).get('items', [])
+            except HTTPException:
+                hits = None
+            if hits is None:
+                verification['library'] = 'unavailable'
+            else:
+                exact = [h for h in hits if _norm_title(h.get('title', '')) == _norm_title(item['title'])]
+                verification['library'] = 'match' if len(exact) == 1 else 'multiple' if exact else 'no-match'
+                if exact:
+                    verification['libraryRecordId'] = exact[0].get('libraryObjectId')
+                if len(exact) > 1 and status == 'new':
+                    status = 'ambiguous'; issues.append('several Library records share this title')
+        cited = 0
+        if item:
+            first = item['authors'][0] if item['authors'] else {}
+            name = first.get('family') or first.get('literal') or ''
+            if name:
+                cited = len(re.findall(re.escape(name.split()[0]) + r'[^()]{0,60}?' + re.escape(year_label(item))
+                                       + r'(?![a-z0-9])', body))
+        entries.append({'proposalId': proposal_id, 'text': text, 'fields': fields, 'status': status,
+                        'existingKey': existing, 'issues': issues, 'verification': verification,
+                        'proposedKey': item['key'] if item else None, 'inTextMentions': cited,
+                        'formatted': {s: reference(item, s) for s in STYLES} if item else None})
+    summary = {s: sum(1 for e in entries if e['status'] == s) for s in
+               ('new', 'ambiguous', 'duplicate', 'duplicate-in-manuscript', 'invalid')}
+    return {'schema': 'sc-manuscript-reference-review/1.0', 'manuscriptSha256': hashlib.sha256(markdown.encode()).hexdigest(),
+            'entries': entries, 'summary': summary}
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Routes (mounted under the Reporting Studio publication router)
+
+class ImportSource(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    sourceArtifactId: str = Field(min_length=1, max_length=160)
+    expectedProjectRevision: int = Field(ge=1)
+
+
+class ImportLibrary(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    recordId: str = Field(min_length=1, max_length=240)
+    expectedProjectRevision: int = Field(ge=1)
+
+
+class SnapshotSection(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+    heading: str = Field(default='', max_length=300)
+    body: str = Field(default='', max_length=200_000)
+
+
+class SnapshotRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    sections: list[SnapshotSection] = Field(min_length=1, max_length=40)
+    style: str = DEFAULT_STYLE
+
+
+class ManuscriptReview(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    markdown: str = Field(min_length=1, max_length=400_000)
+    checkLibrary: bool = True
+
+
+class ManuscriptImport(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    markdown: str = Field(min_length=1, max_length=400_000)
+    manuscriptSha256: str = Field(pattern=r'^[a-f0-9]{64}$')
+    accept: list[str] = Field(min_length=1, max_length=MAX_ITEMS)
+    sourceArtifactId: str | None = Field(default=None, max_length=160)
+    expectedProjectRevision: int = Field(ge=1)
+
+
+class CorrectItem(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    fields: dict = Field(min_length=1, max_length=len(CORRECTABLE))
+    reason: str = Field(min_length=10, max_length=500)
+    expectedProjectRevision: int = Field(ge=1)
+
+
+class FormatRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    keys: list[str] = Field(default_factory=list, max_length=MAX_ITEMS)
+    style: str = DEFAULT_STYLE
+
+
+def build_router(deps: dict[str, Callable]) -> APIRouter:
+    """``deps``: subject, write, project, locked_project, original_asset, store, headers, library_record, library_search."""
+    router = APIRouter(prefix='/citations', tags=['Citation Studio'])
+    H = deps['headers']
+
+    def view(row, current):
+        return {'schema': COLLECTION_SCHEMA, 'projectRevision': row.revision, 'styles': list(STYLES),
+                'defaultStyle': DEFAULT_STYLE,
+                'items': [{**x, 'formatted': {s: {'reference': reference(x, s), 'inText': in_text(x, s)} for s in STYLES}}
+                          for x in current.get('items', [])]}
+
+    def save(db, owner, row, current, operation):
+        project = deepcopy(row.package['project'])
+        objects = [o for o in project.get('objects', []) if not (isinstance(o, dict) and o.get('type') == 'citation-collection')]
+        objects.append({'id': 'citation-collection', 'type': 'citation-collection', 'collection': current})
+        project['objects'] = objects
+        return deps['store'](db, owner, row, project, operation)
+
+    @router.get('/projects/{project_id}')
+    def get_collection(project_id: str, request: Request):
+        owner = deps['subject'](request)
+        with deps['session']() as db:
+            row = deps['project'](db, owner, project_id)
+            return JSONResponse(view(row, collection(row.package)), headers=H)
+
+    def _import(project_id, request, expected, load):
+        owner = deps['subject'](request); deps['write'](request)
+        with deps['session']() as db:
+            row = deps['locked_project'](db, owner, project_id)
+            if row.revision != expected:
+                raise HTTPException(409, 'Workspace project changed. Reload before importing.')
+            entries, common = load(db, owner)
+            current, report = add_items(collection(row.package), entries, common)
+            if report['added']:
+                row = save(db, owner, row, current, 'citation-import-' + uuid4().hex)
+            return JSONResponse({**view(row, current), 'import': report}, status_code=201 if report['added'] else 200, headers=H)
+
+    @router.post('/projects/{project_id}/import-source')
+    def import_source(project_id: str, body: ImportSource, request: Request):
+        def load(db, owner):
+            meta, raw = deps['original_asset'](db, owner, project_id, body.sourceArtifactId)
+            try:
+                entries = parse_reference_file(meta['filename'], raw)
+            except (ValueError, json.JSONDecodeError) as exc:
+                raise HTTPException(422, str(exc)) from exc
+            return entries, {'sourceArtifactId': meta['artifactId'], 'sourceFilename': meta['filename'],
+                             'sourceSha256': meta['sha256']}
+        return _import(project_id, request, body.expectedProjectRevision, load)
+
+    @router.post('/projects/{project_id}/import-library')
+    def import_library(project_id: str, body: ImportLibrary, request: Request):
+        def load(db, owner):
+            fields, provenance = library_item(deps['library_record'](body.recordId))
+            return [(fields, provenance)], {}
+        return _import(project_id, request, body.expectedProjectRevision, load)
+
+    @router.post('/projects/{project_id}/manuscript-references/review')
+    def manuscript_review(project_id: str, body: ManuscriptReview, request: Request):
+        """Read-only: nothing is stored until the owner accepts specific entries."""
+        owner = deps['subject'](request)
+        with deps['session']() as db:
+            current = collection(deps['project'](db, owner, project_id).package)
+        search = deps['library_search'] if body.checkLibrary else None
+        return JSONResponse(review_manuscript_references(body.markdown, current, search), headers=H)
+
+    @router.post('/projects/{project_id}/manuscript-references/import')
+    def manuscript_import(project_id: str, body: ManuscriptImport, request: Request):
+        """Import only the reviewed entries the owner accepted. Duplicates are never added; each record keeps the
+        exact manuscript text it came from."""
+        if hashlib.sha256(body.markdown.encode()).hexdigest() != body.manuscriptSha256:
+            raise HTTPException(409, 'The manuscript changed since review. Review the references again.')
+        def load(db, owner):
+            row = deps['project'](db, owner, project_id)
+            if body.sourceArtifactId:
+                deps['original_asset'](db, owner, project_id, body.sourceArtifactId)
+            review = review_manuscript_references(body.markdown, collection(row.package))
+            by_id = {e['proposalId']: e for e in review['entries']}
+            unknown = [x for x in body.accept if x not in by_id]
+            if unknown:
+                raise HTTPException(422, 'Unknown reviewed reference: ' + unknown[0])
+            chosen = [by_id[x] for x in dict.fromkeys(body.accept)
+                      if by_id[x]['status'] in ('new', 'ambiguous')]
+            from datetime import datetime, timezone
+            when = datetime.now(timezone.utc).isoformat()
+            return [(e['fields'], {'manuscriptReference': e['text'][:2000], 'reviewStatus': e['status'],
+                                   'reviewIssues': '; '.join(e['issues'])[:300], 'reviewedAt': when})
+                    for e in chosen], {'metadataAuthority': 'manuscript-reference-owner-reviewed',
+                                       'manuscriptSha256': body.manuscriptSha256,
+                                       'sourceArtifactId': body.sourceArtifactId or ''}
+        return _import(project_id, request, body.expectedProjectRevision, load)
+
+    @router.get('/library/search')
+    def library_search(q: str, request: Request):
+        deps['subject'](request)
+        return JSONResponse(deps['library_search'](q), headers=H)
+
+    @router.post('/projects/{project_id}/items/{key}/correct')
+    def correct_record(project_id: str, key: str, body: CorrectItem, request: Request):
+        """The owner corrects one record's metadata; the record keeps its key and the previous fields are kept."""
+        from datetime import datetime, timezone
+        owner = deps['subject'](request); deps['write'](request)
+        if not KEY.fullmatch(key):
+            raise HTTPException(404, 'Citation record not found.')
+        with deps['session']() as db:
+            row = deps['locked_project'](db, owner, project_id)
+            if row.revision != body.expectedProjectRevision:
+                raise HTTPException(409, 'Workspace project changed. Reload before correcting.')
+            try:
+                current, report = correct_item(collection(row.package), key, body.fields, body.reason.strip(),
+                                               datetime.now(timezone.utc).isoformat())
+            except LookupError:
+                raise HTTPException(404, 'Citation record not found.')
+            except DuplicateRecord as exc:
+                raise HTTPException(409, str(exc))
+            except ValueError as exc:
+                raise HTTPException(422, str(exc))
+            row = save(db, owner, row, current, 'citation-correct-' + uuid4().hex)
+            return JSONResponse({**view(row, current), 'correction': report}, headers=H)
+
+    @router.post('/projects/{project_id}/bibliography')
+    def bibliography(project_id: str, body: FormatRequest, request: Request):
+        owner = deps['subject'](request)
+        if body.style not in STYLES:
+            raise HTTPException(422, 'Unknown citation style.')
+        with deps['session']() as db:
+            items = collection(deps['project'](db, owner, project_id).package)['items']
+        chosen = [x for x in items if not body.keys or x['key'] in body.keys]
+        return JSONResponse({'style': body.style, 'references': [reference(x, body.style) for x in sorted(chosen, key=sort_key)]},
+                            headers=H)
+
+    @router.post('/projects/{project_id}/snapshot')
+    def snapshot_route(project_id: str, body: SnapshotRequest, request: Request):
+        """Read-only: used by Research editorial and the Research Console with the owner's session (CORS-limited to
+        the configured Research Console origins). Nothing is stored in Workspace; the snapshot is stored with the
+        Research revision it belongs to."""
+        owner = deps['subject'](request)
+        if body.style not in STYLES:
+            raise HTTPException(422, 'Unknown citation style.')
+        with deps['session']() as db:
+            current = collection(deps['project'](db, owner, project_id).package)
+        sections = [s.model_dump() for s in body.sections]
+        return JSONResponse({'schema': 'sc-citation-snapshot/1.0', 'bibliography': snapshot(sections, current, body.style)},
+                            headers=H)
+
+    return router

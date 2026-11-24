@@ -1,0 +1,5 @@
+# RD-01.2 Reporting Studio publication exports (DOCX, PDF, SVG figures), as pinned in the deployed sc-reporting-rd012.
+python-docx==1.2.0
+reportlab==4.4.9
+svglib==1.6.0
+CairoSVG==2.8.2

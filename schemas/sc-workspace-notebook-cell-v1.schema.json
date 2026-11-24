@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-workspace-notebook-cell-v1.schema.json",
+  "title": "Sustainable Catalyst Workspace Notebook Executable Cell v1.0",
+  "description": "One entry of sc-workspace-notebook/3.0 cells[]. The Workspace backend enforces the same rules (backend/app/notebook_cells.py) plus graph rules a schema cannot express: unique cell ids, dependsOnCellIds and upstreamInput cells naming existing executable cells, and upstreamInput cells being declared dependencies. Execution is always server-planned; nothing here authorises a browser to run code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 160, "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"},
+    "type": {"enum": ["markdown", "code", "decision-studio"]},
+    "kind": {"type": "string", "maxLength": 64},
+    "title": {"type": "string", "maxLength": 240},
+    "language": {"enum": ["r", "julia", "python", "rust", "sql"]},
+    "source": {"type": "string", "maxLength": 100000},
+    "fingerprint": {"type": "string", "maxLength": 128, "description": "Client-side hint only; the server computes cellSha256 itself."},
+    "scenarioRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority"],
+      "properties": {
+        "authority": {"enum": ["decision-studio", "workspace"]},
+        "scenarioSetId": {"type": "string", "maxLength": 160},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "execution": {"$ref": "#/$defs/execution"}
+  },
+  "allOf": [
+    {"if": {"required": ["type"], "properties": {"type": {"const": "code"}}}, "then": {"required": ["language", "source"]}}
+  ],
+  "$defs": {
+    "cellId": {"type": "string", "minLength": 1, "maxLength": 160},
+    "datasetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["datasetId", "revision"],
+      "properties": {
+        "datasetId": {"type": "string", "minLength": 1, "maxLength": 160},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "datasetInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["datasetId", "datasetRevision"],
+      "properties": {
+        "datasetId": {"type": "string", "minLength": 1, "maxLength": 160},
+        "datasetRevision": {"type": "integer", "minimum": 1},
+        "format": {"enum": ["json-records", "csv"]},
+        "artifactSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "transform": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {"kind": {"enum": ["least-squares-normal-equations"]}}
+        }
+      }
+    },
+    "upstreamInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cells", "transform"],
+      "properties": {
+        "cells": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cellId"],
+            "properties": {
+              "cellId": {"$ref": "#/$defs/cellId"},
+              "role": {"enum": ["primary", "cross-check"]}
+            }
+          }
+        },
+        "transform": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {"kind": {"enum": ["linear-scenario-scores"]}}
+        }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation"],
+      "properties": {
+        "schema": {"const": "sc-workspace-notebook-cell-execution/1.0"},
+        "targetProduct": {"enum": ["workspace", "core", "lab", "workbench", "decision-studio", "library", "site-intelligence"]},
+        "operation": {"type": "string", "minLength": 1, "maxLength": 160},
+        "dependsOnCellIds": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/cellId"}},
+        "inputArtifactIds": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 160}},
+        "datasetRefs": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/datasetRef"}},
+        "modelRef": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["modelId"],
+          "properties": {"modelId": {"type": "string", "minLength": 1, "maxLength": 160}, "revision": {"type": "integer", "minimum": 1}}
+        },
+        "priority": {"type": "integer", "minimum": 0, "maximum": 9},
+        "maxAttempts": {"type": "integer", "minimum": 1, "maximum": 5},
+        "executionPolicy": {"type": "object"},
+        "resourceBudget": {"type": "object"},
+        "sandbox": {"type": "object"},
+        "payload": {
+          "type": "object",
+          "properties": {
+            "datasetInput": {"$ref": "#/$defs/datasetInput"},
+            "upstreamInput": {"$ref": "#/$defs/upstreamInput"}
+          },
+          "not": {"required": ["datasetInput", "upstreamInput"]}
+        }
+      }
+    }
+  }
+}

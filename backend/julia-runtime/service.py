@@ -31,6 +31,7 @@ OPERATIONS = {
     "workspace.polyglot.julia.integrate-series",
     "workspace.polyglot.julia.polynomial-roots",
     "workspace.polyglot.julia.parameter-sweep",
+    "workspace.polyglot.julia.expression-evaluate",
 }
 
 app = FastAPI(title=SERVICE, version=SERVICE_VERSION, docs_url=None, redoc_url=None)

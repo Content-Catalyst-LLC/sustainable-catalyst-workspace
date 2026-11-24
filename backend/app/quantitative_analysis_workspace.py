@@ -11,6 +11,7 @@ from .models import (
     QuantitativeAnalysisSnapshot,
 )
 from .utils import iso, sha256_hex
+from .result_receipts import client_metadata, verification_of, verify_result_ref, with_verification
 
 QUANT_WORKSPACE_SCHEMA="sc-workspace-quantitative-reconstruction-scientific-analysis-handoffs-workspace/1.0"
 RECONSTRUCTION_REQUEST_SCHEMA="sc-workspace-quantitative-reconstruction-request/1.0"
@@ -184,13 +185,14 @@ def update_analysis_handoff_status(db,user_key,handoff_id,p:QuantitativeAnalysis
 def create_result_binding(db,user_key,p:QuantitativeResultBindingRequest):
     h=_handoff(db,user_key,p.handoffId)
     if h is None: raise KeyError(p.handoffId)
-    fp=sha256_hex({"handoffId":p.handoffId,"resultKind":p.resultKind,"resultRef":p.resultRef,"resultFingerprint":p.resultFingerprint,"status":p.status,"note":p.note,"metadata":p.metadata})
+    fp=sha256_hex({"handoffId":p.handoffId,"resultKind":p.resultKind,"resultRef":p.resultRef,"resultFingerprint":p.resultFingerprint,"status":p.status,"note":p.note,"metadata":client_metadata(p.metadata)})
     q=select(QuantitativeResultBinding).where(QuantitativeResultBinding.user_key==user_key,QuantitativeResultBinding.binding_fingerprint==fp)
     existing=db.scalars(q).first()
     if existing:return result_binding_metadata(existing)
-    row=QuantitativeResultBinding(user_key=user_key,binding_id="quant-result-"+uuid4().hex[:24],project_id=h.project_id,handoff_id=p.handoffId,reconstruction_id=h.reconstruction_id,result_kind=p.resultKind,result_ref=p.resultRef,result_fingerprint=p.resultFingerprint,status=p.status,note=p.note,binding_fingerprint=fp,metadata_json=p.metadata); db.add(row); db.flush(); return result_binding_metadata(row)
+    receipt=verify_result_ref(db,user_key,h.project_id,p.resultRef,p.resultFingerprint)
+    row=QuantitativeResultBinding(user_key=user_key,binding_id="quant-result-"+uuid4().hex[:24],project_id=h.project_id,handoff_id=p.handoffId,reconstruction_id=h.reconstruction_id,result_kind=p.resultKind,result_ref=p.resultRef,result_fingerprint=p.resultFingerprint,status=p.status,note=p.note,binding_fingerprint=fp,metadata_json=with_verification(p.metadata,receipt)); db.add(row); db.flush(); return result_binding_metadata(row)
 
-def result_binding_metadata(r): return {"schema":RESULT_BINDING_SCHEMA,"bindingId":r.binding_id,"projectId":r.project_id,"handoffId":r.handoff_id,"reconstructionId":r.reconstruction_id,"resultKind":r.result_kind,"resultRef":r.result_ref,"resultFingerprint":r.result_fingerprint,"status":r.status,"note":r.note,"bindingFingerprint":r.binding_fingerprint,"metadata":r.metadata_json or {},"createdAt":iso(r.created_at)}
+def result_binding_metadata(r): return {"schema":RESULT_BINDING_SCHEMA,"bindingId":r.binding_id,"projectId":r.project_id,"handoffId":r.handoff_id,"reconstructionId":r.reconstruction_id,"resultKind":r.result_kind,"resultRef":r.result_ref,"resultFingerprint":r.result_fingerprint,"status":r.status,"note":r.note,"bindingFingerprint":r.binding_fingerprint,"receiptVerification":verification_of(r.metadata_json),"metadata":client_metadata(r.metadata_json),"createdAt":iso(r.created_at)}
 
 def list_result_bindings(db,user_key,project_id=None,handoff_id=None,reconstruction_id=None,limit=1000):
     q=select(QuantitativeResultBinding).where(QuantitativeResultBinding.user_key==user_key)
@@ -216,7 +218,7 @@ def analysis_graph(db,user_key,project_id):
     for h in m["handoffs"]:
         hid="handoff:"+h["handoffId"]; nodes.append({"id":hid,"kind":"analysis-handoff","label":h["destinationProduct"]+": "+h["analysisKind"],"status":h["status"],"fingerprint":h["packageFingerprint"]}); edges.append({"id":"handoff-edge:"+h["handoffId"],"kind":"analysis-handoff","from":"reconstruction:"+h["reconstructionId"],"to":hid})
     for b in m["resultBindings"]:
-        rid=b["resultRef"]; nodes.append({"id":rid,"kind":b["resultKind"],"label":rid,"externalCanonicalReference":True,"resultFingerprint":b["resultFingerprint"]}); edges.append({"id":"result-edge:"+b["bindingId"],"kind":"analysis-result","from":"handoff:"+b["handoffId"],"to":rid,"bindingFingerprint":b["bindingFingerprint"]})
+        rid=b["resultRef"]; nodes.append({"id":rid,"kind":b["resultKind"],"label":rid,"externalCanonicalReference":True,"resultFingerprint":b["resultFingerprint"],"receiptVerification":b["receiptVerification"]["status"]}); edges.append({"id":"result-edge:"+b["bindingId"],"kind":"analysis-result","from":"handoff:"+b["handoffId"],"to":rid,"bindingFingerprint":b["bindingFingerprint"]})
     # deterministic dedupe
     seen=set(); nodes=[x for x in nodes if not (x["id"] in seen or seen.add(x["id"]))]
     payload={"schema":ANALYSIS_GRAPH_SCHEMA,"projectId":project_id,"nodes":nodes,"edges":edges,"automaticRelationshipInference":False,"automaticCausalityInference":False}; payload["graphFingerprint"]=sha256_hex(payload); return payload

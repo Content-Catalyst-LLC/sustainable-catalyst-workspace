@@ -6,7 +6,7 @@ def load():
     spec=importlib.util.spec_from_file_location('sc_uncertainty_service',ROOT/'uncertainty-runtime'/'service.py'); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); return mod
 
 def test_uncertainty_runtime_health_and_registered_ops():
-    c=TestClient(load().app); h=c.get('/health').json(); assert h['ok'] is True and h['version']=='2.20.0' and len(h['operations'])==8 and h['arbitraryCodeExecution'] is False
+    c=TestClient(load().app); h=c.get('/health').json(); assert h['ok'] is True and h['version']=='2.21.0' and len(h['operations'])==9 and h['arbitraryCodeExecution'] is False
 
 def test_seeded_monte_carlo_is_reproducible():
     c=TestClient(load().app); payload={'terms':[{'name':'x','coefficient':2,'distribution':{'kind':'normal','mean':3,'sd':1}}],'draws':1200,'seed':23}

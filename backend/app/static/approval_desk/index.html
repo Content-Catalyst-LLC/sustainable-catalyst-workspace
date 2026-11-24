@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Research approvals · Workspace</title>
+  <link rel="stylesheet" href="/v1/desk/assets/approval-desk.css">
+  <script type="module" src="/v1/desk/assets/approval-desk.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <h1>Research approvals</h1>
+    <div id="who" class="who" aria-live="polite"></div>
+  </header>
+  <main>
+    <p id="notice" class="notice" role="status" hidden></p>
+
+    <section id="signin" hidden>
+      <p>Sign in with your Sustainable Catalyst account to review publication approvals.</p>
+      <a id="signin-link" class="button" href="/v1/auth/login?returnTo=%2Fv1%2Fdesk%2Fapprovals">Sign in</a>
+    </section>
+
+    <section id="review" class="review" hidden aria-labelledby="review-title">
+      <h2 id="review-title">Review request</h2>
+      <p id="resume-banner" class="banner" hidden>
+        You signed in again. Confirm the exact revision once more; nothing has been signed yet.
+      </p>
+      <dl class="facts">
+        <dt>Subject</dt><dd id="r-title"></dd>
+        <dt>Dimension</dt><dd id="r-dimension"></dd>
+        <dt>Requested by</dt><dd id="r-requester"></dd>
+        <dt>Project</dt><dd id="r-project"></dd>
+        <dt>Requested</dt><dd id="r-when"></dd>
+        <dt>Exact revision</dt><dd><code id="r-subject" class="subject"></code></dd>
+      </dl>
+      <form id="decide" novalidate>
+        <label for="confirm">To approve, type the first 12 characters of the revision hash
+          (<span id="r-hash-hint"></span>…)</label>
+        <input id="confirm" name="confirm" autocomplete="off" spellcheck="false" maxlength="64">
+        <label for="note">Note (optional)</label>
+        <textarea id="note" name="note" maxlength="2000" rows="3"></textarea>
+        <div class="actions">
+          <button type="submit" id="approve" value="approve" disabled>Approve this revision</button>
+          <button type="submit" id="revise" value="request_revision" class="secondary">Request revision</button>
+          <button type="submit" id="reject" value="reject" class="secondary">Reject</button>
+          <button type="button" id="close" class="link">Close</button>
+        </div>
+        <p class="fine">Approving requires a sign-in with your password and second factor within the last five
+          minutes. If yours is older you will be asked to sign in again.</p>
+      </form>
+    </section>
+
+    <section aria-labelledby="queue-title">
+      <h2 id="queue-title">Waiting for your decision</h2>
+      <table id="queue"><thead><tr><th>Subject</th><th>Dimension</th><th>Requested by</th><th>Revision</th><th></th></tr></thead><tbody></tbody></table>
+      <p id="queue-empty" class="empty" hidden>Nothing is waiting for you.</p>
+    </section>
+
+    <section aria-labelledby="mine-title">
+      <h2 id="mine-title">Requests you raised</h2>
+      <table id="mine"><thead><tr><th>Subject</th><th>Dimension</th><th>Status</th><th>Revision</th><th></th></tr></thead><tbody></tbody></table>
+      <p id="mine-empty" class="empty" hidden>You have not raised any requests.</p>
+    </section>
+
+    <section aria-labelledby="owned-title">
+      <h2 id="owned-title">On your projects</h2>
+      <table id="owned"><thead><tr><th>Subject</th><th>Dimension</th><th>Status</th><th>Decided by</th><th>Record</th></tr></thead><tbody></tbody></table>
+      <p id="owned-empty" class="empty" hidden>No requests on your projects.</p>
+    </section>
+  </main>
+  <footer><button type="button" id="signout" class="link" hidden>Sign out</button></footer>
+</body>
+</html>

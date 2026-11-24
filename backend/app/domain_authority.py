@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import DomainMutationReceipt
+from .notebook_cells import CellValidationError, validate_cells
 from .utils import iso, ordered_sha256_hex, sha256_hex, workspace_project_fingerprint
 
 
@@ -126,6 +127,10 @@ def validate_notebook_document(notebook: dict[str, Any]) -> dict[str, Any]:
             code="unsupported-notebook-schema",
             path="notebook.schema",
         )
+    try:
+        validate_cells(notebook.get("cells"))
+    except CellValidationError as exc:
+        raise DomainValidationError(f"Invalid executable notebook cell: {exc.message}", code="invalid-notebook-cell", path=exc.path) from exc
     cell_count, identifiers = _validate_unique_ids(notebook.get("cells"), collection="notebook.cells")
     return {
         "schema": "sc-workspace-domain-validation-result/1.0",

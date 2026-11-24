@@ -11,6 +11,7 @@ from .models import (
     PredictiveInvestigationSnapshot,
 )
 from .utils import iso, sha256_hex
+from .result_receipts import client_metadata, verification_of, verify_result_ref, with_verification
 
 PREDICTIVE_WORKSPACE_SCHEMA="sc-workspace-predictive-investigation-scenario-modeling-workspace/1.0"
 SCENARIO_REQUEST_SCHEMA="sc-workspace-predictive-scenario-request/1.0"
@@ -215,10 +216,11 @@ def create_result_binding(db,user_key,p:PredictiveForecastResultBindingRequestMo
         if fr.scenario_id!=p.scenarioId: raise ValueError("forecast result scenario mismatch")
     if p.calibrationRef and len(p.calibrationFingerprint)<8: raise ValueError("calibration fingerprint required")
     if p.backtestRef and len(p.backtestFingerprint)<8: raise ValueError("backtest fingerprint required")
-    fp=sha256_hex({"projectId":sc.project_id,"scenarioId":p.scenarioId,"forecastRequestId":p.forecastRequestId,"resultKind":p.resultKind,"resultRef":p.resultRef,"resultFingerprint":p.resultFingerprint,"modelConditional":p.modelConditional,"calibrationRef":p.calibrationRef,"calibrationFingerprint":p.calibrationFingerprint,"backtestRef":p.backtestRef,"backtestFingerprint":p.backtestFingerprint,"note":p.note,"metadata":p.metadata})
-    row=PredictiveForecastResultBinding(user_key=user_key,binding_id="predictive-result-"+uuid4().hex[:24],project_id=sc.project_id,scenario_id=p.scenarioId,forecast_request_id=p.forecastRequestId,result_kind=p.resultKind,result_ref=p.resultRef,result_fingerprint=p.resultFingerprint,model_conditional=p.modelConditional,calibration_ref=p.calibrationRef,calibration_fingerprint=p.calibrationFingerprint,backtest_ref=p.backtestRef,backtest_fingerprint=p.backtestFingerprint,note=p.note,binding_fingerprint=fp,metadata_json=p.metadata); db.add(row); db.flush(); return result_binding_metadata(row)
+    receipt=verify_result_ref(db,user_key,sc.project_id,p.resultRef,p.resultFingerprint)
+    fp=sha256_hex({"projectId":sc.project_id,"scenarioId":p.scenarioId,"forecastRequestId":p.forecastRequestId,"resultKind":p.resultKind,"resultRef":p.resultRef,"resultFingerprint":p.resultFingerprint,"modelConditional":p.modelConditional,"calibrationRef":p.calibrationRef,"calibrationFingerprint":p.calibrationFingerprint,"backtestRef":p.backtestRef,"backtestFingerprint":p.backtestFingerprint,"note":p.note,"metadata":client_metadata(p.metadata)})
+    row=PredictiveForecastResultBinding(user_key=user_key,binding_id="predictive-result-"+uuid4().hex[:24],project_id=sc.project_id,scenario_id=p.scenarioId,forecast_request_id=p.forecastRequestId,result_kind=p.resultKind,result_ref=p.resultRef,result_fingerprint=p.resultFingerprint,model_conditional=p.modelConditional,calibration_ref=p.calibrationRef,calibration_fingerprint=p.calibrationFingerprint,backtest_ref=p.backtestRef,backtest_fingerprint=p.backtestFingerprint,note=p.note,binding_fingerprint=fp,metadata_json=with_verification(p.metadata,receipt)); db.add(row); db.flush(); return result_binding_metadata(row)
 
-def result_binding_metadata(r): return {"schema":RESULT_SCHEMA,"bindingId":r.binding_id,"projectId":r.project_id,"scenarioId":r.scenario_id,"forecastRequestId":r.forecast_request_id,"resultKind":r.result_kind,"resultRef":r.result_ref,"resultFingerprint":r.result_fingerprint,"modelConditional":bool(r.model_conditional),"calibrationRef":r.calibration_ref,"calibrationFingerprint":r.calibration_fingerprint,"backtestRef":r.backtest_ref,"backtestFingerprint":r.backtest_fingerprint,"note":r.note,"bindingFingerprint":r.binding_fingerprint,"metadata":r.metadata_json or {},"createdAt":iso(r.created_at)}
+def result_binding_metadata(r): return {"schema":RESULT_SCHEMA,"bindingId":r.binding_id,"projectId":r.project_id,"scenarioId":r.scenario_id,"forecastRequestId":r.forecast_request_id,"resultKind":r.result_kind,"resultRef":r.result_ref,"resultFingerprint":r.result_fingerprint,"modelConditional":bool(r.model_conditional),"calibrationRef":r.calibration_ref,"calibrationFingerprint":r.calibration_fingerprint,"backtestRef":r.backtest_ref,"backtestFingerprint":r.backtest_fingerprint,"note":r.note,"bindingFingerprint":r.binding_fingerprint,"receiptVerification":verification_of(r.metadata_json),"metadata":client_metadata(r.metadata_json),"createdAt":iso(r.created_at)}
 
 def list_result_bindings(db,user_key,project_id=None,scenario_id=None,limit=5000):
     q=select(PredictiveForecastResultBinding).where(PredictiveForecastResultBinding.user_key==user_key)

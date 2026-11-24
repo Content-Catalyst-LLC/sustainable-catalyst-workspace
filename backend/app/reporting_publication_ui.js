@@ -1,0 +1,385 @@
+'use strict';
+const base='/v1/private-research/reporting-studio';
+const pub=base+'/publication';
+const E=id=>document.getElementById(id);
+const state={project:null,catalog:null,documentId:null,documentRevision:0,sourceId:null,saved:false,dirty:false,figures:[],layoutAudit:null};
+function status(s,error=false){E('status').textContent=s;E('status').classList.toggle('warn',error)}
+function path(s){return pub+'/projects/'+encodeURIComponent(state.project)+s}
+function signInPrompt(show){let b=document.getElementById('scSignIn');if(!show){if(b)b.remove();return}if(b)return;b=document.createElement('div');b.id='scSignIn';b.setAttribute('role','alert');b.style.cssText='position:sticky;top:0;z-index:9999;background:#7a1f1f;color:#fff;padding:10px 16px;font:14px system-ui;text-align:center';const a=document.createElement('a');a.href='/v1/auth/login?stepUp=true&returnTo='+encodeURIComponent(location.pathname+location.search);a.target='_blank';a.rel='noopener';a.style.color='#fff';a.style.fontWeight='600';a.textContent='Sign in again (new tab)';b.append('Your session has expired. This page and any unsaved work are kept. ',a,', then return here and retry.');document.body.prepend(b)}
+async function api(url,body){
+ const opt={credentials:'same-origin',cache:'no-store'};
+ if(body!==undefined){opt.method='POST';opt.headers={'Content-Type':'application/json'};opt.body=JSON.stringify(body)}
+ const r=await fetch(url,opt);const text=await r.text();
+ signInPrompt(r.status===401);
+ if(!r.ok){let msg=text,code;try{const d=JSON.parse(text),x=d.message??d.detail;msg=typeof x==='string'?x:(x&&x.message)||text;
+  code=(x&&typeof x==='object'&&x.code)||d.code;
+  const used=d.usedBy||(x&&x.usedBy);if(used)msg+=' ('+used.map(u=>u.title||u.kind).join(', ')+')'}catch{}
+  const err=Error('HTTP '+r.status+': '+msg.slice(0,250));err.status=r.status;if(typeof code==='string')err.code=code;throw err}
+ try{return JSON.parse(text)}catch{throw Error('Unexpected server response')}
+}
+function run(fn){return async()=>{try{await fn()}catch(err){status(err.message,true);console.error(err)}}}
+function refreshExport(){for(const id of ['html','pdf','docx'])E(id).disabled=!state.saved||state.dirty}
+function markDirty(){
+ state.dirty=true;state.saved=false;state.layoutAudit=null;
+ E('dirty').textContent='Unsaved changes';refreshExport();
+ E('length').textContent=E('manuscript').value.length.toLocaleString()+' characters';
+ E('layoutMove').disabled=true;
+ E('layoutSummary').textContent='Update preview to refresh the layout audit.';
+}
+function setDraft(title,markdown,sourceId=null,docId=null,version=0,type='report'){
+ E('title').value=title;E('manuscript').value=markdown;E('publicationType').value=type;
+ state.sourceId=sourceId;state.documentId=docId;state.documentRevision=version;state.layoutAudit=null;
+ state.saved=!!docId;state.dirty=false;E('dirty').textContent=docId?'Saved · revision '+version:'New unsaved draft';
+ E('length').textContent=markdown.length.toLocaleString()+' characters';
+ refreshExport();if(visualMode)renderVisualBlocks(); E('provenance').textContent=sourceId?'Source ID: '+sourceId+' · original bytes immutable':'New document. Source not yet linked.';
+}
+async function selectProject(id){
+ if(!id)return;state.project=id;state.catalog=await api(base+'/catalog/projects/'+encodeURIComponent(id));
+ E('notebookDeskLink').href='/v1/desk/notebooks?project='+encodeURIComponent(id);
+ E('figureStudioLink').href=base+'?project='+encodeURIComponent(id);
+ E('assets').replaceChildren();E('versions').replaceChildren();
+ const files=[...(state.catalog.legacyFiles||[]),...(state.catalog.files||[])];
+ E('fileCount').textContent=files.length+' files';
+ const figureFiles=files.filter(f=>f.filename.toLowerCase().endsWith('.svg'));
+ state.figures=figureFiles;
+ const assetSelect=E('layoutAsset');assetSelect.replaceChildren();
+ const emptyFigure=document.createElement('option');emptyFigure.value='';emptyFigure.textContent='Select verified project SVG';assetSelect.append(emptyFigure);
+ for(const figure of figureFiles){
+   const option=document.createElement('option');option.value=figure.artifactId;
+   option.textContent=figure.filename.split('/').pop();assetSelect.append(option);
+ }
+ for(const file of files){
+  const container=document.createElement('div');container.className='asset';
+  const title=document.createElement('b');title.textContent=file.filename.split('/').pop();container.append(title);
+  const meta=document.createElement('small');meta.textContent=file.filename;container.append(meta);
+  const row=document.createElement('div');row.className='asset-row';
+  if(/\.(md|txt)$/i.test(file.filename)){
+   const open=document.createElement('button');open.textContent='Edit as draft';
+   open.onclick=run(async()=>{const d=await api(path('/sources/'+encodeURIComponent(file.artifactId)));
+     setDraft(state.catalog.project.title,d.markdown,file.artifactId);await preview();
+     status('Original Markdown opened as an editable draft. Source unchanged.');});
+   row.append(open);
+  }
+  if(/\.docx$/i.test(file.filename)){
+   const open=document.createElement('button');open.textContent='Import Word manuscript';
+   open.onclick=run(async()=>{await importWord(file)});
+   row.append(open);
+  }
+  // A registered scientific output's chart goes in only through Insert -> Scientific output, with its table and provenance.
+  if(/\.svg$/i.test(file.filename)&&/^scientific-outputs\//.test(file.filename)){
+   const hint=document.createElement('small');hint.textContent='Use Insert → Scientific output (keeps the table and provenance)';row.append(hint);
+  }else if(/\.svg$/i.test(file.filename)){
+   const insert=document.createElement('button');insert.textContent='Insert figure';
+   insert.onclick=run(async()=>{const caption=file.filename.split('/').pop().replace(/\.svg$/i,'').replace(/_/g,' ').replace(/[\[\]]/g,'');
+    insertManuscriptBlocks('!['+caption+'](asset:'+file.artifactId+')');await preview();
+    status('Figure '+caption+' inserted at the cursor.');});
+   row.append(insert);
+  }
+  if(/\.(ris|json)$/i.test(file.filename)&&/(^|\/)[^/]*(ref|bib|citation)[^/]*$/i.test(file.filename)){
+   const imp=document.createElement('button');imp.textContent='Import references';
+   imp.onclick=run(async()=>{await citeImport('/import-source',{sourceArtifactId:file.artifactId});});
+   row.append(imp);
+  }
+  if(file.downloadUrl){const a=document.createElement('a');a.href=file.downloadUrl;a.textContent='Original';a.setAttribute('download','');a.style.fontSize='11px';row.append(a)}
+  container.append(row);E('assets').append(container);
+ }
+ await loadCitations();
+ const docs=await api(path('/documents'));
+ await renderHistoryButtons(docs.documents);
+ // Prefer the preserved manuscript when there is no saved publication to reopen.
+ if(docs.documents.length){const last=docs.documents[0];const r=await api(path('/documents/'+encodeURIComponent(last.documentId)));
+  setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,r.document.documentId,r.document.revision,r.document.publicationType||'report');
+  state.saved=true;refreshExport();await preview();status('Saved scientific publication opened.');
+ }else{
+  const candidate=files.find(f=>/\/final_manuscript\.md$/i.test(f.filename))||files.find(f=>/\.md$/i.test(f.filename));
+  if(candidate){const d=await api(path('/sources/'+encodeURIComponent(candidate.artifactId)));
+    setDraft(state.catalog.project.title,d.markdown,candidate.artifactId);await preview();
+    status('Preserved manuscript loaded into editable publication preview. Save a revision to enable exports.');
+  }else{setDraft(state.catalog.project.title,'# Introduction\n\n',null);await preview();status('New publication draft. Existing research files remain available in the asset panel.')}
+ }
+}
+// SC-EDITOR-DOCX-01: structured Word import. The DOCX bytes stay unchanged; embedded figures become project images.
+async function importWord(file){
+ if(state.dirty&&!window.confirm('Discard unsaved changes in the current draft and import this Word manuscript?'))return;
+ const d=await api(path('/sources/'+encodeURIComponent(file.artifactId)+'/import-docx'),{});
+ setDraft(d.title||state.catalog.project.title,d.markdown,file.artifactId);
+ state.importReport=d.import;await preview();renderImportReport(d.import);
+ const o=d.import.outline;
+ status('Word manuscript imported as a new unsaved draft: '+o.headings.length+' headings, '+o.tables.length+' table(s), '+
+  o.figures+' figure(s), '+o.referenceEntries+' reference entries. Original DOCX unchanged; existing revisions untouched.');
+}
+function renderImportReport(report){
+ const box=E('provenance');box.replaceChildren();
+ const head=document.createElement('div');
+ head.textContent='Word import · '+report.converter+' · source SHA-256 '+report.sourceSha256.slice(0,16)+'… (unchanged)';box.append(head);
+ for(const f of report.figures){const x=document.createElement('div');x.textContent='Figure '+f.filename.split('/').pop()+' ← '+f.part+' · '+f.sha256.slice(0,12)+'…';box.append(x)}
+ for(const n of report.notes){const x=document.createElement('div');x.textContent=n;box.append(x)}
+ const list=document.createElement('ul');
+ for(const u of report.unsupported){const li=document.createElement('li');li.textContent=u.feature+' ('+u.count+'): '+u.detail;list.append(li)}
+ if(!report.unsupported.length){const li=document.createElement('li');li.textContent='No unsupported Word features detected.';list.append(li)}
+ box.append(list);
+}
+function manuscript(){return{title:E('title').value.trim(),markdown:E('manuscript').value,sourceArtifactId:state.sourceId,citationStyle:E('citeStyle').value,publicationType:E('publicationType').value}}
+function renderLayoutReport(report){
+ state.layoutAudit=report;
+ E('layoutSummary').textContent=report.status==='ready'?'No unresolved figure placement issues.':
+  report.issues.filter(x=>x.severity!=='info').length+' layout item(s) need review before publication.';
+ E('layoutSummary').classList.toggle('warn',report.status!=='ready');
+ const issues=E('layoutIssues');issues.replaceChildren();
+ for(const finding of report.issues){
+  const item=document.createElement('li');
+  item.textContent=(finding.line?'Line '+finding.line+': ':'')+finding.message;
+  issues.append(item);
+ }
+ const markers=E('layoutMarker'),wanted=markers.value;markers.replaceChildren();
+ const blank=document.createElement('option');blank.value='';blank.textContent='Select unresolved marker';markers.append(blank);
+ for(const marker of report.markers){
+  const option=document.createElement('option');option.value=marker.marker;
+  option.textContent=marker.marker+' (line '+marker.line+')';markers.append(option);
+ }
+ if(report.markers.some(x=>x.marker===wanted))markers.value=wanted;
+ E('layoutMove').disabled=!report.markers.length||!state.figures.length;
+}
+E('layoutMove').onclick=run(async()=>{
+ if(!state.project||!state.layoutAudit)throw Error('Update preview to refresh the figure layout audit.');
+ const marker=E('layoutMarker').value,assetId=E('layoutAsset').value;
+ if(!marker||!assetId)throw Error('Choose both an unresolved marker and the exact project SVG.');
+ const body={title:E('title').value.trim(),markdown:E('manuscript').value,
+             expectedSHA256:state.layoutAudit.markdownSHA256,
+             marker,assetId,caption:E('layoutCaption').value.trim()};
+ const proposed=await api(path('/layout/move-figure'),body);
+ const summary='Move '+assetId+' to ['+marker+'] using the source-backed figure. '+
+  'This proposal removes '+proposed.removedDuplicatePlacements+' extra placement(s) of the same SVG. '+
+  'The original saved revision will remain unchanged. Apply to the unsaved editor draft?';
+ if(!window.confirm(summary)){status('Layout move canceled. Saved manuscript unchanged.');return}
+ if(!state.layoutAudit||state.layoutAudit.markdownSHA256!==proposed.beforeSHA256)
+  throw Error('The manuscript changed during layout planning. Update preview and retry.');
+ E('manuscript').value=proposed.proposedMarkdown;
+ markDirty();if(visualMode)renderVisualBlocks();
+ await preview();
+ status('Figure moved in unsaved draft only. Review layout and Save revision to preserve the change.');
+});
+async function preview(){
+ if(!state.project)return;
+ const data=await api(path('/preview'),manuscript());
+ const article=E('preview');article.innerHTML=data.html;
+ renderLayoutReport(data.layout);
+ const masthead=document.createElement('div');masthead.className='preview-brand';
+ const institution=document.createElement('strong');institution.textContent='SUSTAINABLE CATALYST';
+ const type=document.createElement('span');type.textContent='INDEPENDENT RESEARCH / '+E('publicationType').selectedOptions[0].textContent;
+ masthead.append(institution,type);article.prepend(masthead);
+ const reportTitle=document.createElement('h1');reportTitle.textContent=E('title').value.trim();
+ masthead.after(reportTitle);
+ E('proof').textContent=data.figures.length+' source figures verified · layout '+data.layout.status+' · computations not executed';
+ return data;
+}
+async function save(){
+ if(!state.project)throw Error('Select a project');
+ const head=await api(base+'/catalog/projects/'+encodeURIComponent(state.project));
+ const latest=await api(path('/documents'));
+ // Conflict detection uses the most recently fetched project revision but never silently rebase.
+ if(state.projectRevision!==undefined && state.projectRevision!==head.project.revision){
+    throw Error('Project changed since loading. Reopen before saving to avoid overwriting other work.');
+ }
+ const body={...manuscript(),expectedProjectRevision:head.project.revision,
+             documentId:state.documentId,expectedDocumentRevision:state.documentRevision};
+ const response=await api(path('/documents'),body);
+ state.documentId=response.document.documentId;state.documentRevision=response.document.revision;
+ state.projectRevision=response.project.revision;
+ state.saved=true;state.dirty=false;E('dirty').textContent='Saved · revision '+state.documentRevision;
+ refreshExport();status('Publication revision '+state.documentRevision+' saved immutably. Manuscript source unchanged.');
+ await updateVersions();
+}
+// SC-PUB-DRAFT-01: Trash, Restore and permanent deletion of private drafts. The server enforces protection rules.
+async function lifecycleCall(url,extra={}){
+ const head=await api(base+'/catalog/projects/'+encodeURIComponent(state.project));
+ if(state.projectRevision!==undefined && state.projectRevision!==head.project.revision)
+  throw Error('Project changed since loading. Reopen it before changing Trash.');
+ const r=await api(url,{expectedProjectRevision:head.project.revision,...extra});
+ state.projectRevision=r.project.revision;return r;
+}
+async function trashDraft(doc){
+ if(!window.confirm('Move “'+doc.title+'” to Trash?\n\nIt disappears from Saved publications. Nothing is erased: every revision, export and the original source file are kept, and you can restore it from Trash.'))return;
+ await lifecycleCall(path('/documents/'+encodeURIComponent(doc.documentId)+'/trash'));
+ if(state.documentId===doc.documentId){const kind=E('publicationType').value;setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);await preview()}
+ await updateVersions();status('“'+doc.title+'” moved to Trash. Restore it from Trash at any time.');
+}
+async function loadTrash(){
+ const t=await api(path('/trash'));E('trash').replaceChildren();
+ E('trashPolicy').textContent=t.policy.trash+' '+t.policy.permanentDeletion;
+ for(const x of t.publications){
+  const box=document.createElement('div');box.className='asset';
+  const b=document.createElement('b');b.textContent=x.title;box.append(b);
+  const m=document.createElement('small');m.textContent='Draft · revision '+x.revision+' · in Trash since '+x.trashedAt.slice(0,10);box.append(m);
+  const row=document.createElement('div');row.className='asset-row';
+  const restore=document.createElement('button');restore.textContent='Restore';
+  restore.onclick=run(async()=>{await lifecycleCall(path('/documents/'+encodeURIComponent(x.id)+'/restore'));await updateVersions();status('“'+x.title+'” restored to Saved publications.')});
+  row.append(restore);box.append(row);
+  if(x.purgeEligible){
+   const input=document.createElement('input');input.placeholder='Type the title to delete permanently';input.setAttribute('aria-label','Confirm permanent deletion of '+x.title);
+   const purge=document.createElement('button');purge.textContent='Delete permanently';purge.className='trash-doc';
+   purge.onclick=run(async()=>{if(input.value.trim()!==x.title.trim())throw Error('Type the draft title exactly to delete it permanently.');
+    await lifecycleCall(path('/documents/'+encodeURIComponent(x.id)+'/purge'),{confirmTitle:input.value});await updateVersions();
+    status('“'+x.title+'” permanently deleted from this project. Its earlier revisions remain in the immutable project history.')});
+   box.append(input,purge);
+  }else{const w=document.createElement('small');w.textContent='Permanent deletion available from '+x.purgeEligibleAt.slice(0,10)+'.';box.append(w)}
+  E('trash').append(box);
+ }
+ if(!t.publications.length){const p=document.createElement('div');p.className='empty';p.textContent='Trash is empty.';E('trash').append(p)}
+}
+async function renderHistoryButtons(documents){
+  E('versions').replaceChildren();
+  for(const doc of documents){
+    const history=await api(path('/documents/'+encodeURIComponent(doc.documentId)+'/history'));
+    for(const version of (history.versions||[]).slice().reverse()){
+      const button=document.createElement('button');button.className='revision';
+      button.textContent=doc.title+' · v'+version.revision;
+      button.onclick=run(async()=>{
+        const r=await api(path('/documents/'+encodeURIComponent(doc.documentId)+'?revision='+version.revision));
+        setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,
+                 r.document.documentId,r.document.revision,r.document.publicationType||'report');
+        // Older snapshots may be viewed and exported. Saving from an older
+        // version is rejected by server's optimistic document-revision gate.
+        state.projectRevision=r.projectRevision;
+        await preview();status('Saved publication version '+version.revision+' reopened.');
+      });
+      E('versions').append(button);
+    }
+    const del=document.createElement('button');del.className='revision trash-doc';del.textContent='Delete draft “'+doc.title+'”';
+    del.onclick=run(async()=>trashDraft(doc));E('versions').append(del);
+  }
+  if(!documents.length){const p=document.createElement('div');p.className='empty';p.textContent='No saved publications yet.';E('versions').append(p)}
+  await loadTrash();
+}
+
+async function updateVersions(){
+ const docs=await api(path('/documents'));
+ await renderHistoryButtons(docs.documents);
+}
+
+function exportAs(ext){
+ if(!state.saved||state.dirty||!state.documentId)throw Error('Save the current manuscript before exporting.');
+ const a=document.createElement('a');a.href=path('/documents/'+encodeURIComponent(state.documentId)+'/export.'+ext+'?revision='+state.documentRevision);
+ a.download='scientific-publication-v'+state.documentRevision+'.'+ext;document.body.append(a);a.click();a.remove();
+}
+E('projects').onchange=run(async()=>{state.projectRevision=undefined;await selectProject(E('projects').value);state.projectRevision=state.catalog.project.revision});
+E('title').addEventListener('input',markDirty);E('publicationType').addEventListener('change',markDirty);E('manuscript').addEventListener('input',markDirty);
+function newReportTemplate(kind){
+ const outlines={
+  'report':['Research question','Methods','Results','Discussion','Limitations','References'],
+  'policy-brief':['Executive summary','Scientific evidence','Policy context','Implications','Limitations','References'],
+  'working-paper':['Abstract','Research question','Methods','Analysis','Discussion','References'],
+  'interactive-analysis':['Research question','Data and methods','Verified results','Visualizations','Limitations','References'],
+  'overview':['Research overview','Evidence and methods','Principal findings','Limitations','References'],
+ };
+ return (outlines[kind]||outlines.report).map(x=>'## '+x).join('\n\n')+'\n\n';
+}
+E('new').onclick=run(async()=>{
+ if(!state.project)throw Error('Select a project');
+ if(state.dirty&&!window.confirm('Discard unsaved changes in the current draft and start a new one?'))return;
+ const kind=E('publicationType').value;
+ setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);
+ await preview();status('New private '+E('publicationType').selectedOptions[0].textContent+' draft. Other reports and preserved sources are unchanged.');
+});
+// SC-PUB-DRAFT-01: discard the unsaved editor draft. A saved draft returns to its last saved revision; nothing stored changes.
+E('discardDraft').onclick=run(async()=>{
+ if(!state.dirty){status('No unsaved changes to discard.');return}
+ if(!window.confirm('Discard all unsaved changes in the editor? Saved revisions and source files are not affected.'))return;
+ if(state.documentId){
+  const r=await api(path('/documents/'+encodeURIComponent(state.documentId)+'?revision='+state.documentRevision));
+  setDraft(r.document.title,r.document.markdown,r.document.source?.artifactId||null,r.document.documentId,r.document.revision,r.document.publicationType||'report');
+  state.saved=true;refreshExport();await preview();status('Unsaved changes discarded. Revision '+r.document.revision+' reopened.');
+ }else{const kind=E('publicationType').value;setDraft(state.catalog.project.title,newReportTemplate(kind),null,null,0,kind);
+  await preview();status('Unsaved draft discarded. Nothing was saved.')}
+});
+E('previewButton').onclick=run(async()=>{await preview();status('Publication preview updated. Research source hashes verified where used.')});
+E('save').onclick=run(save);
+// SC-CITE-01 Citation Studio: project citation collection, Library sources, [@key] insertion and reference lists.
+function citePath(s){return pub+'/citations/projects/'+encodeURIComponent(state.project)+s}
+function citeRow(label,detail,buttonText,onclick){
+ const box=document.createElement('div');box.className='asset';
+ const b=document.createElement('b');b.textContent=label;const small=document.createElement('small');small.textContent=detail;
+ const row=document.createElement('div');row.className='asset-row';const button=document.createElement('button');
+ button.textContent=buttonText;button.onclick=run(onclick);row.append(button);box.append(b,small,row);return box;
+}
+function renderCitations(collection){
+ state.citations=collection.items;E('citeList').replaceChildren();
+ if(!collection.items.length){const p=document.createElement('div');p.className='empty';p.textContent='No citations in this project yet.';E('citeList').append(p);return}
+ const style=E('citeStyle').value;
+ for(const item of collection.items){
+  const f=item.formatted[style];const origin=item.provenance.libraryRecordId?'Library '+item.provenance.libraryRecordId:item.provenance.sourceFilename||item.provenance.metadataAuthority;
+  E('citeList').append(citeRow(f.inText,f.reference+' · ['+item.key+'] · '+origin,'Insert citation',async()=>{
+   // In the visual editor the citation goes in at the cursor; no switch to Markdown source.
+   insertManuscriptCitation(item.key);if(!visualMode)await preview();
+   status('Citation '+item.key+' inserted at the cursor. The reference list is generated from saved project records.');}));
+ }
+ if(tiptapBridge&&tiptapBridge.refreshCitations)tiptapBridge.refreshCitations();
+}
+async function loadCitations(){
+ const c=await api(citePath(''));renderCitations(c);return c;
+}
+async function citeImport(suffix,body){
+ const head=await api(base+'/catalog/projects/'+encodeURIComponent(state.project));
+ if(state.projectRevision!==undefined&&state.projectRevision!==head.project.revision)throw Error('Project changed since loading. Reopen it before importing citations.');
+ const r=await api(citePath(suffix),{...body,expectedProjectRevision:head.project.revision});
+ state.projectRevision=r.projectRevision;renderCitations(r);E('citeStudio').hidden=false;
+ status('Citations: '+r.import.added.length+' added, '+r.import.reused.length+' already in the project'+(r.import.rejected.length?', '+r.import.rejected.length+' rejected':'')+'.');
+}
+E('citeOpen').onclick=run(async()=>{const open=E('citeStudio').hidden;E('citeStudio').hidden=!open;E('citeOpen').setAttribute('aria-expanded',String(open));if(open&&state.project)await loadCitations()});
+E('citeStyle').onchange=run(async()=>{if(state.project){await loadCitations();await preview()}});
+E('citeSearch').onclick=run(async()=>{
+ const q=E('citeQuery').value.trim();if(q.length<2)throw Error('Enter at least two characters');
+ const r=await api(pub+'/citations/library/search?q='+encodeURIComponent(q));E('citeResults').replaceChildren();
+ for(const ref of r.items)E('citeResults').append(citeRow(ref.title,ref.canonicalUrl+' · revision '+ref.revision,'Add to project',async()=>{await citeImport('/import-library',{recordId:ref.libraryObjectId})}));
+ if(!r.items.length){const p=document.createElement('div');p.className='empty';p.textContent='No verified public Library records found.';E('citeResults').append(p)}
+});
+// SC-EDITOR-DOCX-01: reviewable import of the reference list already typed in the manuscript.
+E('citeReview').onclick=run(async()=>{
+ if(!state.project)throw Error('Select a project');
+ const markdown=E('manuscript').value;
+ const r=await api(citePath('/manuscript-references/review'),{markdown});
+ state.referenceReview={...r,markdown};const box=E('citeReviewList');box.replaceChildren();
+ if(!r.entries.length){const p=document.createElement('div');p.className='empty';p.textContent='No References or Bibliography section found in this manuscript.';box.append(p);E('citeReviewImport').hidden=true;return}
+ const style=E('citeStyle').value;
+ for(const entry of r.entries){
+  const row=document.createElement('label');row.className='asset review-'+entry.status;
+  const check=document.createElement('input');check.type='checkbox';check.value=entry.proposalId;
+  check.checked=entry.status==='new';check.disabled=!['new','ambiguous'].includes(entry.status);
+  const text=document.createElement('b');text.textContent=entry.formatted?entry.formatted[style].replace(/\*([^*]+)\*/g,'$1'):entry.text;
+  const detail=document.createElement('small');
+  detail.textContent=({new:'New',ambiguous:'Needs review',duplicate:'Already in project as ['+entry.existingKey+']',
+   'duplicate-in-manuscript':'Repeated in manuscript',invalid:'Cannot be parsed'})[entry.status]+
+   (entry.proposedKey&&!entry.existingKey?' · key ['+entry.proposedKey+']':'')+
+   (entry.issues.length?' · '+entry.issues.join('; '):'')+' · Library '+entry.verification.library+
+   (entry.verification.doi!=='none'?' · DOI present (not resolved)':'')+' · '+entry.inTextMentions+' in-text mention(s)';
+  const original=document.createElement('small');original.className='review-original';original.textContent='Manuscript: '+entry.text;
+  row.append(check,text,detail,original);box.append(row);
+ }
+ E('citeReviewImport').hidden=false;
+ status('Reference review: '+r.summary.new+' new, '+r.summary.ambiguous+' need review, '+(r.summary.duplicate+r.summary['duplicate-in-manuscript'])+' duplicates. Nothing is stored until you import selected entries.');
+});
+E('citeReviewImport').onclick=run(async()=>{
+ const review=state.referenceReview;if(!review)throw Error('Review the manuscript references first.');
+ if(review.markdown!==E('manuscript').value)throw Error('The manuscript changed since review. Review the references again.');
+ const accept=[...E('citeReviewList').querySelectorAll('input:checked')].map(x=>x.value);
+ if(!accept.length)throw Error('Select at least one reviewed reference.');
+ await citeImport('/manuscript-references/import',{markdown:review.markdown,manuscriptSha256:review.manuscriptSha256,
+  accept,sourceArtifactId:state.sourceId});
+ state.referenceReview=null;E('citeReviewList').replaceChildren();E('citeReviewImport').hidden=true;
+});
+E('citeBibButton').onclick=run(async()=>{
+ const keys=[...E('manuscript').value.matchAll(/@([A-Za-z0-9_.:-]{1,80})/g)].map(m=>m[1]);
+ const r=await api(citePath('/bibliography'),{keys,style:E('citeStyle').value});E('citeBib').replaceChildren();
+ for(const ref of r.references){const li=document.createElement('li');li.textContent=ref;E('citeBib').append(li)}
+ status(r.references.length+' reference(s) generated from project citation records.');
+});
+for(const ext of ['html','pdf','docx'])E(ext).onclick=run(async()=>exportAs(ext));
+run(async()=>{
+ const result=await api(base+'/catalog/projects');E('projects').replaceChildren();
+ const opt=document.createElement('option');opt.textContent='Select research project';opt.value='';E('projects').append(opt);
+ for(const p of result.projects){const o=document.createElement('option');o.value=p.projectId;o.textContent=p.title;E('projects').append(o)}
+ const params=new URLSearchParams(location.search);const desired=params.get('project');
+ const id=result.projects.some(p=>p.projectId===desired)?desired:result.projects.length===1?result.projects[0].projectId:null;
+ if(id){E('projects').value=id;await selectProject(id);state.projectRevision=state.catalog.project.revision}
+ else status(result.projects.length+' project(s) available. Select a project to open the manuscript editor.');
+})();
