@@ -2,9 +2,9 @@
 
 **Record date:** 2026-11-07  
 **Status:** Research source candidate implemented and CI-validated; Workspace coordinated draft candidate extended with a >100-project test. **No real-account production certification or deployment.**  
-**Research implementation:** [RH-PUB-01A draft PR #26](https://github.com/Content-Catalyst-LLC/sustainable-catalyst-research/pull/26), based on [coordinated private Research PR #23](https://github.com/Content-Catalyst-LLC/sustainable-catalyst-research/pull/23).  
+**Research implementation:** RH-PUB-01A draft PR #26, based on coordinated PR #23, both in the private Research repository (not public).  
 **Workspace upstream:** [RH-PROD-05.1 private authority PR #16](https://github.com/Content-Catalyst-LLC/sustainable-catalyst-workspace/pull/16).  
-**Research spec:** [RH-PUB-01A private identity owner gate](https://github.com/Content-Catalyst-LLC/sustainable-catalyst-research/blob/feature/rh-pub-01a-project-authority/docs/RH-PUB-01A-PRIVATE-IDENTITY-OWNER-GATE.md).
+**Research spec:** RH-PUB-01A private identity owner gate, `docs/RH-PUB-01A-PRIVATE-IDENTITY-OWNER-GATE.md` in the private Research repository (not public).
 
 ## Handoff requirements
 
