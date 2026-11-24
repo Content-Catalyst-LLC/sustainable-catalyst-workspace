@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip PIP_CACHE_DIR=/root/.cache/pip pip install -r /app/requirements.txt
 COPY service.py /app/service.py
 USER 65532:65532
 EXPOSE 8101
