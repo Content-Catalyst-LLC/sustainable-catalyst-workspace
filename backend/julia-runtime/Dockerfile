@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 FROM julia:1.11-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV JULIA_DEPOT_PATH=/opt/julia-depot
