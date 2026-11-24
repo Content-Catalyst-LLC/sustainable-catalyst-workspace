@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="2" time="3.216" timestamp="2026-11-20T05:24:49.330205+00:00"><testcase classname="backend.tests.test_sc_run_verify01_postgres" name="test_run_lifecycle_and_independent_replay" time="3.119" /><testcase classname="backend.tests.test_sc_run_verify01_postgres" name="test_revoked_session_cannot_read_or_create_runs" time="0.018" /></testsuite></testsuites>
