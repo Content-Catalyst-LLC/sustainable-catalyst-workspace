@@ -178,8 +178,11 @@ def test_run_lifecycle_and_independent_replay():
                         originalRunId=original_id, reproductionRunId=replay_id)["item"]
 
         verification = verify("original", "replay")
+        # SC-RUN reproduction integrity (#79): "exact" now requires the stored artifact bytes of
+        # both runs to be re-read and match their registered digests.
         assert verification["classification"] == "exact"
-        assert verification["details"]["comparisonExecuted"] is False
+        assert verification["details"]["comparisonExecuted"] is True
+        assert verification["details"]["artifactIntegrity"]["status"] == "verified"
 
         provenance_path = f"/v1/execution-provenance/projects/{PROJECT}"
         provenance = request(client, "GET", provenance_path + "/runs/original")["item"]
@@ -194,7 +197,12 @@ def test_run_lifecycle_and_independent_replay():
         blob.write_bytes(b"!" + raw[1:])
         try:
             request(client, "GET", f"/v1/artifacts/{output['artifactId']}", status=503)
-            assert verify("original", "replay")["classification"] == "exact"
+            # The baseline (docs/verification/sc-run-verify-01) recorded "exact" here because
+            # reproduction compared registered metadata only. Modified bytes must never verify as exact.
+            corrupted = verify("original", "replay")
+            assert corrupted["classification"] == "incomplete"
+            assert corrupted["details"]["comparisonExecuted"] is False
+            assert corrupted["details"]["artifactIntegrity"]["status"] == "incomplete"
         finally:
             blob.write_bytes(raw)
 
@@ -220,7 +228,8 @@ def test_run_lifecycle_and_independent_replay():
         "snapshot_fingerprint": snapshot["provenanceFingerprint"],
         "replay": {"oracle": oracle, "observed": observed, "absolute_tolerance": absolute,
                    "relative_tolerance": relative, "workspace_classification": verification["classification"]},
-        "corrupted_output": {"artifact_read_http": 503, "reproduction_metadata_classification": "exact"},
+        "corrupted_output": {"artifact_read_http": 503, "reproduction_classification": corrupted["classification"],
+                             "artifact_integrity": corrupted["details"]["artifactIntegrity"]["status"]},
     }
     path = Path(os.environ["SC_RUN_VERIFY_EVIDENCE"]) / "lifecycle.json"
     path.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
