@@ -121,9 +121,13 @@ def runtime_result(result: Any) -> Any:
 def _rows(result: Any, path: str) -> list[dict[str, Any]]:
     node = runtime_result(result)
     for part in [p for p in path.split(".") if p]:
-        if not isinstance(node, dict) or part not in node:
+        # SC-OUTPUT-01: a numeric part indexes a list (R band results: ``bands.0.points``).
+        if isinstance(node, list) and part.isdigit() and int(part) < len(node):
+            node = node[int(part)]
+        elif isinstance(node, dict) and part in node:
+            node = node[part]
+        else:
             raise _refuse("figure-rows-not-found", f"The run result has no '{path}'.")
-        node = node[part]
     if not isinstance(node, list) or not node or len(node) > MAX_ROWS or not all(isinstance(r, dict) for r in node):
         raise _refuse("figure-rows-invalid", f"'{path or 'result'}' must be a list of 1 to {MAX_ROWS} records.")
     return node
@@ -310,7 +314,8 @@ def build_package(rev: Any, cell_id: str, cell_sha: str, ev: dict[str, Any], res
         "schema": PACKAGE_SCHEMA, "bundleSha256": bundle_sha, "figureId": req.figureId,
         "notebook": {"notebookId": rev.notebook_id, "revision": rev.revision, "cellId": cell_id, "cellSha256": cell_sha},
         "run": {"runId": ev["runId"], "receiptId": receipt["receiptId"], "resultSha256": receipt["resultSha256"],
-                "verification": v["status"], "inputLineage": v.get("inputLineage")},
+                "verification": v["status"], "inputLineage": v.get("inputLineage"),
+                "language": receipt.get("language"), "runtime": receipt.get("runtime"), "operation": receipt.get("operation")},
         "files": [
             {"name": f"{req.figureId}.bundle.json", "role": "bundle", "mediaType": "application/json",
              "sha256": bundle_sha, "text": bundle_text},
@@ -321,28 +326,35 @@ def build_package(rev: Any, cell_id: str, cell_sha: str, ev: dict[str, Any], res
     }
 
 
+def verified_package(db: Any, user_key: str, notebook_id: str, revision: int, cell_id: str,
+                     req: FigureRequest) -> tuple[Any, dict[str, Any]]:
+    """(notebook revision, figure package) from the latest executed-verified run of one cell, re-hashed from storage.
+    Shared with SC-OUTPUT-01, which registers the package as a project scientific output."""
+    rev = load_revision(db, user_key, notebook_id, revision)
+    cells = [c for c in ((rev.package or {}).get("notebook") or {}).get("cells") or [] if c.get("id") == cell_id]
+    if not cells or cells[0].get("type") != "code":
+        raise HTTPException(status_code=404, detail="Workspace notebook cell not found.")
+    sha = cell_sha256(cells[0])
+    ev = _latest_verified(db, user_key, _cell_runs(db, user_key, rev).get(cell_id, []), sha)
+    if ev is None:
+        raise _refuse("figure-run-not-verified", "This cell has no executed-verified run for this revision.")
+    receipt = ev["verification"]["runtimeReceipts"][0]
+    art = get_artifact(db, user_key, receipt["resultArtifactId"])
+    if art is None or art.sha256 != receipt["resultSha256"] or art.bytes > MAX_RESULT_BYTES:
+        raise _refuse("figure-result-unavailable", "The verified run result is unavailable or too large.")
+    raw = read_artifact_content(art)
+    if hashlib.sha256(raw).hexdigest() != receipt["resultSha256"]:
+        raise _refuse("figure-result-unavailable", "The run result bytes no longer match the receipt.")
+    env = get_settings().environment
+    return rev, build_package(rev, cell_id, sha, ev, json.loads(raw), req,
+                              environment=env if env in ("production", "staging") else "local-review")
+
+
 @router.post("/{notebook_id}/revisions/{revision}/cells/{cell_id}/figure-bundle")
 def figure_bundle_route(notebook_id: str, revision: int, cell_id: str, req: FigureRequest,
                         identity: ServiceIdentity = Depends(require_service_identity)):
     with session_scope() as db:
-        rev = load_revision(db, identity.user_key, notebook_id, revision)
-        cells = [c for c in ((rev.package or {}).get("notebook") or {}).get("cells") or [] if c.get("id") == cell_id]
-        if not cells or cells[0].get("type") != "code":
-            raise HTTPException(status_code=404, detail="Workspace notebook cell not found.")
-        sha = cell_sha256(cells[0])
-        ev = _latest_verified(db, identity.user_key, _cell_runs(db, identity.user_key, rev).get(cell_id, []), sha)
-        if ev is None:
-            raise _refuse("figure-run-not-verified", "This cell has no executed-verified run for this revision.")
-        receipt = ev["verification"]["runtimeReceipts"][0]
-        art = get_artifact(db, identity.user_key, receipt["resultArtifactId"])
-        if art is None or art.sha256 != receipt["resultSha256"] or art.bytes > MAX_RESULT_BYTES:
-            raise _refuse("figure-result-unavailable", "The verified run result is unavailable or too large.")
-        raw = read_artifact_content(art)
-        if hashlib.sha256(raw).hexdigest() != receipt["resultSha256"]:
-            raise _refuse("figure-result-unavailable", "The run result bytes no longer match the receipt.")
-        env = get_settings().environment
-        package = build_package(rev, cell_id, sha, ev, json.loads(raw), req,
-                                environment=env if env in ("production", "staging") else "local-review")
+        _, package = verified_package(db, identity.user_key, notebook_id, revision, cell_id, req)
     body = (json.dumps(package, indent=1, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8")
     return Response(content=body, media_type="application/json", headers={
         "X-SC-Figure-Bundle-Sha256": package["bundleSha256"], "Cache-Control": "no-store"})

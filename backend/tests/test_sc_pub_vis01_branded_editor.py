@@ -67,9 +67,9 @@ class BrandedPublicationTests(unittest.TestCase):
                b'<path d="M40 240 L180 65 L520 100" stroke="#15633e" stroke-width="9" fill="none"/>'
                b'</g><text x="80" y="270" font-size="20">SDG heatmap</text></svg>')
         figure = pub._pdf_svg_image(svg)
-        self.assertGreater(figure.imageWidth, 1000)
-        self.assertLessEqual(figure.imageWidth, 1230)
-        self.assertLessEqual(figure.imageHeight, 1125)
+        self.assertGreater(figure.imageWidth, 2000)  # 300 dpi (SC-OUTPUT-02)
+        self.assertLessEqual(figure.imageWidth, 2050)
+        self.assertLessEqual(figure.imageHeight, 1875)
         self.assertAlmostEqual(figure.drawWidth / figure.drawHeight, 2.0, places=2)
 
         # Raster must contain ink from the clipped plot; an all-white SVG
