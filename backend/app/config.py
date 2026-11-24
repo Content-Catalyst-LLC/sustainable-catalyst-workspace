@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # SC-SCI-02: sign-ins besides SC Identity that may receive a Research session. Only "erw-account-session"
     # (the existing ERW account sign-in, password only) is recognised; empty means SC Identity only.
     research_session_methods: str = ""
+    # SC-SEO-INT-04: SEO Studio sessions (sc-workspace-seo-session/1.0). Off unless enabled; issued only to the
+    # comma-separated Workspace user keys listed here. The Studio origin must also be in cors_allowed_origins.
+    seo_studio_session_enabled: bool = False
+    seo_studio_users: str = ""
     # SC-PUB-ENDTOEND-01: the Research API that Outputs & Publishing calls server-side with the signed-in person's
     # Research session (https; plain http only where research_api_allow_http is set, for isolated staging).
     research_api_origin: str = ""

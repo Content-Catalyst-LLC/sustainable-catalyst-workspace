@@ -36,6 +36,7 @@ from . import citation_studio as cite
 from . import publication_layout as layout
 from . import docx_manuscript
 from . import document_lifecycle as lifecycle
+from . import scientific_outputs as sco
 
 router = APIRouter(prefix='/publication', tags=['Scientific Publication Studio'])
 SCHEMA = 'sc-scientific-publication/1.0'
@@ -255,7 +256,8 @@ def parse_blocks(markdown: str) -> list[dict]:
         elif line.startswith('|') and i<len(lines) and re.fullmatch(r'[|\s:\-]+',lines[i].strip()):
             headers=_cells(line);i+=1
             rows=[]
-            while i<len(lines) and lines[i].strip().startswith('|') and len(rows)<100:
+            # 200 rows: the largest scientific-output table (SC-OUTPUT-02 keeps every row in every export).
+            while i<len(lines) and lines[i].strip().startswith('|') and len(rows)<200:
                 rows.append(_cells(lines[i])); i+=1
             result.append({'kind':'table','headers':headers[:16], 'rows':rows})
         elif re.match(r'^[-*+] ',line):
@@ -278,13 +280,41 @@ def parse_blocks(markdown: str) -> list[dict]:
     return result
 
 
+TABLE_CAPTION=re.compile(r'^\*\*Table:\s*([^*]+?)\*\*\s*(.*)$')
+NUMBERED=re.compile(r'^(?:Figure|Fig\.)\s*\d+',re.IGNORECASE)
+
+
+def number_blocks(blocks: list[dict]) -> list[dict]:
+    """SC-OUTPUT-02: one numbering for HTML, PDF and DOCX (derived; the saved Markdown is unchanged).
+
+    Figures are numbered in order (a caption that already starts "Figure 3" keeps its own words). A "**Table: …**"
+    paragraph directly above a table becomes that table's numbered caption."""
+    out,fig,tab=[],0,0
+    for i,block in enumerate(blocks):
+        if block['kind']=='figure':
+            fig+=1
+            out.append({**block,'label':'' if NUMBERED.match(block['caption']) else f'Figure {fig}.'})
+        elif (block['kind']=='paragraph' and i+1<len(blocks) and blocks[i+1]['kind']=='table'
+              and TABLE_CAPTION.match(block['text'])):
+            continue
+        elif block['kind']=='table':
+            prev=blocks[i-1] if i else None
+            m=TABLE_CAPTION.match(prev['text']) if prev and prev['kind']=='paragraph' else None
+            if m:
+                tab+=1
+                out.append({**block,'label':f'Table {tab}.','caption':m.group(1).strip(),'note':m.group(2).strip()})
+            else:out.append(block)
+        else:out.append(block)
+    return out
+
+
 def render_html(markdown: str, asset_uri=None, *, document_title: str | None = None) -> tuple[str,list[str]]:
     """Return safe body HTML and referenced figure IDs; asset URI is trusted callback."""
     out=[]; figure_ids=[]
     blocks = parse_blocks(markdown)
     if document_title is not None:
         blocks = layout.without_repeated_title(blocks, document_title)
-    for node in mark_references(blocks):
+    for node in number_blocks(mark_references(blocks)):
         kind=node['kind']
         if kind=='heading':
             n=node['level'];out.append(f'<h{n}>{_esc_line(node["text"])}</h{n}>')
@@ -298,17 +328,22 @@ def render_html(markdown: str, asset_uri=None, *, document_title: str | None = N
             start=f' start="{node["start"]}"' if node.get('start',1)!=1 else ''
             out.append(f'<{tag}{start}>'+''.join('<li>'+_esc_line(i)+'</li>' for i in node['items'])+f'</{tag}>')
         elif kind=='table':
-            cols=len(node['headers']);out.append('<table><thead><tr>'+''.join('<th>'+_esc_line(x)+'</th>' for x in node['headers'])+'</tr></thead><tbody>')
+            cols=len(node['headers'])
+            caption=('<caption><strong>'+node['label']+'</strong> '+_esc_line(node['caption'])
+                     +(' <span class="table-note">'+_esc_line(node['note'])+'</span>' if node['note'] else '')
+                     +'</caption>') if node.get('label') else ''
+            out.append('<table>'+caption+'<thead><tr>'+''.join('<th scope="col">'+_esc_line(x)+'</th>' for x in node['headers'])+'</tr></thead><tbody>')
             for row in node['rows']:
                 out.append('<tr>'+''.join('<td>'+_esc_line(x)+'</td>' for x in (row+['']*cols)[:cols])+'</tr>')
             out.append('</tbody></table>')
         elif kind=='figure':
             figure_ids.append(node['assetId'])
             cap=_unpark(escape(_park(node['caption'])))
+            shown=(f'<strong>{node["label"]}</strong> ' if node['label'] else '')+cap
             if asset_uri:
                 src=escape(asset_uri(node['assetId']),quote=True)
-                out.append(f'<figure><img src="{src}" alt="{cap}"><figcaption>{cap}</figcaption></figure>')
-            else:out.append(f'<figure><p>[Source figure: {escape(node["assetId"])}]</p><figcaption>{cap}</figcaption></figure>')
+                out.append(f'<figure><img src="{src}" alt="{cap}"><figcaption>{shown}</figcaption></figure>')
+            else:out.append(f'<figure><p>[Source figure: {escape(node["assetId"])}]</p><figcaption>{shown}</figcaption></figure>')
     return '\n'.join(out), list(dict.fromkeys(figure_ids))
 
 
@@ -460,6 +495,7 @@ def publication_ui(request:Request):
     script=Path(__file__).with_name('reporting_publication_ui.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_publication_visual.js').read_text()
     script+='\n'+Path(__file__).with_name('reporting_outputs_ui.js').read_text()
+    script+='\n'+Path(__file__).with_name('reporting_scientific_outputs_ui.js').read_text()
     html=Path(__file__).with_name('reporting_publication_ui.html').read_text()
     script_hash=base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
     # Self-hosted Tiptap bundle. No CDN or external editor service.
@@ -674,6 +710,9 @@ def save_document(project_id:str,body:Save,request:Request):
         _,figures=render_html(body.markdown)
         _require_active_files(row,figures)
         figure_sources=_verify_figures(db,owner,project_id,figures)
+        # SC-OUTPUT-01: pin the exact registered output versions this revision inserts (rights gate enforced here).
+        output_sources=sco.pins(row.package,figures,parse_blocks(body.markdown))
+        sco.verify_pins(db,owner,project_id,{'outputSources':output_sources},_original_asset)
         document_id=body.documentId or 'publication-'+uuid4().hex
         version=(last['revision']+1) if last else 1
         from datetime import datetime,timezone
@@ -685,6 +724,7 @@ def save_document(project_id:str,body:Save,request:Request):
               'scientificStatus':'unreviewed','rightsStatus':'not-redistribution-approved',
               'computationsExecuted':False,'sourceBytesModified':False}
         if import_record:publication['importRecord']=import_record
+        if output_sources:publication['outputSources']=output_sources
         project=deepcopy(row.package['project'])
         # Keep one live head per document. Earlier versions are preserved by
         # Workspace's immutable project-revision repository, not duplicated in
@@ -823,12 +863,12 @@ def _pdf_svg_image(raw: bytes):
             width > 0 and height > 0 and 1 / 50 <= width / height <= 50):
         raise HTTPException(422, 'SVG figure has invalid PDF display dimensions.')
 
-    # Stay inside the A4 document frame. Fixed raster density and maximum page
-    # dimensions bound conversion to 1230 x 1125 pixels even for oversized SVG.
+    # Stay inside the A4 document frame. A fixed 300 dpi raster density and the
+    # maximum page dimensions bound conversion to 2050 x 1875 pixels even for oversized SVG.
     scale = min(492.0 / width, 450.0 / height)
     draw_width, draw_height = width * scale, height * scale
-    pixel_width = max(1, round(draw_width * 2.5))
-    pixel_height = max(1, round(draw_height * 2.5))
+    pixel_width = max(1, round(draw_width * 300 / 72))
+    pixel_height = max(1, round(draw_height * 300 / 72))
     try:
         png = cairosvg.svg2png(
             bytestring=safe, output_width=pixel_width,
@@ -845,7 +885,7 @@ def _pdf_svg_image(raw: bytes):
 def _publication_blocks(pub: dict) -> list[dict]:
     """Derived export-only view. Saved Markdown and hash remain unchanged."""
     resolved = cite.resolve(pub['markdown'],pub.get('citations'))
-    return mark_references(layout.without_repeated_title(parse_blocks(resolved),pub['title']))
+    return number_blocks(mark_references(layout.without_repeated_title(parse_blocks(resolved),pub['title'])))
 
 
 def _pdf_raster_image(raw: bytes):
@@ -889,8 +929,11 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
             story.append(KeepTogether([Paragraph((f'{n}.' if block.get('ordered') else '&#8226;')+' '+_pdf_inline(item),styles['SCBody'])
                                        for n,item in enumerate(block['items'],block.get('start',1))]))
         elif k=='table':
+            if block.get('label'):
+                story.append(Paragraph('<b>'+block['label']+'</b> '+_pdf_inline(block['caption'])
+                                       +(' '+_pdf_inline(block['note']) if block['note'] else ''),styles['SCBody']))
             rows=[block['headers']]+block['rows']
-            data=[[Paragraph(_pdf_inline(v[:600]),styles['Normal']) for v in row] for row in rows[:101]]
+            data=[[Paragraph(_pdf_inline(v[:600]),styles['Normal']) for v in row] for row in rows[:201]]
             ncols=len(block['headers']);data=[(r+['']*ncols)[:ncols] for r in data]
             t=Table(data,repeatRows=1,hAlign='LEFT');t.setStyle(TableStyle([('GRID',(0,0),(-1,-1),.3,colors.grey),('BACKGROUND',(0,0),(-1,0),colors.HexColor('#e6eee9')),('VALIGN',(0,0),(-1,-1),'TOP')]))
             story.append(t);story.append(Spacer(1,12))
@@ -899,7 +942,7 @@ def _pdf(pub:dict,figure_bytes:dict[str,bytes]):
             if raw:
                 story.append(_pdf_svg_image(raw) if raw.lstrip()[:1]==b'<' else _pdf_raster_image(raw))
             else:story.append(Paragraph('[Figure source unavailable]',styles['SCCaption']))
-            story.append(Paragraph(_pdf_inline(block['caption']),styles['SCCaption']))
+            story.append(Paragraph((f"<b>{block['label']}</b> " if block['label'] else '')+_pdf_inline(block['caption']),styles['SCCaption']))
     def draw_footer(canvas, document):
         canvas.saveState()
         canvas.setStrokeColor(colors.HexColor(BRAND_RED))
@@ -986,6 +1029,9 @@ def _docx(pub:dict,figure_bytes:dict[str,bytes]):
         elif k=='list':
             for item in block['items']:_docx_rich(doc,item,'List Number' if block.get('ordered') else 'List Bullet')
         elif k=='table':
+            if block.get('label'):
+                cap=doc.add_paragraph(style='Caption');cap.add_run(block['label']+' ').bold=True
+                _docx_rich(doc,block['caption']+(' '+block['note'] if block['note'] else ''),para=cap)
             cols=len(block['headers']);t=doc.add_table(rows=1,cols=cols);t.style='Table Grid'
             for i,v in enumerate(block['headers']):
                 cell=t.rows[0].cells[i].paragraphs[0];_docx_rich(doc,v,para=cell)
@@ -1000,12 +1046,14 @@ def _docx(pub:dict,figure_bytes:dict[str,bytes]):
             elif raw:
                 try:
                     import cairosvg
-                    png=cairosvg.svg2png(bytestring=raw,output_width=1100)
+                    png=cairosvg.svg2png(bytestring=raw,output_width=1800)  # 300 dpi at 6 in
                     doc.add_picture(BytesIO(png),width=Inches(6.0))
                 except Exception:
                     doc.add_paragraph('[Preserved SVG figure; embedding unavailable]')
             else:doc.add_paragraph('[Figure source unavailable]')
-            doc.add_paragraph(_unpark(_park(block['caption']),False),style='Caption')
+            cap=doc.add_paragraph(style='Caption')
+            if block['label']:cap.add_run(block['label']+' ').bold=True
+            cap.add_run(_unpark(_park(block['caption']),False))
     buf=BytesIO();doc.save(buf);return buf.getvalue()
 
 
@@ -1021,6 +1069,7 @@ def export_publication(project_id:str,document_id:str,format:str,request:Request
             meta,raw=_original_asset(db,owner,project_id,aid)
             if meta['sha256']!=digest:raise HTTPException(409,'Saved figure source hash changed.')
             media_types[aid],figures[aid]=figure_payload(meta['filename'],raw)
+        sco.verify_pins(db,owner,project_id,pub,_original_asset)
         if pub.get('source'):
             source_id=pub['source']['artifactId'];meta,_=_original_asset(db,owner,project_id,source_id)
             if meta['sha256']!=pub['source']['sha256']:
@@ -1132,6 +1181,9 @@ router.include_router(outputs.build_router({'subject':_subject,'write':_write,'p
     'documents':lambda package:[{**d,**{k:s.get(k) for s in snapshots(package,d['documentId'])[-1:]
                                           for k in ('publicationType','scientificStatus','rightsStatus','markdownSHA256','source')}}
                                  for d in latest_documents(package)]}))
+router.include_router(sco.build_router({'subject':_subject,'write':_write,'project':_project,
+    'locked_project':_locked_project,'store':_store_collection,'session':session_scope,'headers':HEADERS,
+    'original_asset':_original_asset,'sanitize_svg':sanitize_svg}))
 router.include_router(cite.build_router({'subject':_subject,'write':_write,'project':_project,
     'locked_project':_locked_project,'original_asset':_original_asset,'store':_store_collection,'session':session_scope,
     'headers':HEADERS,'library_record':_library_record,'library_search':_library_search}))
