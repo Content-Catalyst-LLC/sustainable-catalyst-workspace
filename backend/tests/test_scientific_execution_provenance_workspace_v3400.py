@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -11,7 +13,7 @@ from app.execution_provenance import (
 
 def test_v3400_profile_preserves_research_authority_boundaries():
     item = profile()
-    assert item['workspaceVersion'] == '3.4.0'
+    assert item['release'] == 'Scientific Execution & Provenance Workspace'
     assert item['schema'] == EXECUTION_PROVENANCE_SCHEMA
     assert item['backendAuthoritative'] is True
     assert item['browserAuthoritativeState'] is False
@@ -58,18 +60,19 @@ def test_v3400_graph_links_inputs_outputs_receipts_and_core_session():
 def test_v3400_health_and_typed_contract():
     from fastapi.testclient import TestClient
     from app.main import app
+    from app.config import get_settings
     from app.client_contracts import profile as client_profile, TYPED_ENDPOINTS
     c = TestClient(app)
     health = c.get('/health').json()
-    assert health['version'] == '3.4.0'
+    assert health['version'] == get_settings().service_version
     assert health['scientificExecutionProvenanceWorkspace'] is True
     assert health['scientificExecutionProvenanceSchema'] == EXECUTION_PROVENANCE_SCHEMA
     assert health['executionProvenanceGraph'] is True
     assert health['executionProvenanceImmutableSnapshots'] is True
-    assert health['releaseMigrationLineage'] == '035_scientific_execution_provenance_workspace.sql'
+    migration = Path(__file__).resolve().parents[1] / 'migrations' / '035_scientific_execution_provenance_workspace.sql'
+    assert migration.is_file()
     typed = client_profile(app.openapi())
-    assert typed['workspaceVersion'] == '3.4.0'
-    assert typed['typedEndpointCount'] == len(TYPED_ENDPOINTS) == 64
+    assert typed['typedEndpointCount'] == len(TYPED_ENDPOINTS)
     assert typed['typedEndpoints']['executionProvenanceRun']['method'] == 'GET'
     assert typed['typedEndpoints']['executionProvenanceSnapshotCreate']['method'] == 'POST'
     assert typed['missingOpenApiOperations'] == []

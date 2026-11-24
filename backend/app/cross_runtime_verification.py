@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .models import CrossRuntimeVerificationReceipt, ExecutionRun, ExecutionRunOutput
-from .object_store import get_artifact, read_artifact_content, store_artifact
+from .object_store import get_artifact, store_artifact
+from .reproduction_integrity import check_output
 from .schemas import ArtifactStoreRequest, CrossRuntimeVerificationCreateRequest
 from .utils import sha256_hex
 
@@ -46,12 +47,14 @@ def _is_json_media(media:str)->bool:
     m=(media or "").lower()
     return any(h in m for h in JSON_MEDIA_HINTS) or m in {"application/json","text/json"}
 
-def _json_from_output(db:Session,user_key:str,row:ExecutionRunOutput)->Any|None:
-    if not row.artifact_id or not _is_json_media(row.media_type): return None
-    art=get_artifact(db,user_key,row.artifact_id)
-    if art is None or art.bytes>5*1024*1024: return None
-    try: return json.loads(read_artifact_content(art).decode("utf-8"))
-    except (UnicodeDecodeError,json.JSONDecodeError): return None
+def _decode_json(content: bytes | None) -> Any | None:
+    if content is None:
+        return None
+    try:
+        return json.loads(content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+
 
 def _number(x:Any)->bool:
     return isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(float(x))
@@ -96,16 +99,37 @@ def _pair_outputs(original:list[ExecutionRunOutput],reproduced:list[ExecutionRun
 
 def _output_comparison(db:Session,user_key:str,a:ExecutionRunOutput|None,b:ExecutionRunOutput|None,mode:str,abs_tol:float,rel_tol:float)->dict[str,Any]:
     if a is None or b is None:
-        return {"role":(a or b).role if (a or b) else "","equivalent":False,"exact":False,"mode":"missing-output","reason":"paired output missing"}
-    base={"role":a.role,"originalOutputId":a.output_id,"reproductionOutputId":b.output_id,"originalSha256":a.sha256,"reproductionSha256":b.sha256,"originalMediaType":a.media_type,"reproductionMediaType":b.media_type}
-    exact=bool(a.sha256 and b.sha256 and a.sha256==b.sha256 and int(a.bytes)==int(b.bytes))
-    if exact: return {**base,"equivalent":True,"exact":True,"mode":"exact-digest"}
-    if mode=="exact-digest": return {**base,"equivalent":False,"exact":False,"mode":"exact-digest","reason":"digests differ"}
-    aj=_json_from_output(db,user_key,a); bj=_json_from_output(db,user_key,b)
+        return {"role": (a or b).role, "equivalent": False, "exact": False,
+                "mode": "missing-output", "artifactIntegrity": "incomplete",
+                "registeredDigestsMatch": False, "reason": "paired output missing"}
+    registered_match = bool(a.sha256 and a.sha256 == b.sha256 and a.bytes == b.bytes)
+    capture = (not registered_match and mode != "exact-digest" and
+               _is_json_media(a.media_type) and _is_json_media(b.media_type))
+    limit = 5 * 1024 * 1024 if capture else 0
+    a_check, a_content = check_output(db, a, capture_limit=limit)
+    b_check, b_content = check_output(db, b, capture_limit=limit)
+    verified = a_check["status"] == b_check["status"] == "verified"
+    base = {
+        "role": a.role, "originalOutputId": a.output_id, "reproductionOutputId": b.output_id,
+        "originalSha256": a.sha256, "reproductionSha256": b.sha256,
+        "originalMediaType": a.media_type, "reproductionMediaType": b.media_type,
+        "registeredDigestsMatch": registered_match,
+        "artifactIntegrity": "verified" if verified else "incomplete",
+        "originalArtifactCheck": a_check, "reproductionArtifactCheck": b_check,
+    }
+    if not verified:
+        return {**base, "equivalent": False, "exact": False, "mode": "unverified-artifact"}
+    if registered_match:
+        return {**base, "equivalent": True, "exact": True, "mode": "exact-digest"}
+    if mode == "exact-digest":
+        return {**base, "equivalent": False, "exact": False, "mode": "exact-digest", "reason": "digests differ"}
+    aj, bj = _decode_json(a_content), _decode_json(b_content)
     if aj is not None and bj is not None:
-        equivalent,stats=_compare_json(aj,bj,abs_tol,rel_tol)
-        return {**base,"equivalent":equivalent,"exact":False,"mode":"tolerance-aware-json","stats":stats}
-    return {**base,"equivalent":False,"exact":False,"mode":"digest-only","reason":"non-JSON outputs require exact content digest in v2.17"}
+        equivalent, stats = _compare_json(aj, bj, abs_tol, rel_tol)
+        return {**base, "equivalent": equivalent, "exact": False, "mode": "tolerance-aware-json", "stats": stats}
+    return {**base, "equivalent": False, "exact": False, "mode": "digest-only",
+            "reason": "bounded JSON comparison unavailable and verified content digests differ"}
+
 
 def create_cross_runtime_verification(db:Session,user_key:str,payload:CrossRuntimeVerificationCreateRequest)->CrossRuntimeVerificationReceipt:
     original=db.get(ExecutionRun,{"user_key":user_key,"run_id":payload.originalRunId})
@@ -123,13 +147,14 @@ def create_cross_runtime_verification(db:Session,user_key:str,payload:CrossRunti
     exact_runtime=(original.runtime_adapter_fingerprint or "")== (reproduced.runtime_adapter_fingerprint or "")
     exact_outputs=bool(comparisons) and all(bool(x.get("exact")) for x in comparisons)
     equivalent_outputs=bool(comparisons) and all(bool(x.get("equivalent")) for x in comparisons)
-    if not terminal_ok or not comparisons: classification="incomplete"
+    all_verified = bool(comparisons) and all(pair["artifactIntegrity"] == "verified" for pair in comparisons)
+    if not terminal_ok or not all_verified: classification="incomplete"
     elif payload.requireSameInputs and not exact_inputs: classification="divergent"
     elif exact_inputs and exact_env and exact_runtime and exact_outputs: classification="exact"
     elif exact_inputs and equivalent_outputs: classification="equivalent"
     else: classification="divergent"
     source_runtime=_runtime_label(original); target_runtime=_runtime_label(reproduced)
-    details={"schema":"sc-workspace-cross-runtime-verification-result/1.0","originalRunId":original.run_id,"reproductionRunId":reproduced.run_id,"sourceRuntime":source_runtime,"targetRuntime":target_runtime,"classification":classification,"exactInputs":exact_inputs,"exactEnvironment":exact_env,"exactRuntime":exact_runtime,"exactOutputs":exact_outputs,"equivalentOutputs":equivalent_outputs,"absoluteTolerance":payload.absoluteTolerance,"relativeTolerance":payload.relativeTolerance,"comparisonMode":payload.comparisonMode,"requireSameInputs":payload.requireSameInputs,"comparisons":comparisons,"notes":payload.notes,"automaticExecution":False,"arbitraryCodeExecution":False}
+    details={"schema":"sc-workspace-cross-runtime-verification-result/1.0","originalRunId":original.run_id,"reproductionRunId":reproduced.run_id,"sourceRuntime":source_runtime,"targetRuntime":target_runtime,"classification":classification,"exactInputs":exact_inputs,"exactEnvironment":exact_env,"exactRuntime":exact_runtime,"exactOutputs":exact_outputs,"equivalentOutputs":equivalent_outputs,"absoluteTolerance":payload.absoluteTolerance,"relativeTolerance":payload.relativeTolerance,"comparisonMode":payload.comparisonMode,"requireSameInputs":payload.requireSameInputs,"comparisons":comparisons,"notes":payload.notes,"artifactIntegrity":{"status":"verified" if all_verified else "incomplete"},"registeredDigestsMatch":bool(comparisons) and all(pair["registeredDigestsMatch"] for pair in comparisons),"scientificValidationPerformed":False,"automaticExecution":False,"arbitraryCodeExecution":False}
     fingerprint=sha256_hex(details)
     raw=json.dumps(details,sort_keys=True,separators=(",",":"),ensure_ascii=False,default=str).encode("utf-8")
     artifact_id=f"cross-runtime-verification-{receipt_id}"
@@ -139,7 +164,19 @@ def create_cross_runtime_verification(db:Session,user_key:str,payload:CrossRunti
     db.add(row); db.commit(); db.refresh(row); return row
 
 def receipt_metadata(r:CrossRuntimeVerificationReceipt)->dict[str,Any]:
-    return {"receiptId":r.receipt_id,"originalRunId":r.original_run_id,"reproductionRunId":r.reproduction_run_id,"sourceRuntime":r.source_runtime,"targetRuntime":r.target_runtime,"comparisonMode":r.comparison_mode,"classification":r.classification,"exactInputs":r.exact_inputs,"exactEnvironment":r.exact_environment,"exactRuntime":r.exact_runtime,"exactOutputs":r.exact_outputs,"equivalentOutputs":r.equivalent_outputs,"absoluteTolerance":r.absolute_tolerance,"relativeTolerance":r.relative_tolerance,"comparedOutputCount":r.compared_output_count,"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"fingerprint":r.fingerprint,"details":r.details_json or {},"createdAt":r.created_at.isoformat()}
+    details = r.details_json or {}
+    legacy = "artifactIntegrity" not in details
+    classification = r.classification
+    if legacy:
+        if classification in {"exact", "equivalent"}:
+            classification = "incomplete"
+        details = {
+            **details, "registeredClassification": r.classification, "classification": classification,
+            "exactOutputs": False, "equivalentOutputs": False,
+            "scientificValidationPerformed": False,
+            "artifactIntegrity": {"status": "not-checked"},
+        }
+    return {"receiptId":r.receipt_id,"originalRunId":r.original_run_id,"reproductionRunId":r.reproduction_run_id,"sourceRuntime":r.source_runtime,"targetRuntime":r.target_runtime,"comparisonMode":r.comparison_mode,"classification":classification,"exactInputs":r.exact_inputs,"exactEnvironment":r.exact_environment,"exactRuntime":r.exact_runtime,"exactOutputs":r.exact_outputs and not legacy,"equivalentOutputs":r.equivalent_outputs and not legacy,"absoluteTolerance":r.absolute_tolerance,"relativeTolerance":r.relative_tolerance,"comparedOutputCount":r.compared_output_count,"resultArtifactId":r.result_artifact_id,"resultSha256":r.result_sha256,"fingerprint":r.fingerprint,"details":details,"createdAt":r.created_at.isoformat()}
 
 def list_receipts(db:Session,user_key:str,limit:int=100)->list[dict[str,Any]]:
     rows=db.scalars(select(CrossRuntimeVerificationReceipt).where(CrossRuntimeVerificationReceipt.user_key==user_key).order_by(CrossRuntimeVerificationReceipt.created_at.desc()).limit(limit)).all()
