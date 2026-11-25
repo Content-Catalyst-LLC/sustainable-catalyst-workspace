@@ -1,0 +1,51 @@
+name: Private-research immutability (PR #88)
+on:
+  pull_request:
+    paths:
+      - backend/app/object_store.py
+      - backend/app/wxr_private_projects.py
+      - backend/app/command_query.py
+      - backend/tests/test_wxr_private_projects.py
+      - backend/tests/test_private_research_artifact_immutability.py
+      - scripts/sc_ws_pr02_pr88_postdeploy_probe.py
+      - .github/workflows/private-research-immutability.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the backend image exactly as production does
+        run: docker build -t pr88-backend backend
+      - name: Route and storage tests inside the image
+        run: |
+          docker run --rm --entrypoint sh -v "$PWD/backend/tests:/app/tests:ro" -e PYTHONDONTWRITEBYTECODE=1 pr88-backend -c \
+            'pip install -q pytest httpx && cd /app && python -m pytest -q -p no:cacheprovider tests/test_wxr_private_projects.py tests/test_private_research_artifact_immutability.py'
+      - name: Post-deployment probe rehearsal on PostgreSQL 18 (synthetic data)
+        run: |
+          docker network create probe-net
+          docker run -d --name probe-pg --network probe-net -e POSTGRES_USER=sc -e POSTGRES_PASSWORD=synthetic-ci-only -e POSTGRES_DB=sc_workspace postgres:18
+          until docker exec probe-pg pg_isready -U sc -d sc_workspace; do sleep 1; done; sleep 2
+          ENV="-e SC_WORKSPACE_DATABASE_URL=postgresql+psycopg://sc:synthetic-ci-only@probe-pg:5432/sc_workspace -e SC_WORKSPACE_OBJECT_STORAGE_ROOT=/data/objects --network probe-net -v probe-data:/data"
+          docker run --rm -i $ENV --entrypoint sh pr88-backend -c 'python -m app.init_db && python -' <<'PY'
+          import base64
+          from sqlalchemy.orm import Session
+          from app.db import get_engine
+          from app import object_store
+          from app.schemas import ArtifactStoreRequest
+          with Session(get_engine()) as db:
+              for i in range(3):
+                  object_store.store_artifact(db, "owner", ArtifactStoreRequest.model_validate({
+                      "schema": "sc-workspace-artifact-store/1.0", "artifactId": f"research-file-{i}", "projectId": "p",
+                      "filename": f"s{i}.pdf", "mediaType": "application/pdf",
+                      "contentBase64": base64.b64encode(f"source {i}".encode()).decode(), "expectedRevision": 0,
+                      "metadata": {"source": "private-research"}}))
+          PY
+          docker run --rm -i $ENV --entrypoint python pr88-backend - < scripts/sc_ws_pr02_pr88_postdeploy_probe.py
+      - name: Explain CI limits
+        run: |
+          echo 'CI proves the guard, the routes and the probe on synthetic data only.'
+          echo 'It does not deploy, and it cannot prove production state; the probe must be run after deployment.'
