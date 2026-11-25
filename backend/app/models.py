@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DDL, BigInteger, DateTime, Integer, String, Text, UniqueConstraint, event
+from sqlalchemy import DDL, BigInteger, DateTime, Integer, String, Text, UniqueConstraint, event, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -2969,5 +2969,6 @@ class RecoveryRestorationReceipt(Base):
     batch_id: Mapped[str] = mapped_column(String(96), primary_key=True)
     project_id: Mapped[str] = mapped_column(String(160), nullable=False)
     manifest_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    # server_default matches migration 059, so a table created by create_all at startup is identical to the migration's.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, server_default=text('now()'))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow, server_default=text('now()'))

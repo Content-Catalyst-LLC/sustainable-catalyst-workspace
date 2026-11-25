@@ -416,3 +416,16 @@ def test_existing_sync_and_restore_writers_share_revision_lock(setup):
             except HTTPException as error:return error.status_code
     with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(write,range(2)))
     assert sorted(results)==[200,409] and s.project()[1]==2
+
+
+def test_startup_created_receipts_table_matches_migration_059():
+    """create_all runs at backend (init_db) and worker startup; the table it creates must equal migration 059's."""
+    from sqlalchemy.dialects import postgresql
+    from sqlalchemy.schema import CreateTable
+    from app.models import RecoveryRestorationReceipt
+    ddl = str(CreateTable(RecoveryRestorationReceipt.__table__).compile(dialect=postgresql.dialect()))
+    sql = (Path(__file__).resolve().parents[1]/'migrations/059_controlled_research_restoration.sql').read_text()
+    for column in ('created_at', 'updated_at'):
+        assert f'{column} TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL' in ddl
+        assert f'{column} timestamptz NOT NULL DEFAULT now()' in sql
+    assert 'PRIMARY KEY (user_key, batch_id)' in ddl and 'PRIMARY KEY (user_key, batch_id)' in sql
