@@ -1,0 +1,661 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sustainablecatalyst.com/schemas/sc-research-visual-asset-1.0.schema.json",
+  "title": "Workspace read-only scientific visual asset reference",
+  "type": "object",
+  "$defs": {
+    "Binding": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_revision": {
+          "minimum": 1,
+          "title": "Source Revision",
+          "type": "integer"
+        },
+        "execution_ref": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Execution Ref",
+          "type": "string"
+        },
+        "field": {
+          "enum": [
+            "latex",
+            "exactText",
+            "decimalText"
+          ],
+          "title": "Field",
+          "type": "string"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "sha256",
+        "source_revision",
+        "execution_ref",
+        "field"
+      ],
+      "title": "Binding",
+      "type": "object"
+    },
+    "Cell": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Binding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "uncertainty": {
+          "default": "not quantified",
+          "maxLength": 60,
+          "title": "Uncertainty",
+          "type": "string"
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Citations",
+          "type": "array"
+        }
+      },
+      "title": "Cell",
+      "type": "object"
+    },
+    "Column": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 30,
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 24,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "definition": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Definition",
+          "type": "string"
+        },
+        "significant_figures": {
+          "anyOf": [
+            {
+              "maximum": 30,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Significant Figures"
+        }
+      },
+      "required": [
+        "label",
+        "unit",
+        "definition"
+      ],
+      "title": "Column",
+      "type": "object"
+    },
+    "Composition": {
+      "additionalProperties": false,
+      "properties": {
+        "equations": {
+          "items": {
+            "$ref": "#/$defs/Equation"
+          },
+          "maxItems": 4,
+          "title": "Equations",
+          "type": "array"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Table"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "method_notes": {
+          "default": "",
+          "maxLength": 1200,
+          "title": "Method Notes",
+          "type": "string"
+        },
+        "source_citations": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Source Citations",
+          "type": "array"
+        }
+      },
+      "title": "Composition",
+      "type": "object"
+    },
+    "Display": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "default": "#111111",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "title": "Color",
+          "type": "string"
+        },
+        "line_width": {
+          "default": 2.5,
+          "maximum": 6,
+          "minimum": 0.5,
+          "title": "Line Width",
+          "type": "number"
+        },
+        "frame_index": {
+          "default": 0,
+          "exclusiveMaximum": 48,
+          "minimum": 0,
+          "title": "Frame Index",
+          "type": "integer"
+        },
+        "palette": {
+          "default": "sequential",
+          "enum": [
+            "sequential",
+            "diverging"
+          ],
+          "title": "Palette",
+          "type": "string"
+        },
+        "color_domain": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color Domain"
+        },
+        "color_transform": {
+          "default": "linear",
+          "enum": [
+            "linear",
+            "log10"
+          ],
+          "title": "Color Transform",
+          "type": "string"
+        }
+      },
+      "title": "Display",
+      "type": "object"
+    },
+    "Equation": {
+      "additionalProperties": false,
+      "properties": {
+        "latex": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Latex",
+          "type": "string"
+        },
+        "alt_text": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Alt Text",
+          "type": "string"
+        },
+        "mode": {
+          "default": "display",
+          "enum": [
+            "inline",
+            "display"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "binding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Binding"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "citations": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Citations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "latex",
+        "alt_text"
+      ],
+      "title": "Equation",
+      "type": "object"
+    },
+    "Table": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/Column"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "title": "Columns",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/Cell"
+            },
+            "type": "array"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title",
+        "columns",
+        "rows"
+      ],
+      "title": "Table",
+      "type": "object"
+    },
+    "Reference": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "source_revision": {
+          "minimum": 1,
+          "title": "Source Revision",
+          "type": "integer"
+        },
+        "expected_project_revision": {
+          "minimum": 1,
+          "title": "Expected Project Revision",
+          "type": "integer"
+        },
+        "heatmap_unit": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Heatmap Unit"
+        },
+        "evidence_classification": {
+          "default": "unverified",
+          "enum": [
+            "unverified",
+            "derived-mapping",
+            "design-sensitivity",
+            "modeled"
+          ],
+          "title": "Evidence Classification",
+          "type": "string"
+        },
+        "dataset_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Dataset Refs",
+          "type": "array"
+        },
+        "computation_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Computation Refs",
+          "type": "array"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "rights_ref": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Rights Ref",
+          "type": "string"
+        },
+        "reproduction": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "title": "Reproduction",
+          "type": "string"
+        },
+        "display": {
+          "$ref": "#/$defs/Display"
+        },
+        "composition": {
+          "$ref": "#/$defs/Composition"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "sha256",
+        "source_revision",
+        "expected_project_revision",
+        "dataset_refs",
+        "computation_refs",
+        "evidence_refs",
+        "rights_ref",
+        "reproduction"
+      ],
+      "title": "Reference",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema",
+    "project_id",
+    "asset_id",
+    "revision_id",
+    "source",
+    "reference",
+    "data_refs",
+    "axes",
+    "fifth_dimension",
+    "rights",
+    "provenance_verification",
+    "render_spec",
+    "rendered_view"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sc-research-visual-asset/1.0"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "asset_id": {
+      "type": "string",
+      "pattern": "^report-[a-f0-9]{32}$"
+    },
+    "revision_id": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "reference": {
+      "$ref": "#/$defs/Reference"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "owner_module",
+        "source_schema",
+        "source_identity",
+        "source_provenance",
+        "scientific_status"
+      ],
+      "properties": {
+        "owner_module": {
+          "enum": [
+            "lab",
+            "workbench",
+            "site-intelligence"
+          ]
+        },
+        "source_schema": {
+          "type": "string"
+        },
+        "source_identity": {
+          "type": "object"
+        },
+        "source_provenance": {
+          "type": "object"
+        },
+        "scientific_status": {
+          "type": "string"
+        }
+      }
+    },
+    "data_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "artifact_id",
+          "sha256",
+          "revision"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "availability",
+          "definition"
+        ],
+        "properties": {
+          "key": {
+            "enum": [
+              "x",
+              "y",
+              "z",
+              "t",
+              "q"
+            ]
+          },
+          "availability": {
+            "enum": [
+              "declared",
+              "undeclared"
+            ]
+          },
+          "definition": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "fifth_dimension": {
+      "type": "object",
+      "required": [
+        "availability",
+        "semantics"
+      ],
+      "properties": {
+        "availability": {
+          "const": "undeclared"
+        },
+        "semantics": {
+          "type": "null"
+        }
+      },
+      "description": "This adapter does not implement analytical Q rendering. A later version must declare scientific Q semantics, domain, units and interpolation explicitly."
+    },
+    "spatial_coverage": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "temporal_coverage": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "rights": {
+      "type": "object",
+      "required": [
+        "reference",
+        "redistribution"
+      ],
+      "properties": {
+        "reference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "redistribution": {
+          "const": "not-approved"
+        }
+      }
+    },
+    "provenance_verification": {
+      "type": "object",
+      "required": [
+        "source_bytes_sha256",
+        "remote_origin_authenticated",
+        "scientific_validity"
+      ],
+      "properties": {
+        "source_bytes_sha256": {
+          "const": true
+        },
+        "remote_origin_authenticated": {
+          "const": false
+        },
+        "scientific_validity": {
+          "const": false
+        }
+      }
+    },
+    "render_spec": {
+      "type": "object",
+      "required": [
+        "adapter",
+        "svg_sha256"
+      ],
+      "properties": {
+        "adapter": {
+          "const": "sc-workspace-private-reporting/1.0"
+        },
+        "svg_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "rendered_view": {
+      "type": "object"
+    },
+    "execution_bindings": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": false
+}

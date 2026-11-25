@@ -1,0 +1,59 @@
+name: SC-RVF-01 scientific heatmaps and Studio sources
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/research_reporting.py'
+      - 'backend/app/research_reporting_ui.*'
+      - 'backend/app/reporting_heatmaps.py'
+      - 'backend/app/reporting_scientific_heatmap.py'
+      - 'backend/app/reporting_scientific_exports.py'
+      - 'backend/app/wxr_private_projects.py'
+      - 'backend/app/object_store.py'
+      - 'backend/reporting_math/**'
+      - 'backend/requirements-reporting.txt'
+      - 'backend/tests/test_research_reporting.py'
+      - 'backend/tests/test_sc_rvf_01_heatmap.py'
+      - 'backend/tests/test_wxr_private_projects.py'
+      - 'backend/tests/fixtures/sc_rvf_01/**'
+      - 'schemas/sc-research-visual-asset-1.0.schema.json'
+      - '.github/workflows/sc-rvf-01-heatmap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  heatmaps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-reporting.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Cairo build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config libcairo2-dev libffi-dev
+      - name: Install the Reporting Studio dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-reporting.txt pytest jsonschema
+          python -m pip check
+          cd reporting_math && npm ci --omit=dev --ignore-scripts
+      - name: Studio sources, categorical heatmaps with SE, and source-bound exports (synthetic and published-table fixtures)
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          SC_WORKSPACE_REPORTING_STUDIO_ENABLED: '1'
+        run: |
+          python -m pytest -q tests/test_wxr_private_projects.py tests/test_research_reporting.py tests/test_sc_rvf_01_heatmap.py

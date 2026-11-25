@@ -82,3 +82,7 @@ No production promotion is authorized. The changes are additive code on review b
 - The 46-test focused Workspace scientific/reporting set is included in the 184 above; it is not an additional independent count.
 - Word two-page rendering visually inspected after final export; SVG/PDF figure also inspected. DOCX source JSON/SVG attachments match saved source/SVG, DOCX image equals the PNG export, and repeated Word/PDF requests produce identical bytes in this environment. This is numerical/source parity, not page-layout identity between a two-page Word document and a one-page figure PDF.
 - Editor/renderer JavaScript syntax and git diff whitespace checks passed. CI workflows were added/extended; remote CI results will be recorded separately.
+
+## Port to main (SC-WS-PR-02, 2026-11-25)
+
+Ported from Workspace #14 onto main without changing the deployed Studio's pinned export libraries. The server PNG (and the identical image embedded in Word) is rendered with CairoSVG, already pinned in `requirements-reporting.txt`, instead of the svglib → ReportLab PDF → pypdfium2 chain used on the original branch, so no new dependency is added. CSV, PDF and Word behaviour is unchanged.
