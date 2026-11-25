@@ -66,3 +66,26 @@ def test_ordinary_artifacts_keep_their_generic_replace_and_delete(env, monkeypat
         assert generic.delete("/v1/artifacts/ordinary-note").json()["deleted"] is True
     finally:
         workspace_main.app.dependency_overrides.clear()
+
+
+def test_command_route_cannot_replace_or_delete_a_private_research_file(env, monkeypatch):
+    """/v1/commands/execute (artifact.put / artifact.delete) is the second generic write path."""
+    from app.models import Base, CommandReceipt
+    client, engine, _ = env
+    Base.metadata.create_all(engine, tables=[CommandReceipt.__table__])
+    project, artifact_id, raw = _research_file(client)
+    generic = _generic_client(engine, monkeypatch)
+    command = lambda name, payload: generic.post("/v1/commands/execute", json={
+        "schema": "sc-workspace-command-request/1.0", "command": name, "payload": payload})
+    try:
+        put = command("artifact.put", {
+            "schema": "sc-workspace-artifact-store/1.0", "artifactId": artifact_id, "projectId": project,
+            "filename": "source.pdf", "mediaType": "application/pdf",
+            "contentBase64": base64.b64encode(b"different bytes").decode(), "expectedRevision": 1})
+        assert put.status_code == 409, put.text
+        assert command("artifact.delete", {"artifactId": artifact_id}).status_code == 409
+    finally:
+        workspace_main.app.dependency_overrides.clear()
+    with Session(engine) as db:
+        row = object_store.get_artifact(db, "alice", artifact_id)
+        assert row is not None and row.revision == 1 and object_store.read_artifact_content(row) == raw
