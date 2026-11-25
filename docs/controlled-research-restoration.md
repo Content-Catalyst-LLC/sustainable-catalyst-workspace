@@ -63,7 +63,7 @@ Unassigned/unowned figures and research-environment artifacts cannot be promoted
 
 ## Migration, transaction and rollback boundaries
 
-Migration `051_controlled_research_restoration.sql` adds one audit table in the existing database; it does not touch source stores or move research data. It requires reviewed backup/restore evidence and separate deployment/migration approval. Existing `auto_create_schema` policy is unchanged.
+Migration `059_controlled_research_restoration.sql` adds one audit table in the existing database; it does not touch source stores or move research data. It requires reviewed backup/restore evidence and separate deployment/migration approval. Existing `auto_create_schema` policy is unchanged.
 
 Restore acquires the owned target row, rechecks the plan/revision, verifies backup/blob bytes, creates native ArtifactHead/ArtifactRevision rows without independent commits, appends project objects and a **server-owned** RecoveryRestorationReceipt, then commits through the existing project store once. Client-editable project traceability is only an audit mirror, never rollback authority. A forged sync operation ID cannot manufacture success. A persistence failure rolls back all database changes. Content-addressed blob files may remain orphaned after failure; they are not exposed without authorized DB metadata and are deliberately not deleted because blobs can be shared.
 

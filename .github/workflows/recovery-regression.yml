@@ -2,7 +2,16 @@ name: Controlled recovery regression
 on:
   pull_request:
     paths:
-      - 'backend/**'
+      - 'backend/app/controlled_recovery.py'
+      - 'backend/app/recovery_reconciliation.py'
+      - 'backend/app/recovery_area_ui.py'
+      - 'backend/app/wxr_recovery_review.py'
+      - 'backend/app/object_store.py'
+      - 'backend/app/repository.py'
+      - 'backend/app/models.py'
+      - 'backend/migrations/059_controlled_research_restoration.sql'
+      - 'backend/tests/test_controlled_recovery.py'
+      - 'backend/tests/test_recovery_reconciliation.py'
       - '.github/workflows/recovery-regression.yml'
   workflow_dispatch:
 permissions:

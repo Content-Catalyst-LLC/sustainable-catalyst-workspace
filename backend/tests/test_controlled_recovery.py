@@ -395,7 +395,7 @@ def test_postgres_concurrent_restore_is_idempotent(setup):
 @pytest.mark.skipif(not os.getenv('SC_RECOVERY_TEST_DATABASE_URL'),reason='PostgreSQL migration requires isolated PostgreSQL CI')
 def test_additive_migration_is_idempotent_and_keeps_existing_projects(setup):
     s=setup;before=s.project();RecoveryRestorationReceipt.__table__.drop(s.engine)
-    sql=(Path(__file__).resolve().parents[1]/'migrations/051_controlled_research_restoration.sql').read_text()
+    sql=(Path(__file__).resolve().parents[1]/'migrations/059_controlled_research_restoration.sql').read_text()
     with s.engine.connect().execution_options(isolation_level='AUTOCOMMIT') as conn:
         conn.exec_driver_sql(sql);conn.exec_driver_sql(sql)
     assert s.project()==before
